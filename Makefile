@@ -10,6 +10,6 @@ OBJS =  gldepth.o gldraw.o glkos.o gllight.o glmisc.o
 OBJS += gltex.o gltrans.o glvars.o glblend.o glfog.o glmodifier.o glnzclip.o
 SUBDIRS =
 
-include ../Makefile.prefab
+include $(KOS_BASE)/addons/Makefile.prefab
 
 
