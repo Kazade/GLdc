@@ -8,8 +8,6 @@
 #include <GL/glu.h>
 #include "glinternal.h"
 
-CVSID("$Id: glvars.c,v 1.11 2002/06/28 04:52:42 axlen Exp $");
-
 /* Variable definitions */
 
 /* Background clear color (not currently used) */
