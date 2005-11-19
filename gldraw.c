@@ -141,6 +141,67 @@ sizeof(gl_vertex_t)); */
 		}
 }
 
+static void end_triangle_fan() {
+	int i;
+	volatile pvr_vertex_t	*vert;
+	pvr_dr_state_t	dr_state;
+
+	pvr_dr_init(dr_state);
+
+	/* Should be at least 3 points in the buffer */
+	assert_msg(gl_vbuf_top >= 3, "Need at least three vertices.");
+
+	gl_vbuf[0].flags = PVR_CMD_VERTEX_EOL;
+
+	for (i=0; i<gl_vbuf_top; i++) {
+		float x = gl_vbuf[i].x, y = gl_vbuf[i].y, z = gl_vbuf[i].z, w = 1.0f;
+		mat_trans_single4(x, y, z, w);
+		gl_xbuf[i].x = x;
+		gl_xbuf[i].y = y;
+		if (w == 1.0f)
+			gl_xbuf[i].z = ((gl_viewport_scale[2] * z) + gl_viewport_offset[2]);
+		else
+			gl_xbuf[i].z = w;
+	}
+
+	/* Throw it all to the TA using direct render */
+	if (check_w(gl_xbuf, gl_vbuf_top))
+		for (i=1; i<gl_vbuf_top-1; i++) {
+			vert = pvr_dr_target(dr_state);
+			vert->flags = gl_vbuf[i].flags;
+			vert->x     = gl_xbuf[i].x;
+			vert->y     = gl_xbuf[i].y;
+			vert->z     = gl_xbuf[i].z;
+			vert->u     = gl_vbuf[i].u;
+			vert->v     = gl_vbuf[i].v;
+			vert->argb  = gl_vbuf[i].argb;
+			vert->oargb = gl_vbuf[i].oargb;
+			pvr_dr_commit(vert);
+
+			vert = pvr_dr_target(dr_state);
+			vert->flags = gl_vbuf[i+1].flags;
+			vert->x     = gl_xbuf[i+1].x;
+			vert->y     = gl_xbuf[i+1].y;
+			vert->z     = gl_xbuf[i+1].z;
+			vert->u     = gl_vbuf[i+1].u;
+			vert->v     = gl_vbuf[i+1].v;
+			vert->argb  = gl_vbuf[i+1].argb;
+			vert->oargb = gl_vbuf[i+1].oargb;
+			pvr_dr_commit(vert);
+
+			vert = pvr_dr_target(dr_state);
+			vert->flags = gl_vbuf[0].flags;
+			vert->x     = gl_xbuf[0].x;
+			vert->y     = gl_xbuf[0].y;
+			vert->z     = gl_xbuf[0].z;
+			vert->u     = gl_vbuf[0].u;
+			vert->v     = gl_vbuf[0].v;
+			vert->argb  = gl_vbuf[0].argb;
+			vert->oargb = gl_vbuf[0].oargb;
+			pvr_dr_commit(vert);
+		}
+}
+
 static void end_triangle_strip() {
 	int i;
 	volatile pvr_vertex_t	*vert;
@@ -348,6 +409,8 @@ static void check_end() {
 		break;
 	case GL_TRIANGLE_STRIP:
 		break;
+	case GL_TRIANGLE_FAN:
+		break;
 	case GL_QUADS:
 		if (gl_vbuf_top == 4) {
 			end_quads();
@@ -453,6 +516,9 @@ void glEnd(void) {
 		break;
 	case GL_TRIANGLE_STRIP:
 		end_triangle_strip();
+		break;
+	case GL_TRIANGLE_FAN:
+		end_triangle_fan();
 		break;
 	case GL_QUADS:
 		break;
