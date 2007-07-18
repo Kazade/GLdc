@@ -541,6 +541,10 @@ static float autouv[4][2] = {
 	{0.0f, 1.0f}
 };
 
+void glVertex2f(GLfloat x, GLfloat y) {
+	glVertex3f(x, y, (GLfloat)0.0f);
+}
+
 void glVertex3f(GLfloat x, GLfloat y, GLfloat z) {
 	gl_vbuf[gl_vbuf_top].flags = PVR_CMD_VERTEX;
 
