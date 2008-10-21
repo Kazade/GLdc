@@ -24,8 +24,6 @@
 #include <dc/matrix.h>
 #include <dc/pvr.h>
 
-CVSID("$Id:");
-
 /* Some local tranform stuff.  It is generally faster to clip and
    light verts in view-space. The transform has been broken into
    two pieces to make that possibe. */

@@ -14,8 +14,6 @@
 #include <malloc.h>
 #include <dc/pvr.h>
 
-CVSID("$Id: gldraw.c,v 1.23 2002/09/05 07:36:23 bardtx Exp $");
-
 /* internal prototypes */
 static void send_user_clip();
 

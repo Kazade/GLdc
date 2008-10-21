@@ -17,8 +17,6 @@
 #include <dc/matrix.h>
 #include <dc/pvr.h>
 
-CVSID("$Id");
-
 volatile pvr_modifier_vol_t *volume;
 static pvr_modifier_vol_t vol_vbuf, vol_xbuf;
 pvr_dr_state_t	dr_state;

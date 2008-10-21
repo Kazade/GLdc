@@ -13,8 +13,6 @@
 #include "glinternal.h"
 #include "glmacros.h"
 
-CVSID("$Id: glkos.c,v 1.14 2002/09/05 07:36:23 bardtx Exp $");
-
 /* KOS-specific APIs */
 
 int glKosInit() {

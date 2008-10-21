@@ -11,8 +11,6 @@
 
 #include "assert.h"
 
-CVSID("$Id: gllight.c,v 1.5 2002/04/03 03:36:53 axlen Exp $");
-
 /* Lighting */
 void glShadeModel(GLenum mode) {
 	assert_msg(!gl_prim_type, "Not allowed within glBegin/glEnd pair.");

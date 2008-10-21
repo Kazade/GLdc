@@ -12,8 +12,6 @@
 #include <assert.h>
 #include <dc/pvr.h>
 
-CVSID("$Id: glfog.c,v 1.2 2002/04/03 03:36:15 axlen Exp $");
-
 #define TEST_EQ_4V(a,b)  ((a)[0] == (b)[0] && 	\
 			  (a)[1] == (b)[1] &&	\
 			  (a)[2] == (b)[2] &&	\

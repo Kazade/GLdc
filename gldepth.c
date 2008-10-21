@@ -12,8 +12,6 @@
 #include <assert.h>
 #include <stdio.h>
 
-CVSID("$Id: gldepth.c,v 1.7 2002/04/03 03:34:22 axlen Exp $");
-
 /* Depth buffer (non-functional, just stubs) */
 void glClearDepth(GLclampd depth) {
 	assert_msg(!gl_prim_type, "Not allowed within glBegin/glEnd pair.");	

@@ -13,8 +13,6 @@
 #include <dc/fmath.h>
 #include <dc/matrix.h>
 
-CVSID("$Id: gltrans.c,v 1.13 2002/09/05 07:36:23 bardtx Exp $");
-
 /* Transformation APIs */
 
 /* Modus operandi, as it were

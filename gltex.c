@@ -13,8 +13,6 @@
 #include <malloc.h>
 #include <stdio.h>
 
-CVSID("$Id: gltex.c,v 1.11 2002/09/05 07:36:23 bardtx Exp $");
-
 /* Texture handling */
 
 /* Allocate "texture structures" (really poly context structs) */

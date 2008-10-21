@@ -11,8 +11,6 @@
 
 #include <assert.h>
 
-CVSID("$Id: glblend.c,v 1.3 2002/04/03 03:33:38 axlen Exp $");
-
 /* Blending */
 void glBlendFunc(GLenum sfactor, GLenum dfactor) {
 

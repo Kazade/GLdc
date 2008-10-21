@@ -13,8 +13,6 @@
 #include <stdio.h>
 #include <string.h>
 
-CVSID("$Id: glmisc.c,v 1.17 2002/07/08 05:28:28 axlen Exp $");
-
 /* Miscellaneous APIs */
 
 /* Set the background clear color */
