@@ -4,7 +4,6 @@
 	(c) Trilinear
 	Trilinear@hotmail.com
 	
-   $Id: glclip.h,v 1.2 2002/06/28 04:47:02 axlen Exp $
 */
 
 #ifndef __GLCLIP_H

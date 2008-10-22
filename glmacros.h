@@ -3,7 +3,6 @@
    glmacros.c
    (c)2001 Paul Boese
 
-   $Id: glmacros.h,v 1.5 2002/06/28 04:57:31 axlen Exp $
 */
 
 #ifndef __GL_GLMACROS_H

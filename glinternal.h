@@ -3,7 +3,6 @@
    glinternal.c
    (c)2001 Dan Potter
 
-   $Id: glinternal.h,v 1.13 2002/09/05 07:36:23 bardtx Exp $
 */
 
 #ifndef __GL_GLINTERNAL_H
