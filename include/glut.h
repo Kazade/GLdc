@@ -9,6 +9,9 @@
 #ifndef __GL_GLUT_H
 #define __GL_GLUT_H
 
+#include <sys/cdefs.h>
+__BEGIN_DECLS
+
 #include <GL/gl.h>
 
 /* Flush the Submitted Primitive Data to the GPU for render to screen */
@@ -21,5 +24,7 @@ GLAPI void APIENTRY glutSwapBuffersToTexture(void *dst, GLsizei *x, GLsizei *y);
 /* This will leave the Vertex Data in the Main Buffer to be Flushed on the 
    next frame rendered */
 GLAPI void APIENTRY glutCopyBufferToTexture(void *dst, GLsizei *x, GLsizei *y);
+
+__END_DECLS
 
 #endif /* !__GL_GLUT_H */
