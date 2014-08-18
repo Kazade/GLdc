@@ -72,6 +72,14 @@ static GLubyte GL_ENABLE_SUPERSAMP  = 0;
 static GLubyte GL_FACE_FRONT  = 0;
 static GLubyte GL_CLAMP_ST    = 0;
 
+/* Primitive 2D Position Submission */
+void (*glVertex2f)(float, float);
+void (*glVertex2fv)(float *);
+
+/* Primitive 3D Position Submission */
+void (*glVertex3f)(float, float, float);
+void (*glVertex3fv)(float *);
+
 #define GL_CLAMP_U  0x0F
 #define GL_CLAMP_V  0xF0
 #define GL_CLAMP_UV 0xFF

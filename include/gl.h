@@ -317,7 +317,7 @@ __BEGIN_DECLS
 #define GL_FALSE    0
 #define GL_TRUE     1
 
-#define GLAPI
+#define GLAPI extern
 #define APIENTRY
 
 /* Initialize the GL pipeline. GL will initialize the PVR. */
