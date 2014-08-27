@@ -352,8 +352,12 @@ GLAPI void APIENTRY glNormal3f(float x, float y, float z);
 GLAPI void APIENTRY glNormal3fv(float *xyz);
 
 /* Primitive 2D Position Submission */
-GLAPI void APIENTRY(*glVertex2f)(float, float);
-GLAPI void APIENTRY(*glVertex2fv)(float *);
+GLAPI void APIENTRY glVertex2f(GLfloat x, GLfloat y);
+GLAPI void APIENTRY glVertex2fv(GLfloat *xy);
+
+/* Non-Standard KOS Primitive 2D Submission.  This will perform no tranformations on the vertices. */
+GLAPI void APIENTRY glKosVertex2f(GLfloat x, GLfloat y);
+GLAPI void APIENTRY glKosVertex2fv(GLfloat *xy);
 
 /* Primitive 3D Position Submission */
 GLAPI void APIENTRY(*glVertex3f)(float, float, float);

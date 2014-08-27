@@ -72,10 +72,6 @@ static GLubyte GL_ENABLE_SUPERSAMP  = 0;
 static GLubyte GL_FACE_FRONT  = 0;
 static GLubyte GL_CLAMP_ST    = 0;
 
-/* Primitive 2D Position Submission */
-void (*glVertex2f)(float, float);
-void (*glVertex2fv)(float *);
-
 /* Primitive 3D Position Submission */
 void (*glVertex3f)(float, float, float);
 void (*glVertex3fv)(float *);
@@ -1038,9 +1034,6 @@ void glBegin(unsigned int mode) {
         glVertex3f = _glKosVertex3ft;
         glVertex3fv = _glKosVertex3ftv;
     }
-
-    glVertex2f = _glKosVertex2ft;
-    glVertex2fv = _glKosVertex2ftv;
 }
 
 void _glKosTransformClipBuf(pvr_vertex_t *v, GLuint verts) {
@@ -1133,7 +1126,15 @@ void glEnd() {
     }
 }
 
-void _glKosVertex2ft(float x, float y) {
+void glVertex2f(GLfloat x, GLfloat y) {
+    return _glKosVertex3ft(x, y, 0.0f);
+}
+
+void glVertex2fv(GLfloat *xy) {
+	return _glKosVertex3ft(xy[0], xy[1], 0.0f);
+}
+
+void glKosVertex2f(GLfloat x, GLfloat y) {
     pvr_vertex_t *v = _glKosVertexBufPointer();
 
     v->x = x;
@@ -1149,7 +1150,7 @@ void _glKosVertex2ft(float x, float y) {
     ++GL_VERTICES;
 }
 
-void _glKosVertex2ftv(float *xy) {
+void glKosVertex2fv(GLfloat *xy) {
     pvr_vertex_t *v = _glKosVertexBufPointer();
 
     v->x = xy[0];
