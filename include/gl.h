@@ -2,6 +2,7 @@
 
    libgl/gl.h
    Copyright (C) 2013-2014 Josh "PH3NOM" Pearson
+   Copyright (C) 2014 Lawrence Sebald
 
    Some functionality adapted from the original KOS libgl:
    Copyright (C) 2001 Dan Potter
@@ -62,6 +63,10 @@ __BEGIN_DECLS
 #define GL_IDENTITY         0x04
 #define GL_RENDER           0x05
 #define GL_MATRIX_COUNT     0x06
+
+#define GL_MODELVIEW_MATRIX   0x0BA6
+#define GL_PROJECTION_MATRIX  0x0BA7
+#define GL_TEXTURE_MATRIX     0x0BA8
 
 /* Depth buffer */
 #define GL_NEVER              0x0200
@@ -478,6 +483,8 @@ GLAPI void APIENTRY glViewport(GLint x, GLint y, GLsizei width, GLsizei height);
 
 GLAPI void APIENTRY glScissor(GLint x, GLint y, GLsizei width, GLsizei height);
 
+GLAPI void APIENTRY glKosGetMatrix(GLenum mode, GLfloat *params);
+
 
 /* Fog Functions - client must enable GL_FOG for this to take effect */
 GLAPI void APIENTRY glFogi(GLenum pname, GLint param);
@@ -506,6 +513,7 @@ GLAPI GLuint APIENTRY glKosMipMapTexSize(GLuint width, GLuint height);
 
 /* glGet Functions */
 void glGetIntegerv(GLenum pname, GLint *params);
+void glGetFloatv(GLenum pname, GLfloat *params);
 
 /* Multi-Texture Extensions */
 GLAPI void APIENTRY glActiveTexture(GLenum texture);

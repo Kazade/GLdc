@@ -1,7 +1,8 @@
 /* KallistiGL for KallistiOS ##version##
 
-   libgl/gl.h
+   libgl/gl-api.c
    Copyright (C) 2013-2014 Josh "PH3NOM" Pearson
+   Copyright (C) 2014 Lawrence Sebald
 
    Some functionality adapted from the original KOS libgl:
    Copyright (C) 2001 Dan Potter
@@ -157,6 +158,20 @@ void glGetIntegerv(GLenum pname, GLint *params) {
 
         default:
             *params = -1; // Indicate invalid parameter //
+            break;
+    }
+}
+
+void glGetFloatv(GLenum pname, GLfloat *params) {
+    switch(pname) {
+        case GL_MODELVIEW_MATRIX:
+        case GL_PROJECTION_MATRIX:
+        case GL_TEXTURE_MATRIX:
+            glKosGetMatrix(pname - GL_MODELVIEW_MATRIX + 1, params);
+            break;
+
+        default:
+            *params = (GLfloat)GL_INVALID_ENUM;
             break;
     }
 }

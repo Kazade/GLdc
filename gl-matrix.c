@@ -2,6 +2,7 @@
 
    libgl/gl-matrix.c
    Copyright (C) 2013-2014 Josh "PH3NOM" Pearson
+   Copyright (C) 2014 Lawrence Sebald
 
    Some functionality adapted from the original KOS libgl:
    Copyright (C) 2001 Dan Potter
@@ -392,4 +393,11 @@ void _glKosInitMatrix() {
 
     glDepthRange(0.0f, 1.0f);
     glViewport(0, 0, vid_mode->width, vid_mode->height);
+}
+
+void glKosGetMatrix(GLenum mode, GLfloat *params) {
+    if(mode < GL_SCREENVIEW || mode > GL_RENDER)
+        *params = (GLfloat)GL_INVALID_ENUM;
+
+    memcpy(params, Matrix + mode, sizeof(GLfloat) * 16);
 }
