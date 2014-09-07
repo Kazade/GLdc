@@ -435,8 +435,7 @@ GLAPI void APIENTRY glTexCoordPointer(GLint size, GLenum type,
 
 /* If a Normal Pointer is set and GL Lighting has been enabled,
    Vertex Lighting will be used instead of glColorPointer */
-GLAPI void APIENTRY glNormalPointer(GLint size, GLenum type,
-                                    GLsizei stride, const GLvoid *pointer);
+GLAPI void APIENTRY glNormalPointer(GLenum type, GLsizei stride, const GLvoid *pointer);
 
 /* Use either this OR glNormalPointer to color vertices, NOT both */
 GLAPI void APIENTRY glColorPointer(GLint size, GLenum type,
@@ -515,7 +514,7 @@ GLAPI GLuint APIENTRY glKosMipMapTexSize(GLuint width, GLuint height);
 void glGetIntegerv(GLenum pname, GLint *params);
 void glGetFloatv(GLenum pname, GLfloat *params);
 
-/* Multi-Texture Extensions */
+/* Multi-Texture Extensions - Does not currently work with Z-Clipping Enabled */
 GLAPI void APIENTRY glActiveTexture(GLenum texture);
 
 GLAPI void APIENTRY glClientActiveTexture(GLenum texture);

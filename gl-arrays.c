@@ -43,7 +43,7 @@ static GLuint GL_VERTEX_PTR_MODE = 0;
 static GLuint GL_ARRAY_TEXTURE_ENABLED = 0;
 static GLuint GL_ARRAY_ACTIVE_TEXTURE = 0;
 
-void glClientActiveTexture(GLenum texture) {
+GLAPI void APIENTRY glClientActiveTexture(GLenum texture) {
     if(texture < GL_TEXTURE0 || texture > GL_TEXTURE0 + GL_MAX_TEXTURE_UNITS)
         return;
 
@@ -140,8 +140,8 @@ static inline void _glKosArraysTransformPositions(GLfloat *position, GLuint coun
 //== Open GL API Public Functions ==//
 
 /* Submit a Vertex Position Pointer */
-void glVertexPointer(GLint size, GLenum type,
-                     GLsizei stride, const GLvoid *pointer) {
+GLAPI void APIENTRY glVertexPointer(GLint size, GLenum type,
+                                    GLsizei stride, const GLvoid *pointer) {
     if(size != 3) return; /* Expect 3D X,Y,Z vertex... could do 2d X,Y later */
 
     if(type != GL_FLOAT) return; /* Expect Floating point vertices */
@@ -154,10 +154,7 @@ void glVertexPointer(GLint size, GLenum type,
 }
 
 /* Submit a Vertex Normal Pointer */
-void glNormalPointer(GLint size, GLenum type,
-                     GLsizei stride, const GLvoid *pointer) {
-    if(size != 3) return;
-
+GLAPI void APIENTRY glNormalPointer(GLenum type, GLsizei stride, const GLvoid *pointer) {
     if(type != GL_FLOAT) return; /* Expect Floating point vertices */
 
     (stride) ? (GL_NORMAL_STRIDE = stride / 4) : (GL_NORMAL_STRIDE = 3);
@@ -168,8 +165,8 @@ void glNormalPointer(GLint size, GLenum type,
 }
 
 /* Submit a Texture Coordinate Pointer */
-void glTexCoordPointer(GLint size, GLenum type,
-                       GLsizei stride, const GLvoid *pointer) {
+GLAPI void APIENTRY glTexCoordPointer(GLint size, GLenum type,
+                                      GLsizei stride, const GLvoid *pointer) {
     if(size != 2) return; /* Expect u and v */
 
     if(type != GL_FLOAT) return; /* Expect Floating point vertices */
@@ -193,8 +190,8 @@ void glTexCoordPointer(GLint size, GLenum type,
 }
 
 /* Submit a Color Pointer */
-void glColorPointer(GLint size, GLenum type,
-                    GLsizei stride, const GLvoid *pointer) {
+GLAPI void APIENTRY glColorPointer(GLint size, GLenum type,
+                                   GLsizei stride, const GLvoid *pointer) {
     if((type == GL_UNSIGNED_INT) && (size == 1)) {
         GL_COLOR_COMPONENTS = 1;
         GL_COLOR_POINTER = (GLvoid *)pointer;
@@ -639,7 +636,7 @@ void _glKosPrintErrorString(GLuint error) {
 //========================================================================================//
 //== OpenGL Elemental Array Submission ==//
 
-void glDrawElements(GLenum mode, GLsizei count, GLenum type, const GLvoid *indices) {
+GLAPI void APIENTRY glDrawElements(GLenum mode, GLsizei count, GLenum type, const GLvoid *indices) {
     /* Before we process the vertex data, ensure all parameters are valid */
     GLuint error = _glKosArraysVerifyParameter(mode, count, type, 1);
 
@@ -909,9 +906,9 @@ static inline void _glKosArrayTexCoord2f(pvr_vertex_t *dst, GLuint count) {
 }
 
 //========================================================================================//
-//== Openg GL Draw Arrays ==//
+//== Open GL Draw Arrays ==//
 
-void glDrawArrays(GLenum mode, GLint first, GLsizei count) {
+GLAPI void APIENTRY glDrawArrays(GLenum mode, GLint first, GLsizei count) {
     /* Before we process the vertex data, ensure all parameters are valid */
     GLuint error = _glKosArraysVerifyParameter(mode, count, first, 0);
 

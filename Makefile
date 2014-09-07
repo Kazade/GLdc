@@ -6,7 +6,7 @@
 
 TARGET = libgl.a
 OBJS =  gl-rgb.o gl-fog.o gl-sh4-light.o gl-light.o gl-clip.o gl-pvr.o
-OBJS += gl-arrays.o gl-matrix.o gl-api.o
+OBJS += gl-arrays.o gl-matrix.o gl-api.o glu-texture.o
 SUBDIRS =
 
 KOS_CFLAGS += -ffast-math -O3 -Iinclude

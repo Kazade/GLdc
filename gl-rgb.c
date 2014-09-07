@@ -96,20 +96,20 @@ uint16 __glKosAverageBiPixelRGB565(uint16 p1, uint16 p2) {
 }
 
 uint16 __glKosAverageBiPixelARGB1555(uint16 p1, uint16 p2) {
-    uint8 A = (ARGB1555_ALPHA(p1) + ARGB1555_ALPHA(p2)) / 4;
-    uint8 R = (ARGB1555_RED(p1) + ARGB1555_RED(p2)) / 4;
-    uint8 G = (ARGB1555_GREEN(p1) + ARGB1555_GREEN(p2)) / 4;
-    uint8 B = (ARGB1555_BLUE(p1) + ARGB1555_BLUE(p2)) / 4;
+    uint8 A = (ARGB1555_ALPHA(p1) + ARGB1555_ALPHA(p2)) / 2;
+    uint8 R = (ARGB1555_RED(p1) + ARGB1555_RED(p2)) / 2;
+    uint8 G = (ARGB1555_GREEN(p1) + ARGB1555_GREEN(p2)) / 2;
+    uint8 B = (ARGB1555_BLUE(p1) + ARGB1555_BLUE(p2)) / 2;
 
     return ((A & RGB1_MAX) << ARGB1555_ALPHA_SHIFT) | ((R & RGB5_MAX) << ARGB1555_RED_SHIFT)
            | ((G & RGB5_MAX) << ARGB1555_GREEN_SHIFT) | (B & RGB5_MAX);
 }
 
 uint16 __glKosAverageBiPixelARGB4444(uint16 p1, uint16 p2) {
-    uint8 A = (ARGB4444_ALPHA(p1) + ARGB4444_ALPHA(p2)) / 4;
-    uint8 R = (ARGB4444_RED(p1) + ARGB4444_RED(p2)) / 4;
-    uint8 G = (ARGB4444_GREEN(p1) + ARGB4444_GREEN(p2)) / 4;
-    uint8 B = (ARGB4444_BLUE(p1) + ARGB4444_BLUE(p2)) / 4;
+    uint8 A = (ARGB4444_ALPHA(p1) + ARGB4444_ALPHA(p2)) / 2;
+    uint8 R = (ARGB4444_RED(p1) + ARGB4444_RED(p2)) / 2;
+    uint8 G = (ARGB4444_GREEN(p1) + ARGB4444_GREEN(p2)) / 2;
+    uint8 B = (ARGB4444_BLUE(p1) + ARGB4444_BLUE(p2)) / 2;
 
     return ((A & RGB4_MAX) << ARGB4444_ALPHA_SHIFT) | ((R & RGB4_MAX) << ARGB4444_RED_SHIFT)
            | ((G & RGB4_MAX) << ARGB4444_GREEN_SHIFT) | (B & RGB4_MAX);
