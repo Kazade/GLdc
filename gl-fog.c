@@ -1,7 +1,7 @@
 /* KallistiGL for KallistiOS ##version##
 
    libgl/gl-fog.c
-   Copyright (C) 2013-2014 Josh "PH3NOM" Pearson
+   Copyright (C) 2013-2014 Josh Pearson
 
    Functionality adapted from the original KOS libgl fog code:
    Copyright (C) 2002 Benoit Miller
@@ -16,7 +16,7 @@ static GLfloat FOG_DENSITY = 1.0f,   /* Density - GL_EXP, or GL_EXP2 FOG  */
                FOG_START   = 0.0f,   /* Linear FOG                        */
                FOG_END     = 1.0f;   /* Linear FOG                        */
 
-void glFogi(GLenum pname, GLint param) {
+void APIENTRY glFogi(GLenum pname, GLint param) {
     switch(pname) {
         case GL_FOG_MODE:
             switch(param) {
@@ -38,7 +38,7 @@ void glFogi(GLenum pname, GLint param) {
     }
 }
 
-void glFogf(GLenum pname, GLfloat param) {
+void APIENTRY glFogf(GLenum pname, GLfloat param) {
     switch(pname) {
         case GL_FOG_START:
             FOG_START = param;
@@ -72,7 +72,7 @@ void glFogf(GLenum pname, GLfloat param) {
     }
 }
 
-void glFogfv(GLenum pname, const GLfloat *params) {
+void APIENTRY glFogfv(GLenum pname, const GLfloat *params) {
     switch(pname) {
         case GL_FOG_MODE:
             return glFogi(pname, (GLint) * params);

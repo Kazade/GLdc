@@ -1,7 +1,7 @@
 /* KallistiGL for KallistiOS ##version##
 
    libgl/gl-sh4.h
-   Copyright (C) 2013-2014 Josh "PH3NOM" Pearson
+   Copyright (C) 2013-2014 Josh Pearson
 
    Macros for utilizing the Dreamcast's SH4 CPU vector / matrix math functions.
 */

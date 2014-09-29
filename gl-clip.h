@@ -1,7 +1,7 @@
 /* KallistiGL for KallistiOS ##version##
 
    libgl/gl-clip.h
-   Copyright (C) 2013-2014 Josh "PH3NOM" Pearson
+   Copyright (C) 2013-2014 Josh Pearson
 
    Near-Z Clipping Algorithm (C) 2013-2014 Josh PH3NOM Pearson
    Input Primitive Types Supported:

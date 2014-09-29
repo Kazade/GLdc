@@ -1,7 +1,7 @@
 /* KallistiGL for KallistiOS ##version##
 
    libgl/gl-arrays.c
-   Copyright (C) 2013-2014 Josh "PH3NOM" Pearson
+   Copyright (C) 2013-2014 Josh Pearson
 
    Arrays Input Primitive Types Supported:
    -GL_TRIANGLES
@@ -35,102 +35,6 @@ static glVertex *GL_ARRAY_BUF_PTR;
 static GLuint GL_VERTEX_PTR_MODE = 0;
 
 //========================================================================================//
-//== Multi-Texture Extensions ==//
-
-#define GL_TEXTURE_0 1<<0
-#define GL_TEXTURE_1 1<<1
-
-static GLuint GL_ARRAY_TEXTURE_ENABLED = 0;
-static GLuint GL_ARRAY_ACTIVE_TEXTURE = 0;
-
-GLAPI void APIENTRY glClientActiveTexture(GLenum texture) {
-    if(texture < GL_TEXTURE0 || texture > GL_TEXTURE0 + GL_MAX_TEXTURE_UNITS)
-        return;
-
-    GL_ARRAY_ACTIVE_TEXTURE = ((texture & 0xFF) - (GL_TEXTURE0 & 0xFF));
-
-    return glActiveTexture(texture);
-}
-
-static inline void _glKosArrayCopyMultiTexture(GLuint count) {
-    if(GL_ARRAY_TEXTURE_ENABLED == 3) {
-        pvr_vertex_t *dst = _glKosTRVertexBufPointer();
-        pvr_vertex_t *src = _glKosVertexBufPointer();
-        GLuint i;
-
-        for(i = 0; i < count; i++) {
-            dst[i].x = src[i].x;
-            dst[i].y = src[i].y;
-            dst[i].z = src[i].z;
-            dst[i].argb = src[i].argb;
-            dst[i].flags = src[i].flags;
-
-            dst[i].u = GL_TEXCOORD2_POINTER[0];
-            dst[i].v = GL_TEXCOORD2_POINTER[1];
-            GL_TEXCOORD2_POINTER += GL_TEXCOORD2_STRIDE;
-        }
-
-        _glKosTRVertexBufAdd(count);
-    }
-}
-
-static inline void _glKosArrayCopyMultiTextureQuads(GLuint count) {
-    if(GL_ARRAY_TEXTURE_ENABLED == 3) {
-        pvr_vertex_t *dst = _glKosTRVertexBufPointer();
-        pvr_vertex_t *src = _glKosVertexBufPointer();
-        GLuint i;
-
-        for(i = 0; i < count; i += 4) {
-            /* 1st Vertex */
-            dst[i].x = src[i].x;
-            dst[i].y = src[i].y;
-            dst[i].z = src[i].z;
-            dst[i].argb = src[i].argb;
-            dst[i].flags = src[i].flags;
-
-            dst[i].u = GL_TEXCOORD2_POINTER[0];
-            dst[i].v = GL_TEXCOORD2_POINTER[1];
-            GL_TEXCOORD2_POINTER += GL_TEXCOORD2_STRIDE;
-
-            /* 2nd Vertex */
-            dst[i + 1].x = src[i + 1].x;
-            dst[i + 1].y = src[i + 1].y;
-            dst[i + 1].z = src[i + 1].z;
-            dst[i + 1].argb = src[i + 1].argb;
-            dst[i + 1].flags = src[i + 1].flags;
-
-            dst[i + 1].u = GL_TEXCOORD2_POINTER[0];
-            dst[i + 1].v = GL_TEXCOORD2_POINTER[1];
-            GL_TEXCOORD2_POINTER += GL_TEXCOORD2_STRIDE;
-
-            /* 3rd Vertex */
-            dst[i + 2].x = src[i + 2].x;
-            dst[i + 2].y = src[i + 2].y;
-            dst[i + 2].z = src[i + 2].z;
-            dst[i + 2].argb = src[i + 2].argb;
-            dst[i + 2].flags = src[i + 2].flags;
-
-            dst[i + 3].u = GL_TEXCOORD2_POINTER[0];
-            dst[i + 3].v = GL_TEXCOORD2_POINTER[1];
-            GL_TEXCOORD2_POINTER += GL_TEXCOORD2_STRIDE;
-
-            /* 4th Vertex */
-            dst[i + 3].x = src[i + 3].x;
-            dst[i + 3].y = src[i + 3].y;
-            dst[i + 3].z = src[i + 3].z;
-            dst[i + 3].argb = src[i + 3].argb;
-            dst[i + 3].flags = src[i + 3].flags;
-
-            dst[i + 2].u = GL_TEXCOORD2_POINTER[0];
-            dst[i + 2].v = GL_TEXCOORD2_POINTER[1];
-            GL_TEXCOORD2_POINTER += GL_TEXCOORD2_STRIDE;
-        }
-
-        _glKosTRVertexBufAdd(count);
-    }
-}
-
-//========================================================================================//
 //== Local Function Definitions ==//
 
 static inline void _glKosArraysTransformNormals(GLfloat *normal, GLuint count);
@@ -142,9 +46,19 @@ static inline void _glKosArraysTransformPositions(GLfloat *position, GLuint coun
 /* Submit a Vertex Position Pointer */
 GLAPI void APIENTRY glVertexPointer(GLint size, GLenum type,
                                     GLsizei stride, const GLvoid *pointer) {
-    if(size != 3) return; /* Expect 3D X,Y,Z vertex... could do 2d X,Y later */
+    if(size != 3) /* Expect 3D X,Y,Z vertex... could do 2d X,Y later */
+        _glKosThrowError(GL_INVALID_VALUE, "glVertexPointer");
 
-    if(type != GL_FLOAT) return; /* Expect Floating point vertices */
+    if(type != GL_FLOAT) /* Expect Floating point vertices */
+        _glKosThrowError(GL_INVALID_ENUM, "glVertexPointer");
+
+    if(stride < 0)
+        _glKosThrowError(GL_INVALID_VALUE, "glVertexPointer");
+
+    if(_glKosGetError()) {
+        _glKosPrintError();
+        return;
+    }
 
     (stride) ? (GL_VERTEX_STRIDE = stride / 4) : (GL_VERTEX_STRIDE = 3);
 
@@ -155,7 +69,16 @@ GLAPI void APIENTRY glVertexPointer(GLint size, GLenum type,
 
 /* Submit a Vertex Normal Pointer */
 GLAPI void APIENTRY glNormalPointer(GLenum type, GLsizei stride, const GLvoid *pointer) {
-    if(type != GL_FLOAT) return; /* Expect Floating point vertices */
+    if(type != GL_FLOAT) /* Expect Floating point vertices */
+        _glKosThrowError(GL_INVALID_ENUM, "glNormalPointer");
+
+    if(stride < 0)
+        _glKosThrowError(GL_INVALID_VALUE, "glNormalPointer");
+
+    if(_glKosGetError()) {
+        _glKosPrintError();
+        return;
+    }
 
     (stride) ? (GL_NORMAL_STRIDE = stride / 4) : (GL_NORMAL_STRIDE = 3);
 
@@ -167,26 +90,25 @@ GLAPI void APIENTRY glNormalPointer(GLenum type, GLsizei stride, const GLvoid *p
 /* Submit a Texture Coordinate Pointer */
 GLAPI void APIENTRY glTexCoordPointer(GLint size, GLenum type,
                                       GLsizei stride, const GLvoid *pointer) {
-    if(size != 2) return; /* Expect u and v */
+    if(size != 2)  /* Expect u and v */
+        _glKosThrowError(GL_INVALID_VALUE, "glTexCoordPointer");
 
-    if(type != GL_FLOAT) return; /* Expect Floating point vertices */
+    if(type != GL_FLOAT) /* Expect Floating point vertices */
+        _glKosThrowError(GL_INVALID_ENUM, "glTexCoordPointer");
 
-    if(GL_ARRAY_ACTIVE_TEXTURE == 0) {
-        (stride) ? (GL_TEXCOORD_STRIDE = stride / 4) : (GL_TEXCOORD_STRIDE = 2);
+    if(stride < 0)
+        _glKosThrowError(GL_INVALID_VALUE, "glTexCoordPointer");
 
-        GL_TEXCOORD_POINTER = (float *)pointer;
-
-        GL_VERTEX_PTR_MODE |= GL_USE_TEXTURE;
-
-        GL_ARRAY_TEXTURE_ENABLED |= GL_TEXTURE_0;
+    if(_glKosGetError()) {
+        _glKosPrintError();
+        return;
     }
-    else if(GL_ARRAY_ACTIVE_TEXTURE == 1) {
-        (stride) ? (GL_TEXCOORD2_STRIDE = stride / 4) : (GL_TEXCOORD2_STRIDE = 2);
 
-        GL_TEXCOORD2_POINTER = (float *)pointer;
+    (stride) ? (GL_TEXCOORD_STRIDE = stride / 4) : (GL_TEXCOORD_STRIDE = 2);
 
-        GL_ARRAY_TEXTURE_ENABLED |= GL_TEXTURE_1;
-    }
+    GL_TEXCOORD_POINTER = (float *)pointer;
+
+    GL_VERTEX_PTR_MODE |= GL_USE_TEXTURE;
 }
 
 /* Submit a Color Pointer */
@@ -212,8 +134,11 @@ GLAPI void APIENTRY glColorPointer(GLint size, GLenum type,
         GL_COLOR_POINTER = (GLfloat *)pointer;
         GL_COLOR_TYPE = type;
     }
-    else
+    else {
+        _glKosThrowError(GL_INVALID_ENUM, "glColorPointer");
+        _glKosPrintError();
         return;
+    }
 
     (stride) ? (GL_COLOR_STRIDE = stride / 4) : (GL_COLOR_STRIDE = size);
 
@@ -541,11 +466,6 @@ static inline void _glKosVertexSwizzle(pvr_vertex_t *v1, pvr_vertex_t *v2) {
 
 static inline void _glKosArraysResetState() {
     GL_VERTEX_PTR_MODE = 0;
-
-    if(GL_ARRAY_TEXTURE_ENABLED == 3)
-        _glKosResetEnabledTex();
-
-    GL_ARRAY_TEXTURE_ENABLED = GL_ARRAY_ACTIVE_TEXTURE = 0;
 }
 
 //========================================================================================//
@@ -659,13 +579,10 @@ GLAPI void APIENTRY glDrawElements(GLenum mode, GLsizei count, GLenum type, cons
     }
 
     /* Compile the PVR polygon context with the currently enabled flags */
-    if((GL_VERTEX_PTR_MODE & GL_USE_TEXTURE))
+    if((GL_VERTEX_PTR_MODE & GL_USE_TEXTURE) && _glKosBoundTexID() > 0)
         _glKosCompileHdrTx();
     else
         _glKosCompileHdr();
-
-    if(GL_ARRAY_TEXTURE_ENABLED == 3) /* Multi-Texture! */
-        _glKosCompileHdrTx2();
 
     pvr_vertex_t *dst; /* Destination of Output Vertex Array */
 
@@ -788,11 +705,6 @@ GLAPI void APIENTRY glDrawElements(GLenum mode, GLsizei count, GLenum type, cons
                 _glKosArrayFlagsSetTriangleStrip(dst, count);
                 break;
         }
-
-        if(mode == GL_QUADS)
-            _glKosArrayCopyMultiTextureQuads(count);
-        else
-            _glKosArrayCopyMultiTexture(count);
     }
     else {
         /* Transform vertices with no perspective divde, store w component */
@@ -924,13 +836,10 @@ GLAPI void APIENTRY glDrawArrays(GLenum mode, GLint first, GLsizei count) {
     GL_NORMAL_POINTER   += first;
 
     /* Compile the PVR polygon context with the currently enabled flags */
-    if((GL_VERTEX_PTR_MODE & GL_USE_TEXTURE))
+    if((GL_VERTEX_PTR_MODE & GL_USE_TEXTURE) && _glKosBoundTexID() > 0)
         _glKosCompileHdrTx();
     else
         _glKosCompileHdr();
-
-    if(GL_ARRAY_TEXTURE_ENABLED == 3) /* Multi-Texture! */
-        _glKosCompileHdrTx2();
 
     pvr_vertex_t *dst; /* Destination of Output Vertex Array */
 
@@ -1000,11 +909,6 @@ GLAPI void APIENTRY glDrawArrays(GLenum mode, GLint first, GLsizei count) {
                 _glKosArrayFlagsSetTriangleStrip(dst, count);
                 break;
         }
-
-        if(mode == GL_QUADS)
-            _glKosArrayCopyMultiTextureQuads(count);
-        else
-            _glKosArrayCopyMultiTexture(count);
     }
     else {
         /* Transform vertices with no perspective divde, store w component */

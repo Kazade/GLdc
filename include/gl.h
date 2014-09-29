@@ -86,9 +86,9 @@ __BEGIN_DECLS
 #define GL_DEPTH_COMPONENT    0x1902
 
 /* Blending: Simply Need to Map GL constants to PVR constants */
-#define GL_BLEND                0x0BE2 /* capability bit */
 #define GL_BLEND_DST            0x0BE0
 #define GL_BLEND_SRC            0x0BE1
+#define GL_BLEND                0x0BE2 /* capability bit */
 
 #define GL_ZERO                    0x0
 #define GL_ONE                     0x1
@@ -132,8 +132,6 @@ __BEGIN_DECLS
 #define GL_NEAREST_MIPMAP_LINEAR        0x2702
 #define GL_LINEAR_MIPMAP_NEAREST        0x2701
 #define GL_LINEAR_MIPMAP_LINEAR         0x2703
-
-#define GL_MAX_TEXTURE_UNITS 0x2 /* 0 = Opaque, 1 = Translucent / Blended */
 
 #define GL_TEXTURE_BINDING_2D             0x8069
 
@@ -218,8 +216,6 @@ __BEGIN_DECLS
 #define GL_FOG_HINT                     0x0C54
 
 /* Lighting constants */
-#define GL_MAX_LIGHTS   0x0008
-
 #define GL_LIGHTING     0x0b50
 
 #define GL_LIGHT0                         0x4000
@@ -230,6 +226,14 @@ __BEGIN_DECLS
 #define GL_LIGHT5                         0x4005
 #define GL_LIGHT6                         0x4006
 #define GL_LIGHT7                         0x4007
+#define GL_LIGHT8                         0x4008
+#define GL_LIGHT9                         0x4009
+#define GL_LIGHT10                        0x400A
+#define GL_LIGHT11                        0x400B
+#define GL_LIGHT12                        0x400C
+#define GL_LIGHT13                        0x400D
+#define GL_LIGHT14                        0x400E
+#define GL_LIGHT15                        0x400F
 
 /* LightParameter */
 #define GL_AMBIENT                        0x1200
@@ -285,25 +289,81 @@ __BEGIN_DECLS
 #define GL_STACK_UNDERFLOW                0x0504
 #define GL_OUT_OF_MEMORY                  0x0505
 
-/* KOS near Z-CLIPPING */
+/* GetPName */
+#define GL_SMOOTH_POINT_SIZE_RANGE        0x0B12
+#define GL_SMOOTH_LINE_WIDTH_RANGE        0x0B22
+#define GL_ALIASED_POINT_SIZE_RANGE       0x846D
+#define GL_ALIASED_LINE_WIDTH_RANGE       0x846E
+#define GL_IMPLEMENTATION_COLOR_READ_TYPE_OES 0x8B9A
+#define GL_IMPLEMENTATION_COLOR_READ_FORMAT_OES 0x8B9B
+#define GL_MAX_LIGHTS                     0x0D31
+#define GL_MAX_TEXTURE_SIZE               0x0D33
+#define GL_MAX_MODELVIEW_STACK_DEPTH      0x0D36
+#define GL_MAX_PROJECTION_STACK_DEPTH     0x0D38
+#define GL_MAX_TEXTURE_STACK_DEPTH        0x0D39
+#define GL_MAX_VIEWPORT_DIMS              0x0D3A
+#define GL_MAX_ELEMENTS_VERTICES          0x80E8
+#define GL_MAX_ELEMENTS_INDICES           0x80E9
+#define GL_MAX_TEXTURE_UNITS              0x84E2
+#define GL_NUM_COMPRESSED_TEXTURE_FORMATS 0x86A2
+#define GL_COMPRESSED_TEXTURE_FORMATS     0x86A3
+#define GL_SUBPIXEL_BITS                  0x0D50
+#define GL_RED_BITS                       0x0D52
+#define GL_GREEN_BITS                     0x0D53
+#define GL_BLUE_BITS                      0x0D54
+#define GL_ALPHA_BITS                     0x0D55
+#define GL_DEPTH_BITS                     0x0D56
+#define GL_STENCIL_BITS                   0x0D57
+
+/* GL KOS near Z-CLIPPING */
 #define GL_KOS_NEARZ_CLIPPING       0x0020      /* capability bit */
 
-#define GL_UNSIGNED_SHORT_5_6_5       PVR_TXRFMT_RGB565
-#define GL_UNSIGNED_SHORT_5_6_5_REV   PVR_TXRFMT_RGB565
-#define GL_UNSIGNED_SHORT_1_5_5_5     PVR_TXRFMT_ARGB1555
-#define GL_UNSIGNED_SHORT_1_5_5_5_REV PVR_TXRFMT_ARGB1555
-#define GL_UNSIGNED_SHORT_4_4_4_4     PVR_TXRFMT_ARGB4444
-#define GL_UNSIGNED_SHORT_4_4_4_4_REV PVR_TXRFMT_ARGB4444
+/* GL KOS Texture Color Modes */
+#define GL_UNSIGNED_SHORT_5_6_5       (PVR_TXRFMT_RGB565 | PVR_TXRFMT_NONTWIDDLED)
+#define GL_UNSIGNED_SHORT_5_6_5_REV   (PVR_TXRFMT_RGB565 | PVR_TXRFMT_NONTWIDDLED)
+#define GL_UNSIGNED_SHORT_5_5_5_1     (PVR_TXRFMT_ARGB1555 | PVR_TXRFMT_NONTWIDDLED)
+#define GL_UNSIGNED_SHORT_5_5_5_1_REV (PVR_TXRFMT_ARGB1555 | PVR_TXRFMT_NONTWIDDLED)
+#define GL_UNSIGNED_SHORT_1_5_5_5     (PVR_TXRFMT_ARGB1555 | PVR_TXRFMT_NONTWIDDLED)
+#define GL_UNSIGNED_SHORT_1_5_5_5_REV (PVR_TXRFMT_ARGB1555 | PVR_TXRFMT_NONTWIDDLED)
+#define GL_UNSIGNED_SHORT_4_4_4_4     (PVR_TXRFMT_ARGB4444 | PVR_TXRFMT_NONTWIDDLED)
+#define GL_UNSIGNED_SHORT_4_4_4_4_REV (PVR_TXRFMT_ARGB4444 | PVR_TXRFMT_NONTWIDDLED)
 
-#define GL_RGB565_TWID PVR_TXRFMT_RGB565 | PVR_TXRFMT_TWIDDLED
-#define GL_ARGB4444_TWID PVR_TXRFMT_ARGB4444 | PVR_TXRFMT_TWIDDLED
+#define GL_UNSIGNED_SHORT_5_6_5_TWID       (PVR_TXRFMT_RGB565)
+#define GL_UNSIGNED_SHORT_5_6_5_REV_TWID   (PVR_TXRFMT_RGB565)
+#define GL_UNSIGNED_SHORT_5_5_5_1_TWID     (PVR_TXRFMT_ARGB1555)
+#define GL_UNSIGNED_SHORT_5_5_5_1_REV_TWID (PVR_TXRFMT_ARGB1555)
+#define GL_UNSIGNED_SHORT_1_5_5_5_TWID     (PVR_TXRFMT_ARGB1555)
+#define GL_UNSIGNED_SHORT_1_5_5_5_REV_TWID (PVR_TXRFMT_ARGB1555)
+#define GL_UNSIGNED_SHORT_4_4_4_4_TWID     (PVR_TXRFMT_ARGB4444)
+#define GL_UNSIGNED_SHORT_4_4_4_4_REV_TWID (PVR_TXRFMT_ARGB4444)
 
-#define GL_RED  0x00
-#define GL_RG   0x01
-#define GL_RGB  0x02
-#define GL_BGR  0x03
-#define GL_RGBA 0x04
-#define GL_BGRA 0x05
+#define GL_UNSIGNED_SHORT_5_6_5_VQ       (PVR_TXRFMT_VQ_ENABLE | PVR_TXRFMT_RGB565 | PVR_TXRFMT_NONTWIDDLED)
+#define GL_UNSIGNED_SHORT_5_6_5_REV_VQ   (PVR_TXRFMT_VQ_ENABLE | PVR_TXRFMT_RGB565 | PVR_TXRFMT_NONTWIDDLED)
+#define GL_UNSIGNED_SHORT_5_5_5_1_VQ     (PVR_TXRFMT_VQ_ENABLE | PVR_TXRFMT_ARGB1555 | PVR_TXRFMT_NONTWIDDLED)
+#define GL_UNSIGNED_SHORT_5_5_5_1_REV_VQ (PVR_TXRFMT_VQ_ENABLE | PVR_TXRFMT_ARGB1555 | PVR_TXRFMT_NONTWIDDLED)
+#define GL_UNSIGNED_SHORT_1_5_5_5_VQ     (PVR_TXRFMT_VQ_ENABLE | PVR_TXRFMT_ARGB1555 | PVR_TXRFMT_NONTWIDDLED)
+#define GL_UNSIGNED_SHORT_1_5_5_5_REV_VQ (PVR_TXRFMT_VQ_ENABLE | PVR_TXRFMT_ARGB1555 | PVR_TXRFMT_NONTWIDDLED)
+#define GL_UNSIGNED_SHORT_4_4_4_4_VQ     (PVR_TXRFMT_VQ_ENABLE | PVR_TXRFMT_ARGB4444 | PVR_TXRFMT_NONTWIDDLED)
+#define GL_UNSIGNED_SHORT_4_4_4_4_REV_VQ (PVR_TXRFMT_VQ_ENABLE | PVR_TXRFMT_ARGB4444 | PVR_TXRFMT_NONTWIDDLED)
+
+#define GL_UNSIGNED_SHORT_5_6_5_VQ_TWID       (PVR_TXRFMT_VQ_ENABLE | PVR_TXRFMT_RGB565)
+#define GL_UNSIGNED_SHORT_5_6_5_REV_VQ_TWID   (PVR_TXRFMT_VQ_ENABLE | PVR_TXRFMT_RGB565)
+#define GL_UNSIGNED_SHORT_5_5_5_1_VQ_TWID     (PVR_TXRFMT_VQ_ENABLE | PVR_TXRFMT_ARGB1555)
+#define GL_UNSIGNED_SHORT_5_5_5_1_REV_VQ_TWID (PVR_TXRFMT_VQ_ENABLE | PVR_TXRFMT_ARGB1555)
+#define GL_UNSIGNED_SHORT_1_5_5_5_VQ_TWID     (PVR_TXRFMT_VQ_ENABLE | PVR_TXRFMT_ARGB1555)
+#define GL_UNSIGNED_SHORT_1_5_5_5_REV_VQ_TWID (PVR_TXRFMT_VQ_ENABLE | PVR_TXRFMT_ARGB1555)
+#define GL_UNSIGNED_SHORT_4_4_4_4_VQ_TWID     (PVR_TXRFMT_VQ_ENABLE | PVR_TXRFMT_ARGB4444)
+#define GL_UNSIGNED_SHORT_4_4_4_4_REV_VQ_TWID (PVR_TXRFMT_VQ_ENABLE | PVR_TXRFMT_ARGB4444)
+
+#define GL_RGB565_TWID (PVR_TXRFMT_RGB565 | PVR_TXRFMT_TWIDDLED)
+#define GL_ARGB1555_TWID (PVR_TXRFMT_ARGB1555 | PVR_TXRFMT_TWIDDLED)
+#define GL_ARGB4444_TWID (PVR_TXRFMT_ARGB4444 | PVR_TXRFMT_TWIDDLED)
+
+#define GL_ALPHA                          0x1906
+#define GL_RGB                            0x1907
+#define GL_RGBA                           0x1908
+#define GL_LUMINANCE                      0x1909
+#define GL_LUMINANCE_ALPHA                0x190A
 
 #define GLbyte   char
 #define GLshort  short
@@ -318,6 +378,7 @@ __BEGIN_DECLS
 #define GLfixed  const unsigned int
 #define GLclampf float
 #define GLubyte  unsigned char
+#define GLbitfield unsigned long
 #define GLboolean   int
 #define GL_FALSE    0
 #define GL_TRUE     1
@@ -413,7 +474,7 @@ GLAPI void APIENTRY glTexEnvi(GLenum target, GLenum pname, GLint param);
 GLAPI void APIENTRY glTexEnvf(GLenum target, GLenum pname, GLfloat param);
 
 GLAPI void APIENTRY glGenTextures(GLsizei n, GLuint *textures);
-GLAPI void APIENTRY glDelTextures(GLsizei n, GLuint *textures);
+GLAPI void APIENTRY glDeleteTextures(GLsizei n, GLuint *textures);
 GLAPI void APIENTRY glBindTexture(GLenum  target, GLuint texture);
 
 /* Loads texture from SH4 RAM into PVR VRAM */
@@ -511,8 +572,9 @@ GLAPI void APIENTRY glMaterialfv(GLenum face, GLenum pname, const GLfloat *param
 GLAPI GLuint APIENTRY glKosMipMapTexSize(GLuint width, GLuint height);
 
 /* glGet Functions */
-void glGetIntegerv(GLenum pname, GLint *params);
-void glGetFloatv(GLenum pname, GLfloat *params);
+GLAPI void APIENTRY glGetIntegerv(GLenum pname, GLint *params);
+GLAPI void APIENTRY glGetFloatv(GLenum pname, GLfloat *params);
+GLAPI GLboolean APIENTRY glIsEnabled(GLenum cap); 
 
 /* Multi-Texture Extensions - Does not currently work with Z-Clipping Enabled */
 GLAPI void APIENTRY glActiveTexture(GLenum texture);
@@ -521,6 +583,14 @@ GLAPI void APIENTRY glClientActiveTexture(GLenum texture);
 
 GLAPI void APIENTRY glMultiTexCoord2f(GLenum target, GLfloat s, GLfloat t);
 GLAPI void APIENTRY glMultiTexCoord2fv(GLenum target, const GLfloat *v);
+
+/* Frame Buffer Objects / Render-To-Texture Functions */
+GLAPI void APIENTRY glGenFramebuffers(GLsizei n, GLuint * framebuffers);
+GLAPI void APIENTRY glDeleteFramebuffers(GLsizei n, GLuint * framebuffers);
+GLAPI void APIENTRY glBindFramebuffer(GLenum target, GLuint framebuffer); 
+GLAPI void APIENTRY glFramebufferTexture2D(GLenum target, GLenum attachment,
+										   GLenum textarget, GLuint texture, GLint level);
+GLAPI GLenum APIENTRY glCheckFramebufferStatus(GLenum target); 
 
 __END_DECLS
 #endif /* !__GL_GL_H */

@@ -1,7 +1,7 @@
 /* KallistiGL for KallistiOS ##version##
 
    libgl/gl-pvr.c
-   Copyright (C) 2013-2014 Josh "PH3NOM" Pearson
+   Copyright (C) 2013-2014 Josh Pearson
 
    Vertex Buffer Routines for interfacing the Dreamcast's SH4 CPU and PowerVR GPU.
 
@@ -24,6 +24,7 @@
 #include <string.h>
 
 #include "gl.h"
+#include "gl-api.h"
 #include "gl-sh4.h"
 #include "gl-pvr.h"
 
@@ -161,17 +162,13 @@ static inline void glutSwapBuffer() {
 void glutSwapBuffers() {
     pvr_wait_ready();
 
-    pvr_scene_begin();
-
-    glutSwapBuffer();
-
-    _glKosVertexBufReset();
-}
-
-void glutSwapBuffersToTexture(void *dst, GLsizei *x, GLsizei *y) {
-    pvr_wait_ready();
-
-    pvr_scene_begin_txr(dst, x, y);
+    if(_glKosGetFBO()) {
+        GLsizei w = _glKosGetFBOWidth(_glKosGetFBO());
+        GLsizei h = _glKosGetFBOHeight(_glKosGetFBO());
+        pvr_scene_begin_txr(_glKosGetFBOData(_glKosGetFBO()), &w, &h);
+    }
+    else
+        pvr_scene_begin();
 
     glutSwapBuffer();
 
@@ -179,11 +176,13 @@ void glutSwapBuffersToTexture(void *dst, GLsizei *x, GLsizei *y) {
 }
 
 void glutCopyBufferToTexture(void *dst, GLsizei *x, GLsizei *y) {
-    pvr_wait_ready();
+    if(_glKosGetFBO()) {
+        pvr_wait_ready();
 
-    pvr_scene_begin_txr(dst, x, y);
+        pvr_scene_begin_txr(dst, x, y);
 
-    glutSwapBuffer();
+        glutSwapBuffer();
+    }
 }
 
 int _glKosInitPVR() {

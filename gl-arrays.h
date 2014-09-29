@@ -1,7 +1,7 @@
 /* KallistiGL for KallistiOS ##version##
 
    libgl/gl-arrays.h
-   Copyright (C) 2013-2014 Josh "PH3NOM" Pearson
+   Copyright (C) 2013-2014 Josh Pearson
 
    Arrays Input Primitive Types Supported:
    -GL_TRIANGLES
@@ -43,9 +43,6 @@ static GLushort GL_NORMAL_STRIDE = 0;
 
 static GLfloat *GL_TEXCOORD_POINTER = NULL;
 static GLushort GL_TEXCOORD_STRIDE = 0;
-
-static GLfloat *GL_TEXCOORD2_POINTER = NULL;
-static GLushort GL_TEXCOORD2_STRIDE = 0;
 
 static GLfloat *GL_COLOR_POINTER = NULL;
 static GLushort GL_COLOR_STRIDE = 0;

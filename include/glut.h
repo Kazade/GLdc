@@ -14,11 +14,8 @@ __BEGIN_DECLS
 
 #include <GL/gl.h>
 
-/* Flush the Submitted Primitive Data to the GPU for render to screen */
+/* Flush the Submitted Primitive Data to the GPU for render */
 GLAPI void APIENTRY glutSwapBuffers();
-
-/* Flush the Submitted Primitive Data to the GPU for render to texture */
-GLAPI void APIENTRY glutSwapBuffersToTexture(void *dst, GLsizei *x, GLsizei *y);
 
 /* Copy the Submitted Primitive Data to the GPU for render to texture */
 /* This will leave the Vertex Data in the Main Buffer to be Flushed on the 

@@ -1,9 +1,9 @@
 /* KallistiGL for KallistiOS ##version##
 
    libgl/glu-texture.c
-   Copyright (C) 2013-2014 Josh "PH3NOM" Pearson
+   Copyright (C) 2013-2014 Josh Pearson
 
-   A set of functions for working with ARGB pixel data, used by gluBuild2DMipmaps(...).
+   A set of functions for working with ARGB pixel data.
 */
 
 #include "gl.h"
@@ -11,7 +11,7 @@
 #include "gl-rgb.h"
 #include "glu.h"
 
-GLAPI GLuint APIENTRY  glKosMipMapTexSize(GLuint width, GLuint height) {
+GLAPI GLuint APIENTRY glKosMipMapTexSize(GLuint width, GLuint height) {
     GLuint b = 0;
 
     while(width >= 1 && height >= 1) {
@@ -28,7 +28,7 @@ GLAPI GLuint APIENTRY  glKosMipMapTexSize(GLuint width, GLuint height) {
 }
 
 static GLint gluBuild2DBiMipmaps(GLenum target, GLint internalFormat, GLsizei width,
-                          GLsizei height, GLenum format, GLenum type, const void *data) {
+                                 GLsizei height, GLenum format, GLenum type, const void *data) {
     if(target != GL_TEXTURE_2D)
         return -1;
 
@@ -68,15 +68,15 @@ static GLint gluBuild2DBiMipmaps(GLenum target, GLint internalFormat, GLsizei wi
 }
 
 GLint APIENTRY gluBuild2DMipmaps(GLenum target, GLint internalFormat, GLsizei width,
-                        GLsizei height, GLenum format, GLenum type, const void *data) {
+                                 GLsizei height, GLenum format, GLenum type, const void *data) {
     if(target != GL_TEXTURE_2D)
         return -1;
-	
-	if(type != GL_UNSIGNED_SHORT_5_6_5 && type != GL_UNSIGNED_SHORT_4_4_4_4
-		&& type != GL_UNSIGNED_SHORT_1_5_5_5)
-		return -1;
 
-	if(width < 1 || height < 1)
+    if(type != GL_UNSIGNED_SHORT_5_6_5 && type != GL_UNSIGNED_SHORT_4_4_4_4
+       && type != GL_UNSIGNED_SHORT_1_5_5_5)
+        return -1;
+
+    if(width < 1 || height < 1)
         return 0;
 
     if(width == 1 || height == 1)

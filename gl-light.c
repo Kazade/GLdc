@@ -1,7 +1,7 @@
 /* KallistiGL for KallistiOS ##version##
 
    libgl/gl-light.c
-   Copyright (C) 2013-2014 Josh "PH3NOM" Pearson
+   Copyright (C) 2013-2014 Josh Pearson
 
    Dynamic Vertex Lighting Model:
    vertexColor = emissive + ambient + ( diffuse + specular * attenuation )
@@ -24,11 +24,13 @@
 #include "gl-clip.h"
 #include "gl-light.h"
 
-static GLfloat GL_GLOBAL_AMBIENT[4] = { 0, 0, 0, 0 }; /* RGBA Global Ambient Light */
-static GLfloat GL_VERTEX_NORMAL[3] = {0, 0, 0};       /* Current Vertex Normal */
-static GLuint  GL_LIGHT_ENABLED = 0;                  /* Client State for Enabling Lighting */
+#define GL_KOS_MAX_LIGHTS 16 /* Number of Light Sources that may be enabled at once */
 
-static glLight GL_LIGHTS[GL_MAX_LIGHTS],
+static GLfloat GL_GLOBAL_AMBIENT[4] = { 0, 0, 0, 0 }; /* RGBA Global Ambient Light */
+static GLfloat GL_VERTEX_NORMAL[3] = { 0, 0, 0 };     /* Current Vertex Normal */
+static GLbitfield GL_LIGHT_ENABLED = 0;               /* Client State for Enabling Lighting */
+
+static glLight GL_LIGHTS[GL_KOS_MAX_LIGHTS],
 GL_DEFAULT_LIGHT = { { 0.0, 0.0, 1.0, 0.0 },   /* Position */
     { 0.0, 0.0, -1.0 },       /* Spot Direction */
     -1.0f,                    /* Spot Cutoff */
@@ -58,7 +60,7 @@ void _glKosSetEyePosition(GLfloat *position) {  /* Called internally by glhLookA
 void _glKosInitLighting() { /* Called internally by glInit() */
     unsigned char i;
 
-    for(i = 0; i < GL_MAX_LIGHTS; i++)
+    for(i = 0; i < GL_KOS_MAX_LIGHTS; i++)
         memcpy(&GL_LIGHTS[i], &GL_DEFAULT_LIGHT, sizeof(glLight));
 
     memcpy(&GL_MATERIAL, &GL_DEFAULT_MATERIAL, sizeof(glMaterial));
@@ -76,6 +78,14 @@ void _glKosDisableLight(const GLuint light) {
     if(light < GL_LIGHT0 || light > GL_LIGHT7) return;
 
     GL_LIGHT_ENABLED &= ~(1 << (light & 0xF));
+}
+
+GLubyte _glKosIsLightEnabled(GLubyte light) {
+    return GL_LIGHT_ENABLED & (1 << light);
+}
+
+GLubyte _glKosGetMaxLights() {
+    return GL_KOS_MAX_LIGHTS;
 }
 
 /* Vertex Normal Submission */
@@ -408,7 +418,7 @@ void _glKosVertexLights(glVertex *P, pvr_vertex_t *v, GLuint count) {
                  };
 
     while(count--) {
-        for(i = 0; i < GL_MAX_LIGHTS; i++)
+        for(i = 0; i < GL_KOS_MAX_LIGHTS; i++)
             if(GL_LIGHT_ENABLED & 1 << i)
                 if(_glKosSpotlight(&GL_LIGHTS[i], P, L)) {   /* Compute Spot / Diffuse */
                     C[0] = A[0] + (GL_MATERIAL.Kd[0] * GL_LIGHTS[i].Kd[0] * L[3]);
@@ -454,7 +464,7 @@ void _glKosVertexLight(glVertex *P, pvr_vertex_t *v) {
                    GL_MATERIAL.Ke[2] + GL_MATERIAL.Ka[2] *GL_GLOBAL_AMBIENT[2]
                  };
 
-    for(i = 0; i < GL_MAX_LIGHTS; i++)
+    for(i = 0; i < GL_KOS_MAX_LIGHTS; i++)
         if(GL_LIGHT_ENABLED & 1 << i)
             if(_glKosSpotlight(&GL_LIGHTS[i], P, L)) {   /* Compute Spot / Diffuse */
                 C[0] += (GL_MATERIAL.Kd[0] * GL_LIGHTS[i].Kd[0] * L[3]);
@@ -499,7 +509,7 @@ GLuint _glKosVertexLightColor(glVertex *P) {
                    GL_MATERIAL.Ke[2] + GL_MATERIAL.Ka[2] *GL_GLOBAL_AMBIENT[2]
                  };
 
-    for(i = 0; i < GL_MAX_LIGHTS; i++)
+    for(i = 0; i < GL_KOS_MAX_LIGHTS; i++)
         if(GL_LIGHT_ENABLED & 1 << i)
             if(_glKosSpotlight(&GL_LIGHTS[i], P, L)) {   /* Compute Spot / Diffuse */
                 C[0] += (GL_MATERIAL.Kd[0] * GL_LIGHTS[i].Kd[0] * L[3]);

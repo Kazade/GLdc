@@ -1,7 +1,7 @@
 /* KallistiGL for KallistiOS ##version##
 
    libgl/gl-matrix.c
-   Copyright (C) 2013-2014 Josh "PH3NOM" Pearson
+   Copyright (C) 2013-2014 Josh Pearson
    Copyright (C) 2014 Lawrence Sebald
 
    Some functionality adapted from the original KOS libgl:

@@ -1,7 +1,7 @@
 /* KallistiGL for KallistiOS ##version##
 
    libgl/gl-pvr.h
-   Copyright (C) 2013-2014 Josh "PH3NOM" Pearson
+   Copyright (C) 2013-2014 Josh Pearson
 
    Vertex Buffer Routines for interfacing the Dreamcast's SH4 CPU and PowerVR GPU.
 */

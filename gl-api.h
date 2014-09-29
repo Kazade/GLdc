@@ -1,7 +1,7 @@
 /* KallistiGL for KallistiOS ##version##
 
    libgl/gl-api.h
-   Copyright (C) 2013-2014 Josh "PH3NOM" Pearson
+   Copyright (C) 2013-2014 Josh Pearson
 
    The functions defined in this header are for internal use by the API,
    and not for use externally.
@@ -14,6 +14,26 @@ typedef struct {
     float pos[3];
     float norm[3];
 } glVertex; /* Simple Vertex used for Dynamic Vertex Lighting */
+
+typedef struct {
+    GLushort width;
+    GLushort height;
+    GLuint   color;
+    GLubyte  env;
+    GLubyte  filter;
+    GLubyte  mip_map;
+    GLubyte  uv_clamp;
+    GLuint   index;
+    GLvoid *data;
+    GLvoid *link;
+} GL_TEXTURE_OBJECT; /* KOS Open GL Texture Object */
+
+typedef struct {
+    GLuint  texID;
+    GLsizei index;
+    GLvoid *data;
+    GLvoid *link;
+} GL_FRAMEBUFFER_OBJECT; /* KOS Open GL Frame Buffer Object */
 
 typedef unsigned short uint16;
 typedef unsigned char  uint8;
@@ -49,11 +69,13 @@ inline glVertex *_glKosArrayBufPtr();
 
 /* Initialize the OpenGL PVR Pipeline */
 int  _glKosInitPVR();
+GLubyte  _glKosInitTextures();
 
 /* Compile the current Polygon Header for the PVR */
 void _glKosCompileHdr();
 void _glKosCompileHdrTx();
 void _glKosCompileHdrTx2();
+void _glKosCompileHdrT(GL_TEXTURE_OBJECT *tex);
 
 /* Clipping Internal Functions */
 void         _glKosTransformClipBuf(pvr_vertex_t *v, GLuint verts);
@@ -101,9 +123,14 @@ void _glKosMatrixApplyRender();
 void _glKosMatrixLoadRender();
 
 /* API Enabled Capabilities Internal Functions */
-GLint   _glKosEnabledTexture2D();
+GLubyte _glKosEnabledBlend();
+GLubyte _glKosEnabledTexture2D();
 GLubyte _glKosEnabledNearZClip();
 GLubyte _glKosEnabledLighting();
+GLubyte _glKosEnabledFog();
+GLubyte _glKosEnabledCulling();
+GLubyte _glKosEnabledScissorTest();
+GLubyte _glKosEnabledDepthTest();
 
 /* RGB Pixel Colorspace Internal Functions */
 uint16 __glKosAverageQuadPixelRGB565(uint16 p1, uint16 p2, uint16 p3, uint16 p4);
@@ -112,5 +139,43 @@ uint16 __glKosAverageQuadPixelARGB4444(uint16 p1, uint16 p2, uint16 p3, uint16 p
 uint16 __glKosAverageBiPixelRGB565(uint16 p1, uint16 p2);
 uint16 __glKosAverageBiPixelARGB1555(uint16 p1, uint16 p2);
 uint16 __glKosAverageBiPixelARGB4444(uint16 p1, uint16 p2);
+
+/* Render-To-Texture Functions */
+void _glKosInitFrameBuffers();
+
+/* Error Codes */
+void _glKosThrowError(GLenum error, char *functionName);
+void _glKosResetError();
+void _glKosPrintError();
+GLsizei _glKosGetError();
+
+GLuint  _glKosTextureWidth(GLuint index);
+GLuint  _glKosTextureHeight(GLuint index);
+GLvoid *_glKosTextureData(GLuint index);
+
+/* Frame Buffer Object Internal Functions */
+GLsizei _glKosGetFBO();
+GLuint  _glKosGetFBOWidth(GLsizei fbi);
+GLuint  _glKosGetFBOHeight(GLsizei fbi);
+GLvoid *_glKosGetFBOData(GLsizei fbi);
+
+/* Internal State Cap Accessors */
+GLubyte _glKosEnabledDepthTest();
+GLubyte _glKosEnabledScissorTest();
+GLubyte _glKosEnabledCulling();
+GLubyte _glKosEnabledFog();
+GLubyte _glKosEnabledLighting();
+GLubyte _glKosEnabledNearZClip();
+GLubyte _glKosEnabledTexture2D();
+GLubyte _glKosEnabledBlend();
+GLuint  _glKosBlendSrcFunc();
+GLuint  _glKosBlendDstFunc();
+GLubyte _glKosCullFaceMode();
+GLubyte _glKosCullFaceFront();
+GLuint  _glKosDepthFunc();
+GLubyte _glKosDepthMask();
+GLubyte _glKosIsLightEnabled(GLubyte light);
+GLubyte _glKosGetMaxLights();
+GLuint _glKosBoundTexID();
 
 #endif
