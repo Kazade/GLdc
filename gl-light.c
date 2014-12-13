@@ -408,7 +408,7 @@ void _glKosVertexLights(glVertex *P, pvr_vertex_t *v, GLuint count) {
     float S;
 #endif
     unsigned char i;
-    float L[4];
+    float L[4] __attribute__((aligned(8)));
     float C[3] = { 0, 0, 0 };
 
     colorui *color = (colorui *)&v->argb;
@@ -458,7 +458,7 @@ void _glKosVertexLight(glVertex *P, pvr_vertex_t *v) {
     float S;
 #endif
     unsigned char i;
-    float L[4];
+    float L[4] __attribute__((aligned(8)));
 
     /* Compute Ambient */
     float C[3] = { GL_MATERIAL.Ke[0] + GL_MATERIAL.Ka[0] *GL_GLOBAL_AMBIENT[0],
@@ -503,7 +503,7 @@ GLuint _glKosVertexLightColor(glVertex *P) {
 #endif
     GLuint color;
     GLubyte i;
-    float L[4];
+    float L[4] __attribute__((aligned(8)));
 
     /* Compute Ambient */
     float C[3] = { GL_MATERIAL.Ke[0] + GL_MATERIAL.Ka[0] *GL_GLOBAL_AMBIENT[0],
