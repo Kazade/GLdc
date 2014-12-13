@@ -61,7 +61,7 @@ GLAPI void APIENTRY glVertexPointer(GLint size, GLenum type,
     }
 
     (stride) ? (GL_VERTEX_STRIDE = stride / 4) : (GL_VERTEX_STRIDE = 3);
-
+    
     GL_VERTEX_POINTER = (float *)pointer;
 
     GL_VERTEX_PTR_MODE |= GL_USE_ARRAY;
@@ -199,11 +199,11 @@ static void _glKosArraysTransform(GLuint count) {
     register float __x  __asm__("fr12");
     register float __y  __asm__("fr13");
     register float __z  __asm__("fr14");
-
+    
     while(count--)  {
-        __x = *src++;
-        __y = *src++;
-        __z = *src++;
+        __x = src[0];
+        __y = src[1];
+        __z = src[2];
 
         mat_trans_fv12()
 
@@ -212,6 +212,8 @@ static void _glKosArraysTransform(GLuint count) {
         dst->z = __z;
 
         ++dst;
+        
+        src += GL_VERTEX_STRIDE;
     }
 }
 
@@ -226,9 +228,9 @@ static void _glKosArraysTransformClip(GLuint count) {
     register float __w  __asm__("fr15");
 
     while(count--)  {
-        __x = *src++;
-        __y = *src++;
-        __z = *src++;
+        __x = src[0];
+        __y = src[1];
+        __z = src[2];
 
         mat_trans_fv12_nodivw()
 
@@ -236,7 +238,10 @@ static void _glKosArraysTransformClip(GLuint count) {
         dst->y = __y;
         dst->z = __z;
         *W++ = __w;
+        
         ++dst;
+        
+        src += GL_VERTEX_STRIDE;        
     }
 }
 
@@ -911,7 +916,7 @@ GLAPI void APIENTRY glDrawArrays(GLenum mode, GLint first, GLsizei count) {
         }
     }
     else {
-        /* Transform vertices with no perspective divde, store w component */
+        /* Transform vertices with no perspective divide, store w component */
         _glKosArraysTransformClip(count);
 
         /* Finally, clip the input vertex data into the output vertex buffer */

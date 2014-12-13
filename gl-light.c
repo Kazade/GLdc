@@ -66,16 +66,18 @@ void _glKosInitLighting() { /* Called internally by glInit() */
     memcpy(&GL_MATERIAL, &GL_DEFAULT_MATERIAL, sizeof(glMaterial));
 }
 
-/* Enable a light - GL_LIGHT0->GL_LIGHT7 */
+/* Enable a light - GL_LIGHT0->GL_LIGHT15 */
 void _glKosEnableLight(const GLuint light) {
-    if(light < GL_LIGHT0 || light > GL_LIGHT7) return;
+    if(light < GL_LIGHT0 || light > GL_LIGHT0 + GL_KOS_MAX_LIGHTS)
+        return;
 
     GL_LIGHT_ENABLED |= (1 << (light & 0xF));
 }
 
-/* Disable a light - GL_LIGHT0->GL_LIGHT7 */
+/* Disable a light - GL_LIGHT0->GL_LIGHT15 */
 void _glKosDisableLight(const GLuint light) {
-    if(light < GL_LIGHT0 || light > GL_LIGHT7) return;
+    if(light < GL_LIGHT0 || light > GL_LIGHT0 + GL_KOS_MAX_LIGHTS)
+        return;
 
     GL_LIGHT_ENABLED &= ~(1 << (light & 0xF));
 }
@@ -89,34 +91,34 @@ GLubyte _glKosGetMaxLights() {
 }
 
 /* Vertex Normal Submission */
-void glNormal3f(float x, float y, float z) {
+void glNormal3f(GLfloat x, GLfloat y, GLfloat z) {
     GL_VERTEX_NORMAL[0] = x;
     GL_VERTEX_NORMAL[1] = y;
     GL_VERTEX_NORMAL[2] = z;
 }
 
-void glNormal3fv(float *xyz) {
+void glNormal3fv(const GLfloat *xyz) {
     GL_VERTEX_NORMAL[0] = xyz[0];
     GL_VERTEX_NORMAL[1] = xyz[1];
     GL_VERTEX_NORMAL[2] = xyz[2];
 }
 
 /* Global Ambient Light Parameters */
-void glKosLightAmbient4fv(float *rgba) {
+void glKosLightAmbient4fv(const GLfloat *rgba) {
     GL_GLOBAL_AMBIENT[0] = rgba[0];
     GL_GLOBAL_AMBIENT[1] = rgba[1];
     GL_GLOBAL_AMBIENT[2] = rgba[2];
     GL_GLOBAL_AMBIENT[3] = rgba[3];
 }
 
-void glKosLightAmbient4f(float r, float g, float b, float a) {
+void glKosLightAmbient4f(GLfloat r, GLfloat g, GLfloat b, GLfloat a) {
     GL_GLOBAL_AMBIENT[0] = r;
     GL_GLOBAL_AMBIENT[1] = g;
     GL_GLOBAL_AMBIENT[2] = b;
     GL_GLOBAL_AMBIENT[3] = a;
 }
 
-void glKosLightAmbient3fv(float *rgb) {
+void glKosLightAmbient3fv(const float *rgb) {
     GL_GLOBAL_AMBIENT[0] = rgb[0];
     GL_GLOBAL_AMBIENT[1] = rgb[1];
     GL_GLOBAL_AMBIENT[2] = rgb[2];
@@ -406,7 +408,7 @@ void _glKosVertexLights(glVertex *P, pvr_vertex_t *v, GLuint count) {
     float S;
 #endif
     unsigned char i;
-    float L[4] __attribute__((aligned(8)));
+    float L[4];
     float C[3] = { 0, 0, 0 };
 
     colorui *color = (colorui *)&v->argb;
@@ -456,7 +458,7 @@ void _glKosVertexLight(glVertex *P, pvr_vertex_t *v) {
     float S;
 #endif
     unsigned char i;
-    float L[4] __attribute__((aligned(8)));
+    float L[4];
 
     /* Compute Ambient */
     float C[3] = { GL_MATERIAL.Ke[0] + GL_MATERIAL.Ka[0] *GL_GLOBAL_AMBIENT[0],
@@ -501,7 +503,7 @@ GLuint _glKosVertexLightColor(glVertex *P) {
 #endif
     GLuint color;
     GLubyte i;
-    float L[4] __attribute__((aligned(8)));
+    float L[4];
 
     /* Compute Ambient */
     float C[3] = { GL_MATERIAL.Ke[0] + GL_MATERIAL.Ka[0] *GL_GLOBAL_AMBIENT[0],
@@ -563,10 +565,4 @@ void _glKosVertexComputeLighting(pvr_vertex_t *v, int verts) {
         mat_trans_normal3(s->norm[0], s->norm[1], s->norm[2]);
         _glKosVertexLight(s++, v++);
     }
-}
-
-void _glKosLightTransformScreenSpace(float *xyz) {
-    _glKosMatrixApplyScreenSpace();
-    mat_trans_single(xyz[0], xyz[1], xyz[2]);
-    _glKosMatrixLoadRender();
 }

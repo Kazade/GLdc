@@ -43,14 +43,14 @@ static GLfloat GL_KOS_POINT_SIZE = 0.02;
 
 static pvr_poly_cxt_t GL_KOS_POLY_CXT;
 
-static inline void _glKosFlagsSetTriangleStrip();
-static inline void _glKosFlagsSetTriangle();
-static inline void _glKosFlagsSetQuad();
+static inline GLvoid _glKosFlagsSetTriangleStrip();
+static inline GLvoid _glKosFlagsSetTriangle();
+static inline GLvoid _glKosFlagsSetQuad();
 
 //====================================================================================================//
 //== API Initialization ==//
 
-void APIENTRY glKosInit() {
+GLvoid APIENTRY glKosInit() {
     _glKosInitPVR();
 
     _glKosInitTextures();
@@ -65,7 +65,7 @@ void APIENTRY glKosInit() {
 //====================================================================================================//
 //== Blending / Shading functions ==//
 
-void APIENTRY glShadeModel(GLenum   mode) {
+GLvoid APIENTRY glShadeModel(GLenum   mode) {
     switch(mode) {
         case GL_FLAT:
             GL_KOS_SHADE_FUNC = PVR_SHADE_FLAT;
@@ -77,7 +77,7 @@ void APIENTRY glShadeModel(GLenum   mode) {
     }
 }
 
-void APIENTRY glBlendFunc(GLenum sfactor, GLenum dfactor) {
+GLvoid APIENTRY glBlendFunc(GLenum sfactor, GLenum dfactor) {
     GL_KOS_BLEND_FUNC = 0;
 
     switch(sfactor) {
@@ -160,12 +160,12 @@ void APIENTRY glBlendFunc(GLenum sfactor, GLenum dfactor) {
 //====================================================================================================//
 //== Depth / Clear functions ==//
 
-void APIENTRY glClear(GLuint mode) {
+GLvoid APIENTRY glClear(GLuint mode) {
     if(mode & GL_COLOR_BUFFER_BIT)
         pvr_set_bg_color(GL_KOS_COLOR_CLEAR[0], GL_KOS_COLOR_CLEAR[1], GL_KOS_COLOR_CLEAR[2]);
 }
 
-void APIENTRY glClearColor(float r, float g, float b, float a) {
+GLvoid APIENTRY glClearColor(float r, float g, float b, float a) {
     if(r > 1) r = 1;
 
     if(g > 1) g = 1;
@@ -180,11 +180,11 @@ void APIENTRY glClearColor(float r, float g, float b, float a) {
 }
 
 //== NoOp ==//
-void APIENTRY glClearDepthf(GLfloat depth) {
+GLvoid APIENTRY glClearDepthf(GLfloat depth) {
     ;
 }
 
-void APIENTRY glDepthFunc(GLenum func) {
+GLvoid APIENTRY glDepthFunc(GLenum func) {
     switch(func) {
         case GL_LESS:
             GL_KOS_DEPTH_FUNC = PVR_DEPTHCMP_GEQUAL;
@@ -207,14 +207,14 @@ void APIENTRY glDepthFunc(GLenum func) {
     }
 }
 
-void APIENTRY glDepthMask(GLboolean flag) {
+GLvoid APIENTRY glDepthMask(GLboolean flag) {
     GL_KOS_DEPTH_WRITE = !flag;
 }
 
 //====================================================================================================//
 //== Culling functions ==//
 
-void APIENTRY glFrontFace(GLenum mode) {
+GLvoid APIENTRY glFrontFace(GLenum mode) {
     switch(mode) {
         case GL_CW:
         case GL_CCW:
@@ -223,7 +223,7 @@ void APIENTRY glFrontFace(GLenum mode) {
     }
 }
 
-void APIENTRY glCullFace(GLenum mode) {
+GLvoid APIENTRY glCullFace(GLenum mode) {
     switch(mode) {
         case GL_FRONT:
         case GL_BACK:
@@ -238,57 +238,115 @@ void APIENTRY glCullFace(GLenum mode) {
 
 //== Vertex Color Submission ==//
 
-void APIENTRY glColor1ui(GLuint argb) {
+GLvoid APIENTRY glColor1ui(GLuint argb) {
     GL_KOS_VERTEX_COLOR = argb;
 }
 
-void APIENTRY glColor4ub(GLubyte r, GLubyte  g, GLubyte b, GLubyte a) {
+GLvoid APIENTRY glColor4ub(GLubyte r, GLubyte  g, GLubyte b, GLubyte a) {
     GL_KOS_VERTEX_COLOR = a << 24 | r << 16 | g << 8 | b;
 }
 
-void APIENTRY glColor3f(GLfloat r, GLfloat g, GLfloat b) {
+GLvoid APIENTRY glColor3f(GLfloat r, GLfloat g, GLfloat b) {
     GL_KOS_VERTEX_COLOR = PVR_PACK_COLOR(1.0f, r, g, b);
 }
 
-void APIENTRY glColor3fv(GLfloat *rgb) {
+GLvoid APIENTRY glColor3fv(const GLfloat *rgb) {
     GL_KOS_VERTEX_COLOR = PVR_PACK_COLOR(1.0f, rgb[0], rgb[1], rgb[2]);
 }
 
-void APIENTRY glColor4f(GLfloat r, GLfloat g, GLfloat b, GLfloat a) {
+GLvoid APIENTRY glColor4f(GLfloat r, GLfloat g, GLfloat b, GLfloat a) {
     GL_KOS_VERTEX_COLOR = PVR_PACK_COLOR(a, r, g, b);
 }
 
-void APIENTRY glColor4fv(GLfloat *rgba) {
+GLvoid APIENTRY glColor4fv(const GLfloat *rgba) {
     GL_KOS_VERTEX_COLOR = PVR_PACK_COLOR(rgba[3], rgba[0], rgba[1], rgba[2]);
 }
 
 //== Texture Coordinate Submission ==//
 
-void APIENTRY glTexCoord2f(GLfloat u, GLfloat v) {
+GLvoid APIENTRY glTexCoord2f(GLfloat u, GLfloat v) {
     GL_KOS_VERTEX_UV[0] = u;
     GL_KOS_VERTEX_UV[1] = v;
 }
 
-void APIENTRY glTexCoord2fv(GLfloat *uv) {
+GLvoid APIENTRY glTexCoord2fv(const GLfloat *uv) {
     GL_KOS_VERTEX_UV[0] = uv[0];
     GL_KOS_VERTEX_UV[1] = uv[1];
 }
 
 //== Vertex Position Submission Functions ==//
 
-void APIENTRY(*glVertex3f)(GLfloat, GLfloat, GLfloat);
+GLvoid APIENTRY(*glVertex3f)(GLfloat, GLfloat, GLfloat);
 
-void APIENTRY(*glVertex3fv)(GLfloat *);
+GLvoid APIENTRY(*glVertex3fv)(GLfloat *);
 
-void APIENTRY glVertex2f(GLfloat x, GLfloat y) {
+GLvoid APIENTRY glVertex2f(GLfloat x, GLfloat y) {
     return _glKosVertex3ft(x, y, 0.0f);
 }
 
-void APIENTRY glVertex2fv(GLfloat *xy) {
+GLvoid APIENTRY glVertex2fv(const GLfloat *xy) {
     return _glKosVertex3ft(xy[0], xy[1], 0.0f);
 }
 
-void APIENTRY glKosVertex2f(GLfloat x, GLfloat y) {
+GLAPI void APIENTRY glRectf(GLfloat x1, GLfloat y1, GLfloat x2, GLfloat y2) {
+    pvr_vertex_t * v = _glKosVertexBufPointer();
+    
+    v[0].z = v[3].z = 0;
+    
+    mat_trans_single3_nomod(x1, y1, v[0].z, v[0].x, v[0].y, v[0].z);
+    mat_trans_single3_nomod(x2, y2, v[3].z, v[3].x, v[3].y, v[3].z);
+    
+    v[0].argb = v[1].argb = v[2].argb = v[3].argb = GL_KOS_VERTEX_COLOR;
+    v[0].flags = v[1].flags = v[2].flags = PVR_CMD_VERTEX;
+    v[3].flags = PVR_CMD_VERTEX_EOL;
+    
+    v[1].x = v[0].x;
+    v[1].y = v[3].y;
+    v[1].z = v[3].z;
+    
+    v[2].x = v[3].x;
+    v[2].y = v[0].y;
+    v[2].z = v[0].z;
+    
+    _glKosVertexBufAdd(4);
+    
+    GL_KOS_VERTEX_COUNT += 4;    
+}
+
+GLAPI void APIENTRY glRectfv(const GLfloat *v1, const GLfloat *v2) {
+    pvr_vertex_t * v = _glKosVertexBufPointer();
+    
+    v[0].z = v[3].z = 0;
+    
+    mat_trans_single3_nomod(v1[0], v1[1], v[0].z, v[0].x, v[0].y, v[0].z);
+    mat_trans_single3_nomod(v2[0], v2[1], v[3].z, v[3].x, v[3].y, v[3].z);
+    
+    v[0].argb = v[1].argb = v[2].argb = v[3].argb = GL_KOS_VERTEX_COLOR;
+    v[0].flags = v[1].flags = v[2].flags = PVR_CMD_VERTEX;
+    v[3].flags = PVR_CMD_VERTEX_EOL;
+    
+    v[1].x = v[0].x;
+    v[1].y = v[3].y;
+    v[1].z = v[3].z;
+    
+    v[2].x = v[3].x;
+    v[2].y = v[0].y;
+    v[2].z = v[0].z;
+    
+    _glKosVertexBufAdd(4);
+    
+    GL_KOS_VERTEX_COUNT += 4;    
+}
+
+GLAPI void APIENTRY glRecti(GLint x1, GLint y1, GLint x2, GLint y2) {
+    return glRectf((GLfloat)x1, (GLfloat)y1, (GLfloat)x2, (GLfloat)y2);
+}
+
+GLAPI void APIENTRY glRectiv(const GLint *v1, const GLint *v2) {
+    return glRectfv((GLfloat *)v1, (GLfloat *)v2);
+}
+
+GLvoid APIENTRY glKosVertex2f(GLfloat x, GLfloat y) {
     pvr_vertex_t *v = _glKosVertexBufPointer();
 
     v->x = x;
@@ -303,7 +361,7 @@ void APIENTRY glKosVertex2f(GLfloat x, GLfloat y) {
     ++GL_KOS_VERTEX_COUNT;
 }
 
-void APIENTRY glKosVertex2fv(GLfloat *xy) {
+GLvoid APIENTRY glKosVertex2fv(const GLfloat *xy) {
     pvr_vertex_t *v = _glKosVertexBufPointer();
 
     v->x = xy[0];
@@ -321,7 +379,7 @@ void APIENTRY glKosVertex2fv(GLfloat *xy) {
 //====================================================================================================//
 //== GL Begin / End ==//
 
-void APIENTRY glBegin(GLenum mode) {
+GLvoid APIENTRY glBegin(GLenum mode) {
     _glKosMatrixApplyRender();
 
     _glKosArrayBufReset();
@@ -354,7 +412,7 @@ void APIENTRY glBegin(GLenum mode) {
     }
 }
 
-void APIENTRY glEnd() {
+GLvoid APIENTRY glEnd() {
     if(_glKosEnabledNearZClip()) { /* Z-Clipping Enabled */
         if(_glKosEnabledLighting()) {
             _glKosVertexComputeLighting(_glKosClipBufAddress(), GL_KOS_VERTEX_COUNT);
@@ -426,7 +484,7 @@ void APIENTRY glEnd() {
     hand corner of the screen to be modified and glScissor(0, 0, 0, 0)
     disallows modification to all 'tiles' on the screen.
 */
-void APIENTRY glScissor(GLint x, GLint y, GLsizei width, GLsizei height) {
+GLvoid APIENTRY glScissor(GLint x, GLint y, GLsizei width, GLsizei height) {
     pvr_cmd_tclip_t *c = _glKosVertexBufPointer();
 
     GLint miny, maxx, maxy;
@@ -449,7 +507,7 @@ void APIENTRY glScissor(GLint x, GLint y, GLsizei width, GLsizei height) {
     _glKosVertexBufIncrement();
 }
 
-void APIENTRY glHint(GLenum target, GLenum mode) {
+GLvoid APIENTRY glHint(GLenum target, GLenum mode) {
     switch(target) {
         case GL_PERSPECTIVE_CORRECTION_HINT:
             if(mode == GL_NICEST)
@@ -465,7 +523,7 @@ void APIENTRY glHint(GLenum target, GLenum mode) {
 //====================================================================================================//
 //== Internal API Vertex Submission functions ==//
 
-void _glKosVertex3fs(GLfloat x, GLfloat y, GLfloat z) {
+GLvoid _glKosVertex3fs(GLfloat x, GLfloat y, GLfloat z) {
     pvr_vertex_t *v = _glKosVertexBufPointer();
 
     mat_trans_single3_nomod(x, y, z, v->x, v->y, v->z);
@@ -478,7 +536,7 @@ void _glKosVertex3fs(GLfloat x, GLfloat y, GLfloat z) {
     ++GL_KOS_VERTEX_COUNT;
 }
 
-void _glKosVertex3fsv(GLfloat *xyz) {
+GLvoid _glKosVertex3fsv(GLfloat *xyz) {
     pvr_vertex_t *v = _glKosVertexBufPointer();
 
     mat_trans_single3_nomod(xyz[0], xyz[1], xyz[2], v->x, v->y, v->z);
@@ -491,7 +549,7 @@ void _glKosVertex3fsv(GLfloat *xyz) {
     ++GL_KOS_VERTEX_COUNT;
 }
 
-void _glKosVertex3ft(GLfloat x, GLfloat y, GLfloat z) {
+GLvoid _glKosVertex3ft(GLfloat x, GLfloat y, GLfloat z) {
     pvr_vertex_t *v = _glKosVertexBufPointer();
 
     mat_trans_single3_nomod(x, y, z, v->x, v->y, v->z);
@@ -505,7 +563,7 @@ void _glKosVertex3ft(GLfloat x, GLfloat y, GLfloat z) {
     ++GL_KOS_VERTEX_COUNT;
 }
 
-void _glKosVertex3ftv(GLfloat *xyz) {
+GLvoid _glKosVertex3ftv(GLfloat *xyz) {
     pvr_vertex_t *v = _glKosVertexBufPointer();
 
     mat_trans_single3_nomod(xyz[0], xyz[1], xyz[2], v->x, v->y, v->z);
@@ -519,7 +577,7 @@ void _glKosVertex3ftv(GLfloat *xyz) {
     ++GL_KOS_VERTEX_COUNT;
 }
 
-void _glKosVertex3fc(GLfloat x, GLfloat y, GLfloat z) {
+GLvoid _glKosVertex3fc(GLfloat x, GLfloat y, GLfloat z) {
     pvr_vertex_t *v = _glKosClipBufPointer();
 
     v->x = x;
@@ -534,7 +592,7 @@ void _glKosVertex3fc(GLfloat x, GLfloat y, GLfloat z) {
     ++GL_KOS_VERTEX_COUNT;
 }
 
-void _glKosVertex3fcv(GLfloat *xyz) {
+GLvoid _glKosVertex3fcv(GLfloat *xyz) {
     pvr_vertex_t *v = _glKosClipBufPointer();
 
     v->x = xyz[0];
@@ -551,7 +609,7 @@ void _glKosVertex3fcv(GLfloat *xyz) {
 
 /* GL_POINTS */
 
-inline void _glKosVertex3fpa(GLfloat x, GLfloat y, GLfloat z) {
+inline GLvoid _glKosVertex3fpa(GLfloat x, GLfloat y, GLfloat z) {
     pvr_vertex_t *v = _glKosVertexBufPointer();
 
     mat_trans_single3_nomod(x, y, z, v->x, v->y, v->z);
@@ -562,7 +620,7 @@ inline void _glKosVertex3fpa(GLfloat x, GLfloat y, GLfloat z) {
     _glKosVertexBufIncrement();
 }
 
-inline void _glKosVertex3fpb(GLfloat x, GLfloat y, GLfloat z) {
+inline GLvoid _glKosVertex3fpb(GLfloat x, GLfloat y, GLfloat z) {
     pvr_vertex_t *v = _glKosVertexBufPointer();
 
     mat_trans_single3_nomod(x, y, z, v->x, v->y, v->z);
@@ -573,21 +631,21 @@ inline void _glKosVertex3fpb(GLfloat x, GLfloat y, GLfloat z) {
     _glKosVertexBufIncrement();
 }
 
-void _glKosVertex3fp(GLfloat x, GLfloat y, GLfloat z) {
+GLvoid _glKosVertex3fp(GLfloat x, GLfloat y, GLfloat z) {
     _glKosVertex3fpa(x - GL_KOS_POINT_SIZE, y - GL_KOS_POINT_SIZE, z);
     _glKosVertex3fpa(x + GL_KOS_POINT_SIZE, y - GL_KOS_POINT_SIZE, z);
     _glKosVertex3fpa(x - GL_KOS_POINT_SIZE, y + GL_KOS_POINT_SIZE, z);
     _glKosVertex3fpb(x + GL_KOS_POINT_SIZE, y + GL_KOS_POINT_SIZE, z);
 }
 
-void _glKosVertex3fpv(GLfloat *xyz) {
+GLvoid _glKosVertex3fpv(GLfloat *xyz) {
     _glKosVertex3fpa(xyz[0] - GL_KOS_POINT_SIZE, xyz[1] - GL_KOS_POINT_SIZE, xyz[2]);
     _glKosVertex3fpa(xyz[0] + GL_KOS_POINT_SIZE, xyz[1] - GL_KOS_POINT_SIZE, xyz[2]);
     _glKosVertex3fpa(xyz[0] - GL_KOS_POINT_SIZE, xyz[1] + GL_KOS_POINT_SIZE, xyz[2]);
     _glKosVertex3fpb(xyz[0] + GL_KOS_POINT_SIZE, xyz[1] + GL_KOS_POINT_SIZE, xyz[2]);
 }
 
-void _glKosTransformClipBuf(pvr_vertex_t *v, GLuint verts) {
+GLvoid _glKosTransformClipBuf(pvr_vertex_t *v, GLuint verts) {
     register float __x  __asm__("fr12");
     register float __y  __asm__("fr13");
     register float __z  __asm__("fr14");
@@ -606,13 +664,13 @@ void _glKosTransformClipBuf(pvr_vertex_t *v, GLuint verts) {
     }
 }
 
-static inline void _glKosVertexSwap(pvr_vertex_t *v1, pvr_vertex_t *v2) {
+static inline GLvoid _glKosVertexSwap(pvr_vertex_t *v1, pvr_vertex_t *v2) {
     pvr_vertex_t tmp = *v1;
     *v1 = *v2;
     *v2 = * &tmp;
 }
 
-static inline void _glKosFlagsSetQuad() {
+static inline GLvoid _glKosFlagsSetQuad() {
     pvr_vertex_t *v = (pvr_vertex_t *)_glKosVertexBufPointer() - GL_KOS_VERTEX_COUNT;
     GLuint i;
 
@@ -624,7 +682,7 @@ static inline void _glKosFlagsSetQuad() {
     }
 }
 
-static inline void _glKosFlagsSetTriangle() {
+static inline GLvoid _glKosFlagsSetTriangle() {
     pvr_vertex_t *v = (pvr_vertex_t *)_glKosVertexBufPointer() - GL_KOS_VERTEX_COUNT;
     GLuint i;
 
@@ -635,7 +693,7 @@ static inline void _glKosFlagsSetTriangle() {
     }
 }
 
-static inline void _glKosFlagsSetTriangleStrip() {
+static inline GLvoid _glKosFlagsSetTriangleStrip() {
     pvr_vertex_t *v = (pvr_vertex_t *)_glKosVertexBufPointer() - GL_KOS_VERTEX_COUNT;
     GLuint i;
 
@@ -650,7 +708,7 @@ static inline void _glKosFlagsSetTriangleStrip() {
 //====================================================================================================//
 //== GL KOS PVR Header Parameter Compilation Functions ==//
 
-static inline void _glKosApplyDepthFunc() {
+static inline GLvoid _glKosApplyDepthFunc() {
     if(_glKosEnabledDepthTest())
         GL_KOS_POLY_CXT.depth.comparison = GL_KOS_DEPTH_FUNC;
     else
@@ -659,17 +717,17 @@ static inline void _glKosApplyDepthFunc() {
     GL_KOS_POLY_CXT.depth.write = GL_KOS_DEPTH_WRITE;
 }
 
-static inline void _glKosApplyScissorFunc() {
+static inline GLvoid _glKosApplyScissorFunc() {
     if(_glKosEnabledScissorTest())
         GL_KOS_POLY_CXT.gen.clip_mode = PVR_USERCLIP_INSIDE;
 }
 
-static inline void _glKosApplyFogFunc() {
+static inline GLvoid _glKosApplyFogFunc() {
     if(_glKosEnabledFog())
         GL_KOS_POLY_CXT.gen.fog_type = PVR_FOG_TABLE;
 }
 
-static inline void _glKosApplyCullingFunc() {
+static inline GLvoid _glKosApplyCullingFunc() {
     if(_glKosEnabledCulling()) {
         if(GL_KOS_CULL_FUNC == GL_BACK) {
             if(GL_KOS_FACE_FRONT == GL_CW)
@@ -688,14 +746,14 @@ static inline void _glKosApplyCullingFunc() {
         GL_KOS_POLY_CXT.gen.culling = PVR_CULLING_NONE;
 }
 
-static inline void _glKosApplyBlendFunc() {
+static inline GLvoid _glKosApplyBlendFunc() {
     if(_glKosEnabledBlend()) {
         GL_KOS_POLY_CXT.blend.src = (GL_KOS_BLEND_FUNC & 0xF0) >> 4;
         GL_KOS_POLY_CXT.blend.dst = (GL_KOS_BLEND_FUNC & 0x0F);
     }
 }
 
-void _glKosCompileHdr() {
+GLvoid _glKosCompileHdr() {
     pvr_poly_hdr_t *hdr = _glKosVertexBufPointer();
 
     pvr_poly_cxt_col(&GL_KOS_POLY_CXT, _glKosList() * 2);
@@ -717,7 +775,7 @@ void _glKosCompileHdr() {
     _glKosVertexBufIncrement();
 }
 
-void _glKosCompileHdrT(GL_TEXTURE_OBJECT *tex) {
+GLvoid _glKosCompileHdrT(GL_TEXTURE_OBJECT *tex) {
     pvr_poly_hdr_t *hdr = _glKosVertexBufPointer();
 
     pvr_poly_cxt_txr(&GL_KOS_POLY_CXT,
