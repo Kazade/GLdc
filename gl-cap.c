@@ -195,8 +195,9 @@ void APIENTRY glGetIntegerv(GLenum pname, GLint *params) {
             break;
 
         default:
-            *params = -1; // Indicate invalid parameter //
-            break;
+            _glKosThrowError(GL_INVALID_ENUM, "glGetIntegerv");
+            _glKosPrintError();
+            break;  
     }
 }
 
@@ -209,8 +210,9 @@ void APIENTRY glGetFloatv(GLenum pname, GLfloat *params) {
             break;
 
         default:
-            *params = (GLfloat)GL_INVALID_ENUM;
-            break;
+            _glKosThrowError(GL_INVALID_ENUM, "glGetFloatv");
+            _glKosPrintError();
+            break;  
     }
 }
 

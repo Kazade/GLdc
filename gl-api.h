@@ -99,20 +99,18 @@ unsigned int _glKosVertexLightColor(glVertex *P);
 void _glKosVertexLights(glVertex *P, pvr_vertex_t *v, GLuint count);
 
 /* Vertex Position Submission Internal Functions */
-void _glKosVertex2ft(GLfloat x, GLfloat y);
-void _glKosVertex2ftv(GLfloat *xy);
 void _glKosVertex3ft(GLfloat x, GLfloat y, GLfloat z);
-void _glKosVertex3ftv(GLfloat *xyz);
+void _glKosVertex3ftv(const GLfloat *xyz);
 void _glKosVertex3fc(GLfloat x, GLfloat y, GLfloat z);
-void _glKosVertex3fcv(GLfloat *xyz);
+void _glKosVertex3fcv(const GLfloat *xyz);
 void _glKosVertex3fp(GLfloat x, GLfloat y, GLfloat z);
-void _glKosVertex3fpv(GLfloat *xyz);
+void _glKosVertex3fpv(const GLfloat *xyz);
 void _glKosVertex3fl(GLfloat x, GLfloat y, GLfloat z);
-void _glKosVertex3flv(GLfloat *xyz);
+void _glKosVertex3flv(const GLfloat *xyz);
 void _glKosVertex3flc(GLfloat x, GLfloat y, GLfloat z);
-void _glKosVertex3flcv(GLfloat *xyz);
+void _glKosVertex3flcv(const GLfloat *xyz);
 void _glKosVertex3fs(GLfloat x, GLfloat y, GLfloat z);
-void _glKosVertex3fsv(GLfloat *xyz);
+void _glKosVertex3fsv(const GLfloat *xyz);
 
 /* Matrix Internal Functions */
 void _glKosInitMatrix();
@@ -176,6 +174,7 @@ GLuint  _glKosDepthFunc();
 GLubyte _glKosDepthMask();
 GLubyte _glKosIsLightEnabled(GLubyte light);
 GLubyte _glKosGetMaxLights();
-GLuint _glKosBoundTexID();
+GLuint  _glKosBoundTexID();
+GLuint  _glKosVertexColor();
 
 #endif

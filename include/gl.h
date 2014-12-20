@@ -403,31 +403,44 @@ GLAPI void APIENTRY glEnd();
 
 /* Primitive Texture Coordinate Submission */
 GLAPI void APIENTRY glTexCoord2f(GLfloat u, GLfloat v);
-GLAPI void APIENTRY glTexCoord2fv(GLfloat *uv);
+GLAPI void APIENTRY glTexCoord2fv(const GLfloat *uv);
 
 /* Primitive Color Submission */
 GLAPI void APIENTRY glColor1ui(GLuint argb);
 GLAPI void APIENTRY glColor4ub(GLubyte r, GLubyte  g, GLubyte b, GLubyte a);
 GLAPI void APIENTRY glColor3f(GLfloat r, GLfloat g, GLfloat b);
-GLAPI void APIENTRY glColor3fv(GLfloat *rgb);
+GLAPI void APIENTRY glColor3fv(const GLfloat *rgb);
 GLAPI void APIENTRY glColor4f(GLfloat r, GLfloat g, GLfloat b, GLfloat a);
-GLAPI void APIENTRY glColor4fv(GLfloat *rgba);
+GLAPI void APIENTRY glColor4fv(const GLfloat *rgba);
 
 /* Primitive Normal Submission */
-GLAPI void APIENTRY glNormal3f(float x, float y, float z);
-GLAPI void APIENTRY glNormal3fv(float *xyz);
+GLAPI void APIENTRY glNormal3f(GLfloat x, GLfloat y, GLfloat z);
+GLAPI void APIENTRY glNormal3fv(const GLfloat *xyz);
 
 /* Primitive 2D Position Submission */
 GLAPI void APIENTRY glVertex2f(GLfloat x, GLfloat y);
-GLAPI void APIENTRY glVertex2fv(GLfloat *xy);
+GLAPI void APIENTRY glVertex2fv(const const GLfloat *xy);
 
 /* Non-Standard KOS Primitive 2D Submission.  This will perform no tranformations on the vertices. */
 GLAPI void APIENTRY glKosVertex2f(GLfloat x, GLfloat y);
-GLAPI void APIENTRY glKosVertex2fv(GLfloat *xy);
+GLAPI void APIENTRY glKosVertex2fv(const GLfloat *xy);
 
 /* Primitive 3D Position Submission */
-GLAPI void APIENTRY(*glVertex3f)(float, float, float);
-GLAPI void APIENTRY(*glVertex3fv)(float *);
+GLAPI void APIENTRY(*glVertex3f)(GLfloat, GLfloat, GLfloat);
+GLAPI void APIENTRY(*glVertex3fv)(const GLfloat *);
+
+/* 2D Non-Textured Rectangle Submission */
+GLAPI GLvoid APIENTRY glRectf(GLfloat x1, GLfloat y1, GLfloat x2, GLfloat y2);
+#define glRectd glRectf
+
+GLAPI GLvoid APIENTRY glRectfv(const GLfloat *v1, const GLfloat *v2);
+#define glRectdv glRectfv
+
+GLAPI GLvoid APIENTRY glRecti(GLint x1, GLint y1, GLint x2, GLint y2);
+#define glRects glRecti
+
+GLAPI GLvoid APIENTRY glRectiv(const GLint *v1, const GLint *v2);
+#define glRectsv glRectiv
 
 /* Enable / Disable Capability */
 /* Currently Supported Capabilities:
@@ -556,8 +569,8 @@ GLAPI void APIENTRY glFogfv(GLenum pname, const GLfloat *params);
 /* Set Global Ambient Light Color */
 GLAPI void APIENTRY glKosLightAmbient3f(GLfloat r, GLfloat g, GLfloat b);
 GLAPI void APIENTRY glKosLightAmbient4f(GLfloat r, GLfloat g, GLfloat b, GLfloat a);
-GLAPI void APIENTRY glKosLightAmbient3fv(GLfloat *rgb);
-GLAPI void APIENTRY glKosLightAmbient4fv(GLfloat *rgba);
+GLAPI void APIENTRY glKosLightAmbient3fv(const GLfloat *rgb);
+GLAPI void APIENTRY glKosLightAmbient4fv(const GLfloat *rgba);
 
 /* Set Individual Light Parameters */
 GLAPI void APIENTRY glLightfv(GLenum light, GLenum pname, const GLfloat *params);
@@ -576,20 +589,21 @@ GLAPI void APIENTRY glGetIntegerv(GLenum pname, GLint *params);
 GLAPI void APIENTRY glGetFloatv(GLenum pname, GLfloat *params);
 GLAPI GLboolean APIENTRY glIsEnabled(GLenum cap); 
 
-/* Multi-Texture Extensions - Does not currently work with Z-Clipping Enabled */
+/* Multi-Texture Extensions - Does not currently work with Z-Clipping Enabled 
 GLAPI void APIENTRY glActiveTexture(GLenum texture);
 
 GLAPI void APIENTRY glClientActiveTexture(GLenum texture);
 
 GLAPI void APIENTRY glMultiTexCoord2f(GLenum target, GLfloat s, GLfloat t);
 GLAPI void APIENTRY glMultiTexCoord2fv(GLenum target, const GLfloat *v);
+*/
 
 /* Frame Buffer Objects / Render-To-Texture Functions */
 GLAPI void APIENTRY glGenFramebuffers(GLsizei n, GLuint * framebuffers);
 GLAPI void APIENTRY glDeleteFramebuffers(GLsizei n, GLuint * framebuffers);
 GLAPI void APIENTRY glBindFramebuffer(GLenum target, GLuint framebuffer); 
 GLAPI void APIENTRY glFramebufferTexture2D(GLenum target, GLenum attachment,
-										   GLenum textarget, GLuint texture, GLint level);
+			         GLenum textarget, GLuint texture, GLint level);
 GLAPI GLenum APIENTRY glCheckFramebufferStatus(GLenum target); 
 
 __END_DECLS

@@ -61,7 +61,7 @@ GLAPI void APIENTRY glVertexPointer(GLint size, GLenum type,
     }
 
     (stride) ? (GL_VERTEX_STRIDE = stride / 4) : (GL_VERTEX_STRIDE = 3);
-    
+
     GL_VERTEX_POINTER = (float *)pointer;
 
     GL_VERTEX_PTR_MODE |= GL_USE_ARRAY;
@@ -304,7 +304,7 @@ static inline void _glKosElementColor0(pvr_vertex_t *dst, GLuint count) {
     GLuint i;
 
     for(i = 0; i < count; i++)
-        dst[i].argb = 0xFFFFFFFF;
+        dst[i].argb = _glKosVertexColor();
 }
 
 static inline void _glKosElementColor1uiU8(pvr_vertex_t *dst, GLuint count) {
@@ -751,8 +751,6 @@ GLAPI void APIENTRY glDrawElements(GLenum mode, GLsizei count, GLenum type, cons
     _glKosArraysResetState();
 }
 
-
-
 //========================================================================================//
 //== Array Attribute Functions ==//
 
@@ -762,7 +760,7 @@ static inline void _glKosArrayColor0(pvr_vertex_t *dst, GLuint count) {
     GLuint i;
 
     for(i = 0; i < count; i++)
-        dst[i].argb = 0xFFFFFFFF;
+        dst[i].argb = _glKosVertexColor();
 }
 
 static inline void _glKosArrayColor1ui(pvr_vertex_t *dst, GLuint count) {
@@ -916,7 +914,7 @@ GLAPI void APIENTRY glDrawArrays(GLenum mode, GLint first, GLsizei count) {
         }
     }
     else {
-        /* Transform vertices with no perspective divide, store w component */
+        /* Transform vertices with no perspective divde, store w component */
         _glKosArraysTransformClip(count);
 
         /* Finally, clip the input vertex data into the output vertex buffer */

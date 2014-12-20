@@ -66,18 +66,24 @@ void _glKosInitLighting() { /* Called internally by glInit() */
     memcpy(&GL_MATERIAL, &GL_DEFAULT_MATERIAL, sizeof(glMaterial));
 }
 
-/* Enable a light - GL_LIGHT0->GL_LIGHT15 */
+/* Enable a light - GL_LIGHT0->GL_LIGHT7 */
 void _glKosEnableLight(const GLuint light) {
     if(light < GL_LIGHT0 || light > GL_LIGHT0 + GL_KOS_MAX_LIGHTS)
+    {
+        _glKosThrowError(GL_INVALID_ENUM, "glEnable(GL_LIGHT)");
         return;
-
+    }
+    
     GL_LIGHT_ENABLED |= (1 << (light & 0xF));
 }
 
-/* Disable a light - GL_LIGHT0->GL_LIGHT15 */
+/* Disable a light - GL_LIGHT0->GL_LIGHT7 */
 void _glKosDisableLight(const GLuint light) {
     if(light < GL_LIGHT0 || light > GL_LIGHT0 + GL_KOS_MAX_LIGHTS)
+    {
+        _glKosThrowError(GL_INVALID_ENUM, "glDisable(GL_LIGHT)");
         return;
+    }
 
     GL_LIGHT_ENABLED &= ~(1 << (light & 0xF));
 }
@@ -104,14 +110,14 @@ void glNormal3fv(const GLfloat *xyz) {
 }
 
 /* Global Ambient Light Parameters */
-void glKosLightAmbient4fv(const GLfloat *rgba) {
+void glKosLightAmbient4fv(const float *rgba) {
     GL_GLOBAL_AMBIENT[0] = rgba[0];
     GL_GLOBAL_AMBIENT[1] = rgba[1];
     GL_GLOBAL_AMBIENT[2] = rgba[2];
     GL_GLOBAL_AMBIENT[3] = rgba[3];
 }
 
-void glKosLightAmbient4f(GLfloat r, GLfloat g, GLfloat b, GLfloat a) {
+void glKosLightAmbient4f(float r, float g, float b, float a) {
     GL_GLOBAL_AMBIENT[0] = r;
     GL_GLOBAL_AMBIENT[1] = g;
     GL_GLOBAL_AMBIENT[2] = b;
@@ -133,7 +139,7 @@ void glKosLightAmbient3f(float r, float g, float b) {
 }
 
 /* Misc Lighting Functions ************************************/
-static inline void glCopyRGBA(rgba *src, rgba *dst) {
+static inline void glCopyRGBA(const rgba *src, rgba *dst) {
     *dst = *src;
 }
 
@@ -342,7 +348,7 @@ float FPOW(float b, float p) {
 
 /* End FPOW Implementation */
 
-void _glKosVertex3flv(GLfloat *xyz) {
+void _glKosVertex3flv(const GLfloat *xyz) {
     glVertex *v = _glKosArrayBufPtr();
 
     v->pos[0] = xyz[0];
@@ -372,7 +378,7 @@ void _glKosVertex3fl(GLfloat x, GLfloat y, GLfloat z) {
     _glKosVertex3fs(x, y, z);
 }
 
-void _glKosVertex3flcv(GLfloat *xyz) {
+void _glKosVertex3flcv(const GLfloat *xyz) {
     glVertex *v = _glKosArrayBufPtr();
 
     v->pos[0] = xyz[0];
@@ -565,4 +571,10 @@ void _glKosVertexComputeLighting(pvr_vertex_t *v, int verts) {
         mat_trans_normal3(s->norm[0], s->norm[1], s->norm[2]);
         _glKosVertexLight(s++, v++);
     }
+}
+
+void _glKosLightTransformScreenSpace(float *xyz) {
+    _glKosMatrixApplyScreenSpace();
+    mat_trans_single(xyz[0], xyz[1], xyz[2]);
+    _glKosMatrixLoadRender();
 }
