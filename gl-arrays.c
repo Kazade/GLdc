@@ -33,6 +33,7 @@ static GLfloat   GL_ARRAY_BUFW[GL_MAX_ARRAY_VERTICES];
 static GLfloat   GL_ARRAY_DSTW[GL_MAX_ARRAY_VERTICES];
 static glVertex *GL_ARRAY_BUF_PTR;
 static GLuint GL_VERTEX_PTR_MODE = 0;
+static GLubyte GL_KOS_VERTEX_SIZE = 0;
 
 //========================================================================================//
 //== Local Function Definitions ==//
@@ -46,8 +47,9 @@ static inline void _glKosArraysTransformPositions(GLfloat *position, GLuint coun
 /* Submit a Vertex Position Pointer */
 GLAPI void APIENTRY glVertexPointer(GLint size, GLenum type,
                                     GLsizei stride, const GLvoid *pointer) {
-    if(size != 3) /* Expect 3D X,Y,Z vertex... could do 2d X,Y later */
-        _glKosThrowError(GL_INVALID_VALUE, "glVertexPointer");
+    if(size != 2) /* Expect 2D X,Y or 3D X,Y,Z vertex... */
+        if(size != 3)
+            _glKosThrowError(GL_INVALID_VALUE, "glVertexPointer");
 
     if(type != GL_FLOAT) /* Expect Floating point vertices */
         _glKosThrowError(GL_INVALID_ENUM, "glVertexPointer");
@@ -59,9 +61,11 @@ GLAPI void APIENTRY glVertexPointer(GLint size, GLenum type,
         _glKosPrintError();
         return;
     }
-
+    
+    GL_KOS_VERTEX_SIZE = size;
+    
     (stride) ? (GL_VERTEX_STRIDE = stride / 4) : (GL_VERTEX_STRIDE = 3);
-
+     
     GL_VERTEX_POINTER = (float *)pointer;
 
     GL_VERTEX_PTR_MODE |= GL_USE_ARRAY;
@@ -191,6 +195,30 @@ static inline void _glKosArraysTransformPositions(GLfloat *position, GLuint coun
 
 //========================================================================================//
 //== Arrays Vertex Transform ==/
+static void _glKosArraysTransform2D(GLuint count) {
+    GLfloat *src = GL_VERTEX_POINTER;
+    pvr_vertex_t *dst = _glKosVertexBufPointer();
+
+    register float __x  __asm__("fr12");
+    register float __y  __asm__("fr13");
+    register float __z  __asm__("fr14");
+    
+    while(count--)  {
+        __x = src[0];
+        __y = src[1];
+        __z = 0;
+
+        mat_trans_fv12()
+
+        dst->x = __x;
+        dst->y = __y;
+        dst->z = __z;
+
+        ++dst;
+        
+        src += GL_VERTEX_STRIDE;
+    }
+}
 
 static void _glKosArraysTransform(GLuint count) {
     GLfloat *src = GL_VERTEX_POINTER;
@@ -508,21 +536,19 @@ static inline void _glKosArrayFlagsSetTriangleStrip(pvr_vertex_t *dst, GLuint co
 //== OpenGL Error Code Genration ==//
 
 static GLuint _glKosArraysVerifyParameter(GLenum mode, GLsizei count, GLenum type, GLubyte element) {
-    GLuint GL_ERROR_CODE = 0;
-
     if(mode != GL_QUADS)
         if(mode != GL_TRIANGLES)
             if(mode != GL_TRIANGLE_STRIP)
-                GL_ERROR_CODE |= GL_INVALID_ENUM;
+                _glKosThrowError(GL_INVALID_ENUM, "glDrawArrays");
 
     if(count < 0)
-        GL_ERROR_CODE |= GL_INVALID_VALUE;
+        _glKosThrowError(GL_INVALID_VALUE, "glDrawArrays");
 
     if(!(GL_VERTEX_PTR_MODE & GL_USE_ARRAY))
-        GL_ERROR_CODE |= GL_INVALID_OPERATION;
+        _glKosThrowError(GL_INVALID_OPERATION, "glDrawArrays");
 
     if(count > GL_MAX_ARRAY_VERTICES)
-        GL_ERROR_CODE |= GL_OUT_OF_MEMORY;
+        _glKosThrowError(GL_OUT_OF_MEMORY, "glDrawArrays");
 
     if(element) {
         switch(type) {
@@ -531,31 +557,19 @@ static GLuint _glKosArraysVerifyParameter(GLenum mode, GLsizei count, GLenum typ
                 break;
 
             default:
-                GL_ERROR_CODE |= GL_INVALID_ENUM;
+                _glKosThrowError(GL_INVALID_ENUM, "glDrawArrays");
         }
     }
     else if(type > count)
-        GL_ERROR_CODE |= GL_INVALID_VALUE;
-
-    return GL_ERROR_CODE;
-}
-
-void _glKosPrintErrorString(GLuint error) {
-    if(error) {
-        printf("GL_ERROR_CODE GENERATED:\n");
-
-        if(error & GL_INVALID_ENUM)
-            printf("\tGL_INVALID_ENUM\n");
-
-        if(error & GL_INVALID_VALUE)
-            printf("\tGL_INVALID_VALUE\n");
-
-        if(error & GL_INVALID_OPERATION)
-            printf("\tGL_INVALID__OPERATION\n");
-
-        if(error & GL_OUT_OF_MEMORY)
-            printf("\tGL_OUT_OF_MEMORY\n");
+        _glKosThrowError(GL_INVALID_VALUE, "glDrawArrays");
+    
+    if(_glKosGetError())
+    {
+        _glKosPrintError();
+        return 0;
     }
+    
+    return 1;
 }
 
 //========================================================================================//
@@ -563,15 +577,8 @@ void _glKosPrintErrorString(GLuint error) {
 
 GLAPI void APIENTRY glDrawElements(GLenum mode, GLsizei count, GLenum type, const GLvoid *indices) {
     /* Before we process the vertex data, ensure all parameters are valid */
-    GLuint error = _glKosArraysVerifyParameter(mode, count, type, 1);
-
-    if(error) {
-        _glKosPrintErrorString(error);
-
-        _glKosArraysResetState();
-
+    if(!_glKosArraysVerifyParameter(mode, count, type, 1))
         return;
-    }
 
     switch(type) {
         case GL_UNSIGNED_BYTE:
@@ -823,26 +830,88 @@ static inline void _glKosArrayTexCoord2f(pvr_vertex_t *dst, GLuint count) {
 //========================================================================================//
 //== Open GL Draw Arrays ==//
 
-GLAPI void APIENTRY glDrawArrays(GLenum mode, GLint first, GLsizei count) {
-    /* Before we process the vertex data, ensure all parameters are valid */
-    GLuint error = _glKosArraysVerifyParameter(mode, count, first, 0);
+static void _glKosDrawArrays2D(GLenum mode, GLint first, GLsizei count) {
+    pvr_vertex_t *dst = _glKosVertexBufPointer();
 
-    if(error) {
-        _glKosPrintErrorString(error);
+    /* Check for Color Submission */
+    if(GL_VERTEX_PTR_MODE & GL_USE_COLOR) {
+        switch(GL_COLOR_TYPE) {
+            case GL_FLOAT:
+                switch(GL_COLOR_COMPONENTS) {
+                    case 3:
+                        _glKosArrayColor3f(dst, count);
+                        break;
 
-        return _glKosArraysResetState();
+                    case 4:
+                        _glKosArrayColor4f(dst, count);
+                        break;
+                }
+
+                break;
+
+            case GL_UNSIGNED_INT:
+                if(GL_COLOR_COMPONENTS == 1)
+                    _glKosArrayColor1ui(dst, count);
+
+                break;
+
+            case GL_UNSIGNED_BYTE:
+                if(GL_COLOR_COMPONENTS == 4)
+                    _glKosArrayColor4ub(dst, count);
+
+                break;
+        }
+    }
+    else
+        _glKosArrayColor0(dst, count); /* No colors bound */
+
+    /* Check if Texture Coordinates are enabled */
+    if((GL_VERTEX_PTR_MODE & GL_USE_TEXTURE) && (_glKosEnabledTexture2D() >= 0))
+        _glKosArrayTexCoord2f(dst, count);
+
+    _glKosMatrixApplyRender(); /* Apply the Render Matrix Stack */
+
+    /* Transform Vertex Positions */
+    _glKosArraysTransform2D(count);
+
+    /* Set the vertex flags for use with the PVR */
+    switch(mode) {
+        case GL_QUADS:
+            _glKosArrayFlagsSetQuad(dst, count);
+            break;
+
+        case GL_TRIANGLES:
+            _glKosArrayFlagsSetTriangle(dst, count);
+            break;
+
+        case GL_TRIANGLE_STRIP:
+            _glKosArrayFlagsSetTriangleStrip(dst, count);
+            break;
     }
 
+    _glKosVertexBufAdd(count);
+
+    _glKosArraysResetState();
+}
+
+GLAPI void APIENTRY glDrawArrays(GLenum mode, GLint first, GLsizei count) {
+    /* Before we process the vertex data, ensure all parameters are valid */
+    if(!_glKosArraysVerifyParameter(mode, count, first, 0))
+        return;
+    
     GL_VERTEX_POINTER   += first;       /* Add Pointer Offset */
     GL_TEXCOORD_POINTER += first;
     GL_COLOR_POINTER    += first;
     GL_NORMAL_POINTER   += first;
-
+    
     /* Compile the PVR polygon context with the currently enabled flags */
     if((GL_VERTEX_PTR_MODE & GL_USE_TEXTURE) && _glKosBoundTexID() > 0)
         _glKosCompileHdrTx();
     else
         _glKosCompileHdr();
+    
+    if(GL_KOS_VERTEX_SIZE == 2)
+        return _glKosDrawArrays2D(mode, first, count);
 
     pvr_vertex_t *dst; /* Destination of Output Vertex Array */
 

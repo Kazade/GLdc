@@ -106,7 +106,10 @@ void glLoadIdentity() {
     mat_store(Matrix + MatrixMode);
 
     if(MatrixMode == GL_MODELVIEW)
+    {
         mat_store(&MatrixMdlRot);
+        mat_store(&MatrixLookAt);
+    }
 }
 
 void glTranslatef(GLfloat x, GLfloat y, GLfloat z) {
@@ -339,7 +342,9 @@ void glhLookAtf2(vector3f eyePosition3D,
     // Does not modify internal Modelview matrix
     mat_load(&MatrixLookAt);
     mat_translate(-eyePosition3D[0], -eyePosition3D[1], -eyePosition3D[2]);
-    mat_store(&MatrixLookAt);
+
+    mat_apply(Matrix + GL_MODELVIEW);
+    mat_store(Matrix + GL_MODELVIEW);
 }
 
 void gluLookAt(GLfloat eyex, GLfloat eyey, GLfloat eyez, GLfloat centerx,
@@ -354,7 +359,6 @@ void gluLookAt(GLfloat eyex, GLfloat eyey, GLfloat eyez, GLfloat centerx,
 void _glKosMatrixApplyRender() {
     mat_load(Matrix + GL_SCREENVIEW);
     mat_apply(Matrix + GL_PROJECTION);
-    mat_apply(&MatrixLookAt);
     mat_apply(Matrix + GL_MODELVIEW);
     mat_store(Matrix + GL_RENDER);
 }

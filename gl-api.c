@@ -603,8 +603,7 @@ GLvoid _glKosVertex3fpv(const GLfloat *xyz) {
     _glKosFinishRect();        
 }
 
-static inline void _glKosFinishRect()
-{
+static inline void _glKosFinishRect() {
     pvr_vertex_t * v = _glKosVertexBufPointer();
     
     v[0].argb = v[1].argb = v[2].argb = v[3].argb = GL_KOS_VERTEX_COLOR;
@@ -887,7 +886,6 @@ GLubyte _glKosDepthMask() {
     return !GL_KOS_DEPTH_WRITE;
 }
 
-GLuint _glKosVertexColor()
-{
+GLuint _glKosVertexColor() {
     return GL_KOS_VERTEX_COLOR;
 }
