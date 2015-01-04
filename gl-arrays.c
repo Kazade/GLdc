@@ -19,27 +19,56 @@
 #include <stdlib.h>
 
 #include "gl.h"
+#include "glext.h"
 #include "gl-api.h"
 #include "gl-arrays.h"
+#include "gl-pvr.h"
 #include "gl-rgb.h"
 #include "gl-sh4.h"
 
 //========================================================================================//
 //== Local Variables ==//
 
-#define GL_MAX_ARRAY_VERTICES 1024*32 /* Maximum Number of Vertices in the Array Buffer */
-static glVertex  GL_ARRAY_BUF[GL_MAX_ARRAY_VERTICES];
-static GLfloat   GL_ARRAY_BUFW[GL_MAX_ARRAY_VERTICES];
-static GLfloat   GL_ARRAY_DSTW[GL_MAX_ARRAY_VERTICES];
-static glVertex *GL_ARRAY_BUF_PTR;
-static GLuint GL_VERTEX_PTR_MODE = 0;
+static glVertex  GL_KOS_ARRAY_BUF[GL_KOS_MAX_VERTS];
+static glVertex *GL_KOS_ARRAY_BUF_PTR;
+
+static GLfloat   GL_KOS_ARRAY_BUFW[GL_KOS_MAX_VERTS];
+static GLfloat   GL_KOS_ARRAY_DSTW[GL_KOS_MAX_VERTS];
+
+static GLfloat   GL_KOS_ARRAY_BUFUV[GL_KOS_MAX_VERTS];
+
+static GLubyte GL_KOS_CLIENT_ACTIVE_TEXTURE = GL_TEXTURE0_ARB & 0xF;
+
+static GLfloat  *GL_KOS_VERTEX_POINTER = NULL;
+static GLfloat  *GL_KOS_NORMAL_POINTER = NULL;
+static GLfloat  *GL_KOS_TEXCOORD0_POINTER = NULL;
+static GLfloat  *GL_KOS_TEXCOORD1_POINTER = NULL;
+static GLfloat  *GL_KOS_COLOR_POINTER = NULL;
+static GLubyte  *GL_KOS_INDEX_POINTER_U8 = NULL;
+static GLushort *GL_KOS_INDEX_POINTER_U16 = NULL;
+
+static GLushort GL_KOS_VERTEX_STRIDE = 0;
+static GLushort GL_KOS_NORMAL_STRIDE = 0;
+static GLushort GL_KOS_TEXCOORD0_STRIDE = 0;
+static GLushort GL_KOS_TEXCOORD1_STRIDE = 0;
+static GLushort GL_KOS_COLOR_STRIDE = 0;
+
+static GLuint  GL_KOS_VERTEX_PTR_MODE = 0;
 static GLubyte GL_KOS_VERTEX_SIZE = 0;
+static GLubyte GL_KOS_COLOR_COMPONENTS = 0;
+static GLenum  GL_KOS_COLOR_TYPE = 0;
 
 //========================================================================================//
 //== Local Function Definitions ==//
 
 static inline void _glKosArraysTransformNormals(GLfloat *normal, GLuint count);
 static inline void _glKosArraysTransformPositions(GLfloat *position, GLuint count);
+
+void (*_glKosArrayTexCoordFunc)(pvr_vertex_t *);
+void (*_glKosArrayColorFunc)(pvr_vertex_t *);
+
+void (*_glKosElementTexCoordFunc)(pvr_vertex_t *, GLuint);
+void (*_glKosElementColorFunc)(pvr_vertex_t *, GLuint);
 
 //========================================================================================//
 //== Open GL API Public Functions ==//
@@ -61,14 +90,14 @@ GLAPI void APIENTRY glVertexPointer(GLint size, GLenum type,
         _glKosPrintError();
         return;
     }
-    
-    GL_KOS_VERTEX_SIZE = size;
-    
-    (stride) ? (GL_VERTEX_STRIDE = stride / 4) : (GL_VERTEX_STRIDE = 3);
-     
-    GL_VERTEX_POINTER = (float *)pointer;
 
-    GL_VERTEX_PTR_MODE |= GL_USE_ARRAY;
+    GL_KOS_VERTEX_SIZE = size;
+
+    (stride) ? (GL_KOS_VERTEX_STRIDE = stride / 4) : (GL_KOS_VERTEX_STRIDE = 3);
+
+    GL_KOS_VERTEX_POINTER = (float *)pointer;
+
+    GL_KOS_VERTEX_PTR_MODE |= GL_KOS_USE_ARRAY;
 }
 
 /* Submit a Vertex Normal Pointer */
@@ -84,11 +113,11 @@ GLAPI void APIENTRY glNormalPointer(GLenum type, GLsizei stride, const GLvoid *p
         return;
     }
 
-    (stride) ? (GL_NORMAL_STRIDE = stride / 4) : (GL_NORMAL_STRIDE = 3);
+    (stride) ? (GL_KOS_NORMAL_STRIDE = stride / 4) : (GL_KOS_NORMAL_STRIDE = 3);
 
-    GL_NORMAL_POINTER = (float *)pointer;
+    GL_KOS_NORMAL_POINTER = (float *)pointer;
 
-    GL_VERTEX_PTR_MODE |= GL_USE_NORMAL;
+    GL_KOS_VERTEX_PTR_MODE |= GL_KOS_USE_NORMAL;
 }
 
 /* Submit a Texture Coordinate Pointer */
@@ -108,35 +137,44 @@ GLAPI void APIENTRY glTexCoordPointer(GLint size, GLenum type,
         return;
     }
 
-    (stride) ? (GL_TEXCOORD_STRIDE = stride / 4) : (GL_TEXCOORD_STRIDE = 2);
+    if(GL_KOS_CLIENT_ACTIVE_TEXTURE) {
+        (stride) ? (GL_KOS_TEXCOORD1_STRIDE = stride / 4) : (GL_KOS_TEXCOORD1_STRIDE = 2);
 
-    GL_TEXCOORD_POINTER = (float *)pointer;
+        GL_KOS_TEXCOORD1_POINTER = (float *)pointer;
 
-    GL_VERTEX_PTR_MODE |= GL_USE_TEXTURE;
+        GL_KOS_VERTEX_PTR_MODE |= GL_KOS_USE_TEXTURE1;
+    }
+    else {
+        (stride) ? (GL_KOS_TEXCOORD0_STRIDE = stride / 4) : (GL_KOS_TEXCOORD0_STRIDE = 2);
+
+        GL_KOS_TEXCOORD0_POINTER = (float *)pointer;
+
+        GL_KOS_VERTEX_PTR_MODE |= GL_KOS_USE_TEXTURE0;
+    }
 }
 
 /* Submit a Color Pointer */
 GLAPI void APIENTRY glColorPointer(GLint size, GLenum type,
                                    GLsizei stride, const GLvoid *pointer) {
     if((type == GL_UNSIGNED_INT) && (size == 1)) {
-        GL_COLOR_COMPONENTS = 1;
-        GL_COLOR_POINTER = (GLvoid *)pointer;
-        GL_COLOR_TYPE = type;
+        GL_KOS_COLOR_COMPONENTS = 1;
+        GL_KOS_COLOR_POINTER = (GLvoid *)pointer;
+        GL_KOS_COLOR_TYPE = type;
     }
     else if((type == GL_UNSIGNED_BYTE) && (size == 4)) {
-        GL_COLOR_COMPONENTS = 4;
-        GL_COLOR_POINTER = (GLvoid *)pointer;
-        GL_COLOR_TYPE = type;
+        GL_KOS_COLOR_COMPONENTS = 4;
+        GL_KOS_COLOR_POINTER = (GLvoid *)pointer;
+        GL_KOS_COLOR_TYPE = type;
     }
     else if((type == GL_FLOAT) && (size == 3)) {
-        GL_COLOR_COMPONENTS = 3;
-        GL_COLOR_POINTER = (GLfloat *)pointer;
-        GL_COLOR_TYPE = type;
+        GL_KOS_COLOR_COMPONENTS = 3;
+        GL_KOS_COLOR_POINTER = (GLfloat *)pointer;
+        GL_KOS_COLOR_TYPE = type;
     }
     else if((type == GL_FLOAT) && (size == 4)) {
-        GL_COLOR_COMPONENTS = 4;
-        GL_COLOR_POINTER = (GLfloat *)pointer;
-        GL_COLOR_TYPE = type;
+        GL_KOS_COLOR_COMPONENTS = 4;
+        GL_KOS_COLOR_POINTER = (GLfloat *)pointer;
+        GL_KOS_COLOR_TYPE = type;
     }
     else {
         _glKosThrowError(GL_INVALID_ENUM, "glColorPointer");
@@ -144,31 +182,31 @@ GLAPI void APIENTRY glColorPointer(GLint size, GLenum type,
         return;
     }
 
-    (stride) ? (GL_COLOR_STRIDE = stride / 4) : (GL_COLOR_STRIDE = size);
+    (stride) ? (GL_KOS_COLOR_STRIDE = stride / 4) : (GL_KOS_COLOR_STRIDE = size);
 
-    GL_VERTEX_PTR_MODE |= GL_USE_COLOR;
+    GL_KOS_VERTEX_PTR_MODE |= GL_KOS_USE_COLOR;
 }
 //========================================================================================//
 //== Vertex Pointer Internal API ==//
 
 inline void _glKosArrayBufIncrement() {
-    ++GL_ARRAY_BUF_PTR;
+    ++GL_KOS_ARRAY_BUF_PTR;
 }
 
 inline void _glKosArrayBufReset() {
-    GL_ARRAY_BUF_PTR = &GL_ARRAY_BUF[0];
+    GL_KOS_ARRAY_BUF_PTR = &GL_KOS_ARRAY_BUF[0];
 }
 
 inline glVertex *_glKosArrayBufAddr() {
-    return &GL_ARRAY_BUF[0];
+    return &GL_KOS_ARRAY_BUF[0];
 }
 
 inline glVertex *_glKosArrayBufPtr() {
-    return GL_ARRAY_BUF_PTR;
+    return GL_KOS_ARRAY_BUF_PTR;
 }
 
 static inline void _glKosArraysTransformNormals(GLfloat *normal, GLuint count) {
-    glVertex *v = &GL_ARRAY_BUF[0];
+    glVertex *v = &GL_KOS_ARRAY_BUF[0];
     GLfloat *N = normal;
 
     _glKosMatrixLoadModelRot();
@@ -181,7 +219,7 @@ static inline void _glKosArraysTransformNormals(GLfloat *normal, GLuint count) {
 }
 
 static inline void _glKosArraysTransformPositions(GLfloat *position, GLuint count) {
-    glVertex *v = &GL_ARRAY_BUF[0];
+    glVertex *v = &GL_KOS_ARRAY_BUF[0];
     GLfloat *P = position;
 
     _glKosMatrixLoadModelView();
@@ -196,13 +234,13 @@ static inline void _glKosArraysTransformPositions(GLfloat *position, GLuint coun
 //========================================================================================//
 //== Arrays Vertex Transform ==/
 static void _glKosArraysTransform2D(GLuint count) {
-    GLfloat *src = GL_VERTEX_POINTER;
+    GLfloat *src = GL_KOS_VERTEX_POINTER;
     pvr_vertex_t *dst = _glKosVertexBufPointer();
 
     register float __x  __asm__("fr12");
     register float __y  __asm__("fr13");
     register float __z  __asm__("fr14");
-    
+
     while(count--)  {
         __x = src[0];
         __y = src[1];
@@ -215,19 +253,19 @@ static void _glKosArraysTransform2D(GLuint count) {
         dst->z = __z;
 
         ++dst;
-        
-        src += GL_VERTEX_STRIDE;
+
+        src += GL_KOS_VERTEX_STRIDE;
     }
 }
 
 static void _glKosArraysTransform(GLuint count) {
-    GLfloat *src = GL_VERTEX_POINTER;
+    GLfloat *src = GL_KOS_VERTEX_POINTER;
     pvr_vertex_t *dst = _glKosVertexBufPointer();
 
     register float __x  __asm__("fr12");
     register float __y  __asm__("fr13");
     register float __z  __asm__("fr14");
-    
+
     while(count--)  {
         __x = src[0];
         __y = src[1];
@@ -240,14 +278,14 @@ static void _glKosArraysTransform(GLuint count) {
         dst->z = __z;
 
         ++dst;
-        
-        src += GL_VERTEX_STRIDE;
+
+        src += GL_KOS_VERTEX_STRIDE;
     }
 }
 
 static void _glKosArraysTransformClip(GLuint count) {
-    GLfloat *src = GL_VERTEX_POINTER;
-    GLfloat *W = GL_ARRAY_DSTW;
+    GLfloat *src = GL_KOS_VERTEX_POINTER;
+    GLfloat *W = GL_KOS_ARRAY_DSTW;
     pvr_vertex_t *dst = _glKosClipBufAddress();
 
     register float __x  __asm__("fr12");
@@ -266,22 +304,20 @@ static void _glKosArraysTransformClip(GLuint count) {
         dst->y = __y;
         dst->z = __z;
         *W++ = __w;
-        
+
         ++dst;
-        
-        src += GL_VERTEX_STRIDE;        
+
+        src += GL_KOS_VERTEX_STRIDE;
     }
 }
 
 static void _glKosArraysTransformElements(GLuint count) {
-    GLfloat *src = GL_VERTEX_POINTER;
+    GLfloat *src = GL_KOS_VERTEX_POINTER;
     GLuint i = 0;
 
     register float __x  __asm__("fr12");
     register float __y  __asm__("fr13");
     register float __z  __asm__("fr14");
-
-    printf("Transform Elements()\n");
 
     for(i = 0; i < count; i++) {
         __x = src[0];
@@ -290,16 +326,16 @@ static void _glKosArraysTransformElements(GLuint count) {
 
         mat_trans_fv12()
 
-        GL_ARRAY_BUF[i].pos[0] = __x;
-        GL_ARRAY_BUF[i].pos[1] = __y;
-        GL_ARRAY_BUF[i].pos[2] = __z;
+        GL_KOS_ARRAY_BUF[i].pos[0] = __x;
+        GL_KOS_ARRAY_BUF[i].pos[1] = __y;
+        GL_KOS_ARRAY_BUF[i].pos[2] = __z;
 
-        src += GL_VERTEX_STRIDE;
+        src += GL_KOS_VERTEX_STRIDE;
     }
 }
 
 static void _glKosArraysTransformClipElements(GLuint count) {
-    GLfloat *src = GL_VERTEX_POINTER;
+    GLfloat *src = GL_KOS_VERTEX_POINTER;
     GLuint i;
 
     register float __x  __asm__("fr12");
@@ -314,12 +350,12 @@ static void _glKosArraysTransformClipElements(GLuint count) {
 
         mat_trans_fv12_nodivw()
 
-        GL_ARRAY_BUF[i].pos[0] = __x;
-        GL_ARRAY_BUF[i].pos[1] = __y;
-        GL_ARRAY_BUF[i].pos[2] = __z;
-        GL_ARRAY_BUFW[i] = __w;
+        GL_KOS_ARRAY_BUF[i].pos[0] = __x;
+        GL_KOS_ARRAY_BUF[i].pos[1] = __y;
+        GL_KOS_ARRAY_BUF[i].pos[2] = __z;
+        GL_KOS_ARRAY_BUFW[i] = __w;
 
-        src += GL_VERTEX_STRIDE;
+        src += GL_KOS_VERTEX_STRIDE;
     }
 }
 
@@ -328,49 +364,51 @@ static void _glKosArraysTransformClipElements(GLuint count) {
 
 //== Color ==//
 
-static inline void _glKosElementColor0(pvr_vertex_t *dst, GLuint count) {
+static inline void _glKosArrayColor0(pvr_vertex_t *dst, GLuint count) {
     GLuint i;
 
-    for(i = 0; i < count; i++)
-        dst[i].argb = _glKosVertexColor();
+    dst[0].argb = _glKosVertexColor();
+
+    for(i = 1; i < count; i++)
+        dst[i].argb = dst[0].argb;
 }
 
 static inline void _glKosElementColor1uiU8(pvr_vertex_t *dst, GLuint count) {
     GLuint i;
-    GLuint *src = (GLuint *)GL_COLOR_POINTER;
+    GLuint *src = (GLuint *)GL_KOS_COLOR_POINTER;
 
     for(i = 0; i < count; i++)
-        dst[i].argb = src[GL_INDEX_POINTER_U8[i] * GL_COLOR_STRIDE];
+        dst[i].argb = src[GL_KOS_INDEX_POINTER_U8[i] * GL_KOS_COLOR_STRIDE];
 }
 
 static inline void _glKosElementColor1uiU16(pvr_vertex_t *dst, GLuint count) {
     GLuint i;
-    GLuint *color = (GLuint *)GL_COLOR_POINTER;
+    GLuint *color = (GLuint *)GL_KOS_COLOR_POINTER;
 
     for(i = 0; i < count; i++)
-        dst[i].argb = color[GL_INDEX_POINTER_U16[i] * GL_COLOR_STRIDE];
+        dst[i].argb = color[GL_KOS_INDEX_POINTER_U16[i] * GL_KOS_COLOR_STRIDE];
 }
 
 static inline void _glKosElementColor4ubU8(pvr_vertex_t *dst, GLuint count) {
-    GLuint i, *color = (GLuint *)GL_COLOR_POINTER;
+    GLuint i, *color = (GLuint *)GL_KOS_COLOR_POINTER;
 
     for(i = 0; i < count; i++)
-        dst[i].argb = RGBA32_2_ARGB32(color[GL_INDEX_POINTER_U8[i]] * GL_COLOR_STRIDE);
+        dst[i].argb = RGBA32_2_ARGB32(color[GL_KOS_INDEX_POINTER_U8[i]] * GL_KOS_COLOR_STRIDE);
 }
 
 static inline void _glKosElementColor4ubU16(pvr_vertex_t *dst, GLuint count) {
-    GLuint i, *color = (GLuint *)GL_COLOR_POINTER;
+    GLuint i, *color = (GLuint *)GL_KOS_COLOR_POINTER;
 
     for(i = 0; i < count; i++)
-        dst[i].argb = RGBA32_2_ARGB32(color[GL_INDEX_POINTER_U16[i] * GL_COLOR_STRIDE]);
+        dst[i].argb = RGBA32_2_ARGB32(color[GL_KOS_INDEX_POINTER_U16[i] * GL_KOS_COLOR_STRIDE]);
 }
 
 static inline void _glKosElementColor3fU8(pvr_vertex_t *dst, GLuint count) {
     GLuint i, index;
-    GLrgb3f *color = (GLrgb3f *)GL_COLOR_POINTER;
+    GLrgb3f *color = (GLrgb3f *)GL_KOS_COLOR_POINTER;
 
     for(i = 0; i < count; i++) {
-        index =  GL_INDEX_POINTER_U8[i] * GL_COLOR_STRIDE;
+        index =  GL_KOS_INDEX_POINTER_U8[i] * GL_KOS_COLOR_STRIDE;
         dst[i].argb = (0xFF000000 | ((GLubyte)color[index][0] * 0xFF) << 16
                        | ((GLubyte)color[index][1] * 0xFF) << 8
                        | ((GLubyte)color[index][2] * 0xFF));
@@ -379,10 +417,10 @@ static inline void _glKosElementColor3fU8(pvr_vertex_t *dst, GLuint count) {
 
 static inline void _glKosElementColor3fU16(pvr_vertex_t *dst, GLuint count) {
     GLuint i, index;
-    GLrgb3f *color = (GLrgb3f *)GL_COLOR_POINTER;
+    GLrgb3f *color = (GLrgb3f *)GL_KOS_COLOR_POINTER;
 
     for(i = 0; i < count; i++) {
-        index =  GL_INDEX_POINTER_U16[i] * GL_COLOR_STRIDE;
+        index =  GL_KOS_INDEX_POINTER_U16[i] * GL_KOS_COLOR_STRIDE;
         dst[i].argb = (0xFF000000 | ((GLubyte)color[index][0] * 0xFF) << 16
                        | ((GLubyte)color[index][1] * 0xFF) << 8
                        | ((GLubyte)color[index][2] * 0xFF));
@@ -391,10 +429,10 @@ static inline void _glKosElementColor3fU16(pvr_vertex_t *dst, GLuint count) {
 
 static inline void _glKosElementColor4fU8(pvr_vertex_t *dst, GLuint count) {
     GLuint i, index;
-    GLrgba4f *color = (GLrgba4f *)GL_COLOR_POINTER;
+    GLrgba4f *color = (GLrgba4f *)GL_KOS_COLOR_POINTER;
 
     for(i = 0; i < count; i++) {
-        index = GL_INDEX_POINTER_U8[i] * GL_COLOR_STRIDE;
+        index = GL_KOS_INDEX_POINTER_U8[i] * GL_KOS_COLOR_STRIDE;
         dst[i].argb = (((GLubyte)color[index][3] * 0xFF) << 24
                        | ((GLubyte)color[index][0] * 0xFF) << 16
                        | ((GLubyte)color[index][1] * 0xFF) << 8
@@ -404,10 +442,10 @@ static inline void _glKosElementColor4fU8(pvr_vertex_t *dst, GLuint count) {
 
 static inline void _glKosElementColor4fU16(pvr_vertex_t *dst, GLuint count) {
     GLuint i, index;
-    GLrgba4f *color = (GLrgba4f *)GL_COLOR_POINTER;
+    GLrgba4f *color = (GLrgba4f *)GL_KOS_COLOR_POINTER;
 
     for(i = 0; i < count; i++) {
-        index = GL_INDEX_POINTER_U16[i] * GL_COLOR_STRIDE;
+        index = GL_KOS_INDEX_POINTER_U16[i] * GL_KOS_COLOR_STRIDE;
         dst[i].argb = (((GLubyte)color[index][3] * 0xFF) << 24
                        | ((GLubyte)color[index][0] * 0xFF) << 16
                        | ((GLubyte)color[index][1] * 0xFF) << 8
@@ -419,10 +457,10 @@ static inline void _glKosElementColor4fU16(pvr_vertex_t *dst, GLuint count) {
 
 static inline void _glKosElementTexCoord2fU16(pvr_vertex_t *dst, GLuint count) {
     GLuint i, index;
-    GLfloat *t = GL_TEXCOORD_POINTER;
+    GLfloat *t = GL_KOS_TEXCOORD0_POINTER;
 
     for(i = 0; i < count; i++) {
-        index = GL_INDEX_POINTER_U16[i] * GL_TEXCOORD_STRIDE;
+        index = GL_KOS_INDEX_POINTER_U16[i] * GL_KOS_TEXCOORD0_STRIDE;
         dst[i].u = t[index];
         dst[i].v = t[index + 1];
     }
@@ -430,61 +468,119 @@ static inline void _glKosElementTexCoord2fU16(pvr_vertex_t *dst, GLuint count) {
 
 static inline void _glKosElementTexCoord2fU8(pvr_vertex_t *dst, GLuint count) {
     GLuint i, index;
-    GLfloat *t = GL_TEXCOORD_POINTER;
+    GLfloat *t = GL_KOS_TEXCOORD0_POINTER;
 
     for(i = 0; i < count; i++) {
-        index = GL_INDEX_POINTER_U8[i] * GL_TEXCOORD_STRIDE;
+        index = GL_KOS_INDEX_POINTER_U8[i] * GL_KOS_TEXCOORD0_STRIDE;
         dst[i].u = t[index];
         dst[i].v = t[index + 1];
     }
+}
+
+static inline void _glKosElementMultiTexCoord2fU16C(GLuint count) {
+    GLuint i, index;
+    GLfloat *t = GL_KOS_TEXCOORD1_POINTER;
+    GLfloat *dst = GL_KOS_ARRAY_BUFUV;
+
+    for(i = 0; i < count; i++) {
+        index = GL_KOS_INDEX_POINTER_U16[i] * GL_KOS_TEXCOORD1_STRIDE;
+        *dst++ = t[index];
+        *dst++ = t[index + 1];
+    }
+}
+
+static inline void _glKosElementMultiTexCoord2fU8C(GLuint count) {
+    GLuint i, index;
+    GLfloat *t = GL_KOS_TEXCOORD1_POINTER;
+    GLfloat *dst = GL_KOS_ARRAY_BUFUV;
+
+    for(i = 0; i < count; i++) {
+        index = GL_KOS_INDEX_POINTER_U8[i] * GL_KOS_TEXCOORD1_STRIDE;
+        *dst++ = t[index];
+        *dst++ = t[index + 1];
+    }
+}
+
+static inline void _glKosElementMultiTexCoord2fU16(GLuint count) {
+    if(_glKosEnabledNearZClip())
+        return _glKosElementMultiTexCoord2fU16C(count);
+
+    GLuint i, index;
+    GLfloat *t = GL_KOS_TEXCOORD1_POINTER;
+    glTexCoord *dst = (glTexCoord *)_glKosMultiUVBufPointer();
+
+    for(i = 0; i < count; i++) {
+        index = GL_KOS_INDEX_POINTER_U16[i] * GL_KOS_TEXCOORD1_STRIDE;
+        dst[i].u = t[index];
+        dst[i].v = t[index + 1];
+    }
+
+    _glKosMultiUVBufAdd(count);
+}
+
+static inline void _glKosElementMultiTexCoord2fU8(GLuint count) {
+    if(_glKosEnabledNearZClip())
+        return _glKosElementMultiTexCoord2fU8C(count);
+
+    GLuint i, index;
+    GLfloat *t = GL_KOS_TEXCOORD1_POINTER;
+    glTexCoord *dst = (glTexCoord *)_glKosMultiUVBufPointer();
+
+    for(i = 0; i < count; i++) {
+        index = GL_KOS_INDEX_POINTER_U8[i] * GL_KOS_TEXCOORD1_STRIDE;
+        dst[i].u = t[index];
+        dst[i].v = t[index + 1];
+    }
+
+    _glKosMultiUVBufAdd(count);
 }
 
 //========================================================================================//
 //== Element Unpacking ==//
 
 static inline void _glKosArraysUnpackElementsS16(pvr_vertex_t *dst, GLuint count) {
-    glVertex *vert = GL_ARRAY_BUF;
+    glVertex *vert = GL_KOS_ARRAY_BUF;
     GLuint i;
 
     for(i = 0; i < count; i++) {
-        dst[i].x = vert[GL_INDEX_POINTER_U16[i]].pos[0];
-        dst[i].y = vert[GL_INDEX_POINTER_U16[i]].pos[1];
-        dst[i].z = vert[GL_INDEX_POINTER_U16[i]].pos[2];
+        dst[i].x = vert[GL_KOS_INDEX_POINTER_U16[i]].pos[0];
+        dst[i].y = vert[GL_KOS_INDEX_POINTER_U16[i]].pos[1];
+        dst[i].z = vert[GL_KOS_INDEX_POINTER_U16[i]].pos[2];
     }
 }
 
 static inline void _glKosArraysUnpackElementsS8(pvr_vertex_t *dst, GLuint count) {
-    glVertex *vert = GL_ARRAY_BUF;
+    glVertex *vert = GL_KOS_ARRAY_BUF;
     GLuint i;
 
     for(i = 0; i < count; i++) {
-        dst[i].x = vert[GL_INDEX_POINTER_U8[i]].pos[0];
-        dst[i].y = vert[GL_INDEX_POINTER_U8[i]].pos[1];
-        dst[i].z = vert[GL_INDEX_POINTER_U8[i]].pos[2];
+        dst[i].x = vert[GL_KOS_INDEX_POINTER_U8[i]].pos[0];
+        dst[i].y = vert[GL_KOS_INDEX_POINTER_U8[i]].pos[1];
+        dst[i].z = vert[GL_KOS_INDEX_POINTER_U8[i]].pos[2];
     }
 }
 
 static inline void _glKosArraysUnpackClipElementsS16(pvr_vertex_t *dst, GLuint count) {
-    glVertex *vert = GL_ARRAY_BUF;
+    glVertex *vert = GL_KOS_ARRAY_BUF;
     GLuint i;
 
     for(i = 0; i < count; i++) {
-        dst[i].x = vert[GL_INDEX_POINTER_U16[i]].pos[0];
-        dst[i].y = vert[GL_INDEX_POINTER_U16[i]].pos[1];
-        dst[i].z = vert[GL_INDEX_POINTER_U16[i]].pos[2];
-        GL_ARRAY_DSTW[i] = GL_ARRAY_BUFW[GL_INDEX_POINTER_U16[i]];
+        dst[i].x = vert[GL_KOS_INDEX_POINTER_U16[i]].pos[0];
+        dst[i].y = vert[GL_KOS_INDEX_POINTER_U16[i]].pos[1];
+        dst[i].z = vert[GL_KOS_INDEX_POINTER_U16[i]].pos[2];
+        GL_KOS_ARRAY_DSTW[i] = GL_KOS_ARRAY_BUFW[GL_KOS_INDEX_POINTER_U16[i]];
     }
 }
 
 static inline void _glKosArraysUnpackClipElementsS8(pvr_vertex_t *dst, GLuint count) {
-    glVertex *vert = GL_ARRAY_BUF;
+    glVertex *vert = GL_KOS_ARRAY_BUF;
     GLuint i;
 
     for(i = 0; i < count; i++) {
-        dst[i].x = vert[GL_INDEX_POINTER_U8[i]].pos[0];
-        dst[i].y = vert[GL_INDEX_POINTER_U8[i]].pos[1];
-        dst[i].z = vert[GL_INDEX_POINTER_U8[i]].pos[2];
-        GL_ARRAY_DSTW[i] = GL_ARRAY_BUFW[GL_INDEX_POINTER_U8[i]];
+        dst[i].x = vert[GL_KOS_INDEX_POINTER_U8[i]].pos[0];
+        dst[i].y = vert[GL_KOS_INDEX_POINTER_U8[i]].pos[1];
+        dst[i].z = vert[GL_KOS_INDEX_POINTER_U8[i]].pos[2];
+        GL_KOS_ARRAY_DSTW[i] = GL_KOS_ARRAY_BUFW[GL_KOS_INDEX_POINTER_U8[i]];
     }
 }
 
@@ -497,8 +593,14 @@ static inline void _glKosVertexSwizzle(pvr_vertex_t *v1, pvr_vertex_t *v2) {
     *v2 = * &tmp;
 }
 
+static inline void _glKosTexCoordSwizzle(glTexCoord *uv1, glTexCoord *uv2) {
+    glTexCoord tmp = *uv1;
+    *uv1 = *uv2;
+    *uv2 = * &tmp;
+}
+
 static inline void _glKosArraysResetState() {
-    GL_VERTEX_PTR_MODE = 0;
+    GL_KOS_VERTEX_PTR_MODE = 0;
 }
 
 //========================================================================================//
@@ -532,8 +634,19 @@ static inline void _glKosArrayFlagsSetTriangleStrip(pvr_vertex_t *dst, GLuint co
     dst[i].flags = PVR_CMD_VERTEX_EOL;
 }
 
+
+static inline void _glKosArraysSwizzleQuadsMultiTex(GLuint count) {
+    if(!_glKosEnabledNearZClip()) {
+        GLuint i;
+        glTexCoord *t = (glTexCoord *)_glKosMultiUVBufPointer() - count;
+
+        for(i = 0; i < count; i += 4)
+            _glKosTexCoordSwizzle(&t[i + 2], &t[i + 3]);
+    }
+}
+
 //========================================================================================//
-//== OpenGL Error Code Genration ==//
+//== OpenGL Error Code Generation ==//
 
 static GLuint _glKosArraysVerifyParameter(GLenum mode, GLsizei count, GLenum type, GLubyte element) {
     if(mode != GL_QUADS)
@@ -544,10 +657,10 @@ static GLuint _glKosArraysVerifyParameter(GLenum mode, GLsizei count, GLenum typ
     if(count < 0)
         _glKosThrowError(GL_INVALID_VALUE, "glDrawArrays");
 
-    if(!(GL_VERTEX_PTR_MODE & GL_USE_ARRAY))
+    if(!(GL_KOS_VERTEX_PTR_MODE & GL_KOS_USE_ARRAY))
         _glKosThrowError(GL_INVALID_OPERATION, "glDrawArrays");
 
-    if(count > GL_MAX_ARRAY_VERTICES)
+    if(count > GL_KOS_MAX_VERTS)
         _glKosThrowError(GL_OUT_OF_MEMORY, "glDrawArrays");
 
     if(element) {
@@ -562,14 +675,133 @@ static GLuint _glKosArraysVerifyParameter(GLenum mode, GLsizei count, GLenum typ
     }
     else if(type > count)
         _glKosThrowError(GL_INVALID_VALUE, "glDrawArrays");
-    
-    if(_glKosGetError())
-    {
+
+    if(_glKosGetError()) {
         _glKosPrintError();
         return 0;
     }
-    
+
     return 1;
+}
+
+static GLuint _glKosArraysApplyClipping(GLfloat *uvsrc, GLuint uvstride, GLenum mode, GLuint count) {
+    switch(mode) {
+        case GL_TRIANGLES:
+            if(GL_KOS_VERTEX_PTR_MODE & GL_KOS_USE_TEXTURE1) {
+                count = _glKosClipTrianglesTransformedMT((pvr_vertex_t *)_glKosClipBufAddress(),
+                        GL_KOS_ARRAY_DSTW,
+                        (pvr_vertex_t *)_glKosVertexBufPointer(),
+                        uvsrc,
+                        (glTexCoord *)_glKosMultiUVBufPointer(),
+                        uvstride,
+                        count);
+                _glKosMultiUVBufAdd(count);
+            }
+            else
+                count = _glKosClipTrianglesTransformed((pvr_vertex_t *)_glKosClipBufAddress(),
+                                                       GL_KOS_ARRAY_DSTW,
+                                                       (pvr_vertex_t *)_glKosVertexBufPointer(),
+                                                       count);
+
+            break;
+
+        case GL_QUADS:
+            if(GL_KOS_VERTEX_PTR_MODE & GL_KOS_USE_TEXTURE1) {
+                count = _glKosClipQuadsTransformedMT((pvr_vertex_t *)_glKosClipBufAddress(),
+                                                     GL_KOS_ARRAY_DSTW,
+                                                     (pvr_vertex_t *)_glKosVertexBufPointer(),
+                                                     uvsrc,
+                                                     (glTexCoord *)_glKosMultiUVBufPointer(),
+                                                     uvstride,
+                                                     count);
+                _glKosMultiUVBufAdd(count);
+            }
+            else
+                count = _glKosClipQuadsTransformed((pvr_vertex_t *)_glKosClipBufAddress(),
+                                                   GL_KOS_ARRAY_DSTW,
+                                                   (pvr_vertex_t *)_glKosVertexBufPointer(),
+                                                   count);
+
+            break;
+
+        case GL_TRIANGLE_STRIP:
+            if(GL_KOS_VERTEX_PTR_MODE & GL_KOS_USE_TEXTURE1) {
+                count = _glKosClipTriangleStripTransformedMT((pvr_vertex_t *)_glKosClipBufAddress(),
+                        GL_KOS_ARRAY_DSTW,
+                        (pvr_vertex_t *)_glKosVertexBufPointer(),
+                        uvsrc,
+                        (glTexCoord *)_glKosMultiUVBufPointer(),
+                        uvstride,
+                        count);
+                _glKosMultiUVBufAdd(count);
+            }
+            else
+                count = _glKosClipTriangleStripTransformed((pvr_vertex_t *)_glKosClipBufAddress(),
+                        GL_KOS_ARRAY_DSTW,
+                        (pvr_vertex_t *)_glKosVertexBufPointer(),
+                        count);
+
+            break;
+
+        default:
+            count = 0;
+            break;
+    }
+
+    return count;
+}
+
+static inline void _glKosArraysApplyMultiTexture(GLenum mode, GLuint count) {
+    if(GL_KOS_VERTEX_PTR_MODE & GL_KOS_USE_TEXTURE1) {
+        _glKosPushMultiTexObject(_glKosBoundMultiTexID(),
+                                 (pvr_vertex_t *)_glKosVertexBufPointer(),
+                                 count);
+
+        if(mode == GL_QUADS)
+            _glKosArraysSwizzleQuadsMultiTex(count);
+    }
+}
+
+static inline void _glKosArraysApplyVertexFlags(GLenum mode, pvr_vertex_t *dst, GLuint count) {
+    switch(mode) {
+        case GL_QUADS:
+            _glKosArrayFlagsSetQuad(dst, count);
+            break;
+
+        case GL_TRIANGLES:
+            _glKosArrayFlagsSetTriangle(dst, count);
+            break;
+
+        case GL_TRIANGLE_STRIP:
+            _glKosArrayFlagsSetTriangleStrip(dst, count);
+            break;
+    }
+}
+
+static inline void _glKosArraysApplyLighting(pvr_vertex_t *dst, GLuint count) {
+    _glKosArraysTransformNormals(GL_KOS_NORMAL_POINTER, count);
+    _glKosArraysTransformPositions(GL_KOS_VERTEX_POINTER, count);
+    _glKosVertexLights(GL_KOS_ARRAY_BUF, dst, count);
+}
+
+static inline void _glKosArraysApplyHeader() {
+    if((GL_KOS_VERTEX_PTR_MODE & GL_KOS_USE_TEXTURE0) && _glKosBoundTexID() > 0)
+        _glKosCompileHdrTx();
+    else
+        _glKosCompileHdr();
+}
+
+static inline pvr_vertex_t *_glKosArraysDest() {
+    if(_glKosEnabledNearZClip())
+        return _glKosClipBufAddress();
+
+    return _glKosVertexBufPointer();
+}
+
+static inline void _glKosArraysFlush(GLuint count) {
+    _glKosVertexBufAdd(count);
+
+    _glKosArraysResetState();
 }
 
 //========================================================================================//
@@ -580,39 +812,30 @@ GLAPI void APIENTRY glDrawElements(GLenum mode, GLsizei count, GLenum type, cons
     if(!_glKosArraysVerifyParameter(mode, count, type, 1))
         return;
 
+    /* Compile the PVR polygon context with the currently enabled flags */
+    _glKosArraysApplyHeader();
+
+    /* Destination of Output Vertex Array */
+    pvr_vertex_t *dst = _glKosArraysDest();
+
     switch(type) {
         case GL_UNSIGNED_BYTE:
-            GL_INDEX_POINTER_U8 = (GLubyte *)indices;
+            GL_KOS_INDEX_POINTER_U8 = (GLubyte *)indices;
             break;
 
         case GL_UNSIGNED_SHORT:
-            GL_INDEX_POINTER_U16 = (GLushort *)indices;
+            GL_KOS_INDEX_POINTER_U16 = (GLushort *)indices;
             break;
     }
 
-    /* Compile the PVR polygon context with the currently enabled flags */
-    if((GL_VERTEX_PTR_MODE & GL_USE_TEXTURE) && _glKosBoundTexID() > 0)
-        _glKosCompileHdrTx();
-    else
-        _glKosCompileHdr();
-
-    pvr_vertex_t *dst; /* Destination of Output Vertex Array */
-
-    if(_glKosEnabledNearZClip())
-        dst = _glKosClipBufAddress();
-    else
-        dst = _glKosVertexBufPointer();
-
     /* Check if Vertex Lighting is enabled. Else, check for Color Submission */
-    if((GL_VERTEX_PTR_MODE & GL_USE_NORMAL) && _glKosEnabledLighting()) {
-        _glKosArraysTransformNormals(GL_NORMAL_POINTER, count);
-        _glKosArraysTransformPositions(GL_VERTEX_POINTER, count);
-        _glKosVertexLights(GL_ARRAY_BUF, dst, count);
-    }
-    else if(GL_VERTEX_PTR_MODE & GL_USE_COLOR) {
-        switch(GL_COLOR_TYPE) {
+    if((GL_KOS_VERTEX_PTR_MODE & GL_KOS_USE_NORMAL) && _glKosEnabledLighting())
+        _glKosArraysApplyLighting(dst, count);
+
+    else if(GL_KOS_VERTEX_PTR_MODE & GL_KOS_USE_COLOR) {
+        switch(GL_KOS_COLOR_TYPE) {
             case GL_FLOAT:
-                switch(GL_COLOR_COMPONENTS) {
+                switch(GL_KOS_COLOR_COMPONENTS) {
                     case 3:
                         switch(type) {
                             case GL_UNSIGNED_BYTE:
@@ -643,7 +866,7 @@ GLAPI void APIENTRY glDrawElements(GLenum mode, GLsizei count, GLenum type, cons
                 break;
 
             case GL_UNSIGNED_INT:
-                if(GL_COLOR_COMPONENTS == 1)
+                if(GL_KOS_COLOR_COMPONENTS == 1)
                     switch(type) {
                         case GL_UNSIGNED_BYTE:
                             _glKosElementColor1uiU8(dst, count);
@@ -657,7 +880,7 @@ GLAPI void APIENTRY glDrawElements(GLenum mode, GLsizei count, GLenum type, cons
                 break;
 
             case GL_UNSIGNED_BYTE:
-                if(GL_COLOR_COMPONENTS == 4)
+                if(GL_KOS_COLOR_COMPONENTS == 4)
                     switch(type) {
                         case GL_UNSIGNED_BYTE:
                             _glKosElementColor4ubU8(dst, count);
@@ -672,10 +895,10 @@ GLAPI void APIENTRY glDrawElements(GLenum mode, GLsizei count, GLenum type, cons
         }
     }
     else
-        _glKosElementColor0(dst, count); /* No colors bound, color white */
+        _glKosArrayColor0(dst, count); /* No colors bound */
 
     /* Check if Texture Coordinates are enabled */
-    if((GL_VERTEX_PTR_MODE & GL_USE_TEXTURE) && (_glKosEnabledTexture2D() >= 0))
+    if((GL_KOS_VERTEX_PTR_MODE & GL_KOS_USE_TEXTURE0) && (_glKosEnabledTexture2D() >= 0))
         switch(type) {
             case GL_UNSIGNED_BYTE:
                 _glKosElementTexCoord2fU8(dst, count);
@@ -686,10 +909,22 @@ GLAPI void APIENTRY glDrawElements(GLenum mode, GLsizei count, GLenum type, cons
                 break;
         }
 
+    /* Check if Multi Texture Coordinates are enabled */
+    if((GL_KOS_VERTEX_PTR_MODE & GL_KOS_USE_TEXTURE1) && (_glKosEnabledTexture2D() >= 0))
+        switch(type) {
+            case GL_UNSIGNED_BYTE:
+                _glKosElementMultiTexCoord2fU8(count);
+                break;
+
+            case GL_UNSIGNED_SHORT:
+                _glKosElementMultiTexCoord2fU16(count);
+                break;
+        }
+
     _glKosMatrixApplyRender(); /* Apply the Render Matrix Stack */
 
     if(!(_glKosEnabledNearZClip())) {/* Transform the element vertices */
-        /* Transform vertices with perspective divde */
+        /* Transform vertices with perspective divide */
         _glKosArraysTransformElements(count);
 
         /* Unpack the indexed positions into primitives for rasterization */
@@ -704,22 +939,10 @@ GLAPI void APIENTRY glDrawElements(GLenum mode, GLsizei count, GLenum type, cons
         }
 
         /* Set the vertex flags for use with the PVR */
-        switch(mode) {
-            case GL_QUADS:
-                _glKosArrayFlagsSetQuad(dst, count);
-                break;
-
-            case GL_TRIANGLES:
-                _glKosArrayFlagsSetTriangle(dst, count);
-                break;
-
-            case GL_TRIANGLE_STRIP:
-                _glKosArrayFlagsSetTriangleStrip(dst, count);
-                break;
-        }
+        _glKosArraysApplyVertexFlags(mode, dst, count);
     }
     else {
-        /* Transform vertices with no perspective divde, store w component */
+        /* Transform vertices with no perspective divide, store w component */
         _glKosArraysTransformClipElements(count);
 
         /* Unpack the indexed positions into primitives for rasterization */
@@ -733,29 +956,12 @@ GLAPI void APIENTRY glDrawElements(GLenum mode, GLsizei count, GLenum type, cons
                 break;
         }
 
-        /* Finally, clip the input vertex data into the output vertex buffer */
-        switch(mode) {
-            case GL_TRIANGLES:
-                count = _glKosClipTrianglesTransformed(dst, GL_ARRAY_DSTW,
-                                                       (pvr_vertex_t *)_glKosVertexBufPointer(), count);
-                break;
-
-            case GL_QUADS:
-                count = _glKosClipQuadsTransformed(dst, GL_ARRAY_DSTW,
-                                                   (pvr_vertex_t *)_glKosVertexBufPointer(), count);
-
-                break;
-
-            case GL_TRIANGLE_STRIP:
-                count = _glKosClipTriangleStripTransformed(dst, GL_ARRAY_DSTW,
-                        (pvr_vertex_t *)_glKosVertexBufPointer(), count);
-                break;
-        }
+        count = _glKosArraysApplyClipping(GL_KOS_ARRAY_BUFUV, 2, mode, count);
     }
 
-    _glKosVertexBufAdd(count);
+    _glKosArraysApplyMultiTexture(mode, count);
 
-    _glKosArraysResetState();
+    _glKosArraysFlush(count);
 }
 
 //========================================================================================//
@@ -763,54 +969,47 @@ GLAPI void APIENTRY glDrawElements(GLenum mode, GLsizei count, GLenum type, cons
 
 //== Color ==//
 
-static inline void _glKosArrayColor0(pvr_vertex_t *dst, GLuint count) {
-    GLuint i;
-
-    for(i = 0; i < count; i++)
-        dst[i].argb = _glKosVertexColor();
-}
-
 static inline void _glKosArrayColor1ui(pvr_vertex_t *dst, GLuint count) {
     GLuint i;
-    GLuint *color = (GLuint *)GL_COLOR_POINTER;
+    GLuint *color = (GLuint *)GL_KOS_COLOR_POINTER;
 
     for(i = 0; i < count; i++) {
         dst[i].argb = *color;
-        color += GL_COLOR_STRIDE;
+        color += GL_KOS_COLOR_STRIDE;
     }
 }
 
 static inline void _glKosArrayColor4ub(pvr_vertex_t *dst, GLuint count) {
-    GLuint i, *color = (GLuint *)GL_COLOR_POINTER;
+    GLuint i, *color = (GLuint *)GL_KOS_COLOR_POINTER;
 
     for(i = 0; i < count; i++)  {
         dst[i].argb = RGBA32_2_ARGB32(*color);
-        color += GL_COLOR_STRIDE;
+        color += GL_KOS_COLOR_STRIDE;
     }
 }
 
 static inline void _glKosArrayColor3f(pvr_vertex_t *dst, GLuint count) {
     GLuint i;
-    GLfloat *color = (GLfloat *)GL_COLOR_POINTER;
+    GLfloat *color = (GLfloat *)GL_KOS_COLOR_POINTER;
 
     for(i = 0; i < count; i++)  {
         dst[i].argb = (0xFF000000 | ((GLubyte)(color[0] * 0xFF)) << 16
                        | ((GLubyte)(color[1] * 0xFF)) << 8
                        | ((GLubyte)(color[2] * 0xFF)));
-        color += GL_COLOR_STRIDE;
+        color += GL_KOS_COLOR_STRIDE;
     }
 }
 
 static inline void _glKosArrayColor4f(pvr_vertex_t *dst, GLuint count) {
     GLuint i;
-    GLfloat *color = (GLfloat *)GL_COLOR_POINTER;
+    GLfloat *color = (GLfloat *)GL_KOS_COLOR_POINTER;
 
     for(i = 0; i < count; i++)  {
         dst[i].argb = (((GLubyte)(color[3] * 0xFF)) << 24
                        | ((GLubyte)(color[0] * 0xFF)) << 16
                        | ((GLubyte)(color[1] * 0xFF)) << 8
                        | ((GLubyte)(color[2] * 0xFF)));
-        color += GL_COLOR_STRIDE;
+        color += GL_KOS_COLOR_STRIDE;
     }
 }
 
@@ -818,13 +1017,30 @@ static inline void _glKosArrayColor4f(pvr_vertex_t *dst, GLuint count) {
 
 static inline void _glKosArrayTexCoord2f(pvr_vertex_t *dst, GLuint count) {
     GLuint i;
-    GLfloat *uv = GL_TEXCOORD_POINTER;
+    GLfloat *uv = GL_KOS_TEXCOORD0_POINTER;
 
     for(i = 0; i < count; i++) {
         dst[i].u = uv[0];
         dst[i].v = uv[1];
-        uv += GL_TEXCOORD_STRIDE;
+        uv += GL_KOS_TEXCOORD0_STRIDE;
     }
+}
+
+static inline void _glKosArrayMultiTexCoord2f(GLuint count) {
+    if(_glKosEnabledNearZClip())
+        return;
+
+    GLuint i;
+    GLfloat *uv = GL_KOS_TEXCOORD1_POINTER;
+    glTexCoord *dst = (glTexCoord *)_glKosMultiUVBufPointer();
+
+    for(i = 0; i < count; i++) {
+        dst[i].u = uv[0];
+        dst[i].v = uv[1];
+        uv += GL_KOS_TEXCOORD1_STRIDE;
+    }
+
+    _glKosMultiUVBufAdd(count);
 }
 
 //========================================================================================//
@@ -834,10 +1050,10 @@ static void _glKosDrawArrays2D(GLenum mode, GLint first, GLsizei count) {
     pvr_vertex_t *dst = _glKosVertexBufPointer();
 
     /* Check for Color Submission */
-    if(GL_VERTEX_PTR_MODE & GL_USE_COLOR) {
-        switch(GL_COLOR_TYPE) {
+    if(GL_KOS_VERTEX_PTR_MODE & GL_KOS_USE_COLOR) {
+        switch(GL_KOS_COLOR_TYPE) {
             case GL_FLOAT:
-                switch(GL_COLOR_COMPONENTS) {
+                switch(GL_KOS_COLOR_COMPONENTS) {
                     case 3:
                         _glKosArrayColor3f(dst, count);
                         break;
@@ -850,13 +1066,13 @@ static void _glKosDrawArrays2D(GLenum mode, GLint first, GLsizei count) {
                 break;
 
             case GL_UNSIGNED_INT:
-                if(GL_COLOR_COMPONENTS == 1)
+                if(GL_KOS_COLOR_COMPONENTS == 1)
                     _glKosArrayColor1ui(dst, count);
 
                 break;
 
             case GL_UNSIGNED_BYTE:
-                if(GL_COLOR_COMPONENTS == 4)
+                if(GL_KOS_COLOR_COMPONENTS == 4)
                     _glKosArrayColor4ub(dst, count);
 
                 break;
@@ -866,7 +1082,7 @@ static void _glKosDrawArrays2D(GLenum mode, GLint first, GLsizei count) {
         _glKosArrayColor0(dst, count); /* No colors bound */
 
     /* Check if Texture Coordinates are enabled */
-    if((GL_VERTEX_PTR_MODE & GL_USE_TEXTURE) && (_glKosEnabledTexture2D() >= 0))
+    if((GL_KOS_VERTEX_PTR_MODE & GL_KOS_USE_TEXTURE0) && (_glKosEnabledTexture2D() >= 0))
         _glKosArrayTexCoord2f(dst, count);
 
     _glKosMatrixApplyRender(); /* Apply the Render Matrix Stack */
@@ -875,61 +1091,38 @@ static void _glKosDrawArrays2D(GLenum mode, GLint first, GLsizei count) {
     _glKosArraysTransform2D(count);
 
     /* Set the vertex flags for use with the PVR */
-    switch(mode) {
-        case GL_QUADS:
-            _glKosArrayFlagsSetQuad(dst, count);
-            break;
+    _glKosArraysApplyVertexFlags(mode, dst, count);
 
-        case GL_TRIANGLES:
-            _glKosArrayFlagsSetTriangle(dst, count);
-            break;
-
-        case GL_TRIANGLE_STRIP:
-            _glKosArrayFlagsSetTriangleStrip(dst, count);
-            break;
-    }
-
-    _glKosVertexBufAdd(count);
-
-    _glKosArraysResetState();
+    _glKosArraysFlush(count);
 }
 
 GLAPI void APIENTRY glDrawArrays(GLenum mode, GLint first, GLsizei count) {
     /* Before we process the vertex data, ensure all parameters are valid */
     if(!_glKosArraysVerifyParameter(mode, count, first, 0))
         return;
-    
-    GL_VERTEX_POINTER   += first;       /* Add Pointer Offset */
-    GL_TEXCOORD_POINTER += first;
-    GL_COLOR_POINTER    += first;
-    GL_NORMAL_POINTER   += first;
-    
+
+    GL_KOS_VERTEX_POINTER   += first;       /* Add Pointer Offset */
+    GL_KOS_TEXCOORD0_POINTER += first;
+    GL_KOS_COLOR_POINTER    += first;
+    GL_KOS_NORMAL_POINTER   += first;
+
     /* Compile the PVR polygon context with the currently enabled flags */
-    if((GL_VERTEX_PTR_MODE & GL_USE_TEXTURE) && _glKosBoundTexID() > 0)
-        _glKosCompileHdrTx();
-    else
-        _glKosCompileHdr();
-    
+    _glKosArraysApplyHeader();
+
     if(GL_KOS_VERTEX_SIZE == 2)
         return _glKosDrawArrays2D(mode, first, count);
 
-    pvr_vertex_t *dst; /* Destination of Output Vertex Array */
-
-    if(_glKosEnabledNearZClip())
-        dst = _glKosClipBufAddress();
-    else
-        dst = _glKosVertexBufPointer();
+    /* Destination of Output Vertex Array */
+    pvr_vertex_t *dst = _glKosArraysDest();
 
     /* Check if Vertex Lighting is enabled. Else, check for Color Submission */
-    if((GL_VERTEX_PTR_MODE & GL_USE_NORMAL) && _glKosEnabledLighting()) {
-        _glKosArraysTransformNormals(GL_NORMAL_POINTER, count);
-        _glKosArraysTransformPositions(GL_VERTEX_POINTER, count);
-        _glKosVertexLights(GL_ARRAY_BUF, dst, count);
-    }
-    else if(GL_VERTEX_PTR_MODE & GL_USE_COLOR) {
-        switch(GL_COLOR_TYPE) {
+    if((GL_KOS_VERTEX_PTR_MODE & GL_KOS_USE_NORMAL) && _glKosEnabledLighting())
+        _glKosArraysApplyLighting(dst, count);
+
+    else if(GL_KOS_VERTEX_PTR_MODE & GL_KOS_USE_COLOR) {
+        switch(GL_KOS_COLOR_TYPE) {
             case GL_FLOAT:
-                switch(GL_COLOR_COMPONENTS) {
+                switch(GL_KOS_COLOR_COMPONENTS) {
                     case 3:
                         _glKosArrayColor3f(dst, count);
                         break;
@@ -942,13 +1135,13 @@ GLAPI void APIENTRY glDrawArrays(GLenum mode, GLint first, GLsizei count) {
                 break;
 
             case GL_UNSIGNED_INT:
-                if(GL_COLOR_COMPONENTS == 1)
+                if(GL_KOS_COLOR_COMPONENTS == 1)
                     _glKosArrayColor1ui(dst, count);
 
                 break;
 
             case GL_UNSIGNED_BYTE:
-                if(GL_COLOR_COMPONENTS == 4)
+                if(GL_KOS_COLOR_COMPONENTS == 4)
                     _glKosArrayColor4ub(dst, count);
 
                 break;
@@ -958,55 +1151,44 @@ GLAPI void APIENTRY glDrawArrays(GLenum mode, GLint first, GLsizei count) {
         _glKosArrayColor0(dst, count); /* No colors bound, color white */
 
     /* Check if Texture Coordinates are enabled */
-    if((GL_VERTEX_PTR_MODE & GL_USE_TEXTURE) && (_glKosEnabledTexture2D() >= 0))
+    if((GL_KOS_VERTEX_PTR_MODE & GL_KOS_USE_TEXTURE0) && (_glKosEnabledTexture2D() >= 0))
         _glKosArrayTexCoord2f(dst, count);
+
+    /* Check if Multi Texture Coordinates are enabled */
+    if((GL_KOS_VERTEX_PTR_MODE & GL_KOS_USE_TEXTURE1) && (_glKosEnabledTexture2D() >= 0))
+        _glKosArrayMultiTexCoord2f(count);
 
     _glKosMatrixApplyRender(); /* Apply the Render Matrix Stack */
 
-    if(!_glKosEnabledNearZClip()) {
+    if(!_glKosEnabledNearZClip()) { /* No NearZ Clipping Enabled */
         /* Transform Vertex Positions */
         _glKosArraysTransform(count);
 
         /* Set the vertex flags for use with the PVR */
-        switch(mode) {
-            case GL_QUADS:
-                _glKosArrayFlagsSetQuad(dst, count);
-                break;
-
-            case GL_TRIANGLES:
-                _glKosArrayFlagsSetTriangle(dst, count);
-                break;
-
-            case GL_TRIANGLE_STRIP:
-                _glKosArrayFlagsSetTriangleStrip(dst, count);
-                break;
-        }
+        _glKosArraysApplyVertexFlags(mode, dst, count);
     }
-    else {
-        /* Transform vertices with no perspective divde, store w component */
+    else { /* NearZ Clipping is Enabled */
+        /* Transform vertices with no perspective divide, store w component */
         _glKosArraysTransformClip(count);
 
         /* Finally, clip the input vertex data into the output vertex buffer */
-        switch(mode) {
-            case GL_TRIANGLES:
-                count = _glKosClipTrianglesTransformed(dst, GL_ARRAY_DSTW,
-                                                       (pvr_vertex_t *)_glKosVertexBufPointer(), count);
-                break;
-
-            case GL_QUADS:
-                count = _glKosClipQuadsTransformed(dst, GL_ARRAY_DSTW,
-                                                   (pvr_vertex_t *)_glKosVertexBufPointer(), count);
-
-                break;
-
-            case GL_TRIANGLE_STRIP:
-                count = _glKosClipTriangleStripTransformed(dst, GL_ARRAY_DSTW,
-                        (pvr_vertex_t *)_glKosVertexBufPointer(), count);
-                break;
-        }
+        count = _glKosArraysApplyClipping(GL_KOS_TEXCOORD1_POINTER, GL_KOS_TEXCOORD1_STRIDE, mode, count);
     }
 
-    _glKosVertexBufAdd(count);
+    _glKosArraysApplyMultiTexture(mode, count);
 
-    _glKosArraysResetState();
+    _glKosArraysFlush(count);
+}
+
+void APIENTRY glClientActiveTextureARB(GLenum texture) {
+    if(texture < GL_TEXTURE0_ARB || texture > GL_TEXTURE0_ARB + _glKosMaxTextureUnits())
+        _glKosThrowError(GL_INVALID_ENUM, "glClientActiveTextureARB");
+
+    if(_glKosGetError()) {
+
+        _glKosPrintError();
+        return;
+    }
+
+    GL_KOS_CLIENT_ACTIVE_TEXTURE = texture & 0xF;
 }

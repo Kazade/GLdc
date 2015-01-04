@@ -24,14 +24,14 @@ typedef struct {
 } pvr_cmd_tclip_t; /* Tile Clip command for the pvr */
 
 #define GL_PVR_VERTEX_BUF_SIZE 2560 * 256 /* PVR Vertex buffer size */
-#define GL_MAX_VERTS 1024*64              /* SH4 Vertex Count */
-#define GL_MAX_TEXTURES 1024              /* Textures in Buffer */
+#define GL_KOS_MAX_VERTS       1024*64    /* SH4 Vertex Count */
 
-#define GL_USE_MALLOC 1 /* Use Dynamic Vertex Array */
+#define GL_KOS_LIST_OP 0
+#define GL_KOS_LIST_TR 1
+
+#define GL_KOS_USE_MALLOC 1 /* Use Dynamic Vertex Array */
 //#define GL_USE_FLOAT  0 /* Use PVR's floating-point color Vertex Type (64bit) *NoOp* */
 //#define GL_USE_DMA    0 /* Use PVR DMA for vertex data transfer *NoOp* */
-#define GL_LIST_OP 0
-#define GL_LIST_TR 1
 
 /* Misc SH4->PVR Commands */
 #define TA_SQ_ADDR (unsigned int *)(void *) \

@@ -15,7 +15,7 @@
 
    The size of the Vertex Buffer can be controlled by setting some params on gl-pvr.h:
    GL_PVR_VERTEX_BUF_SIZE controls size of Vertex Buffer in the PVR VRAM
-   GL_MAX_VERTS conrols the number of vertices per list in the Vertex Buffer in SH4 RAM
+   GL_KOS_MAX_VERTS conrols the number of vertices per list in the Vertex Buffer in SH4 RAM
 */
 
 #include <malloc.h>
@@ -30,22 +30,30 @@
 
 /* Vertex Buffer Functions *************************************************************************/
 
-#ifdef GL_USE_MALLOC
+#ifdef GL_KOS_USE_MALLOC
 static pvr_cmd_t   *GL_VBUF[2] __attribute__((aligned(32)));  /* Dynamic Vertex Buffer */
 static pvr_cmd_t   *GL_CBUF;                                  /* Dynamic Clip Buffer */
+static glTexCoord  *GL_UVBUF;                                 /* Dynamic Multi-Texture UV Buffer */
 #else
-static pvr_cmd_t    GL_VBUF[2][GL_MAX_VERTS] __attribute__((aligned(32))); /* Static Vertex Buffer */
-static pvr_cmd_t    GL_CBUF[GL_MAX_VERTS / 2];                             /* Static Clip Buffer */
+static pvr_cmd_t    GL_VBUF[2][GL_KOS_MAX_VERTS] __attribute__((aligned(32))); /* Static Vertex Buffer */
+static pvr_cmd_t    GL_CBUF[GL_KOS_MAX_VERTS / 2];                             /* Static Clip Buffer */
+static glTexCoord   GL_UVBUF[GL_KOS_MAX_VERTS / 2];                    /* Static Multi-Texture UV Buffer */
 #endif
 
-static unsigned int GL_VERTS[2] = {0, 0},
-                                  GL_CVERTS = 0,
-                                  GL_LIST = GL_LIST_OP;
+static GLuint GL_VERTS[2] = {0, 0},
+                            GL_CVERTS = 0,
+                            GL_UVVERTS = 0,
+                            GL_LIST = GL_KOS_LIST_OP;
+
+#define GL_KOS_MAX_MULTITEXTURE_OBJECTS 512
+
+static GL_MULTITEX_OBJECT GL_MTOBJS[GL_KOS_MAX_MULTITEXTURE_OBJECTS];
+static GLuint             GL_MTOBJECTS = 0;
 
 /* Custom version of sq_cpy from KOS for copying vertex data to the PVR */
 static inline void pvr_list_submit(void *src, int n) {
-    unsigned int *d = TA_SQ_ADDR;
-    unsigned int *s = src;
+    GLuint *d = TA_SQ_ADDR;
+    GLuint *s = src;
 
     /* fill/write queues as many times necessary */
     while(n--) {
@@ -63,8 +71,41 @@ static inline void pvr_list_submit(void *src, int n) {
     }
 
     /* Wait for both store queues to complete */
-    d = (unsigned int *)0xe0000000;
+    d = (GLuint *)0xe0000000;
     d[0] = d[8] = 0;
+}
+
+inline void _glKosPushMultiTexObject(GL_TEXTURE_OBJECT *tex,
+                                     pvr_vertex_t *src,
+                                     GLuint count) {
+    _glKosCompileHdrMT(&GL_MTOBJS[GL_MTOBJECTS].hdr, tex);
+
+    GL_MTOBJS[GL_MTOBJECTS].src = src;
+    GL_MTOBJS[GL_MTOBJECTS++].count = count;
+}
+
+inline void _glKosResetMultiTexObject() {
+    GL_MTOBJECTS = 0;
+}
+
+inline void *_glKosMultiUVBufAddress() {
+    return &GL_UVBUF[0];
+}
+
+inline void *_glKosMultiUVBufPointer() {
+    return &GL_UVBUF[GL_UVVERTS];
+}
+
+inline void _glKosMultiUVBufIncrement() {
+    ++GL_UVVERTS;
+}
+
+inline void _glKosMultiUVBufAdd(GLuint count) {
+    GL_UVVERTS += count;
+}
+
+inline void _glKosMultiUVBufReset() {
+    GL_UVVERTS = 0;
 }
 
 inline void *_glKosClipBufAddress() {
@@ -79,7 +120,7 @@ inline void _glKosClipBufIncrement() {
     ++GL_CVERTS;
 }
 
-inline void _glKosClipBufAdd(unsigned int count) {
+inline void _glKosClipBufAdd(GLuint count) {
     GL_CVERTS += count;
 }
 
@@ -88,14 +129,14 @@ inline void _glKosClipBufReset() {
 }
 
 inline void _glKosVertexBufSwitchOP() {
-    GL_LIST = GL_LIST_OP;
+    GL_LIST = GL_KOS_LIST_OP;
 }
 
 inline void _glKosVertexBufSwitchTR() {
-    GL_LIST = GL_LIST_TR;
+    GL_LIST = GL_KOS_LIST_TR;
 }
 
-inline void *_glKosVertexBufAddress(unsigned char list) {
+inline void *_glKosVertexBufAddress(GLubyte list) {
     return &GL_VBUF[list][0];
 }
 
@@ -108,19 +149,19 @@ inline void _glKosVertexBufIncrement() {
 }
 
 inline void *_glKosTRVertexBufPointer() {
-    return &GL_VBUF[GL_LIST_TR][GL_VERTS[GL_LIST_TR]];
+    return &GL_VBUF[GL_KOS_LIST_TR][GL_VERTS[GL_KOS_LIST_TR]];
 }
 
 inline void _glKosTRVertexBufIncrement() {
-    ++GL_VERTS[GL_LIST_TR];
+    ++GL_VERTS[GL_KOS_LIST_TR];
 }
 
-inline void _glKosVertexBufAdd(unsigned int count) {
+inline void _glKosVertexBufAdd(GLuint count) {
     GL_VERTS[GL_LIST] += count;
 }
 
-inline void _glKosTRVertexBufAdd(unsigned int count) {
-    GL_VERTS[GL_LIST_TR] += count;
+inline void _glKosTRVertexBufAdd(GLuint count) {
+    GL_VERTS[GL_KOS_LIST_TR] += count;
 }
 
 inline void _glKosVertexBufDecrement() {
@@ -131,11 +172,11 @@ inline void _glKosVertexBufReset() {
     GL_VERTS[0] = GL_VERTS[1] = 0;
 }
 
-inline unsigned int _glKosVertexBufCount(unsigned char list) {
+inline GLuint _glKosVertexBufCount(GLubyte list) {
     return GL_VERTS[list];
 }
 
-unsigned char _glKosList() {
+GLubyte _glKosList() {
     return GL_LIST;
 }
 
@@ -146,13 +187,32 @@ inline void _glKosVertexBufCopy(void *dst, void *src, GLuint count) {
 static inline void glutSwapBuffer() {
     pvr_list_begin(PVR_LIST_OP_POLY);
 
-    pvr_list_submit(_glKosVertexBufAddress(GL_LIST_OP), _glKosVertexBufCount(GL_LIST_OP));
+    pvr_list_submit(_glKosVertexBufAddress(GL_KOS_LIST_OP), _glKosVertexBufCount(GL_KOS_LIST_OP));
 
     pvr_list_finish();
 
     pvr_list_begin(PVR_LIST_TR_POLY);
 
-    pvr_list_submit(_glKosVertexBufAddress(GL_LIST_TR), _glKosVertexBufCount(GL_LIST_TR));
+    pvr_list_submit(_glKosVertexBufAddress(GL_KOS_LIST_TR), _glKosVertexBufCount(GL_KOS_LIST_TR));
+
+    /* Multi-Texture Pass - Modify U/V coords of submitted vertices */
+    GLuint i, v;
+    glTexCoord *mt = _glKosMultiUVBufAddress();
+
+    for(i = 0; i < GL_MTOBJECTS; i++) {
+        //copy vertex uv
+        for(v = 0; v < GL_MTOBJS[i].count; v ++) {
+            GL_MTOBJS[i].src[v].u = mt->u;
+            GL_MTOBJS[i].src[v].v = mt->v;
+            ++mt;
+        }
+
+        // submit vertex data to PVR
+        pvr_list_submit((pvr_poly_hdr_t *)&GL_MTOBJS[i].hdr, 1);
+        pvr_list_submit((pvr_vertex_t *)GL_MTOBJS[i].src, GL_MTOBJS[i].count);
+    }
+
+    _glKosResetMultiTexObject(); /* End Multi-Texture Pass */
 
     pvr_list_finish();
 
@@ -173,6 +233,9 @@ void glutSwapBuffers() {
     glutSwapBuffer();
 
     _glKosVertexBufReset();
+
+    _glKosMultiUVBufReset();
+
 }
 
 void glutCopyBufferToTexture(void *dst, GLsizei *x, GLsizei *y) {
@@ -200,14 +263,12 @@ int _glKosInitPVR() {
     };
 
     pvr_init(&params);
-#ifdef GL_USE_DMA
-    pvr_dma_init();
-#endif
 
-#ifdef GL_USE_MALLOC
-    GL_VBUF[0] = memalign(0x20, GL_MAX_VERTS * sizeof(pvr_cmd_t));
-    GL_VBUF[1] = memalign(0x20, GL_MAX_VERTS * sizeof(pvr_cmd_t));
-    GL_CBUF = malloc((GL_MAX_VERTS / 2) * sizeof(pvr_cmd_t));
+#ifdef GL_KOS_USE_MALLOC
+    GL_VBUF[0] = memalign(0x20, GL_KOS_MAX_VERTS * sizeof(pvr_cmd_t));
+    GL_VBUF[1] = memalign(0x20, GL_KOS_MAX_VERTS * sizeof(pvr_cmd_t));
+    GL_CBUF = malloc((GL_KOS_MAX_VERTS / 2) * sizeof(pvr_cmd_t));
+    GL_UVBUF = malloc(GL_KOS_MAX_VERTS * sizeof(glTexCoord));
 #endif
 
     return 1;

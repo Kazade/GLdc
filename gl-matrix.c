@@ -105,8 +105,7 @@ void glLoadIdentity() {
     mat_load(Matrix + GL_IDENTITY);
     mat_store(Matrix + MatrixMode);
 
-    if(MatrixMode == GL_MODELVIEW)
-    {
+    if(MatrixMode == GL_MODELVIEW) {
         mat_store(&MatrixMdlRot);
         mat_store(&MatrixLookAt);
     }

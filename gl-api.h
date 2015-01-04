@@ -10,10 +10,16 @@
 #ifndef GL_API_H
 #define GL_API_H
 
+#include "gl.h"
+
 typedef struct {
-    float pos[3];
-    float norm[3];
+    GLfloat pos[3];
+    GLfloat norm[3];
 } glVertex; /* Simple Vertex used for Dynamic Vertex Lighting */
+
+typedef struct {
+    GLfloat u, v;
+} glTexCoord; /* Simple Texture Coordinate used for Multi-Texturing */
 
 typedef struct {
     GLushort width;
@@ -35,8 +41,14 @@ typedef struct {
     GLvoid *link;
 } GL_FRAMEBUFFER_OBJECT; /* KOS Open GL Frame Buffer Object */
 
-typedef unsigned short uint16;
-typedef unsigned char  uint8;
+typedef struct {
+    pvr_poly_hdr_t hdr;
+    pvr_vertex_t *src;
+    GLuint count;
+} GL_MULTITEX_OBJECT;
+
+typedef GLushort uint16;
+typedef GLubyte  uint8;
 
 /* Vertex Main Buffer Internal Functions */
 inline void  _glKosVertexBufSwitchOP();
@@ -54,6 +66,11 @@ inline unsigned int _glKosVertexBufCount(unsigned char list);
 unsigned char _glKosList();
 inline void _glKosVertexBufCopy(void *src, void *dst, GLuint count);
 inline void _glKosResetEnabledTex();
+inline void *_glKosMultiUVBufAddress();
+inline void *_glKosMultiUVBufPointer();
+inline void _glKosMultiUVBufIncrement();
+inline void _glKosMultiUVBufAdd(GLuint count);
+inline void _glKosMultiUVBufReset();
 
 /* Vertex Clip Buffer Internal Functions */
 inline void *_glKosClipBufAddress();
@@ -69,13 +86,14 @@ inline glVertex *_glKosArrayBufPtr();
 
 /* Initialize the OpenGL PVR Pipeline */
 int  _glKosInitPVR();
-GLubyte  _glKosInitTextures();
+unsigned char  _glKosInitTextures();
 
 /* Compile the current Polygon Header for the PVR */
 void _glKosCompileHdr();
 void _glKosCompileHdrTx();
-void _glKosCompileHdrTx2();
+void _glKosCompileHdrMTx();
 void _glKosCompileHdrT(GL_TEXTURE_OBJECT *tex);
+void _glKosCompileHdrMT(pvr_poly_hdr_t *dst, GL_TEXTURE_OBJECT *tex);
 
 /* Clipping Internal Functions */
 void         _glKosTransformClipBuf(pvr_vertex_t *v, GLuint verts);
@@ -84,9 +102,16 @@ unsigned int _glKosClipTriangles(pvr_vertex_t *vin, pvr_vertex_t *vout, unsigned
 unsigned int _glKosClipQuads(pvr_vertex_t *vin, pvr_vertex_t *vout, unsigned int vertices);
 
 unsigned int _glKosClipTrianglesTransformed(pvr_vertex_t *src, float *w, pvr_vertex_t *dst, GLuint count);
-unsigned char _glKosClipTriTransformed(pvr_vertex_t *vin, float *w, pvr_vertex_t *vout);
 unsigned int _glKosClipQuadsTransformed(pvr_vertex_t *vin, float *w, pvr_vertex_t *vout, unsigned int vertices);
 unsigned int _glKosClipTriangleStripTransformed(pvr_vertex_t *src, float *w, pvr_vertex_t *dst, GLuint count);
+
+unsigned int _glKosClipTrianglesTransformedMT(pvr_vertex_t *src, float *w, pvr_vertex_t *dst,
+        GLfloat *uvsrc, glTexCoord *uvdst, GLuint uv_src_stride, GLuint count);
+unsigned int _glKosClipTriangleStripTransformedMT(pvr_vertex_t *src, float *w, pvr_vertex_t *dst,
+        GLfloat *uvsrc, glTexCoord *uvdst, GLuint uv_src_stride, GLuint count);
+unsigned int _glKosClipQuadsTransformedMT(pvr_vertex_t *src, float *w, pvr_vertex_t *dst,
+        GLfloat *uvsrc, glTexCoord *uvdst, GLuint uv_src_stride, GLuint count);
+
 
 /* Lighting Internal Functions */
 void _glKosInitLighting();
@@ -176,5 +201,20 @@ GLubyte _glKosIsLightEnabled(GLubyte light);
 GLubyte _glKosGetMaxLights();
 GLuint  _glKosBoundTexID();
 GLuint  _glKosVertexColor();
+GLubyte _glKosMaxTextureUnits();
+
+GL_TEXTURE_OBJECT *_glKosBoundMultiTexID();
+
+inline void _glKosPushMultiTexObject(GL_TEXTURE_OBJECT *tex,
+                                     pvr_vertex_t *src,
+                                     GLuint count);
+
+static inline void _glKosVertexCopyPVR(const pvr_vertex_t *src, pvr_vertex_t *dst) {
+    *dst = *src;
+}
+
+static inline void _glKosTexCoordCopy(const glTexCoord *src, glTexCoord *dst) {
+    *dst = *src;
+}
 
 #endif

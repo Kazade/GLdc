@@ -379,9 +379,9 @@ __BEGIN_DECLS
 #define GLclampf float
 #define GLubyte  unsigned char
 #define GLbitfield unsigned long
-#define GLboolean   int
-#define GL_FALSE    0
-#define GL_TRUE     1
+#define GLboolean  unsigned char
+#define GL_FALSE   0
+#define GL_TRUE    1
 
 #define GLAPI extern
 #define APIENTRY
@@ -419,7 +419,7 @@ GLAPI void APIENTRY glNormal3fv(const GLfloat *xyz);
 
 /* Primitive 2D Position Submission */
 GLAPI void APIENTRY glVertex2f(GLfloat x, GLfloat y);
-GLAPI void APIENTRY glVertex2fv(const const GLfloat *xy);
+GLAPI void APIENTRY glVertex2fv(const GLfloat *xy);
 
 /* Non-Standard KOS Primitive 2D Submission.  This will perform no tranformations on the vertices. */
 GLAPI void APIENTRY glKosVertex2f(GLfloat x, GLfloat y);
@@ -491,14 +491,43 @@ GLAPI void APIENTRY glDeleteTextures(GLsizei n, GLuint *textures);
 GLAPI void APIENTRY glBindTexture(GLenum  target, GLuint texture);
 
 /* Loads texture from SH4 RAM into PVR VRAM */
+/* internalformat must be one of the following constants:
+     GL_RGB
+     GL_RGBA
+
+   format must be the same as internalformat
+
+   if internal format is GL_RGB, type must be one of the following constants:
+     GL_UNSIGNED_SHORT_5_6_5
+     GL_UNSIGNED_SHORT_5_6_5_TWID
+
+   if internal format is GL_RGBA, type must be one of the following constants:
+     GL_UNSIGNED_SHORT_4_4_4_4
+     GL_UNSIGNED_SHORT_4_4_4_4_TWID
+     GL_UNSIGNED_SHORT_1_5_5_5
+     GL_UNSIGNED_SHORT_1_5_5_5_TWID
+ */
 GLAPI void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
                                  GLsizei width, GLsizei height, GLint border,
-                                 GLenum format, GLenum type, GLvoid *data);
+                                 GLenum format, GLenum type, const GLvoid *data);
 
-/* Bind a Texture that is already in PVR VRAM */
-GLAPI void APIENTRY glKosTexImage2D(GLenum target, GLint level, GLint internalFormat,
-                                    GLsizei width, GLsizei height, GLint border,
-                                    GLenum format, GLenum type, GLvoid *data);
+/* Loads VQ compressed texture from SH4 RAM into PVR VRAM */
+/* internalformat must be one of the following constants:
+    GL_UNSIGNED_SHORT_5_6_5_VQ
+    GL_UNSIGNED_SHORT_5_6_5_VQ_TWID
+    GL_UNSIGNED_SHORT_4_4_4_4_VQ
+    GL_UNSIGNED_SHORT_4_4_4_4_VQ_TWID
+    GL_UNSIGNED_SHORT_1_5_5_5_VQ
+    GL_UNSIGNED_SHORT_1_5_5_5_VQ_TWID
+ */
+GLAPI void APIENTRY glCompressedTexImage2D(GLenum target,
+        GLint level,
+        GLenum internalformat,
+        GLsizei width,
+        GLsizei height,
+        GLint border,
+        GLsizei imageSize,
+        const GLvoid *data);
 
 /* GL Array API - Only GL_TRIANGLES, GL_TRIANGLE_STRIP, and GL_QUADS are supported */
 GLAPI void APIENTRY glVertexPointer(GLint size, GLenum type,
@@ -514,8 +543,6 @@ GLAPI void APIENTRY glNormalPointer(GLenum type, GLsizei stride, const GLvoid *p
 /* Use either this OR glNormalPointer to color vertices, NOT both */
 GLAPI void APIENTRY glColorPointer(GLint size, GLenum type,
                                    GLsizei stride, const GLvoid *pointer);
-
-GLAPI void APIENTRY glIndexPointer(GLenum type, GLsizei stride, const GLvoid *pointer);
 
 /* Array Data Submission */
 GLAPI void APIENTRY glDrawArrays(GLenum mode, GLint first, GLsizei count);
@@ -587,24 +614,20 @@ GLAPI GLuint APIENTRY glKosMipMapTexSize(GLuint width, GLuint height);
 /* glGet Functions */
 GLAPI void APIENTRY glGetIntegerv(GLenum pname, GLint *params);
 GLAPI void APIENTRY glGetFloatv(GLenum pname, GLfloat *params);
-GLAPI GLboolean APIENTRY glIsEnabled(GLenum cap); 
+GLAPI GLboolean APIENTRY glIsEnabled(GLenum cap);
 
-/* Multi-Texture Extensions - Does not currently work with Z-Clipping Enabled 
-GLAPI void APIENTRY glActiveTexture(GLenum texture);
-
-GLAPI void APIENTRY glClientActiveTexture(GLenum texture);
-
-GLAPI void APIENTRY glMultiTexCoord2f(GLenum target, GLfloat s, GLfloat t);
-GLAPI void APIENTRY glMultiTexCoord2fv(GLenum target, const GLfloat *v);
-*/
+/* Multi-Texture Extensions - Currently not supported in immediate mode */
+GLAPI void APIENTRY glActiveTextureARB(GLenum texture);
+GLAPI void APIENTRY glClientActiveTextureARB(GLenum texture);
 
 /* Frame Buffer Objects / Render-To-Texture Functions */
-GLAPI void APIENTRY glGenFramebuffers(GLsizei n, GLuint * framebuffers);
-GLAPI void APIENTRY glDeleteFramebuffers(GLsizei n, GLuint * framebuffers);
-GLAPI void APIENTRY glBindFramebuffer(GLenum target, GLuint framebuffer); 
+GLAPI void APIENTRY glGenFramebuffers(GLsizei n, GLuint *framebuffers);
+GLAPI void APIENTRY glDeleteFramebuffers(GLsizei n, GLuint *framebuffers);
+GLAPI void APIENTRY glBindFramebuffer(GLenum target, GLuint framebuffer);
 GLAPI void APIENTRY glFramebufferTexture2D(GLenum target, GLenum attachment,
-			         GLenum textarget, GLuint texture, GLint level);
-GLAPI GLenum APIENTRY glCheckFramebufferStatus(GLenum target); 
+        GLenum textarget, GLuint texture, GLint level);
+GLAPI GLenum APIENTRY glCheckFramebufferStatus(GLenum target);
 
 __END_DECLS
+
 #endif /* !__GL_GL_H */

@@ -31,7 +31,7 @@
 #define GREEN 0x0000FF00
 #define BLUE  0x000000FF
 
-#define CLIP_NEARZ -0.5f /* Clip Threshold */
+#define CLIP_NEARZ -0.20f /* Clip Threshold */
 
 typedef struct {
     float x, y, z;
@@ -40,5 +40,13 @@ typedef struct {
 typedef struct {
     unsigned char b, g, r, a;
 } colorui;
+
+static inline void _glKosVertexCopy3f(float3 *src, float3 *dst) {
+    *dst = *src;
+}
+
+static inline GLfloat _glKosNearZClipMag(float3 *v1, float3 *v2) {
+    return ((CLIP_NEARZ - v1->z) / (v2->z - v1->z));
+}
 
 #endif

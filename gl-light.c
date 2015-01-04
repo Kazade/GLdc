@@ -68,19 +68,17 @@ void _glKosInitLighting() { /* Called internally by glInit() */
 
 /* Enable a light - GL_LIGHT0->GL_LIGHT7 */
 void _glKosEnableLight(const GLuint light) {
-    if(light < GL_LIGHT0 || light > GL_LIGHT0 + GL_KOS_MAX_LIGHTS)
-    {
+    if(light < GL_LIGHT0 || light > GL_LIGHT0 + GL_KOS_MAX_LIGHTS) {
         _glKosThrowError(GL_INVALID_ENUM, "glEnable(GL_LIGHT)");
         return;
     }
-    
+
     GL_LIGHT_ENABLED |= (1 << (light & 0xF));
 }
 
 /* Disable a light - GL_LIGHT0->GL_LIGHT7 */
 void _glKosDisableLight(const GLuint light) {
-    if(light < GL_LIGHT0 || light > GL_LIGHT0 + GL_KOS_MAX_LIGHTS)
-    {
+    if(light < GL_LIGHT0 || light > GL_LIGHT0 + GL_KOS_MAX_LIGHTS) {
         _glKosThrowError(GL_INVALID_ENUM, "glDisable(GL_LIGHT)");
         return;
     }
