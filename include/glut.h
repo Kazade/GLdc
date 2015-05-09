@@ -12,7 +12,9 @@
 #include <sys/cdefs.h>
 __BEGIN_DECLS
 
+#ifndef BUILD_LIBGL
 #include <GL/gl.h>
+#endif
 
 /* Flush the Submitted Primitive Data to the GPU for render */
 GLAPI void APIENTRY glutSwapBuffers();

@@ -15,10 +15,12 @@
 #include <sys/cdefs.h>
 __BEGIN_DECLS
 
+#ifndef BUILD_LIBGL
 #include <GL/gl.h>
+#endif
 
-#define GLU_FALSE GL_FALSE
-#define GLU_TRUE GL_TRUE
+#define GLU_FALSE 0
+#define GLU_TRUE  1
 
 /* Mip-Mapped Textures MUST be square or rectangle */
 GLAPI GLint APIENTRY gluBuild2DMipmaps(GLenum target, GLint internalFormat,
