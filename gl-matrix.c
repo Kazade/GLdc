@@ -123,8 +123,11 @@ void glScalef(GLfloat x, GLfloat y, GLfloat z) {
     mat_store(Matrix + MatrixMode);
 }
 
-void glRotatef(GLfloat angle, GLfloat x, GLfloat  y, GLfloat z) {
-    float r = DEG2RAD * angle;
+void glRotatef(GLfloat angle, GLfloat x, GLfloat  y, GLfloat z) {    
+    float r = DEG2RAD * -angle;
+    
+    vec3f_normalize(x, y, z);    
+    
     mat_load(Matrix + MatrixMode);
     mat_rotate(r * x, r * y, r * z);
     mat_store(Matrix + MatrixMode);
@@ -364,6 +367,10 @@ void _glKosMatrixApplyRender() {
 
 void _glKosMatrixLoadRender() {
     mat_load(Matrix + GL_RENDER);
+}
+
+void _glKosMatrixLoadTexture() {
+    mat_load(Matrix + GL_TEXTURE);
 }
 
 void _glKosMatrixLoadModelView() {

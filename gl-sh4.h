@@ -49,4 +49,38 @@ typedef float matrix4f[4][4];  /* 4x4 float matrix */
                               : "0" (__x), "1" (__y), "2" (__z), "3" (__w) ); \
     }
 
+#define mat_trans_texture4(s, t, r, q) { \
+        register float __s __asm__("fr4") = (s); \
+        register float __t __asm__("fr5") = (t); \
+        register float __r __asm__("fr6") = (r); \
+        register float __q __asm__("fr7") = (q); \
+        __asm__ __volatile__( \
+                              "ftrv	xmtrx,fv4\n" \
+                              "fldi1	fr6\n" \
+                              "fdiv	fr7,fr6\n" \
+                              "fmul	fr6,fr4\n" \
+                              "fmul	fr6,fr5\n" \
+                              : "=f" (__s), "=f" (__t), "=f" (__r) \
+                              : "0" (__s), "1" (__t), "2" (__r) \
+                              : "fr7" ); \
+        s = __s; t = __t; r = __r; \
+    }
+
+#define mat_trans_texture2_nomod(s, t, so, to) { \
+        register float __s __asm__("fr4") = (s); \
+        register float __t __asm__("fr5") = (t); \
+        __asm__ __volatile__( \
+                              "fldi0	fr6\n" \
+                              "fldi1	fr7\n" \
+                              "ftrv	xmtrx,fv4\n" \
+                              "fldi1	fr6\n" \
+                              "fdiv	fr7,fr6\n" \
+                              "fmul	fr6,fr4\n" \
+                              "fmul	fr6,fr5\n" \
+                              : "=f" (__s), "=f" (__t) \
+                              : "0" (__s), "1" (__t) \
+                              : "fr7" ); \
+        so = __s; to = __t; \
+    }
+
 #endif

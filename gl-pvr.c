@@ -75,6 +75,22 @@ static inline void pvr_list_submit(void *src, int n) {
     d[0] = d[8] = 0;
 }
 
+/* Custom version of sq_cpy from KOS for copying 32bytes of vertex data to the PVR */
+static inline void pvr_hdr_submit(const GLuint *src) {
+    GLuint *d = TA_SQ_ADDR;
+
+    d[0] = *(src++);
+    d[1] = *(src++);
+    d[2] = *(src++);
+    d[3] = *(src++);
+    d[4] = *(src++);
+    d[5] = *(src++);
+    d[6] = *(src++);
+    d[7] = *(src++);
+    
+    asm("pref @%0" : : "r"(d));
+}
+
 inline void _glKosPushMultiTexObject(GL_TEXTURE_OBJECT *tex,
                                      pvr_vertex_t *src,
                                      GLuint count) {
@@ -186,15 +202,23 @@ inline void _glKosVertexBufCopy(void *dst, void *src, GLuint count) {
 
 static inline void glutSwapBuffer() {
     pvr_list_begin(PVR_LIST_OP_POLY);
-
+#ifdef GL_KOS_USE_DMA
+    pvr_dma_transfer(_glKosVertexBufAddress(GL_KOS_LIST_OP), 0,
+                     _glKosVertexBufCount(GL_KOS_LIST_OP) * 32,
+                     PVR_DMA_TA, 1, NULL, 0);
+#else
     pvr_list_submit(_glKosVertexBufAddress(GL_KOS_LIST_OP), _glKosVertexBufCount(GL_KOS_LIST_OP));
-
+#endif    
     pvr_list_finish();
 
     pvr_list_begin(PVR_LIST_TR_POLY);
-
+#ifdef GL_KOS_USE_DMA
+    pvr_dma_transfer(_glKosVertexBufAddress(GL_KOS_LIST_TR), 0,
+                     _glKosVertexBufCount(GL_KOS_LIST_TR) * 32,
+                     PVR_DMA_TA, 1, NULL, 0);    
+#else
     pvr_list_submit(_glKosVertexBufAddress(GL_KOS_LIST_TR), _glKosVertexBufCount(GL_KOS_LIST_TR));
-
+#endif 
     /* Multi-Texture Pass - Modify U/V coords of submitted vertices */
     GLuint i, v;
     glTexCoord *mt = _glKosMultiUVBufAddress();
@@ -208,8 +232,14 @@ static inline void glutSwapBuffer() {
         }
 
         // submit vertex data to PVR
+#ifdef GL_KOS_USE_DMA
+        pvr_hdr_submit((GLuint *)&GL_MTOBJS[i].hdr);
+        pvr_dma_transfer(GL_MTOBJS[i].src, 0,
+                         GL_MTOBJS[i].count * 32, PVR_DMA_TA, 1, NULL, 0);
+#else                         
         pvr_list_submit((pvr_poly_hdr_t *)&GL_MTOBJS[i].hdr, 1);
         pvr_list_submit((pvr_vertex_t *)GL_MTOBJS[i].src, GL_MTOBJS[i].count);
+#endif
     }
 
     _glKosResetMultiTexObject(); /* End Multi-Texture Pass */

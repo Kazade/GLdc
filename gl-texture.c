@@ -10,6 +10,7 @@
 #include "gl.h"
 #include "glext.h"
 #include "gl-api.h"
+#include "gl-rgb.h"
 
 #include <malloc.h>
 #include <stdio.h>
@@ -236,18 +237,6 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
     if(format != internalFormat)
         _glKosThrowError(GL_INVALID_OPERATION, "glTexImage2D");
 
-    if(format == GL_RGB)
-        if(type != GL_UNSIGNED_SHORT_5_6_5)
-            if(type != GL_UNSIGNED_SHORT_5_6_5_TWID)
-                _glKosThrowError(GL_INVALID_OPERATION, "glTexImage2D");
-
-    if(format == GL_RGBA)
-        if(type != GL_UNSIGNED_SHORT_4_4_4_4)
-            if(type != GL_UNSIGNED_SHORT_4_4_4_4_TWID)
-                if(type != GL_UNSIGNED_SHORT_1_5_5_5)
-                    if(type != GL_UNSIGNED_SHORT_1_5_5_5_TWID)
-                        _glKosThrowError(GL_INVALID_OPERATION, "glTexImage2D");
-
     if(GL_KOS_TEXTURE_UNIT[GL_KOS_ACTIVE_TEXTURE] == NULL)
         _glKosThrowError(GL_INVALID_OPERATION, "glTexImage2D");
 
@@ -266,7 +255,60 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
     GL_KOS_TEXTURE_UNIT[GL_KOS_ACTIVE_TEXTURE]->data = pvr_mem_malloc(bytes);
 
     if(data)
-        sq_cpy(GL_KOS_TEXTURE_UNIT[GL_KOS_ACTIVE_TEXTURE]->data, data, bytes);
+    {
+        switch(type)
+        {
+            case GL_BYTE:          /* Texture Formats that need conversion for PVR */
+            case GL_UNSIGNED_BYTE:
+            case GL_SHORT:
+            case GL_UNSIGNED_SHORT:
+            case GL_FLOAT:
+                 {
+                     uint16 tex[width * height];
+                     
+                     switch(internalFormat)
+                     {
+                         case GL_RGB:
+                              
+                              _glPixelConvertRGB(type, width, height, (void *)data, tex);
+                
+                              GL_KOS_TEXTURE_UNIT[GL_KOS_ACTIVE_TEXTURE]->color = (PVR_TXRFMT_RGB565 | PVR_TXRFMT_NONTWIDDLED);
+                
+                              sq_cpy(GL_KOS_TEXTURE_UNIT[GL_KOS_ACTIVE_TEXTURE]->data, tex, bytes);
+                             
+                              break;
+
+                         case GL_RGBA:
+                              
+                              _glPixelConvertRGBA(type, width, height, (void *)data, tex);
+                
+                              GL_KOS_TEXTURE_UNIT[GL_KOS_ACTIVE_TEXTURE]->color = (PVR_TXRFMT_ARGB4444 | PVR_TXRFMT_NONTWIDDLED);
+                
+                              sq_cpy(GL_KOS_TEXTURE_UNIT[GL_KOS_ACTIVE_TEXTURE]->data, tex, bytes);
+                             
+                              break;
+                     }
+                 }
+                 break;
+                 
+            case GL_UNSIGNED_SHORT_5_6_5:   /* Texture Formats that do not need conversion  */
+            case GL_UNSIGNED_SHORT_5_6_5_TWID: 
+            case GL_UNSIGNED_SHORT_1_5_5_5:     
+            case GL_UNSIGNED_SHORT_1_5_5_5_TWID:
+            case GL_UNSIGNED_SHORT_4_4_4_4:
+            case GL_UNSIGNED_SHORT_4_4_4_4_TWID:
+                     
+                 sq_cpy(GL_KOS_TEXTURE_UNIT[GL_KOS_ACTIVE_TEXTURE]->data, data, bytes);
+                
+                 break;
+                
+            default: /* Unsupported Texture Format */
+                    
+                 _glKosThrowError(GL_INVALID_OPERATION, "glTexImage2D");
+                 
+                 break;
+        }
+    }
 }
 
 void APIENTRY glTexParameteri(GLenum target, GLenum pname, GLint param) {

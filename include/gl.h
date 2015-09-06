@@ -315,8 +315,17 @@ __BEGIN_DECLS
 #define GL_DEPTH_BITS                     0x0D56
 #define GL_STENCIL_BITS                   0x0D57
 
+/* StringName */
+#define GL_VENDOR                         0x1F00
+#define GL_RENDERER                       0x1F01
+#define GL_VERSION                        0x1F02
+#define GL_EXTENSIONS                     0x1F03
+
 /* GL KOS near Z-CLIPPING */
 #define GL_KOS_NEARZ_CLIPPING       0x0020      /* capability bit */
+
+/* GL KOS Texture Matrix Enable Bit */
+#define GL_KOS_TEXTURE_MATRIX       0x002F
 
 /* GL KOS Texture Color Modes */
 #define GL_UNSIGNED_SHORT_5_6_5       (PVR_TXRFMT_RGB565 | PVR_TXRFMT_NONTWIDDLED)
@@ -383,6 +392,12 @@ __BEGIN_DECLS
 #define GL_FALSE   0
 #define GL_TRUE    1
 
+/* Stubs for portability */
+#define GL_ALPHA_TEST 0
+#define GL_STENCIL_TEST 0
+#define GL_CLAMP_TO_EDGE 0
+#define GL_UNPACK_ALIGNMENT 0
+
 #define GLAPI extern
 #define APIENTRY
 
@@ -415,11 +430,15 @@ GLAPI void APIENTRY glColor4fv(const GLfloat *rgba);
 
 /* Primitive Normal Submission */
 GLAPI void APIENTRY glNormal3f(GLfloat x, GLfloat y, GLfloat z);
+#define glNormal3i glNormal3f
 GLAPI void APIENTRY glNormal3fv(const GLfloat *xyz);
+#define glNormal3iv glNormal3fv
 
 /* Primitive 2D Position Submission */
 GLAPI void APIENTRY glVertex2f(GLfloat x, GLfloat y);
+#define glVertex2i glVertex2f
 GLAPI void APIENTRY glVertex2fv(const GLfloat *xy);
+#define glVertex2iv glVertex2fv
 
 /* Non-Standard KOS Primitive 2D Submission.  This will perform no tranformations on the vertices. */
 GLAPI void APIENTRY glKosVertex2f(GLfloat x, GLfloat y);
@@ -432,13 +451,10 @@ GLAPI void APIENTRY(*glVertex3fv)(const GLfloat *);
 /* 2D Non-Textured Rectangle Submission */
 GLAPI GLvoid APIENTRY glRectf(GLfloat x1, GLfloat y1, GLfloat x2, GLfloat y2);
 #define glRectd glRectf
-
 GLAPI GLvoid APIENTRY glRectfv(const GLfloat *v1, const GLfloat *v2);
 #define glRectdv glRectfv
-
 GLAPI GLvoid APIENTRY glRecti(GLint x1, GLint y1, GLint x2, GLint y2);
 #define glRects glRecti
-
 GLAPI GLvoid APIENTRY glRectiv(const GLint *v1, const GLint *v2);
 #define glRectsv glRectiv
 
@@ -452,6 +468,7 @@ GLAPI GLvoid APIENTRY glRectiv(const GLint *v1, const GLint *v2);
         GL_FOG
         GL_CULL_FACE
         GL_KOS_NEARZ_CLIPPING
+        GL_KOS_TEXTURE_MATRIX
 */
 GLAPI void APIENTRY glEnable(GLenum cap);
 GLAPI void APIENTRY glDisable(GLenum cap);
@@ -490,7 +507,7 @@ GLAPI void APIENTRY glGenTextures(GLsizei n, GLuint *textures);
 GLAPI void APIENTRY glDeleteTextures(GLsizei n, GLuint *textures);
 GLAPI void APIENTRY glBindTexture(GLenum  target, GLuint texture);
 
-/* Loads texture from SH4 RAM into PVR VRAM */
+/* Loads texture from SH4 RAM into PVR VRAM applying color conversion if needed */
 /* internalformat must be one of the following constants:
      GL_RGB
      GL_RGBA
@@ -498,10 +515,20 @@ GLAPI void APIENTRY glBindTexture(GLenum  target, GLuint texture);
    format must be the same as internalformat
 
    if internal format is GL_RGB, type must be one of the following constants:
+     GL_BYTE
+     GL_UNSIGNED_BYTE
+     GL_SHORT
+     GL_UNSIGNED_SHORT
+     GL_FLOAT
      GL_UNSIGNED_SHORT_5_6_5
      GL_UNSIGNED_SHORT_5_6_5_TWID
 
    if internal format is GL_RGBA, type must be one of the following constants:
+     GL_BYTE
+     GL_UNSIGNED_BYTE
+     GL_SHORT
+     GL_UNSIGNED_SHORT
+     GL_FLOAT
      GL_UNSIGNED_SHORT_4_4_4_4
      GL_UNSIGNED_SHORT_4_4_4_4_TWID
      GL_UNSIGNED_SHORT_1_5_5_5
@@ -585,6 +612,9 @@ GLAPI void APIENTRY glScissor(GLint x, GLint y, GLsizei width, GLsizei height);
 
 GLAPI void APIENTRY glKosGetMatrix(GLenum mode, GLfloat *params);
 
+GLAPI void APIENTRY glFrustum(GLfloat left, GLfloat right,
+                              GLfloat bottom, GLfloat top,
+                              GLfloat znear, GLfloat zfar);
 
 /* Fog Functions - client must enable GL_FOG for this to take effect */
 GLAPI void APIENTRY glFogi(GLenum pname, GLint param);
@@ -615,6 +645,7 @@ GLAPI GLuint APIENTRY glKosMipMapTexSize(GLuint width, GLuint height);
 GLAPI void APIENTRY glGetIntegerv(GLenum pname, GLint *params);
 GLAPI void APIENTRY glGetFloatv(GLenum pname, GLfloat *params);
 GLAPI GLboolean APIENTRY glIsEnabled(GLenum cap);
+GLAPI const GLbyte* APIENTRY glGetString(GLenum name);
 
 /* Multi-Texture Extensions - Currently not supported in immediate mode */
 GLAPI void APIENTRY glActiveTextureARB(GLenum texture);
@@ -627,6 +658,14 @@ GLAPI void APIENTRY glBindFramebuffer(GLenum target, GLuint framebuffer);
 GLAPI void APIENTRY glFramebufferTexture2D(GLenum target, GLenum attachment,
         GLenum textarget, GLuint texture, GLint level);
 GLAPI GLenum APIENTRY glCheckFramebufferStatus(GLenum target);
+
+/* Non Operational Stubs for portability */
+GLAPI void APIENTRY glAlphaFunc(GLenum func, GLclampf ref);
+GLAPI void APIENTRY glLineWidth(GLfloat width);
+GLAPI void APIENTRY glPolygonOffset(GLfloat factor, GLfloat units);
+GLAPI void APIENTRY glGetTexParameteriv(GLenum target, GLenum pname, GLint * params);
+GLAPI void APIENTRY glColorMask(GLboolean red, GLboolean green, GLboolean blue, GLboolean alpha);
+GLAPI void APIENTRY glPixelStorei(GLenum pname, GLint param);
 
 __END_DECLS
 

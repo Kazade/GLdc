@@ -24,6 +24,7 @@
 #define GL_KOS_ENABLE_SUPERSAMPLE  (1<<6)
 #define GL_KOS_ENABLE_TEXTURE2D    (1<<7)
 #define GL_KOS_ENABLE_BLENDING     (1<<8)
+#define GL_KOS_ENABLE_TEXTURE_MAT  (1<<9)
 
 static GLbitfield GL_KOS_ENABLE_CAP = 0;
 
@@ -66,6 +67,10 @@ void APIENTRY glEnable(GLenum cap) {
         case GL_CULL_FACE:
             GL_KOS_ENABLE_CAP |= GL_KOS_ENABLE_CULLING;
             break;
+            
+        case GL_KOS_TEXTURE_MATRIX:
+            GL_KOS_ENABLE_CAP |= GL_KOS_ENABLE_TEXTURE_MAT;
+            break;
     }
 }
 
@@ -105,6 +110,10 @@ void APIENTRY glDisable(GLenum cap) {
         case GL_CULL_FACE:
             GL_KOS_ENABLE_CAP &= ~GL_KOS_ENABLE_CULLING;
             break;
+            
+        case GL_KOS_TEXTURE_MATRIX:
+            GL_KOS_ENABLE_CAP &= ~GL_KOS_ENABLE_TEXTURE_MAT;
+            break;
     }
 }
 
@@ -135,6 +144,9 @@ GLboolean APIENTRY glIsEnabled(GLenum cap) {
 
         case GL_BLEND:
             return _glKosEnabledBlend() ? GL_TRUE : GL_FALSE;
+        
+        case GL_KOS_TEXTURE_MATRIX:
+            return _glKosEnabledTextureMatrix() ? GL_TRUE : GL_FALSE;
     }
 
     return GL_FALSE;
@@ -216,6 +228,26 @@ void APIENTRY glGetFloatv(GLenum pname, GLfloat *params) {
     }
 }
 
+const GLbyte* glGetString(GLenum name)
+{
+    switch(name)
+    {
+        case GL_VENDOR:
+             return "KallistiOS";
+             
+        case GL_RENDERER:
+             return "PowerVR2 CLX2 100mHz";
+             
+        case GL_VERSION:
+             return "KGL 1.x";
+             
+        case GL_EXTENSIONS:
+             return "GL_ARB_framebuffer_object, GL_ARB_multitexture";
+    }
+    
+    return "GL_KOS_ERROR: ENUM Unsupported\n";
+}
+
 //===============================================================================//
 //== Internal API Functions ==//
 
@@ -249,4 +281,8 @@ GLubyte _glKosEnabledTexture2D() {
 
 GLubyte _glKosEnabledBlend() {
     return (GL_KOS_ENABLE_CAP & GL_KOS_ENABLE_BLENDING) >> 8;
+}
+
+GLubyte _glKosEnabledTextureMatrix() {
+    return (GL_KOS_ENABLE_CAP & GL_KOS_ENABLE_TEXTURE_MAT) >> 9;
 }

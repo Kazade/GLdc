@@ -22,6 +22,10 @@ typedef struct {
 } glTexCoord; /* Simple Texture Coordinate used for Multi-Texturing */
 
 typedef struct {
+    GLfloat s, t, r, q;
+} glTexCoord4f; /* 3D Texture Coordinate */
+
+typedef struct {
     GLushort width;
     GLushort height;
     GLuint   color;
@@ -144,6 +148,7 @@ void _glKosMatrixLoadModelRot();
 void _glKosMatrixApplyScreenSpace();
 void _glKosMatrixApplyRender();
 void _glKosMatrixLoadRender();
+void _glKosMatrixLoadTexture();
 
 /* API Enabled Capabilities Internal Functions */
 GLubyte _glKosEnabledBlend();
@@ -202,6 +207,7 @@ GLubyte _glKosGetMaxLights();
 GLuint  _glKosBoundTexID();
 GLuint  _glKosVertexColor();
 GLubyte _glKosMaxTextureUnits();
+GLubyte _glKosEnabledTextureMatrix();
 
 GL_TEXTURE_OBJECT *_glKosBoundMultiTexID();
 

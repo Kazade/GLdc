@@ -36,6 +36,7 @@ static GLuint  GL_KOS_VERTEX_COUNT = 0;
 static GLuint  GL_KOS_VERTEX_MODE  = GL_TRIANGLES;
 static GLuint  GL_KOS_VERTEX_COLOR = 0xFFFFFFFF;
 static GLfloat GL_KOS_VERTEX_UV[2] = { 0, 0 };
+//static glTexCoord4f GL_KOS_VERTEX_TEX_COORD = { 0, 0, 0, 1 };
 
 static GLfloat GL_KOS_COLOR_CLEAR[3] = { 0, 0, 0 };
 
@@ -266,13 +267,33 @@ void APIENTRY glColor4fv(const GLfloat *rgba) {
 //== Texture Coordinate Submission ==//
 
 void APIENTRY glTexCoord2f(GLfloat u, GLfloat v) {
-    GL_KOS_VERTEX_UV[0] = u;
-    GL_KOS_VERTEX_UV[1] = v;
+    if(_glKosEnabledTextureMatrix())
+    {
+        _glKosMatrixLoadTexture();
+
+        mat_trans_texture2_nomod(u, v, GL_KOS_VERTEX_UV[0], GL_KOS_VERTEX_UV[1]);
+    
+        _glKosMatrixLoadRender();
+    }
+    else {
+        GL_KOS_VERTEX_UV[0] = u;
+        GL_KOS_VERTEX_UV[1] = v;
+    } 
 }
 
 void APIENTRY glTexCoord2fv(const GLfloat *uv) {
-    GL_KOS_VERTEX_UV[0] = uv[0];
-    GL_KOS_VERTEX_UV[1] = uv[1];
+    if(_glKosEnabledTextureMatrix())
+    {
+        _glKosMatrixLoadTexture();
+         
+        mat_trans_texture2_nomod(uv[0], uv[1], GL_KOS_VERTEX_UV[0], GL_KOS_VERTEX_UV[1]);
+    
+        _glKosMatrixLoadRender();
+    }
+    else {
+        GL_KOS_VERTEX_UV[0] = uv[0];
+        GL_KOS_VERTEX_UV[1] = uv[1];
+    }
 }
 
 //== Vertex Position Submission Functions ==//
@@ -923,4 +944,34 @@ GLubyte _glKosDepthMask() {
 
 GLuint _glKosVertexColor() {
     return GL_KOS_VERTEX_COLOR;
+}
+
+void glAlphaFunc(GLenum func, GLclampf ref)
+{
+    ;
+}
+
+void glLineWidth(GLfloat width)
+{
+    ;
+}
+
+void glPolygonOffset(GLfloat factor, GLfloat units)
+{
+    ;
+}
+
+void glGetTexParameteriv(GLenum target, GLenum pname, GLint * params)
+{
+    ;
+}
+
+void glColorMask(GLboolean red, GLboolean green, GLboolean blue, GLboolean alpha)
+{
+    ;
+}
+
+void glPixelStorei(GLenum pname, GLint param)
+{
+    ;
 }

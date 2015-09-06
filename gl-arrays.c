@@ -1,7 +1,7 @@
 /* KallistiGL for KallistiOS ##version##
 
    libgl/gl-arrays.c
-   Copyright (C) 2013-2014 Josh Pearson
+   Copyright (C) 2013-2015 Josh Pearson
 
    Arrays Input Primitive Types Supported:
    -GL_TRIANGLES
@@ -455,14 +455,31 @@ static inline void _glKosElementColor4fU16(pvr_vertex_t *dst, GLuint count) {
 
 //== Texture Coordinates ==//
 
+
+
 static inline void _glKosElementTexCoord2fU16(pvr_vertex_t *dst, GLuint count) {
     GLuint i, index;
     GLfloat *t = GL_KOS_TEXCOORD0_POINTER;
 
-    for(i = 0; i < count; i++) {
-        index = GL_KOS_INDEX_POINTER_U16[i] * GL_KOS_TEXCOORD0_STRIDE;
-        dst[i].u = t[index];
-        dst[i].v = t[index + 1];
+    if(_glKosEnabledTextureMatrix())
+    {
+        _glKosMatrixLoadTexture();
+        
+        for(i = 0; i < count; i++) 
+        {
+            index = GL_KOS_INDEX_POINTER_U16[i] * GL_KOS_TEXCOORD0_STRIDE;
+            
+            mat_trans_texture2_nomod(t[index], t[index + 1], dst[i].u, dst[i].v);
+        }
+        
+        _glKosMatrixLoadRender();                            
+    }
+    else {
+        for(i = 0; i < count; i++) {
+            index = GL_KOS_INDEX_POINTER_U16[i] * GL_KOS_TEXCOORD0_STRIDE;
+            dst[i].u = t[index];
+            dst[i].v = t[index + 1];
+        }
     }
 }
 
@@ -470,10 +487,25 @@ static inline void _glKosElementTexCoord2fU8(pvr_vertex_t *dst, GLuint count) {
     GLuint i, index;
     GLfloat *t = GL_KOS_TEXCOORD0_POINTER;
 
-    for(i = 0; i < count; i++) {
-        index = GL_KOS_INDEX_POINTER_U8[i] * GL_KOS_TEXCOORD0_STRIDE;
-        dst[i].u = t[index];
-        dst[i].v = t[index + 1];
+    if(_glKosEnabledTextureMatrix())
+    {
+        _glKosMatrixLoadTexture();
+        
+        for(i = 0; i < count; i++) 
+        {
+            index = GL_KOS_INDEX_POINTER_U8[i] * GL_KOS_TEXCOORD0_STRIDE;
+            
+            mat_trans_texture2_nomod(t[index], t[index + 1], dst[i].u, dst[i].v);
+        }
+        
+        _glKosMatrixLoadRender();                            
+    }
+    else {
+        for(i = 0; i < count; i++) {
+            index = GL_KOS_INDEX_POINTER_U8[i] * GL_KOS_TEXCOORD0_STRIDE;
+            dst[i].u = t[index];
+            dst[i].v = t[index + 1];
+        }
     }
 }
 
@@ -610,7 +642,7 @@ static inline void _glKosArrayFlagsSetQuad(pvr_vertex_t *dst, GLuint count) {
     GLuint i;
 
     for(i = 0; i < count; i += 4) {
-        _glKosVertexSwizzle(&dst[2], &dst[3]);
+        _glKosVertexSwizzle(&dst[i + 2], &dst[i + 3]);
         dst[i + 0].flags = dst[i + 1].flags = dst[i + 2].flags = PVR_CMD_VERTEX;
         dst[i + 3].flags = PVR_CMD_VERTEX_EOL;
     }
@@ -1018,11 +1050,27 @@ static inline void _glKosArrayColor4f(pvr_vertex_t *dst, GLuint count) {
 static inline void _glKosArrayTexCoord2f(pvr_vertex_t *dst, GLuint count) {
     GLuint i;
     GLfloat *uv = GL_KOS_TEXCOORD0_POINTER;
-
-    for(i = 0; i < count; i++) {
-        dst[i].u = uv[0];
-        dst[i].v = uv[1];
-        uv += GL_KOS_TEXCOORD0_STRIDE;
+    
+    if(_glKosEnabledTextureMatrix())
+    {
+        _glKosMatrixLoadTexture();
+        
+        for(i = 0; i < count; i++) 
+        {
+            mat_trans_texture2_nomod(uv[0], uv[1], dst[i].u, dst[i].v);
+            
+            uv += GL_KOS_TEXCOORD0_STRIDE;
+        }
+        
+        _glKosMatrixLoadRender();                            
+    }
+    else
+    {
+        for(i = 0; i < count; i++) {
+            dst[i].u = uv[0];
+            dst[i].v = uv[1];
+            uv += GL_KOS_TEXCOORD0_STRIDE;
+        }
     }
 }
 
