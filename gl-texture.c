@@ -264,48 +264,45 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
             case GL_UNSIGNED_SHORT:
             case GL_FLOAT:
                  {
-                     uint16 tex[width * height];
-                     
+                     uint16 *tex;
+
+                     tex = (uint16 *)malloc(width * height * sizeof(uint16));
+                     if(!tex) {
+                         _glKosThrowError(GL_OUT_OF_MEMORY, "glTexImage2D");
+                         _glKosPrintError();
+                         return;
+                     }
+
                      switch(internalFormat)
                      {
                          case GL_RGB:
-                              
                               _glPixelConvertRGB(type, width, height, (void *)data, tex);
-                
                               GL_KOS_TEXTURE_UNIT[GL_KOS_ACTIVE_TEXTURE]->color = (PVR_TXRFMT_RGB565 | PVR_TXRFMT_NONTWIDDLED);
-                
                               sq_cpy(GL_KOS_TEXTURE_UNIT[GL_KOS_ACTIVE_TEXTURE]->data, tex, bytes);
-                             
                               break;
 
                          case GL_RGBA:
-                              
                               _glPixelConvertRGBA(type, width, height, (void *)data, tex);
-                
                               GL_KOS_TEXTURE_UNIT[GL_KOS_ACTIVE_TEXTURE]->color = (PVR_TXRFMT_ARGB4444 | PVR_TXRFMT_NONTWIDDLED);
-                
                               sq_cpy(GL_KOS_TEXTURE_UNIT[GL_KOS_ACTIVE_TEXTURE]->data, tex, bytes);
-                             
                               break;
                      }
+
+                     free(tex);
                  }
                  break;
-                 
+
             case GL_UNSIGNED_SHORT_5_6_5:   /* Texture Formats that do not need conversion  */
-            case GL_UNSIGNED_SHORT_5_6_5_TWID: 
-            case GL_UNSIGNED_SHORT_1_5_5_5:     
+            case GL_UNSIGNED_SHORT_5_6_5_TWID:
+            case GL_UNSIGNED_SHORT_1_5_5_5:
             case GL_UNSIGNED_SHORT_1_5_5_5_TWID:
             case GL_UNSIGNED_SHORT_4_4_4_4:
             case GL_UNSIGNED_SHORT_4_4_4_4_TWID:
-                     
                  sq_cpy(GL_KOS_TEXTURE_UNIT[GL_KOS_ACTIVE_TEXTURE]->data, data, bytes);
-                
                  break;
-                
+
             default: /* Unsupported Texture Format */
-                    
                  _glKosThrowError(GL_INVALID_OPERATION, "glTexImage2D");
-                 
                  break;
         }
     }
