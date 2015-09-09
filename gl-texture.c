@@ -273,13 +273,13 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
 
                 switch(internalFormat) {
                     case GL_RGB:
-                        _glPixelConvertRGB(type, width, height, (void *)data, tex);
+                        _glKosPixelConvertRGB(type, width, height, (void *)data, tex);
                         GL_KOS_TEXTURE_UNIT[GL_KOS_ACTIVE_TEXTURE]->color = (PVR_TXRFMT_RGB565 | PVR_TXRFMT_NONTWIDDLED);
                         sq_cpy(GL_KOS_TEXTURE_UNIT[GL_KOS_ACTIVE_TEXTURE]->data, tex, bytes);
                         break;
 
                     case GL_RGBA:
-                        _glPixelConvertRGBA(type, width, height, (void *)data, tex);
+                        _glKosPixelConvertRGBA(type, width, height, (void *)data, tex);
                         GL_KOS_TEXTURE_UNIT[GL_KOS_ACTIVE_TEXTURE]->color = (PVR_TXRFMT_ARGB4444 | PVR_TXRFMT_NONTWIDDLED);
                         sq_cpy(GL_KOS_TEXTURE_UNIT[GL_KOS_ACTIVE_TEXTURE]->data, tex, bytes);
                         break;

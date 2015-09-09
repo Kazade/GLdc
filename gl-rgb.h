@@ -62,9 +62,9 @@ typedef GLfloat GLrgba4f[4];
 #define ARGB_PACK_ARGBF(a,r,g,b) (((a*0xFF) << 24) | ((r*0xFF) << 16) | ((g*0xFF)<<8) | (b*0xFF))
 
 #define S8_NEG_OFT    128 // Absolute Value of Minimum 8bit Signed Range //
-#define S16_NEG_OFT 32768 // Absolute Value of Minimum bit Signed Range //
+#define S16_NEG_OFT 32768 // Absolute Value of Minimum 16bit Signed Range //
 
-void _glPixelConvertRGB(int format, int w, int h, void *src, uint16 *dst);
-void _glPixelConvertRGBA(int format, int w, int h, void *src, uint16 *dst);
+void _glKosPixelConvertRGB(int format, int w, int h, void *src, uint16 *dst);
+void _glKosPixelConvertRGBA(int format, int w, int h, void *src, uint16 *dst);
 
 #endif
