@@ -119,51 +119,45 @@ uint16 __glKosAverageBiPixelARGB4444(uint16 p1, uint16 p2) {
 //===================================================================================================//
 //== Colorspace Conversion ==//
 
-static uint16 _glConvPixelRGBAU32(uint8 r, uint8 g, uint8 b, uint8 a)
-{
+static uint16 _glConvPixelRGBAU32(uint8 r, uint8 g, uint8 b, uint8 a) {
     return (uint16)((a & RGB4_MAX) << ARGB4444_ALPHA_SHIFT) |
-                   ((r & RGB4_MAX) << ARGB4444_RED_SHIFT) | 
-                   ((g & RGB4_MAX) << ARGB4444_GREEN_SHIFT) | 
-                   ((b & RGB4_MAX));
+           ((r & RGB4_MAX) << ARGB4444_RED_SHIFT) |
+           ((g & RGB4_MAX) << ARGB4444_GREEN_SHIFT) |
+           ((b & RGB4_MAX));
 }
 
-static uint16 _glConvPixelRGBU24(uint8 r, uint8 g, uint8 b)
-{
-    return (uint16)((r & RGB5_MAX) << RGB565_RED_SHIFT) | 
-                   ((g & RGB6_MAX) << RGB565_GREEN_SHIFT) | 
-                   ((b & RGB5_MAX));
+static uint16 _glConvPixelRGBU24(uint8 r, uint8 g, uint8 b) {
+    return (uint16)((r & RGB5_MAX) << RGB565_RED_SHIFT) |
+           ((g & RGB6_MAX) << RGB565_GREEN_SHIFT) |
+           ((b & RGB5_MAX));
 }
 
-static void _glConvPixelsRGBF(int w, int h, float * src, uint16 * dst)
-{
+static void _glConvPixelsRGBF(int w, int h, float *src, uint16 *dst) {
     int i;
-    for(i = 0; i < w * h; i++)
-    {                   
+
+    for(i = 0; i < w * h; i++) {
         dst[i] = _glConvPixelRGBU24((uint8)(src[i * 3 + 0] * RGB5_MAX),
                                     (uint8)(src[i * 3 + 1] * RGB6_MAX),
                                     (uint8)(src[i * 3 + 2] * RGB5_MAX));
-    } 
+    }
 }
 
-static void _glConvPixelsRGBAF(int w, int h, float * src, uint16 * dst)
-{
+static void _glConvPixelsRGBAF(int w, int h, float *src, uint16 *dst) {
     int i;
-    for(i = 0; i < w * h; i++)
-    {                   
+
+    for(i = 0; i < w * h; i++) {
         dst[i] = _glConvPixelRGBAU32((uint8)(src[i * 4 + 0] * RGB4_MAX),
                                      (uint8)(src[i * 4 + 1] * RGB4_MAX),
                                      (uint8)(src[i * 4 + 2] * RGB4_MAX),
                                      (uint8)(src[i * 4 + 3] * RGB4_MAX));
-    } 
+    }
 }
 
-static void _glConvPixelsRGBU24(int w, int h, uint8 * src, uint16 * dst)
-{
+static void _glConvPixelsRGBU24(int w, int h, uint8 *src, uint16 *dst) {
     unsigned char r, g, b;
     int i;
-    
-    for(i = 0; i < w * h; i++)
-    {
+
+    for(i = 0; i < w * h; i++) {
         r = (src[i * 3 + 0] * RGB5_MAX) / RGB8_MAX;
         g = (src[i * 3 + 1] * RGB6_MAX) / RGB8_MAX;
         b = (src[i * 3 + 2] * RGB5_MAX) / RGB8_MAX;
@@ -172,13 +166,11 @@ static void _glConvPixelsRGBU24(int w, int h, uint8 * src, uint16 * dst)
     }
 }
 
-static void _glConvPixelsRGBAU32(int w, int h, uint8 * src, uint16 * dst)
-{
+static void _glConvPixelsRGBAU32(int w, int h, uint8 *src, uint16 *dst) {
     unsigned char r, g, b, a;
     int i;
-    
-    for(i = 0; i < w * h; i++)
-    {
+
+    for(i = 0; i < w * h; i++) {
         r = (src[i * 4 + 0] * RGB4_MAX) / RGB8_MAX;
         g = (src[i * 4 + 1] * RGB4_MAX) / RGB8_MAX;
         b = (src[i * 4 + 2] * RGB4_MAX) / RGB8_MAX;
@@ -188,13 +180,11 @@ static void _glConvPixelsRGBAU32(int w, int h, uint8 * src, uint16 * dst)
     }
 }
 
-static void _glConvPixelsRGBS24(int w, int h, int8 * src, uint16 * dst)
-{
+static void _glConvPixelsRGBS24(int w, int h, int8 *src, uint16 *dst) {
     unsigned char r, g, b;
     int i;
-    
-    for(i = 0; i < w * h; i++)
-    {
+
+    for(i = 0; i < w * h; i++) {
         r = ((src[i * 3 + 0] + S8_NEG_OFT) * RGB5_MAX) / RGB8_MAX;
         g = ((src[i * 3 + 1] + S8_NEG_OFT) * RGB6_MAX) / RGB8_MAX;
         b = ((src[i * 3 + 2] + S8_NEG_OFT) * RGB5_MAX) / RGB8_MAX;
@@ -203,13 +193,11 @@ static void _glConvPixelsRGBS24(int w, int h, int8 * src, uint16 * dst)
     }
 }
 
-static void _glConvPixelsRGBAS32(int w, int h, int8 * src, uint16 * dst)
-{
+static void _glConvPixelsRGBAS32(int w, int h, int8 *src, uint16 *dst) {
     unsigned char r, g, b, a;
     int i;
-    
-    for(i = 0; i < w * h; i++)
-    {
+
+    for(i = 0; i < w * h; i++) {
         r = ((src[i * 4 + 0] + S8_NEG_OFT) * RGB4_MAX) / RGB8_MAX;
         g = ((src[i * 4 + 1] + S8_NEG_OFT) * RGB4_MAX) / RGB8_MAX;
         b = ((src[i * 4 + 2] + S8_NEG_OFT) * RGB4_MAX) / RGB8_MAX;
@@ -219,13 +207,11 @@ static void _glConvPixelsRGBAS32(int w, int h, int8 * src, uint16 * dst)
     }
 }
 
-static void _glConvPixelsRGBS48(int w, int h, int16 * src, uint16 * dst)
-{
+static void _glConvPixelsRGBS48(int w, int h, int16 *src, uint16 *dst) {
     unsigned char r, g, b;
     int i;
-    
-    for(i = 0; i < w * h; i++)
-    {
+
+    for(i = 0; i < w * h; i++) {
         r = ((src[i * 3 + 0] + S16_NEG_OFT) * RGB5_MAX) / RGB16_MAX;
         g = ((src[i * 3 + 1] + S16_NEG_OFT) * RGB6_MAX) / RGB16_MAX;
         b = ((src[i * 3 + 2] + S16_NEG_OFT) * RGB5_MAX) / RGB16_MAX;
@@ -234,13 +220,11 @@ static void _glConvPixelsRGBS48(int w, int h, int16 * src, uint16 * dst)
     }
 }
 
-static void _glConvPixelsRGBAS64(int w, int h, int16 * src, uint16 * dst)
-{
+static void _glConvPixelsRGBAS64(int w, int h, int16 *src, uint16 *dst) {
     unsigned char r, g, b, a;
     int i;
-    
-    for(i = 0; i < w * h; i++)
-    {
+
+    for(i = 0; i < w * h; i++) {
         r = ((src[i * 4 + 0] + S16_NEG_OFT) * RGB4_MAX) / RGB16_MAX;
         g = ((src[i * 4 + 1] + S16_NEG_OFT) * RGB4_MAX) / RGB16_MAX;
         b = ((src[i * 4 + 2] + S16_NEG_OFT) * RGB4_MAX) / RGB16_MAX;
@@ -250,13 +234,11 @@ static void _glConvPixelsRGBAS64(int w, int h, int16 * src, uint16 * dst)
     }
 }
 
-static void _glConvPixelsRGBU48(int w, int h, uint16 * src, uint16 * dst)
-{
+static void _glConvPixelsRGBU48(int w, int h, uint16 *src, uint16 *dst) {
     unsigned char r, g, b;
     int i;
-    
-    for(i = 0; i < w * h; i++)
-    {
+
+    for(i = 0; i < w * h; i++) {
         r = ((src[i * 3 + 0]) * RGB5_MAX) / RGB16_MAX;
         g = ((src[i * 3 + 1]) * RGB6_MAX) / RGB16_MAX;
         b = ((src[i * 3 + 2]) * RGB5_MAX) / RGB16_MAX;
@@ -265,13 +247,11 @@ static void _glConvPixelsRGBU48(int w, int h, uint16 * src, uint16 * dst)
     }
 }
 
-static void _glConvPixelsRGBAU64(int w, int h, uint16 * src, uint16 * dst)
-{
+static void _glConvPixelsRGBAU64(int w, int h, uint16 *src, uint16 *dst) {
     unsigned char r, g, b, a;
     int i;
-    
-    for(i = 0; i < w * h; i++)
-    {
+
+    for(i = 0; i < w * h; i++) {
         r = (src[i * 4 + 0] * RGB4_MAX) / RGB16_MAX;
         g = (src[i * 4 + 1] * RGB4_MAX) / RGB16_MAX;
         b = (src[i * 4 + 2] * RGB4_MAX) / RGB16_MAX;
@@ -281,54 +261,50 @@ static void _glConvPixelsRGBAU64(int w, int h, uint16 * src, uint16 * dst)
     }
 }
 
-void _glPixelConvertRGB(int format, int w, int h, void * src, uint16 * dst)
-{       
-    switch(format)
-    {
+void _glPixelConvertRGB(int format, int w, int h, void *src, uint16 *dst) {
+    switch(format) {
         case GL_BYTE:
-             _glConvPixelsRGBS24(w, h, (int8 *)src, dst);
-             break;
-             
+            _glConvPixelsRGBS24(w, h, (int8 *)src, dst);
+            break;
+
         case GL_UNSIGNED_BYTE:
-             _glConvPixelsRGBU24(w, h, (uint8 *)src, dst);
-             break;
-             
+            _glConvPixelsRGBU24(w, h, (uint8 *)src, dst);
+            break;
+
         case GL_SHORT:
-             _glConvPixelsRGBS48(w, h, (int16 *)src, dst);
-             break;
-             
+            _glConvPixelsRGBS48(w, h, (int16 *)src, dst);
+            break;
+
         case GL_UNSIGNED_SHORT:
-             _glConvPixelsRGBU48(w, h, (uint16 *)src, dst);
-             break;
-             
+            _glConvPixelsRGBU48(w, h, (uint16 *)src, dst);
+            break;
+
         case GL_FLOAT:
-             _glConvPixelsRGBF(w, h, (float *)src, dst);
-             break;
+            _glConvPixelsRGBF(w, h, (float *)src, dst);
+            break;
     }
 }
 
-void _glPixelConvertRGBA(int format, int w, int h, void * src, uint16 * dst)
-{       
-    switch(format)
-    {
+void _glPixelConvertRGBA(int format, int w, int h, void *src, uint16 *dst) {
+    switch(format) {
         case GL_BYTE:
-             _glConvPixelsRGBAS32(w, h, (int8 *)src, dst);
-             break;
-             
+            _glConvPixelsRGBAS32(w, h, (int8 *)src, dst);
+            break;
+
         case GL_UNSIGNED_BYTE:
-             _glConvPixelsRGBAU32(w, h, (uint8 *)src, dst);
-             break;
-             
+            _glConvPixelsRGBAU32(w, h, (uint8 *)src, dst);
+            break;
+
         case GL_SHORT:
-             _glConvPixelsRGBAS64(w, h, (int16 *)src, dst);
-             break;
-             
+            _glConvPixelsRGBAS64(w, h, (int16 *)src, dst);
+            break;
+
         case GL_UNSIGNED_SHORT:
-             _glConvPixelsRGBAU64(w, h, (uint16 *)src, dst);
-             break;
-             
+            _glConvPixelsRGBAU64(w, h, (uint16 *)src, dst);
+            break;
+
         case GL_FLOAT:
-             _glConvPixelsRGBAF(w, h, (float *)src, dst);
-             break;
+            _glConvPixelsRGBAF(w, h, (float *)src, dst);
+            break;
     }
 }

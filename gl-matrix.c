@@ -123,11 +123,11 @@ void glScalef(GLfloat x, GLfloat y, GLfloat z) {
     mat_store(Matrix + MatrixMode);
 }
 
-void glRotatef(GLfloat angle, GLfloat x, GLfloat  y, GLfloat z) {    
+void glRotatef(GLfloat angle, GLfloat x, GLfloat  y, GLfloat z) {
     float r = DEG2RAD * -angle;
-    
-    vec3f_normalize(x, y, z);    
-    
+
+    vec3f_normalize(x, y, z);
+
     mat_load(Matrix + MatrixMode);
     mat_rotate(r * x, r * y, r * z);
     mat_store(Matrix + MatrixMode);

@@ -87,7 +87,7 @@ static inline void pvr_hdr_submit(const GLuint *src) {
     d[5] = *(src++);
     d[6] = *(src++);
     d[7] = *(src++);
-    
+
     asm("pref @%0" : : "r"(d));
 }
 
@@ -208,17 +208,17 @@ static inline void glutSwapBuffer() {
                      PVR_DMA_TA, 1, NULL, 0);
 #else
     pvr_list_submit(_glKosVertexBufAddress(GL_KOS_LIST_OP), _glKosVertexBufCount(GL_KOS_LIST_OP));
-#endif    
+#endif
     pvr_list_finish();
 
     pvr_list_begin(PVR_LIST_TR_POLY);
 #ifdef GL_KOS_USE_DMA
     pvr_dma_transfer(_glKosVertexBufAddress(GL_KOS_LIST_TR), 0,
                      _glKosVertexBufCount(GL_KOS_LIST_TR) * 32,
-                     PVR_DMA_TA, 1, NULL, 0);    
+                     PVR_DMA_TA, 1, NULL, 0);
 #else
     pvr_list_submit(_glKosVertexBufAddress(GL_KOS_LIST_TR), _glKosVertexBufCount(GL_KOS_LIST_TR));
-#endif 
+#endif
     /* Multi-Texture Pass - Modify U/V coords of submitted vertices */
     GLuint i, v;
     glTexCoord *mt = _glKosMultiUVBufAddress();
@@ -236,7 +236,7 @@ static inline void glutSwapBuffer() {
         pvr_hdr_submit((GLuint *)&GL_MTOBJS[i].hdr);
         pvr_dma_transfer(GL_MTOBJS[i].src, 0,
                          GL_MTOBJS[i].count * 32, PVR_DMA_TA, 1, NULL, 0);
-#else                         
+#else
         pvr_list_submit((pvr_poly_hdr_t *)&GL_MTOBJS[i].hdr, 1);
         pvr_list_submit((pvr_vertex_t *)GL_MTOBJS[i].src, GL_MTOBJS[i].count);
 #endif

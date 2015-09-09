@@ -461,18 +461,16 @@ static inline void _glKosElementTexCoord2fU16(pvr_vertex_t *dst, GLuint count) {
     GLuint i, index;
     GLfloat *t = GL_KOS_TEXCOORD0_POINTER;
 
-    if(_glKosEnabledTextureMatrix())
-    {
+    if(_glKosEnabledTextureMatrix()) {
         _glKosMatrixLoadTexture();
-        
-        for(i = 0; i < count; i++) 
-        {
+
+        for(i = 0; i < count; i++) {
             index = GL_KOS_INDEX_POINTER_U16[i] * GL_KOS_TEXCOORD0_STRIDE;
-            
+
             mat_trans_texture2_nomod(t[index], t[index + 1], dst[i].u, dst[i].v);
         }
-        
-        _glKosMatrixLoadRender();                            
+
+        _glKosMatrixLoadRender();
     }
     else {
         for(i = 0; i < count; i++) {
@@ -487,18 +485,16 @@ static inline void _glKosElementTexCoord2fU8(pvr_vertex_t *dst, GLuint count) {
     GLuint i, index;
     GLfloat *t = GL_KOS_TEXCOORD0_POINTER;
 
-    if(_glKosEnabledTextureMatrix())
-    {
+    if(_glKosEnabledTextureMatrix()) {
         _glKosMatrixLoadTexture();
-        
-        for(i = 0; i < count; i++) 
-        {
+
+        for(i = 0; i < count; i++) {
             index = GL_KOS_INDEX_POINTER_U8[i] * GL_KOS_TEXCOORD0_STRIDE;
-            
+
             mat_trans_texture2_nomod(t[index], t[index + 1], dst[i].u, dst[i].v);
         }
-        
-        _glKosMatrixLoadRender();                            
+
+        _glKosMatrixLoadRender();
     }
     else {
         for(i = 0; i < count; i++) {
@@ -1050,22 +1046,19 @@ static inline void _glKosArrayColor4f(pvr_vertex_t *dst, GLuint count) {
 static inline void _glKosArrayTexCoord2f(pvr_vertex_t *dst, GLuint count) {
     GLuint i;
     GLfloat *uv = GL_KOS_TEXCOORD0_POINTER;
-    
-    if(_glKosEnabledTextureMatrix())
-    {
+
+    if(_glKosEnabledTextureMatrix()) {
         _glKosMatrixLoadTexture();
-        
-        for(i = 0; i < count; i++) 
-        {
+
+        for(i = 0; i < count; i++) {
             mat_trans_texture2_nomod(uv[0], uv[1], dst[i].u, dst[i].v);
-            
+
             uv += GL_KOS_TEXCOORD0_STRIDE;
         }
-        
-        _glKosMatrixLoadRender();                            
+
+        _glKosMatrixLoadRender();
     }
-    else
-    {
+    else {
         for(i = 0; i < count; i++) {
             dst[i].u = uv[0];
             dst[i].v = uv[1];

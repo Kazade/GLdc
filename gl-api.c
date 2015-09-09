@@ -267,27 +267,25 @@ void APIENTRY glColor4fv(const GLfloat *rgba) {
 //== Texture Coordinate Submission ==//
 
 void APIENTRY glTexCoord2f(GLfloat u, GLfloat v) {
-    if(_glKosEnabledTextureMatrix())
-    {
+    if(_glKosEnabledTextureMatrix()) {
         _glKosMatrixLoadTexture();
 
         mat_trans_texture2_nomod(u, v, GL_KOS_VERTEX_UV[0], GL_KOS_VERTEX_UV[1]);
-    
+
         _glKosMatrixLoadRender();
     }
     else {
         GL_KOS_VERTEX_UV[0] = u;
         GL_KOS_VERTEX_UV[1] = v;
-    } 
+    }
 }
 
 void APIENTRY glTexCoord2fv(const GLfloat *uv) {
-    if(_glKosEnabledTextureMatrix())
-    {
+    if(_glKosEnabledTextureMatrix()) {
         _glKosMatrixLoadTexture();
-         
+
         mat_trans_texture2_nomod(uv[0], uv[1], GL_KOS_VERTEX_UV[0], GL_KOS_VERTEX_UV[1]);
-    
+
         _glKosMatrixLoadRender();
     }
     else {
@@ -946,32 +944,26 @@ GLuint _glKosVertexColor() {
     return GL_KOS_VERTEX_COLOR;
 }
 
-void glAlphaFunc(GLenum func, GLclampf ref)
-{
+void glAlphaFunc(GLenum func, GLclampf ref) {
     ;
 }
 
-void glLineWidth(GLfloat width)
-{
+void glLineWidth(GLfloat width) {
     ;
 }
 
-void glPolygonOffset(GLfloat factor, GLfloat units)
-{
+void glPolygonOffset(GLfloat factor, GLfloat units) {
     ;
 }
 
-void glGetTexParameteriv(GLenum target, GLenum pname, GLint * params)
-{
+void glGetTexParameteriv(GLenum target, GLenum pname, GLint *params) {
     ;
 }
 
-void glColorMask(GLboolean red, GLboolean green, GLboolean blue, GLboolean alpha)
-{
+void glColorMask(GLboolean red, GLboolean green, GLboolean blue, GLboolean alpha) {
     ;
 }
 
-void glPixelStorei(GLenum pname, GLint param)
-{
+void glPixelStorei(GLenum pname, GLint param) {
     ;
 }

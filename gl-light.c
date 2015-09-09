@@ -76,7 +76,7 @@ void _glKosEnableLight(const GLuint light) {
     GL_LIGHT_ENABLED |= (1 << (light & 0xF));
 }
 
-/* Disable a light - GL_LIGHT0->GL_LIGHT7 */
+/* Disable a light - GL_LIGHT0->GL_LIGHT0 + GL_KOS_MAX_LIGHTS */
 void _glKosDisableLight(const GLuint light) {
     if(light < GL_LIGHT0 || light > GL_LIGHT0 + GL_KOS_MAX_LIGHTS) {
         _glKosThrowError(GL_INVALID_ENUM, "glDisable(GL_LIGHT)");
@@ -152,7 +152,7 @@ static inline void glCopy3f(const float *src, float *dst) {
 /* GL Light Parameters ******************************************************/
 
 void glLightfv(GLenum light, GLenum pname, const GLfloat *params) {
-    if(light < GL_LIGHT0 || light > GL_LIGHT7) return;
+    if(light < GL_LIGHT0 || light > GL_LIGHT0 + GL_KOS_MAX_LIGHTS) return;
 
     switch(pname) {
         case GL_AMBIENT:
@@ -217,7 +217,7 @@ void glLightfv(GLenum light, GLenum pname, const GLfloat *params) {
 }
 
 void glLightf(GLenum light, GLenum pname, GLfloat param) {
-    if(light < GL_LIGHT0 || light > GL_LIGHT7) return;
+    if(light < GL_LIGHT0 || light > GL_LIGHT0 + GL_KOS_MAX_LIGHTS) return;
 
     switch(pname) {
         case GL_CONSTANT_ATTENUATION:
