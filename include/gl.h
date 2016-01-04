@@ -2,7 +2,7 @@
 
    libgl/gl.h
    Copyright (C) 2013-2014 Josh "PH3NOM" Pearson
-   Copyright (C) 2014 Lawrence Sebald
+   Copyright (C) 2014, 2016 Lawrence Sebald
 
    Some functionality adapted from the original KOS libgl:
    Copyright (C) 2001 Dan Potter
@@ -658,6 +658,9 @@ GLAPI void APIENTRY glBindFramebuffer(GLenum target, GLuint framebuffer);
 GLAPI void APIENTRY glFramebufferTexture2D(GLenum target, GLenum attachment,
         GLenum textarget, GLuint texture, GLint level);
 GLAPI GLenum APIENTRY glCheckFramebufferStatus(GLenum target);
+
+/* Error handling */
+GLAPI GLenum APIENTRY glGetError(void);
 
 /* Non Operational Stubs for portability */
 GLAPI void APIENTRY glAlphaFunc(GLenum func, GLclampf ref);

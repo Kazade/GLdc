@@ -2,6 +2,7 @@
 
    libgl/glu.h
    Copyright (C) 2013-2014 Josh "PH3NOM" Pearson
+   Copyright (C) 2016 Lawrence Sebald
 
    Some functionality adapted from the original KOS libgl:
    Copyright (C) 2001 Dan Potter
@@ -41,6 +42,8 @@ GLAPI void APIENTRY gluLookAt(GLfloat eyex, GLfloat eyey, GLfloat eyez,
 GLAPI void APIENTRY glhLookAtf2(GLfloat *eyePosition3D,
                                 GLfloat *center3D,
                                 GLfloat *upVector3D);
+
+GLAPI const GLubyte* APIENTRY gluErrorString(GLenum error);
 
 __END_DECLS
 
