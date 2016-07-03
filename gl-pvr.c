@@ -2,6 +2,7 @@
 
    libgl/gl-pvr.c
    Copyright (C) 2013-2014 Josh Pearson
+   Copyright (C) 2016 Lawrence Sebald
 
    Vertex Buffer Routines for interfacing the Dreamcast's SH4 CPU and PowerVR GPU.
 
@@ -22,6 +23,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+#include <dc/sq.h>
 
 #include "gl.h"
 #include "gl-api.h"
@@ -201,6 +204,11 @@ inline void _glKosVertexBufCopy(void *dst, void *src, GLuint count) {
 }
 
 static inline void glutSwapBuffer() {
+#ifndef GL_KOS_USE_DMA
+    QACR0 = QACRTA;
+    QACR1 = QACRTA;
+#endif
+
     pvr_list_begin(PVR_LIST_OP_POLY);
 #ifdef GL_KOS_USE_DMA
     pvr_dma_transfer(_glKosVertexBufAddress(GL_KOS_LIST_OP), 0,
