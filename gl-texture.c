@@ -209,6 +209,10 @@ void APIENTRY glCompressedTexImage2D(GLenum target,
     GL_KOS_TEXTURE_UNIT[GL_KOS_ACTIVE_TEXTURE]->mip_map = level;
     GL_KOS_TEXTURE_UNIT[GL_KOS_ACTIVE_TEXTURE]->color   = internalformat;
 
+    /* Odds are slim new data is same size as old, so free always */
+    if(GL_KOS_TEXTURE_UNIT[GL_KOS_ACTIVE_TEXTURE]->data)
+        pvr_mem_free(GL_KOS_TEXTURE_UNIT[GL_KOS_ACTIVE_TEXTURE]->data);
+
     GL_KOS_TEXTURE_UNIT[GL_KOS_ACTIVE_TEXTURE]->data = pvr_mem_malloc(imageSize);
 
     if(data)
