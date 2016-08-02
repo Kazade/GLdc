@@ -2,6 +2,7 @@
 
    libgl/gl-texture.c
    Copyright (C) 2014 Josh Pearson
+   Copyright (C) 2016 Joe Fenton
 
    Open GL Texture Submission implementation.
    This implementation uses a dynamic linked list to store the texture objects.
@@ -245,14 +246,29 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
         return;
     }
 
-    GL_KOS_TEXTURE_UNIT[GL_KOS_ACTIVE_TEXTURE]->width   = width;
-    GL_KOS_TEXTURE_UNIT[GL_KOS_ACTIVE_TEXTURE]->height  = height;
-    GL_KOS_TEXTURE_UNIT[GL_KOS_ACTIVE_TEXTURE]->mip_map = level;
-    GL_KOS_TEXTURE_UNIT[GL_KOS_ACTIVE_TEXTURE]->color   = type;
+    if(GL_KOS_TEXTURE_UNIT[GL_KOS_ACTIVE_TEXTURE]->data) {
+        /* pre-existing texture - check if changed */
+        if(GL_KOS_TEXTURE_UNIT[GL_KOS_ACTIVE_TEXTURE]->width != width ||
+           GL_KOS_TEXTURE_UNIT[GL_KOS_ACTIVE_TEXTURE]->height != height ||
+           GL_KOS_TEXTURE_UNIT[GL_KOS_ACTIVE_TEXTURE]->mip_map != level ||
+           GL_KOS_TEXTURE_UNIT[GL_KOS_ACTIVE_TEXTURE]->color != type) {
+            /* changed - free old texture memory */
+            pvr_mem_free(GL_KOS_TEXTURE_UNIT[GL_KOS_ACTIVE_TEXTURE]->data);
+            GL_KOS_TEXTURE_UNIT[GL_KOS_ACTIVE_TEXTURE]->data = NULL;
+        }
+    }
 
     GLuint bytes = level ? glKosMipMapTexSize(width, height) : (width * height * 2);
 
-    GL_KOS_TEXTURE_UNIT[GL_KOS_ACTIVE_TEXTURE]->data = pvr_mem_malloc(bytes);
+    if(!GL_KOS_TEXTURE_UNIT[GL_KOS_ACTIVE_TEXTURE]->data) {
+        /* need texture memory */
+        GL_KOS_TEXTURE_UNIT[GL_KOS_ACTIVE_TEXTURE]->width   = width;
+        GL_KOS_TEXTURE_UNIT[GL_KOS_ACTIVE_TEXTURE]->height  = height;
+        GL_KOS_TEXTURE_UNIT[GL_KOS_ACTIVE_TEXTURE]->mip_map = level;
+        GL_KOS_TEXTURE_UNIT[GL_KOS_ACTIVE_TEXTURE]->color   = type;
+
+        GL_KOS_TEXTURE_UNIT[GL_KOS_ACTIVE_TEXTURE]->data = pvr_mem_malloc(bytes);
+    }
 
     if(data) {
         switch(type) {
