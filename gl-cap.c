@@ -9,9 +9,6 @@
 #include "gl.h"
 #include "gl-api.h"
 
-#include <malloc.h>
-#include <stdio.h>
-
 //===============================================================================//
 //== Enable Bit Flags ==//
 
@@ -128,7 +125,7 @@ GLboolean APIENTRY glIsEnabled(GLenum cap) {
             return _glKosEnabledScissorTest() ? GL_TRUE : GL_FALSE;
 
         case GL_CULL_FACE:
-            return _glKosEnabledFog() ? GL_TRUE : GL_FALSE;
+            return _glKosEnabledCulling() ? GL_TRUE : GL_FALSE;
 
         case GL_FOG:
             return _glKosEnabledFog() ? GL_TRUE : GL_FALSE;
