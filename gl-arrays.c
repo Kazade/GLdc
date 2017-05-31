@@ -41,8 +41,8 @@ static GLubyte GL_KOS_CLIENT_ACTIVE_TEXTURE = GL_TEXTURE0_ARB & 0xF;
 
 static GLubyte  *GL_KOS_VERTEX_POINTER = NULL;
 static GLfloat  *GL_KOS_NORMAL_POINTER = NULL;
-static GLfloat  *GL_KOS_TEXCOORD0_POINTER = NULL;
-static GLfloat  *GL_KOS_TEXCOORD1_POINTER = NULL;
+static GLubyte  *GL_KOS_TEXCOORD0_POINTER = NULL;
+static GLubyte  *GL_KOS_TEXCOORD1_POINTER = NULL;
 static GLubyte  *GL_KOS_COLOR_POINTER = NULL;
 static GLubyte  *GL_KOS_INDEX_POINTER_U8 = NULL;
 static GLushort *GL_KOS_INDEX_POINTER_U16 = NULL;
@@ -153,16 +153,14 @@ GLAPI void APIENTRY glTexCoordPointer(GLint size, GLenum type,
     }
 
     if(GL_KOS_CLIENT_ACTIVE_TEXTURE) {
-        (stride) ? (GL_KOS_TEXCOORD1_STRIDE = stride / 4) : (GL_KOS_TEXCOORD1_STRIDE = 2);
-
-        GL_KOS_TEXCOORD1_POINTER = (float *)pointer;
+        GL_KOS_TEXCOORD1_STRIDE = (stride) ? stride : _calculate_byte_size(type) * size;
+        GL_KOS_TEXCOORD1_POINTER = (GLubyte *)pointer;
 
         GL_KOS_VERTEX_PTR_MODE |= GL_KOS_USE_TEXTURE1;
     }
     else {
-        (stride) ? (GL_KOS_TEXCOORD0_STRIDE = stride / 4) : (GL_KOS_TEXCOORD0_STRIDE = 2);
-
-        GL_KOS_TEXCOORD0_POINTER = (float *)pointer;
+        GL_KOS_TEXCOORD0_STRIDE = (stride) ? stride : _calculate_byte_size(type) * size;
+        GL_KOS_TEXCOORD0_POINTER = (GLubyte *)pointer;
 
         GL_KOS_VERTEX_PTR_MODE |= GL_KOS_USE_TEXTURE0;
     }
@@ -511,15 +509,16 @@ static inline void _glKosElementColor4fU16(pvr_vertex_t *dst, GLuint count) {
 
 static inline void _glKosElementTexCoord2fU16(pvr_vertex_t *dst, GLuint count) {
     GLuint i, index;
-    GLfloat *t = GL_KOS_TEXCOORD0_POINTER;
+    GLubyte *src = GL_KOS_TEXCOORD0_POINTER;
+    GLfloat *t;
 
     if(_glKosEnabledTextureMatrix()) {
         _glKosMatrixLoadTexture();
 
         for(i = 0; i < count; i++) {
             index = GL_KOS_INDEX_POINTER_U16[i] * GL_KOS_TEXCOORD0_STRIDE;
-
-            mat_trans_texture2_nomod(t[index], t[index + 1], dst[i].u, dst[i].v);
+            t = (GLfloat *) (src + index);
+            mat_trans_texture2_nomod(t[0], t[1], dst[i].u, dst[i].v);
         }
 
         _glKosMatrixLoadRender();
@@ -527,23 +526,25 @@ static inline void _glKosElementTexCoord2fU16(pvr_vertex_t *dst, GLuint count) {
     else {
         for(i = 0; i < count; i++) {
             index = GL_KOS_INDEX_POINTER_U16[i] * GL_KOS_TEXCOORD0_STRIDE;
-            dst[i].u = t[index];
-            dst[i].v = t[index + 1];
+            t = (GLfloat *) (src + index);
+            dst[i].u = t[0];
+            dst[i].v = t[1];
         }
     }
 }
 
 static inline void _glKosElementTexCoord2fU8(pvr_vertex_t *dst, GLuint count) {
     GLuint i, index;
-    GLfloat *t = GL_KOS_TEXCOORD0_POINTER;
+    GLubyte *src = GL_KOS_TEXCOORD0_POINTER;
+    GLfloat *t;
 
     if(_glKosEnabledTextureMatrix()) {
         _glKosMatrixLoadTexture();
 
         for(i = 0; i < count; i++) {
             index = GL_KOS_INDEX_POINTER_U8[i] * GL_KOS_TEXCOORD0_STRIDE;
-
-            mat_trans_texture2_nomod(t[index], t[index + 1], dst[i].u, dst[i].v);
+            t = (GLfloat *) (src + index);
+            mat_trans_texture2_nomod(t[0], t[1], dst[i].u, dst[i].v);
         }
 
         _glKosMatrixLoadRender();
@@ -551,33 +552,38 @@ static inline void _glKosElementTexCoord2fU8(pvr_vertex_t *dst, GLuint count) {
     else {
         for(i = 0; i < count; i++) {
             index = GL_KOS_INDEX_POINTER_U8[i] * GL_KOS_TEXCOORD0_STRIDE;
-            dst[i].u = t[index];
-            dst[i].v = t[index + 1];
+            t = (GLfloat *) (src + index);
+            dst[i].u = t[0];
+            dst[i].v = t[1];
         }
     }
 }
 
 static inline void _glKosElementMultiTexCoord2fU16C(GLuint count) {
     GLuint i, index;
-    GLfloat *t = GL_KOS_TEXCOORD1_POINTER;
+    GLubyte *src = GL_KOS_TEXCOORD1_POINTER;
+    GLfloat *t;
     GLfloat *dst = GL_KOS_ARRAY_BUFUV;
 
     for(i = 0; i < count; i++) {
         index = GL_KOS_INDEX_POINTER_U16[i] * GL_KOS_TEXCOORD1_STRIDE;
-        *dst++ = t[index];
-        *dst++ = t[index + 1];
+        t = (GLfloat *) (src + index);
+        *dst++ = t[0];
+        *dst++ = t[1];
     }
 }
 
 static inline void _glKosElementMultiTexCoord2fU8C(GLuint count) {
     GLuint i, index;
-    GLfloat *t = GL_KOS_TEXCOORD1_POINTER;
+    GLubyte *src = GL_KOS_TEXCOORD1_POINTER;
+    GLfloat *t;
     GLfloat *dst = GL_KOS_ARRAY_BUFUV;
 
     for(i = 0; i < count; i++) {
         index = GL_KOS_INDEX_POINTER_U8[i] * GL_KOS_TEXCOORD1_STRIDE;
-        *dst++ = t[index];
-        *dst++ = t[index + 1];
+        t = (GLfloat *) (src + index);
+        *dst++ = t[0];
+        *dst++ = t[1];
     }
 }
 
@@ -586,13 +592,15 @@ static inline void _glKosElementMultiTexCoord2fU16(GLuint count) {
         return _glKosElementMultiTexCoord2fU16C(count);
 
     GLuint i, index;
-    GLfloat *t = GL_KOS_TEXCOORD1_POINTER;
+    GLubyte *src = GL_KOS_TEXCOORD1_POINTER;
+    GLfloat *t;
     glTexCoord *dst = (glTexCoord *)_glKosMultiUVBufPointer();
 
     for(i = 0; i < count; i++) {
         index = GL_KOS_INDEX_POINTER_U16[i] * GL_KOS_TEXCOORD1_STRIDE;
-        dst[i].u = t[index];
-        dst[i].v = t[index + 1];
+        t = (GLfloat *) (src + index);
+        dst[i].u = t[0];
+        dst[i].v = t[1];
     }
 
     _glKosMultiUVBufAdd(count);
@@ -603,13 +611,15 @@ static inline void _glKosElementMultiTexCoord2fU8(GLuint count) {
         return _glKosElementMultiTexCoord2fU8C(count);
 
     GLuint i, index;
-    GLfloat *t = GL_KOS_TEXCOORD1_POINTER;
+    GLubyte *src = GL_KOS_TEXCOORD1_POINTER;
+    GLfloat *t;
     glTexCoord *dst = (glTexCoord *)_glKosMultiUVBufPointer();
 
     for(i = 0; i < count; i++) {
         index = GL_KOS_INDEX_POINTER_U8[i] * GL_KOS_TEXCOORD1_STRIDE;
-        dst[i].u = t[index];
-        dst[i].v = t[index + 1];
+        t = (GLfloat *) (src + index);
+        dst[i].u = t[0];
+        dst[i].v = t[1];
     }
 
     _glKosMultiUVBufAdd(count);
@@ -1104,24 +1114,27 @@ static inline void _glKosArrayColor4f(pvr_vertex_t *dst, GLuint count) {
 
 static inline void _glKosArrayTexCoord2f(pvr_vertex_t *dst, GLuint count) {
     GLuint i;
-    GLfloat *uv = GL_KOS_TEXCOORD0_POINTER;
+    GLubyte *src = GL_KOS_TEXCOORD0_POINTER;
+    GLfloat *uv;
 
     if(_glKosEnabledTextureMatrix()) {
         _glKosMatrixLoadTexture();
 
         for(i = 0; i < count; i++) {
+            uv = (GLfloat *) src;
             mat_trans_texture2_nomod(uv[0], uv[1], dst[i].u, dst[i].v);
 
-            uv += GL_KOS_TEXCOORD0_STRIDE;
+            src += GL_KOS_TEXCOORD0_STRIDE;
         }
 
         _glKosMatrixLoadRender();
     }
     else {
         for(i = 0; i < count; i++) {
+            uv = (GLfloat *) src;
             dst[i].u = uv[0];
             dst[i].v = uv[1];
-            uv += GL_KOS_TEXCOORD0_STRIDE;
+            src += GL_KOS_TEXCOORD0_STRIDE;
         }
     }
 }
@@ -1131,13 +1144,15 @@ static inline void _glKosArrayMultiTexCoord2f(GLuint count) {
         return;
 
     GLuint i;
-    GLfloat *uv = GL_KOS_TEXCOORD1_POINTER;
+    GLubyte *src = GL_KOS_TEXCOORD1_POINTER;
+    GLfloat *uv;
     glTexCoord *dst = (glTexCoord *)_glKosMultiUVBufPointer();
 
     for(i = 0; i < count; i++) {
+        uv = (GLfloat *) src;
         dst[i].u = uv[0];
         dst[i].v = uv[1];
-        uv += GL_KOS_TEXCOORD1_STRIDE;
+        src += GL_KOS_TEXCOORD1_STRIDE;
     }
 
     _glKosMultiUVBufAdd(count);
@@ -1202,7 +1217,8 @@ GLAPI void APIENTRY glDrawArrays(GLenum mode, GLint first, GLsizei count) {
         return;
 
     GL_KOS_VERTEX_POINTER   += (first * GL_KOS_VERTEX_STRIDE);       /* Add Pointer Offset */
-    GL_KOS_TEXCOORD0_POINTER += first;
+    GL_KOS_TEXCOORD0_POINTER += (first * GL_KOS_TEXCOORD0_STRIDE);
+    GL_KOS_TEXCOORD1_POINTER += (first * GL_KOS_TEXCOORD1_STRIDE);
     GL_KOS_COLOR_POINTER    += (first * GL_KOS_COLOR_STRIDE);
     GL_KOS_NORMAL_POINTER   += first;
 
@@ -1272,7 +1288,14 @@ GLAPI void APIENTRY glDrawArrays(GLenum mode, GLint first, GLsizei count) {
         _glKosArraysTransformClip(count);
 
         /* Finally, clip the input vertex data into the output vertex buffer */
-        count = _glKosArraysApplyClipping(GL_KOS_TEXCOORD1_POINTER, GL_KOS_TEXCOORD1_STRIDE, mode, count);
+        count = _glKosArraysApplyClipping(
+            (GLfloat *) GL_KOS_TEXCOORD1_POINTER,
+            GL_KOS_TEXCOORD1_STRIDE / 4,
+            mode, count
+        );
+        /* FIXME: The above function should really accept a GLbyte* and the stride directly
+           but that affects a lot of other code, so dividing the stride by float size
+           hopefully results in the same thing for now */
     }
 
     _glKosArraysApplyMultiTexture(mode, count);
