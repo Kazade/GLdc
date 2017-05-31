@@ -62,7 +62,7 @@ static GLenum  GL_KOS_COLOR_TYPE = 0;
 //== Local Function Definitions ==//
 
 static inline void _glKosArraysTransformNormals(GLfloat *normal, GLuint count);
-static inline void _glKosArraysTransformPositions(GLfloat *position, GLuint count);
+static inline void _glKosArraysTransformPositions(GLubyte *position, GLuint count);
 
 void (*_glKosArrayTexCoordFunc)(pvr_vertex_t *);
 void (*_glKosArrayColorFunc)(pvr_vertex_t *);
@@ -233,15 +233,17 @@ static inline void _glKosArraysTransformNormals(GLfloat *normal, GLuint count) {
     }
 }
 
-static inline void _glKosArraysTransformPositions(GLfloat *position, GLuint count) {
+static inline void _glKosArraysTransformPositions(GLubyte *position, GLuint count) {
     glVertex *v = &GL_KOS_ARRAY_BUF[0];
-    GLfloat *P = position;
+    GLubyte *src = position;
+    GLfloat *P;
 
     _glKosMatrixLoadModelView();
 
     while(count--) {
+        P = (GLfloat *) src;
         mat_trans_single3_nodiv_nomod(P[0], P[1], P[2], v->pos[0], v->pos[1], v->pos[2]);
-        P += 3;
+        src += GL_KOS_VERTEX_STRIDE;
         ++v;
     }
 }
