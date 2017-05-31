@@ -40,7 +40,7 @@ static GLfloat   GL_KOS_ARRAY_BUFUV[GL_KOS_MAX_VERTS];
 static GLubyte GL_KOS_CLIENT_ACTIVE_TEXTURE = GL_TEXTURE0_ARB & 0xF;
 
 static GLubyte  *GL_KOS_VERTEX_POINTER = NULL;
-static GLfloat  *GL_KOS_NORMAL_POINTER = NULL;
+static GLubyte  *GL_KOS_NORMAL_POINTER = NULL;
 static GLubyte  *GL_KOS_TEXCOORD0_POINTER = NULL;
 static GLubyte  *GL_KOS_TEXCOORD1_POINTER = NULL;
 static GLubyte  *GL_KOS_COLOR_POINTER = NULL;
@@ -61,7 +61,7 @@ static GLenum  GL_KOS_COLOR_TYPE = 0;
 //========================================================================================//
 //== Local Function Definitions ==//
 
-static inline void _glKosArraysTransformNormals(GLfloat *normal, GLuint count);
+static inline void _glKosArraysTransformNormals(GLubyte *normal, GLuint count);
 static inline void _glKosArraysTransformPositions(GLubyte *position, GLuint count);
 
 void (*_glKosArrayTexCoordFunc)(pvr_vertex_t *);
@@ -128,9 +128,8 @@ GLAPI void APIENTRY glNormalPointer(GLenum type, GLsizei stride, const GLvoid *p
         return;
     }
 
-    (stride) ? (GL_KOS_NORMAL_STRIDE = stride / 4) : (GL_KOS_NORMAL_STRIDE = 3);
-
-    GL_KOS_NORMAL_POINTER = (float *)pointer;
+    GL_KOS_NORMAL_STRIDE = (stride) ? stride : _calculate_byte_size(type) * size;
+    GL_KOS_NORMAL_POINTER = (GLubyte *)pointer;
 
     GL_KOS_VERTEX_PTR_MODE |= GL_KOS_USE_NORMAL;
 }
@@ -218,15 +217,17 @@ inline glVertex *_glKosArrayBufPtr() {
     return GL_KOS_ARRAY_BUF_PTR;
 }
 
-static inline void _glKosArraysTransformNormals(GLfloat *normal, GLuint count) {
+static inline void _glKosArraysTransformNormals(GLubyte *normal, GLuint count) {
     glVertex *v = &GL_KOS_ARRAY_BUF[0];
-    GLfloat *N = normal;
+    GLubyte *src = normal;
+    GLfloat *N;
 
     _glKosMatrixLoadModelRot();
 
     while(count--) {
+        N = (GLfloat *) src;
         mat_trans_normal3_nomod(N[0], N[1], N[2], v->norm[0], v->norm[1], v->norm[2]);
-        N += 3;
+        src += GL_KOS_NORMAL_STRIDE;
         ++v;
     }
 }
@@ -1223,7 +1224,7 @@ GLAPI void APIENTRY glDrawArrays(GLenum mode, GLint first, GLsizei count) {
     GL_KOS_TEXCOORD0_POINTER += (first * GL_KOS_TEXCOORD0_STRIDE);
     GL_KOS_TEXCOORD1_POINTER += (first * GL_KOS_TEXCOORD1_STRIDE);
     GL_KOS_COLOR_POINTER    += (first * GL_KOS_COLOR_STRIDE);
-    GL_KOS_NORMAL_POINTER   += first;
+    GL_KOS_NORMAL_POINTER   += (first * GL_KOS_NORMAL_STRIDE);
 
     /* Compile the PVR polygon context with the currently enabled flags */
     _glKosArraysApplyHeader();
