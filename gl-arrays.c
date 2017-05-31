@@ -1199,9 +1199,9 @@ GLAPI void APIENTRY glDrawArrays(GLenum mode, GLint first, GLsizei count) {
     if(!_glKosArraysVerifyParameter(mode, count, first, 0))
         return;
 
-    GL_KOS_VERTEX_POINTER   += first;       /* Add Pointer Offset */
+    GL_KOS_VERTEX_POINTER   += (first * GL_KOS_VERTEX_STRIDE);       /* Add Pointer Offset */
     GL_KOS_TEXCOORD0_POINTER += first;
-    GL_KOS_COLOR_POINTER    += first;
+    GL_KOS_COLOR_POINTER    += (first * GL_KOS_COLOR_STRIDE);
     GL_KOS_NORMAL_POINTER   += first;
 
     /* Compile the PVR polygon context with the currently enabled flags */
