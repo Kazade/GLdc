@@ -43,7 +43,7 @@ static GLfloat  *GL_KOS_VERTEX_POINTER = NULL;
 static GLfloat  *GL_KOS_NORMAL_POINTER = NULL;
 static GLfloat  *GL_KOS_TEXCOORD0_POINTER = NULL;
 static GLfloat  *GL_KOS_TEXCOORD1_POINTER = NULL;
-static GLfloat  *GL_KOS_COLOR_POINTER = NULL;
+static GLubyte  *GL_KOS_COLOR_POINTER = NULL;
 static GLubyte  *GL_KOS_INDEX_POINTER_U8 = NULL;
 static GLushort *GL_KOS_INDEX_POINTER_U16 = NULL;
 
@@ -69,6 +69,22 @@ void (*_glKosArrayColorFunc)(pvr_vertex_t *);
 
 void (*_glKosElementTexCoordFunc)(pvr_vertex_t *, GLuint);
 void (*_glKosElementColorFunc)(pvr_vertex_t *, GLuint);
+
+static inline GLushort _calculate_byte_size(GLenum type) {
+    switch(type) {
+        case GL_UNSIGNED_INT: return sizeof(GLuint);
+        case GL_INT: return sizeof(GLint);
+        case GL_FLOAT: return sizeof(GLfloat);
+        case GL_UNSIGNED_BYTE: return sizeof(GLubyte);
+        case GL_BYTE: return sizeof(GLbyte);
+        case GL_UNSIGNED_SHORT: return sizeof(GLushort);
+        case GL_SHORT: return sizeof(GLshort);
+        case GL_DOUBLE: return sizeof(GLdouble);
+        default:
+            _glKosThrowError(GL_INVALID_ENUM, "_calculate_byte_size");
+            return 0;
+    }
+}
 
 //========================================================================================//
 //== Open GL API Public Functions ==//
@@ -157,23 +173,23 @@ GLAPI void APIENTRY glTexCoordPointer(GLint size, GLenum type,
 GLAPI void APIENTRY glColorPointer(GLint size, GLenum type,
                                    GLsizei stride, const GLvoid *pointer) {
     if((type == GL_UNSIGNED_INT) && (size == 1)) {
-        GL_KOS_COLOR_COMPONENTS = 1;
-        GL_KOS_COLOR_POINTER = (GLvoid *)pointer;
+        GL_KOS_COLOR_COMPONENTS = size;
+        GL_KOS_COLOR_POINTER = (GLubyte *)pointer;
         GL_KOS_COLOR_TYPE = type;
     }
     else if((type == GL_UNSIGNED_BYTE) && (size == 4)) {
-        GL_KOS_COLOR_COMPONENTS = 4;
-        GL_KOS_COLOR_POINTER = (GLvoid *)pointer;
+        GL_KOS_COLOR_COMPONENTS = size;
+        GL_KOS_COLOR_POINTER = (GLubyte *)pointer;
         GL_KOS_COLOR_TYPE = type;
     }
     else if((type == GL_FLOAT) && (size == 3)) {
-        GL_KOS_COLOR_COMPONENTS = 3;
-        GL_KOS_COLOR_POINTER = (GLfloat *)pointer;
+        GL_KOS_COLOR_COMPONENTS = size;
+        GL_KOS_COLOR_POINTER = (GLubyte *)pointer;
         GL_KOS_COLOR_TYPE = type;
     }
     else if((type == GL_FLOAT) && (size == 4)) {
-        GL_KOS_COLOR_COMPONENTS = 4;
-        GL_KOS_COLOR_POINTER = (GLfloat *)pointer;
+        GL_KOS_COLOR_COMPONENTS = size;
+        GL_KOS_COLOR_POINTER = (GLubyte *)pointer;
         GL_KOS_COLOR_TYPE = type;
     }
     else {
@@ -182,7 +198,7 @@ GLAPI void APIENTRY glColorPointer(GLint size, GLenum type,
         return;
     }
 
-    (stride) ? (GL_KOS_COLOR_STRIDE = stride / 4) : (GL_KOS_COLOR_STRIDE = size);
+    GL_KOS_COLOR_STRIDE = (stride) ? stride : _calculate_byte_size(type) * size;
 
     GL_KOS_VERTEX_PTR_MODE |= GL_KOS_USE_COLOR;
 }
@@ -375,81 +391,106 @@ static inline void _glKosArrayColor0(pvr_vertex_t *dst, GLuint count) {
 
 static inline void _glKosElementColor1uiU8(pvr_vertex_t *dst, GLuint count) {
     GLuint i;
-    GLuint *src = (GLuint *)GL_KOS_COLOR_POINTER;
+    GLuint *element;
+    GLubyte *src = GL_KOS_COLOR_POINTER;
 
-    for(i = 0; i < count; i++)
-        dst[i].argb = src[GL_KOS_INDEX_POINTER_U8[i] * GL_KOS_COLOR_STRIDE];
+    for(i = 0; i < count; i++) {
+        element = (GLuint *) (src + (GL_KOS_INDEX_POINTER_U8[i] * GL_KOS_COLOR_STRIDE));
+        dst[i].argb = *element;
+    }
 }
 
 static inline void _glKosElementColor1uiU16(pvr_vertex_t *dst, GLuint count) {
     GLuint i;
-    GLuint *color = (GLuint *)GL_KOS_COLOR_POINTER;
+    GLuint *element;
+    GLubyte *color = GL_KOS_COLOR_POINTER;
 
-    for(i = 0; i < count; i++)
-        dst[i].argb = color[GL_KOS_INDEX_POINTER_U16[i] * GL_KOS_COLOR_STRIDE];
+    for(i = 0; i < count; i++) {
+        element = (GLuint *) (color + (GL_KOS_INDEX_POINTER_U16[i] * GL_KOS_COLOR_STRIDE));
+        dst[i].argb = *element;
+    }
 }
 
 static inline void _glKosElementColor4ubU8(pvr_vertex_t *dst, GLuint count) {
-    GLuint i, *color = (GLuint *)GL_KOS_COLOR_POINTER;
+    GLuint i;
+    GLuint *element;
+    GLubyte *color = GL_KOS_COLOR_POINTER;
 
-    for(i = 0; i < count; i++)
-        dst[i].argb = RGBA32_2_ARGB32(color[GL_KOS_INDEX_POINTER_U8[i]] * GL_KOS_COLOR_STRIDE);
+    for(i = 0; i < count; i++) {
+        element = (GLuint *) (color + (GL_KOS_INDEX_POINTER_U8[i] * GL_KOS_COLOR_STRIDE));
+        dst[i].argb = RGBA32_2_ARGB32(*element);
+    }
 }
 
 static inline void _glKosElementColor4ubU16(pvr_vertex_t *dst, GLuint count) {
-    GLuint i, *color = (GLuint *)GL_KOS_COLOR_POINTER;
+    GLuint i;
+    GLuint *element;
+    GLubyte *color = GL_KOS_COLOR_POINTER;
 
-    for(i = 0; i < count; i++)
-        dst[i].argb = RGBA32_2_ARGB32(color[GL_KOS_INDEX_POINTER_U16[i] * GL_KOS_COLOR_STRIDE]);
+    for(i = 0; i < count; i++) {
+        element = (GLuint *) (color + (GL_KOS_INDEX_POINTER_U16[i] * GL_KOS_COLOR_STRIDE));
+        dst[i].argb = RGBA32_2_ARGB32(*element);
+    }
 }
 
 static inline void _glKosElementColor3fU8(pvr_vertex_t *dst, GLuint count) {
     GLuint i, index;
-    GLrgb3f *color = (GLrgb3f *)GL_KOS_COLOR_POINTER;
+    GLrgb3f* element;
+    GLubyte *color = GL_KOS_COLOR_POINTER;
 
     for(i = 0; i < count; i++) {
-        index =  GL_KOS_INDEX_POINTER_U8[i] * GL_KOS_COLOR_STRIDE;
-        dst[i].argb = (0xFF000000 | ((GLubyte)color[index][0] * 0xFF) << 16
-                       | ((GLubyte)color[index][1] * 0xFF) << 8
-                       | ((GLubyte)color[index][2] * 0xFF));
+        index = GL_KOS_INDEX_POINTER_U8[i] * GL_KOS_COLOR_STRIDE;
+        element = (GLrgb3f *) (color + index);
+        dst[i].argb = (0xFF000000 
+                       | ((GLubyte)((*element)[0] * 0xFF)) << 16
+                       | ((GLubyte)((*element)[1] * 0xFF)) << 8
+                       | ((GLubyte)((*element)[2] * 0xFF)));
     }
 }
 
 static inline void _glKosElementColor3fU16(pvr_vertex_t *dst, GLuint count) {
     GLuint i, index;
-    GLrgb3f *color = (GLrgb3f *)GL_KOS_COLOR_POINTER;
+    GLrgb3f* element;
+    GLubyte *color = GL_KOS_COLOR_POINTER;
 
     for(i = 0; i < count; i++) {
         index =  GL_KOS_INDEX_POINTER_U16[i] * GL_KOS_COLOR_STRIDE;
-        dst[i].argb = (0xFF000000 | ((GLubyte)color[index][0] * 0xFF) << 16
-                       | ((GLubyte)color[index][1] * 0xFF) << 8
-                       | ((GLubyte)color[index][2] * 0xFF));
+        element = (GLrgb3f *) (color + index);
+        dst[i].argb = (0xFF000000 
+                       | ((GLubyte)((*element)[0] * 0xFF)) << 16
+                       | ((GLubyte)((*element)[1] * 0xFF)) << 8
+                       | ((GLubyte)((*element)[2] * 0xFF)));
     }
 }
 
 static inline void _glKosElementColor4fU8(pvr_vertex_t *dst, GLuint count) {
     GLuint i, index;
-    GLrgba4f *color = (GLrgba4f *)GL_KOS_COLOR_POINTER;
+    GLrgba4f* element;
+    GLubyte *color = GL_KOS_COLOR_POINTER;
 
     for(i = 0; i < count; i++) {
         index = GL_KOS_INDEX_POINTER_U8[i] * GL_KOS_COLOR_STRIDE;
-        dst[i].argb = (((GLubyte)color[index][3] * 0xFF) << 24
-                       | ((GLubyte)color[index][0] * 0xFF) << 16
-                       | ((GLubyte)color[index][1] * 0xFF) << 8
-                       | ((GLubyte)color[index][2] * 0xFF));
+        element = (GLrgba4f *) (color + index);
+
+        dst[i].argb = (  ((GLubyte) ((*element)[3] * 0xFF)) << 24
+                       | ((GLubyte) ((*element)[0] * 0xFF)) << 16
+                       | ((GLubyte) ((*element)[1] * 0xFF)) << 8
+                       | ((GLubyte) ((*element)[2] * 0xFF)));
     }
 }
 
 static inline void _glKosElementColor4fU16(pvr_vertex_t *dst, GLuint count) {
     GLuint i, index;
-    GLrgba4f *color = (GLrgba4f *)GL_KOS_COLOR_POINTER;
+    GLrgba4f* element;
+    GLubyte* color = GL_KOS_COLOR_POINTER;
 
     for(i = 0; i < count; i++) {
         index = GL_KOS_INDEX_POINTER_U16[i] * GL_KOS_COLOR_STRIDE;
-        dst[i].argb = (((GLubyte)color[index][3] * 0xFF) << 24
-                       | ((GLubyte)color[index][0] * 0xFF) << 16
-                       | ((GLubyte)color[index][1] * 0xFF) << 8
-                       | ((GLubyte)color[index][2] * 0xFF));
+        element = (GLrgba4f *) (color + index);
+        dst[i].argb = (  ((GLubyte)((*element)[3] * 0xFF)) << 24
+                       | ((GLubyte)((*element)[0] * 0xFF)) << 16
+                       | ((GLubyte)((*element)[1] * 0xFF)) << 8
+                       | ((GLubyte)((*element)[2] * 0xFF)));
     }
 }
 
@@ -999,44 +1040,51 @@ GLAPI void APIENTRY glDrawElements(GLenum mode, GLsizei count, GLenum type, cons
 
 static inline void _glKosArrayColor1ui(pvr_vertex_t *dst, GLuint count) {
     GLuint i;
-    GLuint *color = (GLuint *)GL_KOS_COLOR_POINTER;
+    GLbyte *color = (GLbyte *)GL_KOS_COLOR_POINTER;
 
     for(i = 0; i < count; i++) {
-        dst[i].argb = *color;
+        dst[i].argb = *((GLuint *) color);
         color += GL_KOS_COLOR_STRIDE;
     }
 }
 
 static inline void _glKosArrayColor4ub(pvr_vertex_t *dst, GLuint count) {
-    GLuint i, *color = (GLuint *)GL_KOS_COLOR_POINTER;
+    GLuint i;
+    GLuint *element;
+    GLubyte *color = GL_KOS_COLOR_POINTER;
 
     for(i = 0; i < count; i++)  {
-        dst[i].argb = RGBA32_2_ARGB32(*color);
+        element = (GLuint *) color;
+        dst[i].argb = RGBA32_2_ARGB32(*element);
         color += GL_KOS_COLOR_STRIDE;
     }
 }
 
 static inline void _glKosArrayColor3f(pvr_vertex_t *dst, GLuint count) {
     GLuint i;
-    GLfloat *color = (GLfloat *)GL_KOS_COLOR_POINTER;
+    GLfloat *element;
+    GLubyte *color = GL_KOS_COLOR_POINTER;
 
     for(i = 0; i < count; i++)  {
-        dst[i].argb = (0xFF000000 | ((GLubyte)(color[0] * 0xFF)) << 16
-                       | ((GLubyte)(color[1] * 0xFF)) << 8
-                       | ((GLubyte)(color[2] * 0xFF)));
+        element = (GLfloat *) color;
+        dst[i].argb = (0xFF000000 | ((GLubyte)(element[0] * 0xFF)) << 16
+                       | ((GLubyte)(element[1] * 0xFF)) << 8
+                       | ((GLubyte)(element[2] * 0xFF)));
         color += GL_KOS_COLOR_STRIDE;
     }
 }
 
 static inline void _glKosArrayColor4f(pvr_vertex_t *dst, GLuint count) {
     GLuint i;
-    GLfloat *color = (GLfloat *)GL_KOS_COLOR_POINTER;
+    GLfloat *element;
+    GLubyte *color = GL_KOS_COLOR_POINTER;
 
     for(i = 0; i < count; i++)  {
-        dst[i].argb = (((GLubyte)(color[3] * 0xFF)) << 24
-                       | ((GLubyte)(color[0] * 0xFF)) << 16
-                       | ((GLubyte)(color[1] * 0xFF)) << 8
-                       | ((GLubyte)(color[2] * 0xFF)));
+        element = (GLfloat *) color;
+        dst[i].argb = (((GLubyte)(element[3] * 0xFF)) << 24
+                       | ((GLubyte)(element[0] * 0xFF)) << 16
+                       | ((GLubyte)(element[1] * 0xFF)) << 8
+                       | ((GLubyte)(element[2] * 0xFF)));
         color += GL_KOS_COLOR_STRIDE;
     }
 }
