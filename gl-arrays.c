@@ -39,7 +39,7 @@ static GLfloat   GL_KOS_ARRAY_BUFUV[GL_KOS_MAX_VERTS];
 
 static GLubyte GL_KOS_CLIENT_ACTIVE_TEXTURE = GL_TEXTURE0_ARB & 0xF;
 
-static GLfloat  *GL_KOS_VERTEX_POINTER = NULL;
+static GLubyte  *GL_KOS_VERTEX_POINTER = NULL;
 static GLfloat  *GL_KOS_NORMAL_POINTER = NULL;
 static GLfloat  *GL_KOS_TEXCOORD0_POINTER = NULL;
 static GLfloat  *GL_KOS_TEXCOORD1_POINTER = NULL;
@@ -109,9 +109,8 @@ GLAPI void APIENTRY glVertexPointer(GLint size, GLenum type,
 
     GL_KOS_VERTEX_SIZE = size;
 
-    (stride) ? (GL_KOS_VERTEX_STRIDE = stride / 4) : (GL_KOS_VERTEX_STRIDE = 3);
-
-    GL_KOS_VERTEX_POINTER = (float *)pointer;
+    GL_KOS_VERTEX_STRIDE = (stride) ? stride : _calculate_byte_size(type) * size;
+    GL_KOS_VERTEX_POINTER = (GLubyte *)pointer;
 
     GL_KOS_VERTEX_PTR_MODE |= GL_KOS_USE_ARRAY;
 }
@@ -250,7 +249,8 @@ static inline void _glKosArraysTransformPositions(GLfloat *position, GLuint coun
 //========================================================================================//
 //== Arrays Vertex Transform ==/
 static void _glKosArraysTransform2D(GLuint count) {
-    GLfloat *src = GL_KOS_VERTEX_POINTER;
+    GLubyte *src = GL_KOS_VERTEX_POINTER;
+    GLfloat *element;
     pvr_vertex_t *dst = _glKosVertexBufPointer();
 
     register float __x  __asm__("fr12");
@@ -258,8 +258,9 @@ static void _glKosArraysTransform2D(GLuint count) {
     register float __z  __asm__("fr14");
 
     while(count--)  {
-        __x = src[0];
-        __y = src[1];
+        element = (GLfloat *) src;
+        __x = element[0];
+        __y = element[1];
         __z = 0;
 
         mat_trans_fv12()
@@ -275,7 +276,8 @@ static void _glKosArraysTransform2D(GLuint count) {
 }
 
 static void _glKosArraysTransform(GLuint count) {
-    GLfloat *src = GL_KOS_VERTEX_POINTER;
+    GLubyte *src = GL_KOS_VERTEX_POINTER;
+    GLfloat *element;
     pvr_vertex_t *dst = _glKosVertexBufPointer();
 
     register float __x  __asm__("fr12");
@@ -283,9 +285,10 @@ static void _glKosArraysTransform(GLuint count) {
     register float __z  __asm__("fr14");
 
     while(count--)  {
-        __x = src[0];
-        __y = src[1];
-        __z = src[2];
+        element = (GLfloat *) src;
+        __x = element[0];
+        __y = element[1];
+        __z = element[2];
 
         mat_trans_fv12()
 
@@ -300,7 +303,8 @@ static void _glKosArraysTransform(GLuint count) {
 }
 
 static void _glKosArraysTransformClip(GLuint count) {
-    GLfloat *src = GL_KOS_VERTEX_POINTER;
+    GLubyte *src = GL_KOS_VERTEX_POINTER;
+    GLfloat *element;
     GLfloat *W = GL_KOS_ARRAY_DSTW;
     pvr_vertex_t *dst = _glKosClipBufAddress();
 
@@ -310,9 +314,10 @@ static void _glKosArraysTransformClip(GLuint count) {
     register float __w  __asm__("fr15");
 
     while(count--)  {
-        __x = src[0];
-        __y = src[1];
-        __z = src[2];
+        element = (GLfloat *) src;
+        __x = element[0];
+        __y = element[1];
+        __z = element[2];
 
         mat_trans_fv12_nodivw()
 
@@ -328,7 +333,8 @@ static void _glKosArraysTransformClip(GLuint count) {
 }
 
 static void _glKosArraysTransformElements(GLuint count) {
-    GLfloat *src = GL_KOS_VERTEX_POINTER;
+    GLubyte *src = GL_KOS_VERTEX_POINTER;
+    GLfloat *element;
     GLuint i = 0;
 
     register float __x  __asm__("fr12");
@@ -336,9 +342,10 @@ static void _glKosArraysTransformElements(GLuint count) {
     register float __z  __asm__("fr14");
 
     for(i = 0; i < count; i++) {
-        __x = src[0];
-        __y = src[1];
-        __z = src[2];
+        element = (GLfloat *) src;
+        __x = element[0];
+        __y = element[1];
+        __z = element[2];
 
         mat_trans_fv12()
 
@@ -351,7 +358,8 @@ static void _glKosArraysTransformElements(GLuint count) {
 }
 
 static void _glKosArraysTransformClipElements(GLuint count) {
-    GLfloat *src = GL_KOS_VERTEX_POINTER;
+    GLubyte *src = GL_KOS_VERTEX_POINTER;
+    GLfloat *element;
     GLuint i;
 
     register float __x  __asm__("fr12");
@@ -360,9 +368,10 @@ static void _glKosArraysTransformClipElements(GLuint count) {
     register float __w  __asm__("fr15");
 
     for(i = 0; i < count; i++) {
-        __x = src[0];
-        __y = src[1];
-        __z = src[2];
+        element = (GLfloat *) src;
+        __x = element[0];
+        __y = element[1];
+        __z = element[2];
 
         mat_trans_fv12_nodivw()
 
