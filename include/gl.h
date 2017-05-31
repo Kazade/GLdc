@@ -235,6 +235,13 @@ __BEGIN_DECLS
 #define GL_LIGHT14                        0x400E
 #define GL_LIGHT15                        0x400F
 
+/* Client state caps */
+#define GL_VERTEX_ARRAY                   0x8074
+#define GL_NORMAL_ARRAY                   0x8075
+#define GL_COLOR_ARRAY                    0x8076
+#define GL_INDEX_ARRAY                    0x8077
+#define GL_TEXTURE_COORD_ARRAY            0x8078
+
 /* LightParameter */
 #define GL_AMBIENT                        0x1200
 #define GL_DIFFUSE                        0x1201
@@ -575,9 +582,8 @@ GLAPI void APIENTRY glColorPointer(GLint size, GLenum type,
 GLAPI void APIENTRY glDrawArrays(GLenum mode, GLint first, GLsizei count);
 GLAPI void APIENTRY glDrawElements(GLenum mode, GLsizei count, GLenum type, const GLvoid *indices);
 
-/* No need to Enable Array Client State... */
-#define glEnableClientState(cap) {;}
-#define glDisableClientState(cap) {;}
+GLAPI void APIENTRY glEnableClientState(GLenum cap);
+GLAPI void APIENTRY glDisableClientState(GLenum cap);
 
 /* Transformation / Matrix Functions */
 

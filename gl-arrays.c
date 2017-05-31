@@ -111,8 +111,6 @@ GLAPI void APIENTRY glVertexPointer(GLint size, GLenum type,
 
     GL_KOS_VERTEX_STRIDE = (stride) ? stride : _calculate_byte_size(type) * size;
     GL_KOS_VERTEX_POINTER = (GLubyte *)pointer;
-
-    GL_KOS_VERTEX_PTR_MODE |= GL_KOS_USE_ARRAY;
 }
 
 /* Submit a Vertex Normal Pointer */
@@ -128,10 +126,8 @@ GLAPI void APIENTRY glNormalPointer(GLenum type, GLsizei stride, const GLvoid *p
         return;
     }
 
-    GL_KOS_NORMAL_STRIDE = (stride) ? stride : _calculate_byte_size(type) * size;
+    GL_KOS_NORMAL_STRIDE = (stride) ? stride : _calculate_byte_size(type) * 3;
     GL_KOS_NORMAL_POINTER = (GLubyte *)pointer;
-
-    GL_KOS_VERTEX_PTR_MODE |= GL_KOS_USE_NORMAL;
 }
 
 /* Submit a Texture Coordinate Pointer */
@@ -154,14 +150,10 @@ GLAPI void APIENTRY glTexCoordPointer(GLint size, GLenum type,
     if(GL_KOS_CLIENT_ACTIVE_TEXTURE) {
         GL_KOS_TEXCOORD1_STRIDE = (stride) ? stride : _calculate_byte_size(type) * size;
         GL_KOS_TEXCOORD1_POINTER = (GLubyte *)pointer;
-
-        GL_KOS_VERTEX_PTR_MODE |= GL_KOS_USE_TEXTURE1;
     }
     else {
         GL_KOS_TEXCOORD0_STRIDE = (stride) ? stride : _calculate_byte_size(type) * size;
         GL_KOS_TEXCOORD0_POINTER = (GLubyte *)pointer;
-
-        GL_KOS_VERTEX_PTR_MODE |= GL_KOS_USE_TEXTURE0;
     }
 }
 
@@ -195,8 +187,6 @@ GLAPI void APIENTRY glColorPointer(GLint size, GLenum type,
     }
 
     GL_KOS_COLOR_STRIDE = (stride) ? stride : _calculate_byte_size(type) * size;
-
-    GL_KOS_VERTEX_PTR_MODE |= GL_KOS_USE_COLOR;
 }
 //========================================================================================//
 //== Vertex Pointer Internal API ==//
@@ -1319,3 +1309,49 @@ void APIENTRY glClientActiveTextureARB(GLenum texture) {
 
     GL_KOS_CLIENT_ACTIVE_TEXTURE = texture & 0xF;
 }
+
+void APIENTRY glEnableClientState(GLenum cap) {
+    switch(cap) {
+    case GL_VERTEX_ARRAY:
+        GL_KOS_VERTEX_PTR_MODE |= GL_KOS_USE_ARRAY;
+    break;
+    case GL_COLOR_ARRAY:
+        GL_KOS_VERTEX_PTR_MODE |= GL_KOS_USE_COLOR;
+    break;
+    case GL_NORMAL_ARRAY:
+        GL_KOS_VERTEX_PTR_MODE |= GL_KOS_USE_NORMAL;
+    break;
+    case GL_TEXTURE_COORD_ARRAY:
+        (GL_KOS_CLIENT_ACTIVE_TEXTURE) ? 
+            (GL_KOS_VERTEX_PTR_MODE |= GL_KOS_USE_TEXTURE1):
+            (GL_KOS_VERTEX_PTR_MODE |= GL_KOS_USE_TEXTURE0);
+    break;
+    default:
+        _glKosThrowError(GL_INVALID_ENUM, "glEnableClientState");
+    }
+                    
+}
+
+void APIENTRY glDisableClientState(GLenum cap) {
+    switch(cap) {
+    case GL_VERTEX_ARRAY:
+        GL_KOS_VERTEX_PTR_MODE &= ~GL_KOS_USE_ARRAY;
+    break;
+    case GL_COLOR_ARRAY:
+        GL_KOS_VERTEX_PTR_MODE &= ~GL_KOS_USE_COLOR;
+    break;
+    case GL_NORMAL_ARRAY:
+        GL_KOS_VERTEX_PTR_MODE &= ~GL_KOS_USE_NORMAL;
+    break;
+    case GL_TEXTURE_COORD_ARRAY:
+        (GL_KOS_CLIENT_ACTIVE_TEXTURE) ?
+            (GL_KOS_VERTEX_PTR_MODE &= ~GL_KOS_USE_TEXTURE1):
+            (GL_KOS_VERTEX_PTR_MODE &= ~GL_KOS_USE_TEXTURE0);
+    break;
+    default:
+        _glKosThrowError(GL_INVALID_ENUM, "glDisableClientState");
+    }
+}
+
+
+
