@@ -843,12 +843,15 @@ static GLuint _glKosArraysApplyClipping(GLfloat *uvsrc, GLuint uvstride, GLenum 
 
 static inline void _glKosArraysApplyMultiTexture(GLenum mode, GLuint count) {
     if(GL_KOS_VERTEX_PTR_MODE & GL_KOS_USE_TEXTURE1) {
-        _glKosPushMultiTexObject(_glKosBoundMultiTexID(),
-                                 (pvr_vertex_t *)_glKosVertexBufPointer(),
-                                 count);
+        GL_TEXTURE_OBJECT* tex = _glKosBoundMultiTexID();
+        if(tex) {
+            _glKosPushMultiTexObject(tex,
+                                     (pvr_vertex_t *)_glKosVertexBufPointer(),
+                                     count);
 
-        if(mode == GL_QUADS)
-            _glKosArraysSwizzleQuadsMultiTex(count);
+            if(mode == GL_QUADS)
+                _glKosArraysSwizzleQuadsMultiTex(count);
+        }
     }
 }
 
