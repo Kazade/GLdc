@@ -738,9 +738,6 @@ static GLuint _glKosArraysVerifyParameter(GLenum mode, GLsizei count, GLenum typ
     if(count < 0)
         _glKosThrowError(GL_INVALID_VALUE, "glDrawArrays");
 
-    if(!(GL_KOS_VERTEX_PTR_MODE & GL_KOS_USE_ARRAY))
-        _glKosThrowError(GL_INVALID_OPERATION, "glDrawArrays");
-
     if(count > GL_KOS_MAX_VERTS)
         _glKosThrowError(GL_OUT_OF_MEMORY, "glDrawArrays");
 
@@ -762,7 +759,7 @@ static GLuint _glKosArraysVerifyParameter(GLenum mode, GLsizei count, GLenum typ
         return 0;
     }
 
-    return 1;
+    return (GL_KOS_VERTEX_PTR_MODE & GL_KOS_USE_ARRAY) ? 1 : 0;
 }
 
 static GLuint _glKosArraysApplyClipping(GLfloat *uvsrc, GLuint uvstride, GLenum mode, GLuint count) {
