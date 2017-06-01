@@ -98,13 +98,22 @@ void _glKosCompileHdrTx() {
            _glKosCompileHdrT(GL_KOS_TEXTURE_UNIT[GL_TEXTURE0_ARB & 0xF]) : _glKosCompileHdr();
 }
 
-GL_TEXTURE_OBJECT *_glKosBoundMultiTexID() {
+GL_TEXTURE_OBJECT *_glKosBoundMultiTexObject() {
     return GL_KOS_TEXTURE_UNIT[GL_TEXTURE1_ARB & 0xF];
 }
 
+GLuint _glKosBoundMultiTexID() {
+    return GL_KOS_TEXTURE_UNIT[GL_TEXTURE1_ARB & 0xF] ? 
+           GL_KOS_TEXTURE_UNIT[GL_TEXTURE1_ARB & 0xF]->index : 0;
+}
+
 GLuint _glKosBoundTexID() {
-    return GL_KOS_TEXTURE_UNIT[GL_KOS_ACTIVE_TEXTURE] ?
-           GL_KOS_TEXTURE_UNIT[GL_KOS_ACTIVE_TEXTURE]->index : 0;
+    return GL_KOS_TEXTURE_UNIT[GL_TEXTURE0_ARB & 0xF] ?
+           GL_KOS_TEXTURE_UNIT[GL_TEXTURE0_ARB & 0xF]->index : 0;
+}
+
+GLuint _glKosActiveTextureBoundTexID() {
+    return (GL_KOS_ACTIVE_TEXTURE) ? _glKosBoundMultiTexID() : _glKosBoundTexID();
 }
 
 GLubyte _glKosMaxTextureUnits() {

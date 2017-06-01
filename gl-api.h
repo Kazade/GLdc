@@ -209,7 +209,8 @@ GLuint  _glKosVertexColor();
 GLubyte _glKosMaxTextureUnits();
 GLubyte _glKosEnabledTextureMatrix();
 
-GL_TEXTURE_OBJECT *_glKosBoundMultiTexID();
+GL_TEXTURE_OBJECT *_glKosBoundMultiTexObject();
+GLuint _glKosActiveTextureBoundTexID();
 
 inline void _glKosPushMultiTexObject(GL_TEXTURE_OBJECT *tex,
                                      pvr_vertex_t *src,

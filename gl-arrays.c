@@ -834,7 +834,7 @@ static GLuint _glKosArraysApplyClipping(GLfloat *uvsrc, GLuint uvstride, GLenum 
 
 static inline void _glKosArraysApplyMultiTexture(GLenum mode, GLuint count) {
     if(GL_KOS_VERTEX_PTR_MODE & GL_KOS_USE_TEXTURE1) {
-        GL_TEXTURE_OBJECT* tex = _glKosBoundMultiTexID();
+        GL_TEXTURE_OBJECT* tex = _glKosBoundMultiTexObject();
         if(tex) {
             _glKosPushMultiTexObject(tex,
                                      (pvr_vertex_t *)_glKosVertexBufPointer(),

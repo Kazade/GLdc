@@ -200,7 +200,7 @@ void APIENTRY glGetIntegerv(GLenum pname, GLint *params) {
             break;
 
         case GL_TEXTURE_BINDING_2D:
-            *params = _glKosBoundTexID();
+            *params = _glKosActiveTextureBoundTexID();
             break;
 
         default:
