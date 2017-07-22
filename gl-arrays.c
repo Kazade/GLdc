@@ -733,13 +733,13 @@ static GLuint _glKosArraysVerifyParameter(GLenum mode, GLsizei count, GLenum typ
     if(mode != GL_QUADS)
         if(mode != GL_TRIANGLES)
             if(mode != GL_TRIANGLE_STRIP)
-                _glKosThrowError(GL_INVALID_ENUM, "glDrawArrays");
+                _glKosThrowError(GL_INVALID_ENUM, (element) ? "glDrawElements" : "glDrawArrays");
 
     if(count < 0)
-        _glKosThrowError(GL_INVALID_VALUE, "glDrawArrays");
+        _glKosThrowError(GL_INVALID_VALUE, (element) ? "glDrawElements" : "glDrawArrays");
 
     if(count > GL_KOS_MAX_VERTS)
-        _glKosThrowError(GL_OUT_OF_MEMORY, "glDrawArrays");
+        _glKosThrowError(GL_OUT_OF_MEMORY, (element) ? "glDrawElements" : "glDrawArrays");
 
     if(element) {
         switch(type) {
@@ -748,11 +748,11 @@ static GLuint _glKosArraysVerifyParameter(GLenum mode, GLsizei count, GLenum typ
                 break;
 
             default:
-                _glKosThrowError(GL_INVALID_ENUM, "glDrawArrays");
+                _glKosThrowError(GL_INVALID_ENUM, (element) ? "glDrawElements" : "glDrawArrays");
         }
     }
     else if(type > count)
-        _glKosThrowError(GL_INVALID_VALUE, "glDrawArrays");
+        _glKosThrowError(GL_INVALID_VALUE, (element) ? "glDrawElements" : "glDrawArrays");
 
     if(_glKosHasError()) {
         _glKosPrintError();
