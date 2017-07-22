@@ -17,7 +17,7 @@
 #define KOS_GL_INVALID_OPERATION  (1<<2)
 #define KOS_GL_INVALID_VALUE      (1<<3)
 
-static GLsizei KOS_GL_ERROR_CODE;
+static GLsizei KOS_GL_ERROR_CODE = 0;
 static GLenum gl_last_error = GL_NO_ERROR;
 
 static char KOS_GL_ERROR_FUNCTION[64] = { '\0' };
