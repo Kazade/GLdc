@@ -151,7 +151,7 @@ GLAPI void APIENTRY glFramebufferTexture2D(GLenum target, GLenum attachment,
     if(!FRAMEBUF_OBJECT)
         _glKosThrowError(GL_INVALID_OPERATION, "glFramebufferTexture2D");
 
-    if(_glKosGetError()) {
+    if(_glKosHasError()) {
         _glKosPrintError();
         return;
     }

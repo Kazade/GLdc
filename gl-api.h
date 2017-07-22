@@ -173,9 +173,8 @@ void _glKosInitFrameBuffers();
 
 /* Error Codes */
 void _glKosThrowError(GLenum error, char *functionName);
-void _glKosResetError();
 void _glKosPrintError();
-GLsizei _glKosGetError();
+GLubyte _glKosHasError();
 
 GLuint  _glKosTextureWidth(GLuint index);
 GLuint  _glKosTextureHeight(GLuint index);

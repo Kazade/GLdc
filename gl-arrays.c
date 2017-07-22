@@ -102,7 +102,7 @@ GLAPI void APIENTRY glVertexPointer(GLint size, GLenum type,
     if(stride < 0)
         _glKosThrowError(GL_INVALID_VALUE, "glVertexPointer");
 
-    if(_glKosGetError()) {
+    if(_glKosHasError()) {
         _glKosPrintError();
         return;
     }
@@ -121,7 +121,7 @@ GLAPI void APIENTRY glNormalPointer(GLenum type, GLsizei stride, const GLvoid *p
     if(stride < 0)
         _glKosThrowError(GL_INVALID_VALUE, "glNormalPointer");
 
-    if(_glKosGetError()) {
+    if(_glKosHasError()) {
         _glKosPrintError();
         return;
     }
@@ -142,7 +142,7 @@ GLAPI void APIENTRY glTexCoordPointer(GLint size, GLenum type,
     if(stride < 0)
         _glKosThrowError(GL_INVALID_VALUE, "glTexCoordPointer");
 
-    if(_glKosGetError()) {
+    if(_glKosHasError()) {
         _glKosPrintError();
         return;
     }
@@ -441,7 +441,7 @@ static inline void _glKosElementColor3fU8(pvr_vertex_t *dst, GLuint count) {
     for(i = 0; i < count; i++) {
         index = GL_KOS_INDEX_POINTER_U8[i] * GL_KOS_COLOR_STRIDE;
         element = (GLrgb3f *) (color + index);
-        dst[i].argb = (0xFF000000 
+        dst[i].argb = (0xFF000000
                        | ((GLubyte)((*element)[0] * 0xFF)) << 16
                        | ((GLubyte)((*element)[1] * 0xFF)) << 8
                        | ((GLubyte)((*element)[2] * 0xFF)));
@@ -456,7 +456,7 @@ static inline void _glKosElementColor3fU16(pvr_vertex_t *dst, GLuint count) {
     for(i = 0; i < count; i++) {
         index =  GL_KOS_INDEX_POINTER_U16[i] * GL_KOS_COLOR_STRIDE;
         element = (GLrgb3f *) (color + index);
-        dst[i].argb = (0xFF000000 
+        dst[i].argb = (0xFF000000
                        | ((GLubyte)((*element)[0] * 0xFF)) << 16
                        | ((GLubyte)((*element)[1] * 0xFF)) << 8
                        | ((GLubyte)((*element)[2] * 0xFF)));
@@ -754,7 +754,7 @@ static GLuint _glKosArraysVerifyParameter(GLenum mode, GLsizei count, GLenum typ
     else if(type > count)
         _glKosThrowError(GL_INVALID_VALUE, "glDrawArrays");
 
-    if(_glKosGetError()) {
+    if(_glKosHasError()) {
         _glKosPrintError();
         return 0;
     }
@@ -1298,7 +1298,7 @@ void APIENTRY glClientActiveTextureARB(GLenum texture) {
     if(texture < GL_TEXTURE0_ARB || texture > GL_TEXTURE0_ARB + _glKosMaxTextureUnits())
         _glKosThrowError(GL_INVALID_ENUM, "glClientActiveTextureARB");
 
-    if(_glKosGetError()) {
+    if(_glKosHasError()) {
 
         _glKosPrintError();
         return;
@@ -1319,14 +1319,14 @@ void APIENTRY glEnableClientState(GLenum cap) {
         GL_KOS_VERTEX_PTR_MODE |= GL_KOS_USE_NORMAL;
     break;
     case GL_TEXTURE_COORD_ARRAY:
-        (GL_KOS_CLIENT_ACTIVE_TEXTURE) ? 
+        (GL_KOS_CLIENT_ACTIVE_TEXTURE) ?
             (GL_KOS_VERTEX_PTR_MODE |= GL_KOS_USE_TEXTURE1):
             (GL_KOS_VERTEX_PTR_MODE |= GL_KOS_USE_TEXTURE0);
     break;
     default:
         _glKosThrowError(GL_INVALID_ENUM, "glEnableClientState");
     }
-                    
+
 }
 
 void APIENTRY glDisableClientState(GLenum cap) {

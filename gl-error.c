@@ -3,6 +3,7 @@
    libgl/gl-error.c
    Copyright (C) 2014 Josh Pearson
    Copyright (C) 2016 Lawrence Sebald
+ * Copyright (C) 2017 Luke Benstead
 
     KOS Open GL State Machine Error Code Implementation.
 */
@@ -12,15 +13,8 @@
 
 #include <stdio.h>
 
-#define KOS_GL_INVALID_ENUM       (1<<0)
-#define KOS_GL_OUT_OF_MEMORY      (1<<1)
-#define KOS_GL_INVALID_OPERATION  (1<<2)
-#define KOS_GL_INVALID_VALUE      (1<<3)
-
-static GLsizei KOS_GL_ERROR_CODE = 0;
-static GLenum gl_last_error = GL_NO_ERROR;
-
-static char KOS_GL_ERROR_FUNCTION[64] = { '\0' };
+static GLenum last_error = GL_NO_ERROR;
+static char error_function[64] = { '\0' };
 
 /* Quoth the GL Spec:
     When an error occurs, the error flag is set to the appropriate error code
@@ -30,67 +24,51 @@ static char KOS_GL_ERROR_FUNCTION[64] = { '\0' };
    So, we only record an error here if the error code is currently unset.
    Nothing in the spec requires recording multiple error flags, although it is
    allowed by the spec. We take the easy way out for now. */
-static void set_err_flag(GLenum error) {
-    if(gl_last_error == GL_NO_ERROR)
-        gl_last_error = error;
-}
 
 void _glKosThrowError(GLenum error, char *function) {
-
-    sprintf(KOS_GL_ERROR_FUNCTION, "%s\n", function);
-    set_err_flag(error);
-
-    switch(error) {
-        case GL_INVALID_ENUM:
-            KOS_GL_ERROR_CODE |= KOS_GL_INVALID_ENUM;
-            break;
-
-        case GL_OUT_OF_MEMORY:
-            KOS_GL_ERROR_CODE |= KOS_GL_OUT_OF_MEMORY;
-            break;
-
-        case GL_INVALID_OPERATION:
-            KOS_GL_ERROR_CODE |= KOS_GL_INVALID_OPERATION;
-            break;
-
-        case GL_INVALID_VALUE:
-            KOS_GL_ERROR_CODE |= KOS_GL_INVALID_VALUE;
-            break;
-
+    if(last_error == GL_NO_ERROR) {
+        last_error = error;
+        sprintf(error_function, "%s\n", function);
     }
 }
 
-GLsizei _glKosGetError() {
-    return KOS_GL_ERROR_CODE;
+GLubyte _glKosHasError() {
+    return (last_error != GL_NO_ERROR) ? GL_TRUE : GL_FALSE;
 }
 
-void _glKosResetError() {
-    KOS_GL_ERROR_CODE = 0;
-    sprintf(KOS_GL_ERROR_FUNCTION, "\n");
+static void _glKosResetError() {
+    last_error = GL_NO_ERROR;
+    sprintf(error_function, "\n");
 }
 
 void _glKosPrintError() {
-    printf("\nKOS GL ERROR THROWN BY FUNCTION: %s\n", KOS_GL_ERROR_FUNCTION);
+    if(!_glKosHasError()) {
+        return;
+    }
 
-    if(KOS_GL_ERROR_CODE & KOS_GL_INVALID_ENUM)
+    printf("\nKOS GL ERROR THROWN BY FUNCTION: %s\n", error_function);
+
+    switch(last_error) {
+    case GL_INVALID_ENUM:
         printf("KOS GL ERROR: GL_INVALID_ENUM\n");
-
-    if(KOS_GL_ERROR_CODE & KOS_GL_OUT_OF_MEMORY)
+    break;
+    case GL_OUT_OF_MEMORY:
         printf("KOS GL ERROR: GL_OUT_OF_MEMORY\n");
-
-    if(KOS_GL_ERROR_CODE & KOS_GL_INVALID_OPERATION)
+    break;
+    case GL_INVALID_OPERATION:
         printf("KOS GL ERROR: GL_INVALID_OPERATION\n");
-
-    if(KOS_GL_ERROR_CODE & KOS_GL_INVALID_VALUE)
+    break;
+    case GL_INVALID_VALUE:
         printf("KOS GL ERROR: GL_INVALID_VALUE\n");
-
-    _glKosResetError();
+    break;
+    default:
+        break;
+    }
 }
 
 GLenum glGetError(void) {
-    GLenum rv = gl_last_error;
-
-    gl_last_error = GL_NO_ERROR;
+    GLenum rv = last_error;
+    _glKosResetError();
     return rv;
 }
 

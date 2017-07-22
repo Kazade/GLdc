@@ -103,7 +103,7 @@ GL_TEXTURE_OBJECT *_glKosBoundMultiTexObject() {
 }
 
 GLuint _glKosBoundMultiTexID() {
-    return GL_KOS_TEXTURE_UNIT[GL_TEXTURE1_ARB & 0xF] ? 
+    return GL_KOS_TEXTURE_UNIT[GL_TEXTURE1_ARB & 0xF] ?
            GL_KOS_TEXTURE_UNIT[GL_TEXTURE1_ARB & 0xF]->index : 0;
 }
 
@@ -208,7 +208,7 @@ void APIENTRY glCompressedTexImage2D(GLenum target,
     if(GL_KOS_TEXTURE_UNIT[GL_KOS_ACTIVE_TEXTURE] == NULL)
         _glKosThrowError(GL_INVALID_OPERATION, "glCompressedTexImage2D");
 
-    if(_glKosGetError()) {
+    if(_glKosHasError()) {
         _glKosPrintError();
         return;
     }
@@ -254,7 +254,7 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
     if(GL_KOS_TEXTURE_UNIT[GL_KOS_ACTIVE_TEXTURE] == NULL)
         _glKosThrowError(GL_INVALID_OPERATION, "glTexImage2D");
 
-    if(_glKosGetError()) {
+    if(_glKosHasError()) {
         _glKosPrintError();
         return;
     }
@@ -398,7 +398,7 @@ void APIENTRY glTexEnvi(GLenum target, GLenum pname, GLint param) {
     if(pname != GL_TEXTURE_ENV_MODE)
         _glKosThrowError(GL_INVALID_ENUM, "glTexEnvi");
 
-    if(_glKosGetError()) {
+    if(_glKosHasError()) {
         _glKosPrintError();
         return;
     }
@@ -415,7 +415,7 @@ void APIENTRY glActiveTextureARB(GLenum texture) {
     if(texture < GL_TEXTURE0_ARB || texture > GL_TEXTURE0_ARB + GL_KOS_MAX_TEXTURE_UNITS)
         _glKosThrowError(GL_INVALID_ENUM, "glActiveTextureARB");
 
-    if(_glKosGetError()) {
+    if(_glKosHasError()) {
 
         _glKosPrintError();
         return;
