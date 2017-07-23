@@ -107,33 +107,16 @@ void glNormal3fv(const GLfloat *xyz) {
     GL_VERTEX_NORMAL[2] = xyz[2];
 }
 
-/* Global Ambient Light Parameters */
-void glKosLightAmbient4fv(const float *rgba) {
-    GL_GLOBAL_AMBIENT[0] = rgba[0];
-    GL_GLOBAL_AMBIENT[1] = rgba[1];
-    GL_GLOBAL_AMBIENT[2] = rgba[2];
-    GL_GLOBAL_AMBIENT[3] = rgba[3];
-}
+void glLightModelfv(GLenum pname, const GLfloat *params) {
+    if(pname != GL_LIGHT_MODEL_AMBIENT) {
+        _glKosThrowError(GL_INVALID_ENUM, "glLightModelfv");
+        return;
+    }
 
-void glKosLightAmbient4f(float r, float g, float b, float a) {
-    GL_GLOBAL_AMBIENT[0] = r;
-    GL_GLOBAL_AMBIENT[1] = g;
-    GL_GLOBAL_AMBIENT[2] = b;
-    GL_GLOBAL_AMBIENT[3] = a;
-}
-
-void glKosLightAmbient3fv(const float *rgb) {
-    GL_GLOBAL_AMBIENT[0] = rgb[0];
-    GL_GLOBAL_AMBIENT[1] = rgb[1];
-    GL_GLOBAL_AMBIENT[2] = rgb[2];
-    GL_GLOBAL_AMBIENT[3] = 1.0f;
-}
-
-void glKosLightAmbient3f(float r, float g, float b) {
-    GL_GLOBAL_AMBIENT[0] = r;
-    GL_GLOBAL_AMBIENT[1] = g;
-    GL_GLOBAL_AMBIENT[2] = b;
-    GL_GLOBAL_AMBIENT[3] = 1.0f;
+    GL_GLOBAL_AMBIENT[0] = params[0];
+    GL_GLOBAL_AMBIENT[1] = params[1];
+    GL_GLOBAL_AMBIENT[2] = params[2];
+    GL_GLOBAL_AMBIENT[3] = params[3];
 }
 
 /* Misc Lighting Functions ************************************/

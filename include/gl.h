@@ -629,15 +629,10 @@ GLAPI void APIENTRY glFogfv(GLenum pname, const GLfloat *params);
 
 /* Lighting Functions - client must enable GL_LIGHTING for this to take effect */
 
-/* Set Global Ambient Light Color */
-GLAPI void APIENTRY glKosLightAmbient3f(GLfloat r, GLfloat g, GLfloat b);
-GLAPI void APIENTRY glKosLightAmbient4f(GLfloat r, GLfloat g, GLfloat b, GLfloat a);
-GLAPI void APIENTRY glKosLightAmbient3fv(const GLfloat *rgb);
-GLAPI void APIENTRY glKosLightAmbient4fv(const GLfloat *rgba);
-
 /* Set Individual Light Parameters */
 GLAPI void APIENTRY glLightfv(GLenum light, GLenum pname, const GLfloat *params);
 GLAPI void APIENTRY glLightf(GLenum light, GLenum pname, GLfloat param);
+GLAPI void APIENTRY glLightModelfv(GLenum pname, const GLfloat *params);
 
 /* Set Global Material Parameters */
 GLAPI void APIENTRY glMateriali(GLenum face, GLenum pname, const GLint param);
