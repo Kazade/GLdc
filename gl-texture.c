@@ -242,6 +242,18 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
         if(internalFormat != GL_RGBA)
             _glKosThrowError(GL_INVALID_VALUE, "glTexImage2D");
 
+    GLint w = width;
+    if(w == 0 || (w & -w) != w) {
+        /* Width is not a power of two. Must be!*/
+        _glKosThrowError(GL_INVALID_VALUE, "glTexImage2D");
+    }
+
+    GLint h = height;
+    if(h == 0 || (h & -h) != h) {
+        /* height is not a power of two. Must be!*/
+        _glKosThrowError(GL_INVALID_VALUE, "glTexImage2D");
+    }
+
     if(level < 0)
         _glKosThrowError(GL_INVALID_VALUE, "glTexImage2D");
 
