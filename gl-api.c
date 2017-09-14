@@ -210,7 +210,7 @@ void APIENTRY glDepthFunc(GLenum func) {
 }
 
 void APIENTRY glDepthMask(GLboolean flag) {
-    GL_KOS_DEPTH_WRITE = !flag;
+    GL_KOS_DEPTH_WRITE = (flag == GL_TRUE) ? PVR_DEPTHWRITE_ENABLE : PVR_DEPTHWRITE_DISABLE;
 }
 
 //====================================================================================================//
@@ -937,7 +937,7 @@ GLuint _glKosDepthFunc() {
 }
 
 GLubyte _glKosDepthMask() {
-    return !GL_KOS_DEPTH_WRITE;
+    return (GL_KOS_DEPTH_WRITE == PVR_DEPTHWRITE_ENABLE) ? GL_TRUE : GL_FALSE;
 }
 
 GLuint _glKosVertexColor() {
