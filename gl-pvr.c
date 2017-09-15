@@ -312,16 +312,12 @@ int _glKosInitPVR() {
     GLubyte i;
 
     pvr_init_params_t params = {
-
         /* Enable opaque and translucent polygons with size 32 and 32 */
         { PVR_BINSIZE_32, PVR_BINSIZE_0, PVR_BINSIZE_32, PVR_BINSIZE_0, PVR_BINSIZE_0 },
-
         GL_PVR_VERTEX_BUF_SIZE, /* Vertex buffer size */
-
         0, /* No DMA */
-
-
-        0 /* No FSAA */
+        0, /* No FSAA */
+        1 /* Disable translucent auto-sorting to match traditional GL */
     };
 
     pvr_init(&params);
