@@ -33,11 +33,14 @@
 
 /* Vertex Buffer Functions *************************************************************************/
 
+#define COMMANDS_PER_ALLOC ((64 * 1024) / 32) /* 64k memory chunks */
+
 static pvr_cmd_t   *GL_VBUF[2] __attribute__((aligned(32)));  /* Dynamic Vertex Buffer */
 static pvr_cmd_t   *GL_CBUF;                                  /* Dynamic Clip Buffer */
 static glTexCoord  *GL_UVBUF;                                 /* Dynamic Multi-Texture UV */
 
 static GLuint GL_VERTS[2] = {0, 0};
+static GLuint GL_VERTS_ALLOCATED[2] = {0, 0};
 static GLuint GL_CVERTS = 0;
 static GLuint GL_UVVERTS = 0;
 static GLuint GL_LIST = GL_KOS_LIST_OP;
@@ -157,8 +160,32 @@ inline void *_glKosVertexBufPointer() {
     return &GL_VBUF[GL_LIST][GL_VERTS[GL_LIST]];
 }
 
+static void _glKosVertexBufIncrementList(GLubyte list, GLuint count) {
+    GL_VERTS[list] += count;
+
+    if(GL_VERTS[list] > GL_VERTS_ALLOCATED[list]) {
+        /* Grow the list buffer. We can't use realloc with memalign so we have to memcpy */
+        pvr_cmd_t* orig = GL_VBUF[list];
+
+        /* Increase the allocated counter */
+        GL_VERTS_ALLOCATED[list] += COMMANDS_PER_ALLOC;
+
+        /* Create a new memory buffer with the new size */
+        GL_VBUF[list] = memalign(
+            0x20,
+            GL_VERTS_ALLOCATED[list] * sizeof(pvr_cmd_t)
+        );
+
+        /* Copy across the original data */
+        memcpy(GL_VBUF[list], orig, (GL_VERTS[list] - count) * sizeof(pvr_cmd_t));
+
+        /* Free previously allocated memory */
+        free(orig);
+    }
+}
+
 inline void _glKosVertexBufIncrement() {
-    ++GL_VERTS[GL_LIST];
+    _glKosVertexBufIncrementList(GL_LIST, 1);
 }
 
 inline void *_glKosTRVertexBufPointer() {
@@ -166,18 +193,19 @@ inline void *_glKosTRVertexBufPointer() {
 }
 
 inline void _glKosTRVertexBufIncrement() {
-    ++GL_VERTS[GL_KOS_LIST_TR];
+    _glKosVertexBufIncrementList(GL_KOS_LIST_TR, 1);
 }
 
 inline void _glKosVertexBufAdd(GLuint count) {
-    GL_VERTS[GL_LIST] += count;
+    _glKosVertexBufIncrementList(GL_LIST, count);
 }
 
 inline void _glKosTRVertexBufAdd(GLuint count) {
-    GL_VERTS[GL_KOS_LIST_TR] += count;
+    _glKosVertexBufIncrementList(GL_KOS_LIST_TR, count);
 }
 
 inline void _glKosVertexBufDecrement() {
+    /* Intentionally don't free data here, we only ever grow */
     --GL_VERTS[GL_LIST];
 }
 
@@ -281,6 +309,8 @@ void glutCopyBufferToTexture(void *dst, GLsizei *x, GLsizei *y) {
 }
 
 int _glKosInitPVR() {
+    GLubyte i;
+
     pvr_init_params_t params = {
 
         /* Enable opaque and translucent polygons with size 32 and 32 */
@@ -296,8 +326,11 @@ int _glKosInitPVR() {
 
     pvr_init(&params);
 
-    GL_VBUF[0] = memalign(0x20, GL_KOS_MAX_VERTS * sizeof(pvr_cmd_t));
-    GL_VBUF[1] = memalign(0x20, GL_KOS_MAX_VERTS * sizeof(pvr_cmd_t));
+    for(i = 0; i < 2; ++i) {
+        GL_VBUF[i] = memalign(0x20, COMMANDS_PER_ALLOC * sizeof(pvr_cmd_t));
+        GL_VERTS_ALLOCATED[i] = COMMANDS_PER_ALLOC;
+    }
+
     GL_CBUF = malloc((GL_KOS_MAX_VERTS / 2) * sizeof(pvr_cmd_t));
     GL_UVBUF = malloc(GL_KOS_MAX_VERTS * sizeof(glTexCoord));
 
