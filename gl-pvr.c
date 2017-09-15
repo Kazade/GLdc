@@ -37,10 +37,10 @@ static pvr_cmd_t   *GL_VBUF[2] __attribute__((aligned(32)));  /* Dynamic Vertex 
 static pvr_cmd_t   *GL_CBUF;                                  /* Dynamic Clip Buffer */
 static glTexCoord  *GL_UVBUF;                                 /* Dynamic Multi-Texture UV */
 
-static GLuint GL_VERTS[2] = {0, 0},
-                            GL_CVERTS = 0,
-                            GL_UVVERTS = 0,
-                            GL_LIST = GL_KOS_LIST_OP;
+static GLuint GL_VERTS[2] = {0, 0};
+static GLuint GL_CVERTS = 0;
+static GLuint GL_UVVERTS = 0;
+static GLuint GL_LIST = GL_KOS_LIST_OP;
 
 #define GL_KOS_MAX_MULTITEXTURE_OBJECTS 512
 
