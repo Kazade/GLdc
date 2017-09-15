@@ -33,15 +33,9 @@
 
 /* Vertex Buffer Functions *************************************************************************/
 
-#ifdef GL_KOS_USE_MALLOC
 static pvr_cmd_t   *GL_VBUF[2] __attribute__((aligned(32)));  /* Dynamic Vertex Buffer */
 static pvr_cmd_t   *GL_CBUF;                                  /* Dynamic Clip Buffer */
-static glTexCoord  *GL_UVBUF;                                 /* Dynamic Multi-Texture UV Buffer */
-#else
-static pvr_cmd_t    GL_VBUF[2][GL_KOS_MAX_VERTS] __attribute__((aligned(32))); /* Static Vertex Buffer */
-static pvr_cmd_t    GL_CBUF[GL_KOS_MAX_VERTS / 2];                             /* Static Clip Buffer */
-static glTexCoord   GL_UVBUF[GL_KOS_MAX_VERTS / 2];                    /* Static Multi-Texture UV Buffer */
-#endif
+static glTexCoord  *GL_UVBUF;                                 /* Dynamic Multi-Texture UV */
 
 static GLuint GL_VERTS[2] = {0, 0},
                             GL_CVERTS = 0,
@@ -302,12 +296,10 @@ int _glKosInitPVR() {
 
     pvr_init(&params);
 
-#ifdef GL_KOS_USE_MALLOC
     GL_VBUF[0] = memalign(0x20, GL_KOS_MAX_VERTS * sizeof(pvr_cmd_t));
     GL_VBUF[1] = memalign(0x20, GL_KOS_MAX_VERTS * sizeof(pvr_cmd_t));
     GL_CBUF = malloc((GL_KOS_MAX_VERTS / 2) * sizeof(pvr_cmd_t));
     GL_UVBUF = malloc(GL_KOS_MAX_VERTS * sizeof(glTexCoord));
-#endif
 
     return 1;
 }
