@@ -13,7 +13,13 @@ SUBDIRS =
 
 KOS_CFLAGS += -ffast-math -O3 -Iinclude
 
-defaultall: create_kos_link $(OBJS) subdirs linklib
+link:
+	$(KOS_AR) rcs $(TARGET) $(OBJS)
+
+build: $(OBJS) link
+
+
+defaultall: create_kos_link build subdirs linklib
 
 include $(KOS_BASE)/addons/Makefile.prefab
 
