@@ -680,9 +680,6 @@ static inline void _glKosTexCoordSwizzle(glTexCoord *uv1, glTexCoord *uv2) {
     *uv2 = * &tmp;
 }
 
-static inline void _glKosArraysResetState() {
-    GL_KOS_VERTEX_PTR_MODE = 0;
-}
 
 //========================================================================================//
 //== Vertex Flag Settings for the PVR2DC hardware ==//
@@ -881,8 +878,6 @@ static inline pvr_vertex_t *_glKosArraysDest() {
 
 static inline void _glKosArraysFlush(GLuint count) {
     _glKosVertexBufAdd(count);
-
-    _glKosArraysResetState();
 }
 
 //========================================================================================//
@@ -1349,6 +1344,4 @@ void APIENTRY glDisableClientState(GLenum cap) {
         _glKosThrowError(GL_INVALID_ENUM, "glDisableClientState");
     }
 }
-
-
 
