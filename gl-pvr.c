@@ -51,13 +51,13 @@ static GL_MULTITEX_OBJECT GL_MTOBJS[GL_KOS_MAX_MULTITEXTURE_OBJECTS];
 static GLuint             GL_MTOBJECTS = 0;
 
 /* Custom version of sq_cpy from KOS for copying vertex data to the PVR */
-static inline void pvr_list_submit(void *src, int n) {
+static void pvr_list_submit(void *src, int n) {
     GLuint *d = TA_SQ_ADDR;
     GLuint *s = src;
 
     /* fill/write queues as many times necessary */
     while(n--) {
-        asm("pref @%0" : : "r"(s + 8));  /* prefetch 32 bytes for next loop */
+        __asm__("pref @%0" : : "r"(s + 8));  /* prefetch 32 bytes for next loop */
         d[0] = *(s++);
         d[1] = *(s++);
         d[2] = *(s++);
@@ -66,7 +66,7 @@ static inline void pvr_list_submit(void *src, int n) {
         d[5] = *(s++);
         d[6] = *(s++);
         d[7] = *(s++);
-        asm("pref @%0" : : "r"(d));
+        __asm__("pref @%0" : : "r"(d));
         d += 8;
     }
 
@@ -75,8 +75,9 @@ static inline void pvr_list_submit(void *src, int n) {
     d[0] = d[8] = 0;
 }
 
+#ifdef GL_KOS_USE_DMA
 /* Custom version of sq_cpy from KOS for copying 32bytes of vertex data to the PVR */
-static inline void pvr_hdr_submit(const GLuint *src) {
+static void pvr_hdr_submit(const GLuint *src) {
     GLuint *d = TA_SQ_ADDR;
 
     d[0] = *(src++);
@@ -88,10 +89,11 @@ static inline void pvr_hdr_submit(const GLuint *src) {
     d[6] = *(src++);
     d[7] = *(src++);
 
-    asm("pref @%0" : : "r"(d));
+    __asm__("pref @%0" : : "r"(d));
 }
+#endif
 
-inline void _glKosPushMultiTexObject(GL_TEXTURE_OBJECT *tex,
+void _glKosPushMultiTexObject(GL_TEXTURE_OBJECT *tex,
                                      pvr_vertex_t *src,
                                      GLuint count) {
     _glKosCompileHdrMT(&GL_MTOBJS[GL_MTOBJECTS].hdr, tex);
@@ -100,63 +102,63 @@ inline void _glKosPushMultiTexObject(GL_TEXTURE_OBJECT *tex,
     GL_MTOBJS[GL_MTOBJECTS++].count = count;
 }
 
-inline void _glKosResetMultiTexObject() {
+void _glKosResetMultiTexObject() {
     GL_MTOBJECTS = 0;
 }
 
-inline void *_glKosMultiUVBufAddress() {
+void *_glKosMultiUVBufAddress() {
     return &GL_UVBUF[0];
 }
 
-inline void *_glKosMultiUVBufPointer() {
+void *_glKosMultiUVBufPointer() {
     return &GL_UVBUF[GL_UVVERTS];
 }
 
-inline void _glKosMultiUVBufIncrement() {
+void _glKosMultiUVBufIncrement() {
     ++GL_UVVERTS;
 }
 
-inline void _glKosMultiUVBufAdd(GLuint count) {
+void _glKosMultiUVBufAdd(GLuint count) {
     GL_UVVERTS += count;
 }
 
-inline void _glKosMultiUVBufReset() {
+void _glKosMultiUVBufReset() {
     GL_UVVERTS = 0;
 }
 
-inline void *_glKosClipBufAddress() {
+void *_glKosClipBufAddress() {
     return &GL_CBUF[0];
 }
 
-inline void *_glKosClipBufPointer() {
+void *_glKosClipBufPointer() {
     return &GL_CBUF[GL_CVERTS];
 }
 
-inline void _glKosClipBufIncrement() {
+void _glKosClipBufIncrement() {
     ++GL_CVERTS;
 }
 
-inline void _glKosClipBufAdd(GLuint count) {
+void _glKosClipBufAdd(GLuint count) {
     GL_CVERTS += count;
 }
 
-inline void _glKosClipBufReset() {
+void _glKosClipBufReset() {
     GL_CVERTS = 0;
 }
 
-inline void _glKosVertexBufSwitchOP() {
+void _glKosVertexBufSwitchOP() {
     GL_LIST = GL_KOS_LIST_OP;
 }
 
-inline void _glKosVertexBufSwitchTR() {
+void _glKosVertexBufSwitchTR() {
     GL_LIST = GL_KOS_LIST_TR;
 }
 
-inline void *_glKosVertexBufAddress(GLubyte list) {
+void *_glKosVertexBufAddress(GLubyte list) {
     return &GL_VBUF[list][0];
 }
 
-inline void *_glKosVertexBufPointer() {
+void *_glKosVertexBufPointer() {
     return &GL_VBUF[GL_LIST][GL_VERTS[GL_LIST]];
 }
 
@@ -184,36 +186,36 @@ static void _glKosVertexBufIncrementList(GLubyte list, GLuint count) {
     }
 }
 
-inline void _glKosVertexBufIncrement() {
+void _glKosVertexBufIncrement() {
     _glKosVertexBufIncrementList(GL_LIST, 1);
 }
 
-inline void *_glKosTRVertexBufPointer() {
+void *_glKosTRVertexBufPointer() {
     return &GL_VBUF[GL_KOS_LIST_TR][GL_VERTS[GL_KOS_LIST_TR]];
 }
 
-inline void _glKosTRVertexBufIncrement() {
+void _glKosTRVertexBufIncrement() {
     _glKosVertexBufIncrementList(GL_KOS_LIST_TR, 1);
 }
 
-inline void _glKosVertexBufAdd(GLuint count) {
+void _glKosVertexBufAdd(GLuint count) {
     _glKosVertexBufIncrementList(GL_LIST, count);
 }
 
-inline void _glKosTRVertexBufAdd(GLuint count) {
+void _glKosTRVertexBufAdd(GLuint count) {
     _glKosVertexBufIncrementList(GL_KOS_LIST_TR, count);
 }
 
-inline void _glKosVertexBufDecrement() {
+void _glKosVertexBufDecrement() {
     /* Intentionally don't free data here, we only ever grow */
     --GL_VERTS[GL_LIST];
 }
 
-inline void _glKosVertexBufReset() {
+void _glKosVertexBufReset() {
     GL_VERTS[0] = GL_VERTS[1] = 0;
 }
 
-inline GLuint _glKosVertexBufCount(GLubyte list) {
+GLuint _glKosVertexBufCount(GLubyte list) {
     return GL_VERTS[list];
 }
 
@@ -221,11 +223,11 @@ GLubyte _glKosList() {
     return GL_LIST;
 }
 
-inline void _glKosVertexBufCopy(void *dst, void *src, GLuint count) {
+void _glKosVertexBufCopy(void *dst, void *src, GLuint count) {
     memcpy(dst, src, count * 0x20);
 }
 
-static inline void glutSwapBuffer() {
+static void glutSwapBuffer() {
 #ifndef GL_KOS_USE_DMA
     QACR0 = QACRTA;
     QACR1 = QACRTA;

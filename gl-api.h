@@ -55,38 +55,38 @@ typedef GLushort uint16;
 typedef GLubyte  uint8;
 
 /* Vertex Main Buffer Internal Functions */
-inline void  _glKosVertexBufSwitchOP();
-inline void  _glKosVertexBufSwitchTR();
-inline void *_glKosVertexBufAddress(unsigned char list);
-inline void *_glKosVertexBufPointer();
-inline void *_glKosTRVertexBufPointer();
-inline void  _glKosVertexBufIncrement();
-inline void  _glKosTRVertexBufIncrement();
-inline void  _glKosVertexBufAdd(unsigned int count);
-inline void  _glKosTRVertexBufAdd(unsigned int count);
-inline void  _glKosVertexBufDecrement();
-inline void  _glKosVertexBufReset();
-inline unsigned int _glKosVertexBufCount(unsigned char list);
+void  _glKosVertexBufSwitchOP();
+void  _glKosVertexBufSwitchTR();
+void *_glKosVertexBufAddress(unsigned char list);
+void *_glKosVertexBufPointer();
+void *_glKosTRVertexBufPointer();
+void  _glKosVertexBufIncrement();
+void  _glKosTRVertexBufIncrement();
+void  _glKosVertexBufAdd(unsigned int count);
+void  _glKosTRVertexBufAdd(unsigned int count);
+void  _glKosVertexBufDecrement();
+void  _glKosVertexBufReset();
+unsigned int _glKosVertexBufCount(unsigned char list);
 unsigned char _glKosList();
-inline void _glKosVertexBufCopy(void *src, void *dst, GLuint count);
-inline void _glKosResetEnabledTex();
-inline void *_glKosMultiUVBufAddress();
-inline void *_glKosMultiUVBufPointer();
-inline void _glKosMultiUVBufIncrement();
-inline void _glKosMultiUVBufAdd(GLuint count);
-inline void _glKosMultiUVBufReset();
+void _glKosVertexBufCopy(void *src, void *dst, GLuint count);
+void _glKosResetEnabledTex();
+void *_glKosMultiUVBufAddress();
+void *_glKosMultiUVBufPointer();
+void _glKosMultiUVBufIncrement();
+void _glKosMultiUVBufAdd(GLuint count);
+void _glKosMultiUVBufReset();
 
 /* Vertex Clip Buffer Internal Functions */
-inline void *_glKosClipBufAddress();
-inline void *_glKosClipBufPointer();
-inline void  _glKosClipBufIncrement();
-inline void  _glKosClipBufReset();
+void *_glKosClipBufAddress();
+void *_glKosClipBufPointer();
+void  _glKosClipBufIncrement();
+void  _glKosClipBufReset();
 
 /* Vertex Array Buffer Internal Functions */
-inline void      _glKosArrayBufIncrement();
-inline void      _glKosArrayBufReset();
-inline glVertex *_glKosArrayBufAddr();
-inline glVertex *_glKosArrayBufPtr();
+void      _glKosArrayBufIncrement();
+void      _glKosArrayBufReset();
+glVertex *_glKosArrayBufAddr();
+glVertex *_glKosArrayBufPtr();
 
 /* Initialize the OpenGL PVR Pipeline */
 int  _glKosInitPVR();
@@ -211,7 +211,7 @@ GLubyte _glKosEnabledTextureMatrix();
 GL_TEXTURE_OBJECT *_glKosBoundMultiTexObject();
 GLuint _glKosActiveTextureBoundTexID();
 
-inline void _glKosPushMultiTexObject(GL_TEXTURE_OBJECT *tex,
+void _glKosPushMultiTexObject(GL_TEXTURE_OBJECT *tex,
                                      pvr_vertex_t *src,
                                      GLuint count);
 
