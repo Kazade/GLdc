@@ -28,7 +28,7 @@ typedef struct {
 typedef struct {
     GLushort width;
     GLushort height;
-    GLuint   color;
+    GLuint   color; /* This is the PVR texture format */
     GLubyte  env;
     GLubyte  filter;
     GLubyte  mip_map;

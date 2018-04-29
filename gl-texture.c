@@ -197,12 +197,12 @@ void APIENTRY glCompressedTexImage2D(GLenum target,
     if(border)
         _glKosThrowError(GL_INVALID_VALUE, "glCompressedTexImage2D");
 
-    if(internalformat != GL_UNSIGNED_SHORT_5_6_5_VQ)
-        if(internalformat != GL_UNSIGNED_SHORT_5_6_5_VQ_TWID)
-            if(internalformat != GL_UNSIGNED_SHORT_4_4_4_4_VQ)
-                if(internalformat != GL_UNSIGNED_SHORT_4_4_4_4_VQ_TWID)
-                    if(internalformat != GL_UNSIGNED_SHORT_1_5_5_5_VQ)
-                        if(internalformat != GL_UNSIGNED_SHORT_1_5_5_5_VQ_TWID)
+    if(internalformat != GL_UNSIGNED_SHORT_5_6_5_VQ_EXT)
+        if(internalformat != GL_UNSIGNED_SHORT_5_6_5_VQ_TWID_EXT)
+            if(internalformat != GL_UNSIGNED_SHORT_4_4_4_4_VQ_EXT)
+                if(internalformat != GL_UNSIGNED_SHORT_4_4_4_4_VQ_TWID_EXT)
+                    if(internalformat != GL_UNSIGNED_SHORT_1_5_5_5_VQ_EXT)
+                        if(internalformat != GL_UNSIGNED_SHORT_1_5_5_5_VQ_TWID_EXT)
                             _glKosThrowError(GL_INVALID_OPERATION, "glCompressedTexImage2D");
 
     if(GL_KOS_TEXTURE_UNIT[GL_KOS_ACTIVE_TEXTURE] == NULL)
@@ -228,6 +228,160 @@ void APIENTRY glCompressedTexImage2D(GLenum target,
         sq_cpy(GL_KOS_TEXTURE_UNIT[GL_KOS_ACTIVE_TEXTURE]->data, data, imageSize);
 }
 
+static GLint _cleanInternalFormat(GLint internalFormat) {
+    switch (internalFormat) {
+    case GL_ALPHA:
+/*    case GL_ALPHA4:
+    case GL_ALPHA8:
+    case GL_ALPHA12:
+    case GL_ALPHA16:*/
+       return GL_ALPHA;
+    case 1:
+    case GL_LUMINANCE:
+/*    case GL_LUMINANCE4:
+    case GL_LUMINANCE8:
+    case GL_LUMINANCE12:
+    case GL_LUMINANCE16:*/
+       return GL_LUMINANCE;
+    case 2:
+    case GL_LUMINANCE_ALPHA:
+/*    case GL_LUMINANCE4_ALPHA4:
+    case GL_LUMINANCE6_ALPHA2:
+    case GL_LUMINANCE8_ALPHA8:
+    case GL_LUMINANCE12_ALPHA4:
+    case GL_LUMINANCE12_ALPHA12:
+    case GL_LUMINANCE16_ALPHA16: */
+       return GL_LUMINANCE_ALPHA;
+/*    case GL_INTENSITY:
+    case GL_INTENSITY4:
+    case GL_INTENSITY8:
+    case GL_INTENSITY12:
+    case GL_INTENSITY16:
+       return GL_INTENSITY; */
+    case 3:
+       return GL_RGB;
+    case GL_RGB:
+/*    case GL_R3_G3_B2:
+    case GL_RGB4:
+    case GL_RGB5:
+    case GL_RGB8:
+    case GL_RGB10:
+    case GL_RGB12:
+    case GL_RGB16: */
+       return GL_RGB;
+    case 4:
+       return GL_RGBA;
+    case GL_RGBA:
+/*    case GL_RGBA2:
+    case GL_RGBA4:
+    case GL_RGB5_A1:
+    case GL_RGBA8:
+    case GL_RGB10_A2:
+    case GL_RGBA12:
+    case GL_RGBA16: */
+        return GL_RGBA;
+
+    /* Support ARB_texture_rg */
+    case GL_RED:
+/*    case GL_R8:
+    case GL_R16:
+    case GL_RED:
+    case GL_COMPRESSED_RED: */
+        return GL_RED;
+/*    case GL_RG:
+    case GL_RG8:
+    case GL_RG16:
+    case GL_COMPRESSED_RG:
+        return GL_RG;*/
+    default:
+        return -1;
+    }
+}
+
+static GLuint _determinePVRFormat(GLint internalFormat, GLenum type) {
+    /* Given a cleaned internalFormat, return the Dreamcast format
+     * that can hold it
+     */
+    switch(internalFormat) {
+        case GL_ALPHA:
+        case GL_LUMINANCE:
+        case GL_LUMINANCE_ALPHA:
+        case GL_RGBA:
+        /* OK so if we have something that requires alpha, we return 4444 unless
+         * the type was already 1555 (1-bit alpha) in which case we return that
+         */
+            return (type == GL_UNSIGNED_SHORT_1_5_5_5_REV) ?
+                PVR_TXRFMT_ARGB1555 | PVR_TXRFMT_NONTWIDDLED :
+                PVR_TXRFMT_ARGB4444 | PVR_TXRFMT_NONTWIDDLED;
+        case GL_RED:
+        case GL_RGB:
+            /* No alpha? Return RGB565 which is the best we can do without using palettes */
+            return PVR_TXRFMT_RGB565 | PVR_TXRFMT_NONTWIDDLED;
+        default:
+            return 0;
+    }
+}
+
+
+typedef void (*TextureConversionFunc)(GLbyte*, GLshort*);
+
+static void _rgba8888_to_argb4444(GLbyte* source, GLshort* dest) {
+    *dest = (
+        (source[3] & 0x11110000) << 8 |
+        (source[0] & 0x11110000) << 4 |
+        (source[1] & 0x11110000) |
+        (source[2] & 0x11110000) >> 4
+    );
+}
+
+static void _rgb888_to_rgb565(GLbyte* source, GLshort* dest) {
+    *dest = ((source[0] & 0b11111000) << 8) | ((source[1] & 0b11111100) << 3) | (source[2] >> 3);
+}
+
+static void _r8_to_rgb565(GLbyte* source, GLshort* dest) {
+    *dest = (source[0] & 0b11111000) << 8;
+}
+
+static TextureConversionFunc _determineConversion(GLint pvr_format, GLenum format, GLenum type) {
+    switch(pvr_format) {
+    case PVR_TXRFMT_RGB565 | PVR_TXRFMT_NONTWIDDLED: {
+        if(type == GL_UNSIGNED_BYTE && format == GL_RGB) {
+            return _rgb888_to_rgb565;
+        } else if(type == GL_UNSIGNED_BYTE && format == GL_RED) {
+            return _r8_to_rgb565;
+        }
+    } break;
+    case PVR_TXRFMT_ARGB4444 | PVR_TXRFMT_NONTWIDDLED: {
+        if(type == GL_UNSIGNED_BYTE && format == GL_RGBA) {
+            return _rgba8888_to_argb4444;
+        }
+    } break;
+    default:
+        break;
+    }
+
+    return 0;
+}
+
+static GLint _determineStride(GLenum format, GLenum type) {
+    switch(type) {
+    case GL_BYTE:
+    case GL_UNSIGNED_BYTE:
+        return (format == GL_RED) ? 1 : (format == GL_RGB) ? 3 : 4;
+    case GL_UNSIGNED_SHORT:
+        return (format == GL_RED) ? 2 : (format == GL_RGB) ? 6 : 8;
+    case GL_UNSIGNED_SHORT_5_6_5_REV:
+    case GL_UNSIGNED_SHORT_5_5_5_1:
+    case GL_UNSIGNED_SHORT_1_5_5_5_REV:
+    case GL_UNSIGNED_SHORT_4_4_4_4:
+    case GL_UNSIGNED_SHORT_4_4_4_4_REV:
+        return 2;
+    }
+
+    return -1;
+}
+
+
 void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
                            GLsizei width, GLsizei height, GLint border,
                            GLenum format, GLenum type, const GLvoid *data) {
@@ -238,9 +392,10 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
         if(format != GL_RGBA)
             _glKosThrowError(GL_INVALID_ENUM, "glTexImage2D");
 
-    if(internalFormat != GL_RGB)
-        if(internalFormat != GL_RGBA)
-            _glKosThrowError(GL_INVALID_VALUE, "glTexImage2D");
+    internalFormat = _cleanInternalFormat(internalFormat);
+    if(internalFormat == -1) {
+        _glKosThrowError(GL_INVALID_VALUE, "glTexImage2D");
+    }
 
     GLint w = width;
     if(w == 0 || (w & -w) != w) {
@@ -260,9 +415,6 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
     if(border)
         _glKosThrowError(GL_INVALID_VALUE, "glTexImage2D");
 
-    if(format != internalFormat)
-        _glKosThrowError(GL_INVALID_OPERATION, "glTexImage2D");
-
     if(GL_KOS_TEXTURE_UNIT[GL_KOS_ACTIVE_TEXTURE] == NULL)
         _glKosThrowError(GL_INVALID_OPERATION, "glTexImage2D");
 
@@ -271,12 +423,15 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
         return;
     }
 
+    /* Calculate the format that we need to convert the data to */
+    GLuint pvr_format = _determinePVRFormat(internalFormat, type);
+
     if(GL_KOS_TEXTURE_UNIT[GL_KOS_ACTIVE_TEXTURE]->data) {
         /* pre-existing texture - check if changed */
         if(GL_KOS_TEXTURE_UNIT[GL_KOS_ACTIVE_TEXTURE]->width != width ||
            GL_KOS_TEXTURE_UNIT[GL_KOS_ACTIVE_TEXTURE]->height != height ||
            GL_KOS_TEXTURE_UNIT[GL_KOS_ACTIVE_TEXTURE]->mip_map != level ||
-           GL_KOS_TEXTURE_UNIT[GL_KOS_ACTIVE_TEXTURE]->color != type) {
+           GL_KOS_TEXTURE_UNIT[GL_KOS_ACTIVE_TEXTURE]->color != pvr_format) {
             /* changed - free old texture memory */
             pvr_mem_free(GL_KOS_TEXTURE_UNIT[GL_KOS_ACTIVE_TEXTURE]->data);
             GL_KOS_TEXTURE_UNIT[GL_KOS_ACTIVE_TEXTURE]->data = NULL;
@@ -290,58 +445,59 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
         GL_KOS_TEXTURE_UNIT[GL_KOS_ACTIVE_TEXTURE]->width   = width;
         GL_KOS_TEXTURE_UNIT[GL_KOS_ACTIVE_TEXTURE]->height  = height;
         GL_KOS_TEXTURE_UNIT[GL_KOS_ACTIVE_TEXTURE]->mip_map = level;
-        GL_KOS_TEXTURE_UNIT[GL_KOS_ACTIVE_TEXTURE]->color   = type;
+        GL_KOS_TEXTURE_UNIT[GL_KOS_ACTIVE_TEXTURE]->color   = pvr_format;
 
         GL_KOS_TEXTURE_UNIT[GL_KOS_ACTIVE_TEXTURE]->data = pvr_mem_malloc(bytes);
     }
 
-    if(data) {
-        switch(type) {
-            case GL_BYTE:          /* Texture Formats that need conversion for PVR */
-            case GL_UNSIGNED_BYTE:
-            case GL_SHORT:
-            case GL_UNSIGNED_SHORT:
-            case GL_FLOAT: {
-                uint16 *tex;
+    /* Let's assume we need to convert */
+    GLboolean needsConversion = GL_TRUE;
 
-                tex = (uint16 *)malloc(width * height * sizeof(uint16));
+    /*
+     * These are the only formats where the source format passed in matches the pvr format.
+     * Note the REV formats + GL_BGRA will reverse to ARGB which is what the PVR supports
+     */
+    if(format == GL_BGRA && type == GL_UNSIGNED_SHORT_4_4_4_4_REV && internalFormat == GL_RGBA) {
+        needsConversion = GL_FALSE;
+    } else if(format == GL_BGRA && type == GL_UNSIGNED_SHORT_1_5_5_5_REV && internalFormat == GL_RGBA) {
+        needsConversion = GL_FALSE;
+    } else if(format == GL_RGB && type == GL_UNSIGNED_SHORT_5_6_5 && internalFormat == GL_RGB) {
+        needsConversion = GL_FALSE;
+    }
 
-                if(!tex) {
-                    _glKosThrowError(GL_OUT_OF_MEMORY, "glTexImage2D");
-                    _glKosPrintError();
-                    return;
-                }
+    if(!data) {
+        /* No data? Do nothing! */
+        return;
+    } else if(!needsConversion) {
+        /* No conversion? Just copy the data, and the pvr_format is correct */
+        sq_cpy(GL_KOS_TEXTURE_UNIT[GL_KOS_ACTIVE_TEXTURE]->data, data, bytes);
+        return;
+    } else {
+        TextureConversionFunc convert = _determineConversion(
+            internalFormat,
+            format,
+            type
+        );
 
-                switch(internalFormat) {
-                    case GL_RGB:
-                        _glKosPixelConvertRGB(type, width, height, (void *)data, tex);
-                        GL_KOS_TEXTURE_UNIT[GL_KOS_ACTIVE_TEXTURE]->color = (PVR_TXRFMT_RGB565 | PVR_TXRFMT_NONTWIDDLED);
-                        sq_cpy(GL_KOS_TEXTURE_UNIT[GL_KOS_ACTIVE_TEXTURE]->data, tex, bytes);
-                        break;
+        if(!convert) {
+            _glKosThrowError(GL_INVALID_OPERATION, "glTexImage2D");
+            return;
+        }
 
-                    case GL_RGBA:
-                        _glKosPixelConvertRGBA(type, width, height, (void *)data, tex);
-                        GL_KOS_TEXTURE_UNIT[GL_KOS_ACTIVE_TEXTURE]->color = (PVR_TXRFMT_ARGB4444 | PVR_TXRFMT_NONTWIDDLED);
-                        sq_cpy(GL_KOS_TEXTURE_UNIT[GL_KOS_ACTIVE_TEXTURE]->data, tex, bytes);
-                        break;
-                }
+        GLshort* dest = GL_KOS_TEXTURE_UNIT[GL_KOS_ACTIVE_TEXTURE]->data;
+        GLbyte* source = data;
+        GLint stride = _determineStride(format, type);
 
-                free(tex);
-            }
-            break;
+        if(stride == -1) {
+            _glKosThrowError(GL_INVALID_OPERATION, "glTexImage2D");
+            return;
+        }
 
-            case GL_UNSIGNED_SHORT_5_6_5:   /* Texture Formats that do not need conversion  */
-            case GL_UNSIGNED_SHORT_5_6_5_TWID:
-            case GL_UNSIGNED_SHORT_1_5_5_5:
-            case GL_UNSIGNED_SHORT_1_5_5_5_TWID:
-            case GL_UNSIGNED_SHORT_4_4_4_4:
-            case GL_UNSIGNED_SHORT_4_4_4_4_TWID:
-                sq_cpy(GL_KOS_TEXTURE_UNIT[GL_KOS_ACTIVE_TEXTURE]->data, data, bytes);
-                break;
+        for(GLuint i = 0; i < bytes; ++i) {
+            convert(source, dest);
 
-            default: /* Unsupported Texture Format */
-                _glKosThrowError(GL_INVALID_OPERATION, "glTexImage2D");
-                break;
+            dest++;
+            source += stride;
         }
     }
 }
