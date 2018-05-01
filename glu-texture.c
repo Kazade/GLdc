@@ -52,7 +52,7 @@ static GLint gluBuild2DBiMipmaps(GLenum target, GLint internalFormat, GLsizei wi
                     dst[i++] = __glKosAverageBiPixelARGB4444(*src, *(src + 1));
                     break;
 
-                case GL_UNSIGNED_SHORT_1_5_5_5:
+                case GL_UNSIGNED_SHORT_1_5_5_5_REV:
                     dst[i++] = __glKosAverageBiPixelARGB1555(*src, *(src + 1));
                     break;
             }
@@ -73,7 +73,7 @@ GLint APIENTRY gluBuild2DMipmaps(GLenum target, GLint internalFormat, GLsizei wi
         return -1;
 
     if(type != GL_UNSIGNED_SHORT_5_6_5 && type != GL_UNSIGNED_SHORT_4_4_4_4
-       && type != GL_UNSIGNED_SHORT_1_5_5_5)
+       && type != GL_UNSIGNED_SHORT_1_5_5_5_REV)
         return -1;
 
     if(width < 1 || height < 1)
@@ -99,7 +99,7 @@ GLint APIENTRY gluBuild2DMipmaps(GLenum target, GLint internalFormat, GLsizei wi
                     dst[i++] = __glKosAverageQuadPixelARGB4444(*src, *(src + 1), *(src + width), *(src + width + 1));
                     break;
 
-                case GL_UNSIGNED_SHORT_1_5_5_5:
+                case GL_UNSIGNED_SHORT_1_5_5_5_REV:
                     dst[i++] = __glKosAverageQuadPixelARGB1555(*src, *(src + 1), *(src + width), *(src + width + 1));
                     break;
             }

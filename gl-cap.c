@@ -228,7 +228,7 @@ void APIENTRY glGetFloatv(GLenum pname, GLfloat *params) {
 const GLbyte *glGetString(GLenum name) {
     switch(name) {
         case GL_VENDOR:
-            return "KallistiOS";
+            return "KallistiOS / Kazade";
 
         case GL_RENDERER:
             return "PowerVR2 CLX2 100mHz";
@@ -237,7 +237,7 @@ const GLbyte *glGetString(GLenum name) {
             return "KGL 1.x";
 
         case GL_EXTENSIONS:
-            return "GL_ARB_framebuffer_object, GL_ARB_multitexture";
+            return "GL_ARB_framebuffer_object, GL_ARB_multitexture, GL_ARB_texture_rg";
     }
 
     return "GL_KOS_ERROR: ENUM Unsupported\n";
