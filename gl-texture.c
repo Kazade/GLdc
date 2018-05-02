@@ -5,16 +5,17 @@
    Copyright (C) 2016 Joe Fenton
 
    Open GL Texture Submission implementation.
-   This implementation uses a dynamic linked list to store the texture objects.
 */
+
+#include <malloc.h>
+#include <stdio.h>
+#include <stdlib.h>
 
 #include "gl.h"
 #include "glext.h"
 #include "gl-api.h"
 #include "gl-rgb.h"
-
-#include <malloc.h>
-#include <stdio.h>
+#include "containers/named_array.h"
 
 //========================================================================================//
 //== Internal KOS Open GL Texture Unit Structures / Global Variables ==//
@@ -23,8 +24,9 @@
 #define GL_KOS_CLAMP_U (1<<1)
 #define GL_KOS_CLAMP_V (1<<0)
 
-static GL_TEXTURE_OBJECT *TEXTURE_OBJ = NULL;
+
 static GL_TEXTURE_OBJECT *GL_KOS_TEXTURE_UNIT[GL_KOS_MAX_TEXTURE_UNITS] = { NULL, NULL };
+static NamedArray TEXTURE_OBJECTS;
 
 static GLubyte GL_KOS_ACTIVE_TEXTURE = GL_TEXTURE0_ARB & 0xF;
 
@@ -33,47 +35,12 @@ static GLubyte GL_KOS_ACTIVE_TEXTURE = GL_TEXTURE0_ARB & 0xF;
 static GLuint _determinePVRFormat(GLint internalFormat, GLenum type);
 
 GLubyte _glKosInitTextures() {
-    TEXTURE_OBJ = malloc(sizeof(GL_TEXTURE_OBJECT));
-
-    if(TEXTURE_OBJ == NULL)
-        return 0;
-
-    TEXTURE_OBJ->index = 0;
-    TEXTURE_OBJ->data = NULL;
-    TEXTURE_OBJ->link = NULL;
-
+    named_array_init(&TEXTURE_OBJECTS, sizeof(GL_TEXTURE_OBJECT), 256);
     return 1;
 }
 
-static GLsizei _glKosGetLastTextureIndex() {
-    GL_TEXTURE_OBJECT *ptr = TEXTURE_OBJ;
-
-    while(ptr->link != NULL)
-        ptr = (GL_TEXTURE_OBJECT *)ptr->link;
-
-    return ptr->index;
-}
-
-static void _glKosInsertTextureObj(GL_TEXTURE_OBJECT *obj) {
-    GL_TEXTURE_OBJECT *ptr = TEXTURE_OBJ;
-
-    while(ptr->link != NULL)
-        ptr = (GL_TEXTURE_OBJECT *)ptr->link;
-
-    ptr->link = obj;
-}
-
-static GL_TEXTURE_OBJECT *_glKosGetTextureObj(GLuint index) {
-    GL_TEXTURE_OBJECT *ptr = TEXTURE_OBJ;
-
-    while(ptr->link != NULL && ptr->index != index)
-        ptr = (GL_TEXTURE_OBJECT *)ptr->link;
-
-    return ptr;
-}
-
 static void _glKosBindTexture(GLuint index) {
-    GL_KOS_TEXTURE_UNIT[GL_KOS_ACTIVE_TEXTURE] = _glKosGetTextureObj(index);
+    GL_KOS_TEXTURE_UNIT[GL_KOS_ACTIVE_TEXTURE] = (GL_TEXTURE_OBJECT*) named_array_get(&TEXTURE_OBJECTS, index);
 }
 
 static void _glKosUnbindTexture() {
@@ -81,17 +48,17 @@ static void _glKosUnbindTexture() {
 }
 
 GLuint _glKosTextureWidth(GLuint index) {
-    GL_TEXTURE_OBJECT *tex = _glKosGetTextureObj(index);
+    GL_TEXTURE_OBJECT *tex = (GL_TEXTURE_OBJECT*) named_array_get(&TEXTURE_OBJECTS, index);
     return tex->width;
 }
 
 GLuint _glKosTextureHeight(GLuint index) {
-    GL_TEXTURE_OBJECT *tex = _glKosGetTextureObj(index);
+    GL_TEXTURE_OBJECT *tex = (GL_TEXTURE_OBJECT*) named_array_get(&TEXTURE_OBJECTS, index);
     return tex->height;
 }
 
 GLvoid *_glKosTextureData(GLuint index) {
-    GL_TEXTURE_OBJECT *tex = _glKosGetTextureObj(index);
+    GL_TEXTURE_OBJECT *tex = (GL_TEXTURE_OBJECT*) named_array_get(&TEXTURE_OBJECTS, index);
     return tex->data;
 }
 
@@ -126,49 +93,36 @@ GLubyte _glKosMaxTextureUnits() {
 //== Public KOS Open GL API Texture Unit Functionality ==//
 
 void APIENTRY glGenTextures(GLsizei n, GLuint *textures) {
-    GLsizei index = _glKosGetLastTextureIndex();
-
     while(n--) {
-        GL_TEXTURE_OBJECT *txr = malloc(sizeof(GL_TEXTURE_OBJECT));
-        txr->index = ++index;
-        txr->data = NULL;
-        txr->link = NULL;
-
+        GLuint id = 0;
+        GL_TEXTURE_OBJECT* txr = (GL_TEXTURE_OBJECT*) named_array_alloc(&TEXTURE_OBJECTS, &id);
+        txr->index = id;
         txr->width = txr->height = 0;
         txr->mip_map = 0;
         txr->uv_clamp = 0;
         txr->env = PVR_TXRENV_MODULATEALPHA;
         txr->filter = PVR_FILTER_NONE;
+        txr->data = NULL;
 
-        _glKosInsertTextureObj(txr);
+        *textures = id;
 
-        *textures++ = txr->index;
+        textures++;
     }
 }
 
 void APIENTRY glDeleteTextures(GLsizei n, GLuint *textures) {
     while(n--) {
-        GL_TEXTURE_OBJECT *txr = TEXTURE_OBJ, *ltxr = NULL;
+        GL_TEXTURE_OBJECT* txr = (GL_TEXTURE_OBJECT*) named_array_get(&TEXTURE_OBJECTS, *textures);
 
-        while(txr->index != *textures && txr->link != NULL) {
-            ltxr = txr;
-            txr = txr->link;
+        if(txr == GL_KOS_TEXTURE_UNIT[GL_KOS_ACTIVE_TEXTURE]) {
+            GL_KOS_TEXTURE_UNIT[GL_KOS_ACTIVE_TEXTURE] = NULL;
         }
 
-        ltxr->link = txr->link;
-
-        if(txr->index == *textures) {
-            if(GL_KOS_TEXTURE_UNIT[GL_KOS_ACTIVE_TEXTURE])
-                if(GL_KOS_TEXTURE_UNIT[GL_KOS_ACTIVE_TEXTURE]->index == txr->index)
-                    GL_KOS_TEXTURE_UNIT[GL_KOS_ACTIVE_TEXTURE] = NULL;
-
-            if(txr->data != NULL)
-                pvr_mem_free(txr->data);
-
-            free(txr);
+        if(txr->data) {
+            pvr_mem_free(txr->data);
         }
 
-        ++textures;
+        named_array_release(&TEXTURE_OBJECTS, *textures++);
     }
 }
 

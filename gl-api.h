@@ -35,7 +35,6 @@ typedef struct {
     GLubyte  uv_clamp;
     GLuint   index;
     GLvoid *data;
-    GLvoid *link;
 } GL_TEXTURE_OBJECT; /* KOS Open GL Texture Object */
 
 typedef struct {
