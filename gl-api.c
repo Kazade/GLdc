@@ -52,188 +52,188 @@ static inline void _glKosFinishRect();
 //====================================================================================================//
 //== API Initialization ==//
 
-void APIENTRY glKosInit() {
-    _glKosInitPVR();
+//void APIENTRY glKosInit() {
+//    _glKosInitPVR();
 
-    _glKosInitTextures();
+//    _glKosInitTextures();
 
-    _glKosInitMatrix();
+//    _glKosInitMatrix();
 
-    _glKosInitLighting();
+//    _glKosInitLighting();
 
-    _glKosInitFrameBuffers();
-}
+//    _glKosInitFrameBuffers();
+//}
 
 //====================================================================================================//
 //== Blending / Shading functions ==//
 
-void APIENTRY glShadeModel(GLenum   mode) {
-    switch(mode) {
-        case GL_FLAT:
-            GL_KOS_SHADE_FUNC = PVR_SHADE_FLAT;
-            break;
+//void APIENTRY glShadeModel(GLenum   mode) {
+//    switch(mode) {
+//        case GL_FLAT:
+//            GL_KOS_SHADE_FUNC = PVR_SHADE_FLAT;
+//            break;
 
-        case GL_SMOOTH:
-            GL_KOS_SHADE_FUNC = PVR_SHADE_GOURAUD;
-            break;
-    }
-}
+//        case GL_SMOOTH:
+//            GL_KOS_SHADE_FUNC = PVR_SHADE_GOURAUD;
+//            break;
+//    }
+//}
 
-void APIENTRY glBlendFunc(GLenum sfactor, GLenum dfactor) {
-    GL_KOS_BLEND_FUNC = 0;
+//void APIENTRY glBlendFunc(GLenum sfactor, GLenum dfactor) {
+//    GL_KOS_BLEND_FUNC = 0;
 
-    switch(sfactor) {
-        case GL_ONE:
-            GL_KOS_BLEND_FUNC |= (PVR_BLEND_ONE & 0XF) << 4;
-            break;
+//    switch(sfactor) {
+//        case GL_ONE:
+//            GL_KOS_BLEND_FUNC |= (PVR_BLEND_ONE & 0XF) << 4;
+//            break;
 
-        case GL_ZERO:
-            GL_KOS_BLEND_FUNC |= (PVR_BLEND_ZERO & 0XF) << 4;
-            break;
+//        case GL_ZERO:
+//            GL_KOS_BLEND_FUNC |= (PVR_BLEND_ZERO & 0XF) << 4;
+//            break;
 
-        case GL_SRC_COLOR:
-            GL_KOS_BLEND_FUNC |= (PVR_BLEND_SRCALPHA & 0XF) << 4;
-            break;
+//        case GL_SRC_COLOR:
+//            GL_KOS_BLEND_FUNC |= (PVR_BLEND_SRCALPHA & 0XF) << 4;
+//            break;
 
-        case GL_DST_COLOR:
-            GL_KOS_BLEND_FUNC |= (PVR_BLEND_DESTCOLOR & 0XF) << 4;
-            break;
+//        case GL_DST_COLOR:
+//            GL_KOS_BLEND_FUNC |= (PVR_BLEND_DESTCOLOR & 0XF) << 4;
+//            break;
 
-        case GL_SRC_ALPHA:
-            GL_KOS_BLEND_FUNC |= (PVR_BLEND_SRCALPHA << 4);
-            break;
+//        case GL_SRC_ALPHA:
+//            GL_KOS_BLEND_FUNC |= (PVR_BLEND_SRCALPHA << 4);
+//            break;
 
-        case GL_DST_ALPHA:
-            GL_KOS_BLEND_FUNC |= (PVR_BLEND_DESTALPHA & 0XF) << 4;
-            break;
+//        case GL_DST_ALPHA:
+//            GL_KOS_BLEND_FUNC |= (PVR_BLEND_DESTALPHA & 0XF) << 4;
+//            break;
 
-        case GL_ONE_MINUS_SRC_ALPHA:
-            GL_KOS_BLEND_FUNC |= (PVR_BLEND_INVSRCALPHA & 0XF) << 4;
-            break;
+//        case GL_ONE_MINUS_SRC_ALPHA:
+//            GL_KOS_BLEND_FUNC |= (PVR_BLEND_INVSRCALPHA & 0XF) << 4;
+//            break;
 
-        case GL_ONE_MINUS_DST_ALPHA:
-            GL_KOS_BLEND_FUNC |= (PVR_BLEND_INVDESTALPHA & 0XF) << 4;
-            break;
+//        case GL_ONE_MINUS_DST_ALPHA:
+//            GL_KOS_BLEND_FUNC |= (PVR_BLEND_INVDESTALPHA & 0XF) << 4;
+//            break;
 
-        case GL_ONE_MINUS_DST_COLOR:
-            GL_KOS_BLEND_FUNC |= (PVR_BLEND_INVDESTCOLOR & 0XF) << 4;
-            break;
-    }
+//        case GL_ONE_MINUS_DST_COLOR:
+//            GL_KOS_BLEND_FUNC |= (PVR_BLEND_INVDESTCOLOR & 0XF) << 4;
+//            break;
+//    }
 
-    switch(dfactor) {
-        case GL_ONE:
-            GL_KOS_BLEND_FUNC |= (PVR_BLEND_ONE & 0XF);
-            break;
+//    switch(dfactor) {
+//        case GL_ONE:
+//            GL_KOS_BLEND_FUNC |= (PVR_BLEND_ONE & 0XF);
+//            break;
 
-        case GL_ZERO:
-            GL_KOS_BLEND_FUNC |= (PVR_BLEND_ZERO & 0XF);
-            break;
+//        case GL_ZERO:
+//            GL_KOS_BLEND_FUNC |= (PVR_BLEND_ZERO & 0XF);
+//            break;
 
-        case GL_SRC_COLOR:
-            GL_KOS_BLEND_FUNC |= (PVR_BLEND_SRCALPHA & 0XF);
-            break;
+//        case GL_SRC_COLOR:
+//            GL_KOS_BLEND_FUNC |= (PVR_BLEND_SRCALPHA & 0XF);
+//            break;
 
-        case GL_DST_COLOR:
-            GL_KOS_BLEND_FUNC |= (PVR_BLEND_DESTCOLOR & 0XF);
-            break;
+//        case GL_DST_COLOR:
+//            GL_KOS_BLEND_FUNC |= (PVR_BLEND_DESTCOLOR & 0XF);
+//            break;
 
-        case GL_SRC_ALPHA:
-            GL_KOS_BLEND_FUNC |= (PVR_BLEND_SRCALPHA & 0XF);
-            break;
+//        case GL_SRC_ALPHA:
+//            GL_KOS_BLEND_FUNC |= (PVR_BLEND_SRCALPHA & 0XF);
+//            break;
 
-        case GL_DST_ALPHA:
-            GL_KOS_BLEND_FUNC |= (PVR_BLEND_DESTALPHA & 0XF);
-            break;
+//        case GL_DST_ALPHA:
+//            GL_KOS_BLEND_FUNC |= (PVR_BLEND_DESTALPHA & 0XF);
+//            break;
 
-        case GL_ONE_MINUS_SRC_ALPHA:
-            GL_KOS_BLEND_FUNC |= (PVR_BLEND_INVSRCALPHA & 0XF);
-            break;
+//        case GL_ONE_MINUS_SRC_ALPHA:
+//            GL_KOS_BLEND_FUNC |= (PVR_BLEND_INVSRCALPHA & 0XF);
+//            break;
 
-        case GL_ONE_MINUS_DST_ALPHA:
-            GL_KOS_BLEND_FUNC |= (PVR_BLEND_INVDESTALPHA & 0XF);
-            break;
+//        case GL_ONE_MINUS_DST_ALPHA:
+//            GL_KOS_BLEND_FUNC |= (PVR_BLEND_INVDESTALPHA & 0XF);
+//            break;
 
-        case GL_ONE_MINUS_DST_COLOR:
-            GL_KOS_BLEND_FUNC |= (PVR_BLEND_INVDESTCOLOR & 0XF);
-            break;
-    }
-}
+//        case GL_ONE_MINUS_DST_COLOR:
+//            GL_KOS_BLEND_FUNC |= (PVR_BLEND_INVDESTCOLOR & 0XF);
+//            break;
+//    }
+//}
 
 //====================================================================================================//
 //== Depth / Clear functions ==//
 
-void APIENTRY glClear(GLuint mode) {
-    if(mode & GL_COLOR_BUFFER_BIT)
-        pvr_set_bg_color(GL_KOS_COLOR_CLEAR[0], GL_KOS_COLOR_CLEAR[1], GL_KOS_COLOR_CLEAR[2]);
-}
+//void APIENTRY glClear(GLuint mode) {
+//    if(mode & GL_COLOR_BUFFER_BIT)
+//        pvr_set_bg_color(GL_KOS_COLOR_CLEAR[0], GL_KOS_COLOR_CLEAR[1], GL_KOS_COLOR_CLEAR[2]);
+//}
 
-void APIENTRY glClearColor(float r, float g, float b, float a) {
-    if(r > 1) r = 1;
+//void APIENTRY glClearColor(float r, float g, float b, float a) {
+//    if(r > 1) r = 1;
 
-    if(g > 1) g = 1;
+//    if(g > 1) g = 1;
 
-    if(b > 1) b = 1;
+//    if(b > 1) b = 1;
 
-    if(a > 1) a = 1;
+//    if(a > 1) a = 1;
 
-    GL_KOS_COLOR_CLEAR[0] = r * a;
-    GL_KOS_COLOR_CLEAR[1] = g * a;
-    GL_KOS_COLOR_CLEAR[2] = b * a;
-}
+//    GL_KOS_COLOR_CLEAR[0] = r * a;
+//    GL_KOS_COLOR_CLEAR[1] = g * a;
+//    GL_KOS_COLOR_CLEAR[2] = b * a;
+//}
 
 //== NoOp ==//
-void APIENTRY glClearDepthf(GLfloat depth) {
-    ;
-}
+//void APIENTRY glClearDepthf(GLfloat depth) {
+//    ;
+//}
 
-void APIENTRY glDepthFunc(GLenum func) {
-    switch(func) {
-        case GL_LESS:
-            GL_KOS_DEPTH_FUNC = PVR_DEPTHCMP_GEQUAL;
-            break;
+//void APIENTRY glDepthFunc(GLenum func) {
+//    switch(func) {
+//        case GL_LESS:
+//            GL_KOS_DEPTH_FUNC = PVR_DEPTHCMP_GEQUAL;
+//            break;
 
-        case GL_LEQUAL:
-            GL_KOS_DEPTH_FUNC = PVR_DEPTHCMP_GREATER;
-            break;
+//        case GL_LEQUAL:
+//            GL_KOS_DEPTH_FUNC = PVR_DEPTHCMP_GREATER;
+//            break;
 
-        case GL_GREATER:
-            GL_KOS_DEPTH_FUNC = PVR_DEPTHCMP_LEQUAL;
-            break;
+//        case GL_GREATER:
+//            GL_KOS_DEPTH_FUNC = PVR_DEPTHCMP_LEQUAL;
+//            break;
 
-        case GL_GEQUAL:
-            GL_KOS_DEPTH_FUNC = PVR_DEPTHCMP_LESS;
-            break;
+//        case GL_GEQUAL:
+//            GL_KOS_DEPTH_FUNC = PVR_DEPTHCMP_LESS;
+//            break;
 
-        default:
-            GL_KOS_DEPTH_FUNC = (func & 0x0F);
-    }
-}
+//        default:
+//            GL_KOS_DEPTH_FUNC = (func & 0x0F);
+//    }
+//}
 
-void APIENTRY glDepthMask(GLboolean flag) {
-    GL_KOS_DEPTH_WRITE = (flag == GL_TRUE) ? PVR_DEPTHWRITE_ENABLE : PVR_DEPTHWRITE_DISABLE;
-}
+//void APIENTRY glDepthMask(GLboolean flag) {
+//    GL_KOS_DEPTH_WRITE = (flag == GL_TRUE) ? PVR_DEPTHWRITE_ENABLE : PVR_DEPTHWRITE_DISABLE;
+//}
 
 //====================================================================================================//
 //== Culling functions ==//
 
-void APIENTRY glFrontFace(GLenum mode) {
-    switch(mode) {
-        case GL_CW:
-        case GL_CCW:
-            GL_KOS_FACE_FRONT = mode;
-            break;
-    }
-}
+//void APIENTRY glFrontFace(GLenum mode) {
+//    switch(mode) {
+//        case GL_CW:
+//        case GL_CCW:
+//            GL_KOS_FACE_FRONT = mode;
+//            break;
+//    }
+//}
 
-void APIENTRY glCullFace(GLenum mode) {
-    switch(mode) {
-        case GL_FRONT:
-        case GL_BACK:
-        case GL_FRONT_AND_BACK:
-            GL_KOS_CULL_FUNC = mode;
-            break;
-    }
-}
+//void APIENTRY glCullFace(GLenum mode) {
+//    switch(mode) {
+//        case GL_FRONT:
+//        case GL_BACK:
+//        case GL_FRONT_AND_BACK:
+//            GL_KOS_CULL_FUNC = mode;
+//            break;
+//    }
+//}
 
 //====================================================================================================//
 //== Vertex Attributes Submission Functions ==//
@@ -461,56 +461,20 @@ void APIENTRY glEnd() {
 //== Misc. functions ==//
 
 /* Clamp X to [MIN,MAX]: */
-#define CLAMP( X, MIN, MAX )  ( (X)<(MIN) ? (MIN) : ((X)>(MAX) ? (MAX) : (X)) )
 
-/* Setup the hardware user clip rectangle.
 
-   The minimum clip rectangle is a 32x32 area which is dependent on the tile
-   size use by the tile accelerator. The PVR swithes off rendering to tiles
-   outside or inside the defined rectangle dependant upon the 'clipmode'
-   bits in the polygon header.
+//void APIENTRY glHint(GLenum target, GLenum mode) {
+//    switch(target) {
+//        case GL_PERSPECTIVE_CORRECTION_HINT:
+//            if(mode == GL_NICEST)
+//                GL_KOS_SUPERSAMPLE = 1;
+//            else
+//                GL_KOS_SUPERSAMPLE = 0;
 
-   Clip rectangles therefore must have a size that is some multiple of 32.
+//            break;
+//    }
 
-    glScissor(0, 0, 32, 32) allows only the 'tile' in the lower left
-    hand corner of the screen to be modified and glScissor(0, 0, 0, 0)
-    disallows modification to all 'tiles' on the screen.
-*/
-void APIENTRY glScissor(GLint x, GLint y, GLsizei width, GLsizei height) {
-    pvr_cmd_tclip_t *c = _glKosVertexBufPointer();
-
-    GLint miny, maxx, maxy;
-    GLsizei gl_scissor_width = CLAMP(width, 0, vid_mode->width);
-    GLsizei gl_scissor_height = CLAMP(height, 0, vid_mode->height);
-
-    /* force the origin to the lower left-hand corner of the screen */
-    miny = (vid_mode->height - gl_scissor_height) - y;
-    maxx = (gl_scissor_width + x);
-    maxy = (gl_scissor_height + miny);
-
-    /* load command structure while mapping screen coords to TA tiles */
-    c->flags = PVR_CMD_USERCLIP;
-    c->d1 = c->d2 = c->d3 = 0;
-    c->sx = CLAMP(x / 32, 0, vid_mode->width / 32);
-    c->sy = CLAMP(miny / 32, 0, vid_mode->height / 32);
-    c->ex = CLAMP((maxx / 32) - 1, 0, vid_mode->width / 32);
-    c->ey = CLAMP((maxy / 32) - 1, 0, vid_mode->height / 32);
-
-    _glKosVertexBufIncrement();
-}
-
-void APIENTRY glHint(GLenum target, GLenum mode) {
-    switch(target) {
-        case GL_PERSPECTIVE_CORRECTION_HINT:
-            if(mode == GL_NICEST)
-                GL_KOS_SUPERSAMPLE = 1;
-            else
-                GL_KOS_SUPERSAMPLE = 0;
-
-            break;
-    }
-
-}
+//}
 
 //====================================================================================================//
 //== Internal API Vertex Submission functions ==//
@@ -944,26 +908,3 @@ GLuint _glKosVertexColor() {
     return GL_KOS_VERTEX_COLOR;
 }
 
-void glAlphaFunc(GLenum func, GLclampf ref) {
-    ;
-}
-
-void glLineWidth(GLfloat width) {
-    ;
-}
-
-void glPolygonOffset(GLfloat factor, GLfloat units) {
-    ;
-}
-
-void glGetTexParameteriv(GLenum target, GLenum pname, GLint *params) {
-    ;
-}
-
-void glColorMask(GLboolean red, GLboolean green, GLboolean blue, GLboolean alpha) {
-    ;
-}
-
-void glPixelStorei(GLenum pname, GLint param) {
-    ;
-}

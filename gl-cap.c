@@ -28,91 +28,91 @@ static GLbitfield GL_KOS_ENABLE_CAP = 0;
 //===============================================================================//
 //== External API Functions ==//
 
-void APIENTRY glEnable(GLenum cap) {
-    if(cap >= GL_LIGHT0 && cap <= GL_LIGHT15) return _glKosEnableLight(cap);
+//void APIENTRY glEnable(GLenum cap) {
+//    if(cap >= GL_LIGHT0 && cap <= GL_LIGHT15) return _glKosEnableLight(cap);
 
-    switch(cap) {
-        case GL_TEXTURE_2D:
-            GL_KOS_ENABLE_CAP |= GL_KOS_ENABLE_TEXTURE2D;
-            break;
+//    switch(cap) {
+//        case GL_TEXTURE_2D:
+//            GL_KOS_ENABLE_CAP |= GL_KOS_ENABLE_TEXTURE2D;
+//            break;
 
-        case GL_BLEND:
-            GL_KOS_ENABLE_CAP |= GL_KOS_ENABLE_BLENDING;
-            _glKosVertexBufSwitchTR();
-            break;
+//        case GL_BLEND:
+//            GL_KOS_ENABLE_CAP |= GL_KOS_ENABLE_BLENDING;
+//            _glKosVertexBufSwitchTR();
+//            break;
 
-        case GL_DEPTH_TEST:
-            GL_KOS_ENABLE_CAP |= GL_KOS_ENABLE_DEPTH_TEST;
-            break;
+//        case GL_DEPTH_TEST:
+//            GL_KOS_ENABLE_CAP |= GL_KOS_ENABLE_DEPTH_TEST;
+//            break;
 
-        case GL_LIGHTING:
-            GL_KOS_ENABLE_CAP |= GL_KOS_ENABLE_LIGHTING;
-            break;
+//        case GL_LIGHTING:
+//            GL_KOS_ENABLE_CAP |= GL_KOS_ENABLE_LIGHTING;
+//            break;
 
-        case GL_KOS_NEARZ_CLIPPING:
-            GL_KOS_ENABLE_CAP |= GL_KOS_ENABLE_ZCLIPPING;
-            break;
+//        case GL_KOS_NEARZ_CLIPPING:
+//            GL_KOS_ENABLE_CAP |= GL_KOS_ENABLE_ZCLIPPING;
+//            break;
 
-        case GL_SCISSOR_TEST:
-            GL_KOS_ENABLE_CAP |= GL_KOS_ENABLE_SCISSOR_TEST;
-            break;
+//        case GL_SCISSOR_TEST:
+//            GL_KOS_ENABLE_CAP |= GL_KOS_ENABLE_SCISSOR_TEST;
+//            break;
 
-        case GL_FOG:
-            GL_KOS_ENABLE_CAP |= GL_KOS_ENABLE_FOG;
-            break;
+//        case GL_FOG:
+//            GL_KOS_ENABLE_CAP |= GL_KOS_ENABLE_FOG;
+//            break;
 
-        case GL_CULL_FACE:
-            GL_KOS_ENABLE_CAP |= GL_KOS_ENABLE_CULLING;
-            break;
+//        case GL_CULL_FACE:
+//            GL_KOS_ENABLE_CAP |= GL_KOS_ENABLE_CULLING;
+//            break;
 
-        case GL_KOS_TEXTURE_MATRIX:
-            GL_KOS_ENABLE_CAP |= GL_KOS_ENABLE_TEXTURE_MAT;
-            break;
-    }
-}
+//        case GL_KOS_TEXTURE_MATRIX:
+//            GL_KOS_ENABLE_CAP |= GL_KOS_ENABLE_TEXTURE_MAT;
+//            break;
+//    }
+//}
 
-void APIENTRY glDisable(GLenum cap) {
-    if(cap >= GL_LIGHT0 && cap <= GL_LIGHT15) return _glKosDisableLight(cap);
+//void APIENTRY glDisable(GLenum cap) {
+//    if(cap >= GL_LIGHT0 && cap <= GL_LIGHT15) return _glKosDisableLight(cap);
 
-    switch(cap) {
-        case GL_TEXTURE_2D:
-            GL_KOS_ENABLE_CAP &= ~GL_KOS_ENABLE_TEXTURE2D;
-            break;
+//    switch(cap) {
+//        case GL_TEXTURE_2D:
+//            GL_KOS_ENABLE_CAP &= ~GL_KOS_ENABLE_TEXTURE2D;
+//            break;
 
-        case GL_BLEND:
-            GL_KOS_ENABLE_CAP &= ~GL_KOS_ENABLE_BLENDING;
-            _glKosVertexBufSwitchOP();
-            break;
+//        case GL_BLEND:
+//            GL_KOS_ENABLE_CAP &= ~GL_KOS_ENABLE_BLENDING;
+//            _glKosVertexBufSwitchOP();
+//            break;
 
-        case GL_DEPTH_TEST:
-            GL_KOS_ENABLE_CAP &= ~GL_KOS_ENABLE_DEPTH_TEST;
-            break;
+//        case GL_DEPTH_TEST:
+//            GL_KOS_ENABLE_CAP &= ~GL_KOS_ENABLE_DEPTH_TEST;
+//            break;
 
-        case GL_LIGHTING:
-            GL_KOS_ENABLE_CAP &= ~GL_KOS_ENABLE_LIGHTING;
-            break;
+//        case GL_LIGHTING:
+//            GL_KOS_ENABLE_CAP &= ~GL_KOS_ENABLE_LIGHTING;
+//            break;
 
-        case GL_KOS_NEARZ_CLIPPING:
-            GL_KOS_ENABLE_CAP &= ~GL_KOS_ENABLE_ZCLIPPING;
-            break;
+//        case GL_KOS_NEARZ_CLIPPING:
+//            GL_KOS_ENABLE_CAP &= ~GL_KOS_ENABLE_ZCLIPPING;
+//            break;
 
-        case GL_SCISSOR_TEST:
-            GL_KOS_ENABLE_CAP &= ~GL_KOS_ENABLE_SCISSOR_TEST;
-            break;
+//        case GL_SCISSOR_TEST:
+//            GL_KOS_ENABLE_CAP &= ~GL_KOS_ENABLE_SCISSOR_TEST;
+//            break;
 
-        case GL_FOG:
-            GL_KOS_ENABLE_CAP &= ~GL_KOS_ENABLE_FOG;
-            break;
+//        case GL_FOG:
+//            GL_KOS_ENABLE_CAP &= ~GL_KOS_ENABLE_FOG;
+//            break;
 
-        case GL_CULL_FACE:
-            GL_KOS_ENABLE_CAP &= ~GL_KOS_ENABLE_CULLING;
-            break;
+//        case GL_CULL_FACE:
+//            GL_KOS_ENABLE_CAP &= ~GL_KOS_ENABLE_CULLING;
+//            break;
 
-        case GL_KOS_TEXTURE_MATRIX:
-            GL_KOS_ENABLE_CAP &= ~GL_KOS_ENABLE_TEXTURE_MAT;
-            break;
-    }
-}
+//        case GL_KOS_TEXTURE_MATRIX:
+//            GL_KOS_ENABLE_CAP &= ~GL_KOS_ENABLE_TEXTURE_MAT;
+//            break;
+//    }
+//}
 
 GLboolean APIENTRY glIsEnabled(GLenum cap) {
     if(cap >= GL_LIGHT0 && cap <= GL_LIGHT15) return _glKosIsLightEnabled(cap & 0xFF);

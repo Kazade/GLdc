@@ -171,7 +171,7 @@ uint16 __glKosAverageBiPixelARGB4444(uint16 p1, uint16 p2);
 void _glKosInitFrameBuffers();
 
 /* Error Codes */
-void _glKosThrowError(GLenum error, char *functionName);
+void _glKosThrowError(GLenum error, const char *functionName);
 void _glKosPrintError();
 GLubyte _glKosHasError();
 
@@ -208,6 +208,7 @@ GLubyte _glKosMaxTextureUnits();
 GLubyte _glKosEnabledTextureMatrix();
 
 GL_TEXTURE_OBJECT *_glKosBoundMultiTexObject();
+GL_TEXTURE_OBJECT *_glKosBoundTexObject();
 GLuint _glKosActiveTextureBoundTexID();
 
 void _glKosPushMultiTexObject(GL_TEXTURE_OBJECT *tex,

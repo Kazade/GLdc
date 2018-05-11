@@ -1,6 +1,12 @@
 #ifndef GLKOS_H
 #define GLKOS_H
 
-void glKosSwapBuffers();
+#include "gl.h"
+
+__BEGIN_DECLS
+
+GLAPI void APIENTRY glKosSwapBuffers();
+
+__END_DECLS
 
 #endif // GLKOS_H

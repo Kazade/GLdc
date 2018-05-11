@@ -6,7 +6,7 @@
 #include <string.h>
 #include <math.h>
 
-#define ALIGNED_VECTOR_INITIAL_CAPACITY 256
+#define ALIGNED_VECTOR_INITIAL_CAPACITY 256u
 
 typedef struct {
     unsigned int size;
@@ -78,6 +78,12 @@ inline void* aligned_vector_at(AlignedVector* vector, const unsigned int index) 
     return &vector->data[index * vector->element_size];
 }
 
+inline void* aligned_vector_extend(AlignedVector* vector, const unsigned int additional_count) {
+    const unsigned int current = vector->size;
+    aligned_vector_resize(vector, vector->size + additional_count);
+    return aligned_vector_at(vector, current);
+}
+
 inline void aligned_vector_clear(AlignedVector* vector) {
     vector->size = 0;
 }
@@ -101,7 +107,7 @@ inline void aligned_vector_shrink_to_fit(AlignedVector* vector) {
     }
 }
 
-void aligned_vector_cleanup(AlignedVector* vector) {
+inline void aligned_vector_cleanup(AlignedVector* vector) {
     aligned_vector_clear(vector);
     aligned_vector_shrink_to_fit(vector);
 }

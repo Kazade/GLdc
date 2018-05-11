@@ -14,15 +14,6 @@ typedef struct {
     unsigned int cmd[8];
 } pvr_cmd_t; /* Generic 32byte command for the pvr */
 
-typedef struct {
-    unsigned int flags;      /* Constant PVR_CMD_USERCLIP */
-    unsigned int d1, d2, d3; /* Ignored for this type */
-    unsigned int sx,         /* Start x */
-             sy,         /* Start y */
-             ex,         /* End x */
-             ey;         /* End y */
-} pvr_cmd_tclip_t; /* Tile Clip command for the pvr */
-
 #define GL_PVR_VERTEX_BUF_SIZE 2560 * 256 /* PVR Vertex buffer size */
 #define GL_KOS_MAX_VERTS       1024*64    /* SH4 Vertex Count */
 

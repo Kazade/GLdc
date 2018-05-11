@@ -90,104 +90,104 @@ static inline GLushort _calculate_byte_size(GLenum type) {
 //== Open GL API Public Functions ==//
 
 /* Submit a Vertex Position Pointer */
-GLAPI void APIENTRY glVertexPointer(GLint size, GLenum type,
-                                    GLsizei stride, const GLvoid *pointer) {
-    if(size != 2) /* Expect 2D X,Y or 3D X,Y,Z vertex... */
-        if(size != 3)
-            _glKosThrowError(GL_INVALID_VALUE, "glVertexPointer");
+//GLAPI void APIENTRY glVertexPointer(GLint size, GLenum type,
+//                                    GLsizei stride, const GLvoid *pointer) {
+//    if(size != 2) /* Expect 2D X,Y or 3D X,Y,Z vertex... */
+//        if(size != 3)
+//            _glKosThrowError(GL_INVALID_VALUE, "glVertexPointer");
 
-    if(type != GL_FLOAT) /* Expect Floating point vertices */
-        _glKosThrowError(GL_INVALID_ENUM, "glVertexPointer");
+//    if(type != GL_FLOAT) /* Expect Floating point vertices */
+//        _glKosThrowError(GL_INVALID_ENUM, "glVertexPointer");
 
-    if(stride < 0)
-        _glKosThrowError(GL_INVALID_VALUE, "glVertexPointer");
+//    if(stride < 0)
+//        _glKosThrowError(GL_INVALID_VALUE, "glVertexPointer");
 
-    if(_glKosHasError()) {
-        _glKosPrintError();
-        return;
-    }
+//    if(_glKosHasError()) {
+//        _glKosPrintError();
+//        return;
+//    }
 
-    GL_KOS_VERTEX_SIZE = size;
+//    GL_KOS_VERTEX_SIZE = size;
 
-    GL_KOS_VERTEX_STRIDE = (stride) ? stride : _calculate_byte_size(type) * size;
-    GL_KOS_VERTEX_POINTER = (GLubyte *)pointer;
-}
+//    GL_KOS_VERTEX_STRIDE = (stride) ? stride : _calculate_byte_size(type) * size;
+//    GL_KOS_VERTEX_POINTER = (GLubyte *)pointer;
+//}
 
-/* Submit a Vertex Normal Pointer */
-GLAPI void APIENTRY glNormalPointer(GLenum type, GLsizei stride, const GLvoid *pointer) {
-    if(type != GL_FLOAT) /* Expect Floating point vertices */
-        _glKosThrowError(GL_INVALID_ENUM, "glNormalPointer");
+///* Submit a Vertex Normal Pointer */
+//GLAPI void APIENTRY glNormalPointer(GLenum type, GLsizei stride, const GLvoid *pointer) {
+//    if(type != GL_FLOAT) /* Expect Floating point vertices */
+//        _glKosThrowError(GL_INVALID_ENUM, "glNormalPointer");
 
-    if(stride < 0)
-        _glKosThrowError(GL_INVALID_VALUE, "glNormalPointer");
+//    if(stride < 0)
+//        _glKosThrowError(GL_INVALID_VALUE, "glNormalPointer");
 
-    if(_glKosHasError()) {
-        _glKosPrintError();
-        return;
-    }
+//    if(_glKosHasError()) {
+//        _glKosPrintError();
+//        return;
+//    }
 
-    GL_KOS_NORMAL_STRIDE = (stride) ? stride : _calculate_byte_size(type) * 3;
-    GL_KOS_NORMAL_POINTER = (GLubyte *)pointer;
-}
+//    GL_KOS_NORMAL_STRIDE = (stride) ? stride : _calculate_byte_size(type) * 3;
+//    GL_KOS_NORMAL_POINTER = (GLubyte *)pointer;
+//}
 
-/* Submit a Texture Coordinate Pointer */
-GLAPI void APIENTRY glTexCoordPointer(GLint size, GLenum type,
-                                      GLsizei stride, const GLvoid *pointer) {
-    if(size != 2)  /* Expect u and v */
-        _glKosThrowError(GL_INVALID_VALUE, "glTexCoordPointer");
+///* Submit a Texture Coordinate Pointer */
+//GLAPI void APIENTRY glTexCoordPointer(GLint size, GLenum type,
+//                                      GLsizei stride, const GLvoid *pointer) {
+//    if(size != 2)  /* Expect u and v */
+//        _glKosThrowError(GL_INVALID_VALUE, "glTexCoordPointer");
 
-    if(type != GL_FLOAT) /* Expect Floating point vertices */
-        _glKosThrowError(GL_INVALID_ENUM, "glTexCoordPointer");
+//    if(type != GL_FLOAT) /* Expect Floating point vertices */
+//        _glKosThrowError(GL_INVALID_ENUM, "glTexCoordPointer");
 
-    if(stride < 0)
-        _glKosThrowError(GL_INVALID_VALUE, "glTexCoordPointer");
+//    if(stride < 0)
+//        _glKosThrowError(GL_INVALID_VALUE, "glTexCoordPointer");
 
-    if(_glKosHasError()) {
-        _glKosPrintError();
-        return;
-    }
+//    if(_glKosHasError()) {
+//        _glKosPrintError();
+//        return;
+//    }
 
-    if(GL_KOS_CLIENT_ACTIVE_TEXTURE) {
-        GL_KOS_TEXCOORD1_STRIDE = (stride) ? stride : _calculate_byte_size(type) * size;
-        GL_KOS_TEXCOORD1_POINTER = (GLubyte *)pointer;
-    }
-    else {
-        GL_KOS_TEXCOORD0_STRIDE = (stride) ? stride : _calculate_byte_size(type) * size;
-        GL_KOS_TEXCOORD0_POINTER = (GLubyte *)pointer;
-    }
-}
+//    if(GL_KOS_CLIENT_ACTIVE_TEXTURE) {
+//        GL_KOS_TEXCOORD1_STRIDE = (stride) ? stride : _calculate_byte_size(type) * size;
+//        GL_KOS_TEXCOORD1_POINTER = (GLubyte *)pointer;
+//    }
+//    else {
+//        GL_KOS_TEXCOORD0_STRIDE = (stride) ? stride : _calculate_byte_size(type) * size;
+//        GL_KOS_TEXCOORD0_POINTER = (GLubyte *)pointer;
+//    }
+//}
 
-/* Submit a Color Pointer */
-GLAPI void APIENTRY glColorPointer(GLint size, GLenum type,
-                                   GLsizei stride, const GLvoid *pointer) {
-    if((type == GL_UNSIGNED_INT) && (size == 1)) {
-        GL_KOS_COLOR_COMPONENTS = size;
-        GL_KOS_COLOR_POINTER = (GLubyte *)pointer;
-        GL_KOS_COLOR_TYPE = type;
-    }
-    else if((type == GL_UNSIGNED_BYTE) && (size == 4)) {
-        GL_KOS_COLOR_COMPONENTS = size;
-        GL_KOS_COLOR_POINTER = (GLubyte *)pointer;
-        GL_KOS_COLOR_TYPE = type;
-    }
-    else if((type == GL_FLOAT) && (size == 3)) {
-        GL_KOS_COLOR_COMPONENTS = size;
-        GL_KOS_COLOR_POINTER = (GLubyte *)pointer;
-        GL_KOS_COLOR_TYPE = type;
-    }
-    else if((type == GL_FLOAT) && (size == 4)) {
-        GL_KOS_COLOR_COMPONENTS = size;
-        GL_KOS_COLOR_POINTER = (GLubyte *)pointer;
-        GL_KOS_COLOR_TYPE = type;
-    }
-    else {
-        _glKosThrowError(GL_INVALID_ENUM, "glColorPointer");
-        _glKosPrintError();
-        return;
-    }
+///* Submit a Color Pointer */
+//GLAPI void APIENTRY glColorPointer(GLint size, GLenum type,
+//                                   GLsizei stride, const GLvoid *pointer) {
+//    if((type == GL_UNSIGNED_INT) && (size == 1)) {
+//        GL_KOS_COLOR_COMPONENTS = size;
+//        GL_KOS_COLOR_POINTER = (GLubyte *)pointer;
+//        GL_KOS_COLOR_TYPE = type;
+//    }
+//    else if((type == GL_UNSIGNED_BYTE) && (size == 4)) {
+//        GL_KOS_COLOR_COMPONENTS = size;
+//        GL_KOS_COLOR_POINTER = (GLubyte *)pointer;
+//        GL_KOS_COLOR_TYPE = type;
+//    }
+//    else if((type == GL_FLOAT) && (size == 3)) {
+//        GL_KOS_COLOR_COMPONENTS = size;
+//        GL_KOS_COLOR_POINTER = (GLubyte *)pointer;
+//        GL_KOS_COLOR_TYPE = type;
+//    }
+//    else if((type == GL_FLOAT) && (size == 4)) {
+//        GL_KOS_COLOR_COMPONENTS = size;
+//        GL_KOS_COLOR_POINTER = (GLubyte *)pointer;
+//        GL_KOS_COLOR_TYPE = type;
+//    }
+//    else {
+//        _glKosThrowError(GL_INVALID_ENUM, "glColorPointer");
+//        _glKosPrintError();
+//        return;
+//    }
 
-    GL_KOS_COLOR_STRIDE = (stride) ? stride : _calculate_byte_size(type) * size;
-}
+//    GL_KOS_COLOR_STRIDE = (stride) ? stride : _calculate_byte_size(type) * size;
+//}
 //========================================================================================//
 //== Vertex Pointer Internal API ==//
 
@@ -883,162 +883,162 @@ static inline void _glKosArraysFlush(GLuint count) {
 //========================================================================================//
 //== OpenGL Elemental Array Submission ==//
 
-GLAPI void APIENTRY glDrawElements(GLenum mode, GLsizei count, GLenum type, const GLvoid *indices) {
-    /* Before we process the vertex data, ensure all parameters are valid */
-    if(!_glKosArraysVerifyParameter(mode, count, type, 1))
-        return;
+//GLAPI void APIENTRY glDrawElements(GLenum mode, GLsizei count, GLenum type, const GLvoid *indices) {
+//    /* Before we process the vertex data, ensure all parameters are valid */
+//    if(!_glKosArraysVerifyParameter(mode, count, type, 1))
+//        return;
 
-    /* Compile the PVR polygon context with the currently enabled flags */
-    _glKosArraysApplyHeader();
+//    /* Compile the PVR polygon context with the currently enabled flags */
+//    _glKosArraysApplyHeader();
 
-    /* Destination of Output Vertex Array */
-    pvr_vertex_t *dst = _glKosArraysDest();
+//    /* Destination of Output Vertex Array */
+//    pvr_vertex_t *dst = _glKosArraysDest();
 
-    switch(type) {
-        case GL_UNSIGNED_BYTE:
-            GL_KOS_INDEX_POINTER_U8 = (GLubyte *)indices;
-            break;
+//    switch(type) {
+//        case GL_UNSIGNED_BYTE:
+//            GL_KOS_INDEX_POINTER_U8 = (GLubyte *)indices;
+//            break;
 
-        case GL_UNSIGNED_SHORT:
-            GL_KOS_INDEX_POINTER_U16 = (GLushort *)indices;
-            break;
-    }
+//        case GL_UNSIGNED_SHORT:
+//            GL_KOS_INDEX_POINTER_U16 = (GLushort *)indices;
+//            break;
+//    }
 
-    /* Check if Vertex Lighting is enabled. Else, check for Color Submission */
-    if((GL_KOS_VERTEX_PTR_MODE & GL_KOS_USE_NORMAL) && _glKosEnabledLighting())
-        _glKosArraysApplyLighting(dst, count);
+//    /* Check if Vertex Lighting is enabled. Else, check for Color Submission */
+//    if((GL_KOS_VERTEX_PTR_MODE & GL_KOS_USE_NORMAL) && _glKosEnabledLighting())
+//        _glKosArraysApplyLighting(dst, count);
 
-    else if(GL_KOS_VERTEX_PTR_MODE & GL_KOS_USE_COLOR) {
-        switch(GL_KOS_COLOR_TYPE) {
-            case GL_FLOAT:
-                switch(GL_KOS_COLOR_COMPONENTS) {
-                    case 3:
-                        switch(type) {
-                            case GL_UNSIGNED_BYTE:
-                                _glKosElementColor3fU8(dst, count);
-                                break;
+//    else if(GL_KOS_VERTEX_PTR_MODE & GL_KOS_USE_COLOR) {
+//        switch(GL_KOS_COLOR_TYPE) {
+//            case GL_FLOAT:
+//                switch(GL_KOS_COLOR_COMPONENTS) {
+//                    case 3:
+//                        switch(type) {
+//                            case GL_UNSIGNED_BYTE:
+//                                _glKosElementColor3fU8(dst, count);
+//                                break;
 
-                            case GL_UNSIGNED_SHORT:
-                                _glKosElementColor3fU16(dst, count);
-                                break;
-                        }
+//                            case GL_UNSIGNED_SHORT:
+//                                _glKosElementColor3fU16(dst, count);
+//                                break;
+//                        }
 
-                        break;
+//                        break;
 
-                    case 4:
-                        switch(type) {
-                            case GL_UNSIGNED_BYTE:
-                                _glKosElementColor4fU8(dst, count);
-                                break;
+//                    case 4:
+//                        switch(type) {
+//                            case GL_UNSIGNED_BYTE:
+//                                _glKosElementColor4fU8(dst, count);
+//                                break;
 
-                            case GL_UNSIGNED_SHORT:
-                                _glKosElementColor4fU16(dst, count);
-                                break;
-                        }
+//                            case GL_UNSIGNED_SHORT:
+//                                _glKosElementColor4fU16(dst, count);
+//                                break;
+//                        }
 
-                        break;
-                }
+//                        break;
+//                }
 
-                break;
+//                break;
 
-            case GL_UNSIGNED_INT:
-                if(GL_KOS_COLOR_COMPONENTS == 1)
-                    switch(type) {
-                        case GL_UNSIGNED_BYTE:
-                            _glKosElementColor1uiU8(dst, count);
-                            break;
+//            case GL_UNSIGNED_INT:
+//                if(GL_KOS_COLOR_COMPONENTS == 1)
+//                    switch(type) {
+//                        case GL_UNSIGNED_BYTE:
+//                            _glKosElementColor1uiU8(dst, count);
+//                            break;
 
-                        case GL_UNSIGNED_SHORT:
-                            _glKosElementColor1uiU16(dst, count);
-                            break;
-                    }
+//                        case GL_UNSIGNED_SHORT:
+//                            _glKosElementColor1uiU16(dst, count);
+//                            break;
+//                    }
 
-                break;
+//                break;
 
-            case GL_UNSIGNED_BYTE:
-                if(GL_KOS_COLOR_COMPONENTS == 4)
-                    switch(type) {
-                        case GL_UNSIGNED_BYTE:
-                            _glKosElementColor4ubU8(dst, count);
-                            break;
+//            case GL_UNSIGNED_BYTE:
+//                if(GL_KOS_COLOR_COMPONENTS == 4)
+//                    switch(type) {
+//                        case GL_UNSIGNED_BYTE:
+//                            _glKosElementColor4ubU8(dst, count);
+//                            break;
 
-                        case GL_UNSIGNED_SHORT:
-                            _glKosElementColor4ubU16(dst, count);
-                            break;
-                    }
+//                        case GL_UNSIGNED_SHORT:
+//                            _glKosElementColor4ubU16(dst, count);
+//                            break;
+//                    }
 
-                break;
-        }
-    }
-    else
-        _glKosArrayColor0(dst, count); /* No colors bound */
+//                break;
+//        }
+//    }
+//    else
+//        _glKosArrayColor0(dst, count); /* No colors bound */
 
-    /* Check if Texture Coordinates are enabled */
-    if((GL_KOS_VERTEX_PTR_MODE & GL_KOS_USE_TEXTURE0) && (_glKosEnabledTexture2D() >= 0))
-        switch(type) {
-            case GL_UNSIGNED_BYTE:
-                _glKosElementTexCoord2fU8(dst, count);
-                break;
+//    /* Check if Texture Coordinates are enabled */
+//    if((GL_KOS_VERTEX_PTR_MODE & GL_KOS_USE_TEXTURE0) && (_glKosEnabledTexture2D() >= 0))
+//        switch(type) {
+//            case GL_UNSIGNED_BYTE:
+//                _glKosElementTexCoord2fU8(dst, count);
+//                break;
 
-            case GL_UNSIGNED_SHORT:
-                _glKosElementTexCoord2fU16(dst, count);
-                break;
-        }
+//            case GL_UNSIGNED_SHORT:
+//                _glKosElementTexCoord2fU16(dst, count);
+//                break;
+//        }
 
-    /* Check if Multi Texture Coordinates are enabled */
-    if((GL_KOS_VERTEX_PTR_MODE & GL_KOS_USE_TEXTURE1) && (_glKosEnabledTexture2D() >= 0))
-        switch(type) {
-            case GL_UNSIGNED_BYTE:
-                _glKosElementMultiTexCoord2fU8(count);
-                break;
+//    /* Check if Multi Texture Coordinates are enabled */
+//    if((GL_KOS_VERTEX_PTR_MODE & GL_KOS_USE_TEXTURE1) && (_glKosEnabledTexture2D() >= 0))
+//        switch(type) {
+//            case GL_UNSIGNED_BYTE:
+//                _glKosElementMultiTexCoord2fU8(count);
+//                break;
 
-            case GL_UNSIGNED_SHORT:
-                _glKosElementMultiTexCoord2fU16(count);
-                break;
-        }
+//            case GL_UNSIGNED_SHORT:
+//                _glKosElementMultiTexCoord2fU16(count);
+//                break;
+//        }
 
-    _glKosMatrixApplyRender(); /* Apply the Render Matrix Stack */
+//    _glKosMatrixApplyRender(); /* Apply the Render Matrix Stack */
 
-    if(!(_glKosEnabledNearZClip())) {/* Transform the element vertices */
-        /* Transform vertices with perspective divide */
-        _glKosArraysTransformElements(count);
+//    if(!(_glKosEnabledNearZClip())) {/* Transform the element vertices */
+//        /* Transform vertices with perspective divide */
+//        _glKosArraysTransformElements(count);
 
-        /* Unpack the indexed positions into primitives for rasterization */
-        switch(type) {
-            case GL_UNSIGNED_BYTE:
-                _glKosArraysUnpackElementsS8(dst, count);
-                break;
+//        /* Unpack the indexed positions into primitives for rasterization */
+//        switch(type) {
+//            case GL_UNSIGNED_BYTE:
+//                _glKosArraysUnpackElementsS8(dst, count);
+//                break;
 
-            case GL_UNSIGNED_SHORT:
-                _glKosArraysUnpackElementsS16(dst, count);
-                break;
-        }
+//            case GL_UNSIGNED_SHORT:
+//                _glKosArraysUnpackElementsS16(dst, count);
+//                break;
+//        }
 
-        /* Set the vertex flags for use with the PVR */
-        _glKosArraysApplyVertexFlags(mode, dst, count);
-    }
-    else {
-        /* Transform vertices with no perspective divide, store w component */
-        _glKosArraysTransformClipElements(count);
+//        /* Set the vertex flags for use with the PVR */
+//        _glKosArraysApplyVertexFlags(mode, dst, count);
+//    }
+//    else {
+//        /* Transform vertices with no perspective divide, store w component */
+//        _glKosArraysTransformClipElements(count);
 
-        /* Unpack the indexed positions into primitives for rasterization */
-        switch(type) {
-            case GL_UNSIGNED_BYTE:
-                _glKosArraysUnpackClipElementsS8(dst, count);
-                break;
+//        /* Unpack the indexed positions into primitives for rasterization */
+//        switch(type) {
+//            case GL_UNSIGNED_BYTE:
+//                _glKosArraysUnpackClipElementsS8(dst, count);
+//                break;
 
-            case GL_UNSIGNED_SHORT:
-                _glKosArraysUnpackClipElementsS16(dst, count);
-                break;
-        }
+//            case GL_UNSIGNED_SHORT:
+//                _glKosArraysUnpackClipElementsS16(dst, count);
+//                break;
+//        }
 
-        count = _glKosArraysApplyClipping(GL_KOS_ARRAY_BUFUV, 2, mode, count);
-    }
+//        count = _glKosArraysApplyClipping(GL_KOS_ARRAY_BUFUV, 2, mode, count);
+//    }
 
-    _glKosArraysApplyMultiTexture(mode, count);
+//    _glKosArraysApplyMultiTexture(mode, count);
 
-    _glKosArraysFlush(count);
-}
+//    _glKosArraysFlush(count);
+//}
 
 //========================================================================================//
 //== Array Attribute Functions ==//
@@ -1197,151 +1197,97 @@ static void _glKosDrawArrays2D(GLenum mode, GLint first, GLsizei count) {
     _glKosArraysFlush(count);
 }
 
-GLAPI void APIENTRY glDrawArrays(GLenum mode, GLint first, GLsizei count) {
-    /* Before we process the vertex data, ensure all parameters are valid */
-    if(!_glKosArraysVerifyParameter(mode, count, first, 0))
-        return;
 
-    GL_KOS_VERTEX_POINTER   += (first * GL_KOS_VERTEX_STRIDE);       /* Add Pointer Offset */
-    GL_KOS_TEXCOORD0_POINTER += (first * GL_KOS_TEXCOORD0_STRIDE);
-    GL_KOS_TEXCOORD1_POINTER += (first * GL_KOS_TEXCOORD1_STRIDE);
-    GL_KOS_COLOR_POINTER    += (first * GL_KOS_COLOR_STRIDE);
-    GL_KOS_NORMAL_POINTER   += (first * GL_KOS_NORMAL_STRIDE);
+//GLAPI void APIENTRY glDrawArrays(GLenum mode, GLint first, GLsizei count) {
+//    /* Before we process the vertex data, ensure all parameters are valid */
+//    if(!_glKosArraysVerifyParameter(mode, count, first, 0))
+//        return;
 
-    /* Compile the PVR polygon context with the currently enabled flags */
-    _glKosArraysApplyHeader();
+//    GL_KOS_VERTEX_POINTER   += (first * GL_KOS_VERTEX_STRIDE);       /* Add Pointer Offset */
+//    GL_KOS_TEXCOORD0_POINTER += (first * GL_KOS_TEXCOORD0_STRIDE);
+//    GL_KOS_TEXCOORD1_POINTER += (first * GL_KOS_TEXCOORD1_STRIDE);
+//    GL_KOS_COLOR_POINTER    += (first * GL_KOS_COLOR_STRIDE);
+//    GL_KOS_NORMAL_POINTER   += (first * GL_KOS_NORMAL_STRIDE);
 
-    if(GL_KOS_VERTEX_SIZE == 2)
-        return _glKosDrawArrays2D(mode, first, count);
+//    /* Compile the PVR polygon context with the currently enabled flags */
+//    _glKosArraysApplyHeader();
 
-    /* Destination of Output Vertex Array */
-    pvr_vertex_t *dst = _glKosArraysDest();
+//    if(GL_KOS_VERTEX_SIZE == 2)
+//        return _glKosDrawArrays2D(mode, first, count);
 
-    /* Check if Vertex Lighting is enabled. Else, check for Color Submission */
-    if((GL_KOS_VERTEX_PTR_MODE & GL_KOS_USE_NORMAL) && _glKosEnabledLighting())
-        _glKosArraysApplyLighting(dst, count);
+//    /* Destination of Output Vertex Array */
+//    pvr_vertex_t *dst = _glKosArraysDest();
 
-    else if(GL_KOS_VERTEX_PTR_MODE & GL_KOS_USE_COLOR) {
-        switch(GL_KOS_COLOR_TYPE) {
-            case GL_FLOAT:
-                switch(GL_KOS_COLOR_COMPONENTS) {
-                    case 3:
-                        _glKosArrayColor3f(dst, count);
-                        break;
+//    /* Check if Vertex Lighting is enabled. Else, check for Color Submission */
+//    if((GL_KOS_VERTEX_PTR_MODE & GL_KOS_USE_NORMAL) && _glKosEnabledLighting())
+//        _glKosArraysApplyLighting(dst, count);
 
-                    case 4:
-                        _glKosArrayColor4f(dst, count);
-                        break;
-                }
+//    else if(GL_KOS_VERTEX_PTR_MODE & GL_KOS_USE_COLOR) {
+//        switch(GL_KOS_COLOR_TYPE) {
+//            case GL_FLOAT:
+//                switch(GL_KOS_COLOR_COMPONENTS) {
+//                    case 3:
+//                        _glKosArrayColor3f(dst, count);
+//                        break;
 
-                break;
+//                    case 4:
+//                        _glKosArrayColor4f(dst, count);
+//                        break;
+//                }
 
-            case GL_UNSIGNED_INT:
-                if(GL_KOS_COLOR_COMPONENTS == 1)
-                    _glKosArrayColor1ui(dst, count);
+//                break;
 
-                break;
+//            case GL_UNSIGNED_INT:
+//                if(GL_KOS_COLOR_COMPONENTS == 1)
+//                    _glKosArrayColor1ui(dst, count);
 
-            case GL_UNSIGNED_BYTE:
-                if(GL_KOS_COLOR_COMPONENTS == 4)
-                    _glKosArrayColor4ub(dst, count);
+//                break;
 
-                break;
-        }
-    }
-    else
-        _glKosArrayColor0(dst, count); /* No colors bound, color white */
+//            case GL_UNSIGNED_BYTE:
+//                if(GL_KOS_COLOR_COMPONENTS == 4)
+//                    _glKosArrayColor4ub(dst, count);
 
-    /* Check if Texture Coordinates are enabled */
-    if((GL_KOS_VERTEX_PTR_MODE & GL_KOS_USE_TEXTURE0) && (_glKosEnabledTexture2D() >= 0))
-        _glKosArrayTexCoord2f(dst, count);
+//                break;
+//        }
+//    }
+//    else
+//        _glKosArrayColor0(dst, count); /* No colors bound, color white */
 
-    /* Check if Multi Texture Coordinates are enabled */
-    if((GL_KOS_VERTEX_PTR_MODE & GL_KOS_USE_TEXTURE1) && (_glKosEnabledTexture2D() >= 0))
-        _glKosArrayMultiTexCoord2f(count);
+//    /* Check if Texture Coordinates are enabled */
+//    if((GL_KOS_VERTEX_PTR_MODE & GL_KOS_USE_TEXTURE0) && (_glKosEnabledTexture2D() >= 0))
+//        _glKosArrayTexCoord2f(dst, count);
 
-    _glKosMatrixApplyRender(); /* Apply the Render Matrix Stack */
+//    /* Check if Multi Texture Coordinates are enabled */
+//    if((GL_KOS_VERTEX_PTR_MODE & GL_KOS_USE_TEXTURE1) && (_glKosEnabledTexture2D() >= 0))
+//        _glKosArrayMultiTexCoord2f(count);
 
-    if(!_glKosEnabledNearZClip()) { /* No NearZ Clipping Enabled */
-        /* Transform Vertex Positions */
-        _glKosArraysTransform(count);
+//    _glKosMatrixApplyRender(); /* Apply the Render Matrix Stack */
 
-        /* Set the vertex flags for use with the PVR */
-        _glKosArraysApplyVertexFlags(mode, dst, count);
-    }
-    else { /* NearZ Clipping is Enabled */
-        /* Transform vertices with no perspective divide, store w component */
-        _glKosArraysTransformClip(count);
+//    if(!_glKosEnabledNearZClip()) { /* No NearZ Clipping Enabled */
+//        /* Transform Vertex Positions */
+//        _glKosArraysTransform(count);
 
-        /* Finally, clip the input vertex data into the output vertex buffer */
-        count = _glKosArraysApplyClipping(
-            (GLfloat *) GL_KOS_TEXCOORD1_POINTER,
-            GL_KOS_TEXCOORD1_STRIDE / 4,
-            mode, count
-        );
-        /* FIXME: The above function should really accept a GLbyte* and the stride directly
-           but that affects a lot of other code, so dividing the stride by float size
-           hopefully results in the same thing for now */
-    }
+//        /* Set the vertex flags for use with the PVR */
+//        _glKosArraysApplyVertexFlags(mode, dst, count);
+//    }
+//    else { /* NearZ Clipping is Enabled */
+//        /* Transform vertices with no perspective divide, store w component */
+//        _glKosArraysTransformClip(count);
 
-    _glKosArraysApplyMultiTexture(mode, count);
+//        /* Finally, clip the input vertex data into the output vertex buffer */
+//        count = _glKosArraysApplyClipping(
+//            (GLfloat *) GL_KOS_TEXCOORD1_POINTER,
+//            GL_KOS_TEXCOORD1_STRIDE / 4,
+//            mode, count
+//        );
+//        /* FIXME: The above function should really accept a GLbyte* and the stride directly
+//           but that affects a lot of other code, so dividing the stride by float size
+//           hopefully results in the same thing for now */
+//    }
 
-    _glKosArraysFlush(count);
-}
+//    _glKosArraysApplyMultiTexture(mode, count);
 
-void APIENTRY glClientActiveTextureARB(GLenum texture) {
-    if(texture < GL_TEXTURE0_ARB || texture > GL_TEXTURE0_ARB + _glKosMaxTextureUnits())
-        _glKosThrowError(GL_INVALID_ENUM, "glClientActiveTextureARB");
+//    _glKosArraysFlush(count);
+//}
 
-    if(_glKosHasError()) {
-
-        _glKosPrintError();
-        return;
-    }
-
-    GL_KOS_CLIENT_ACTIVE_TEXTURE = texture & 0xF;
-}
-
-void APIENTRY glEnableClientState(GLenum cap) {
-    switch(cap) {
-    case GL_VERTEX_ARRAY:
-        GL_KOS_VERTEX_PTR_MODE |= GL_KOS_USE_ARRAY;
-    break;
-    case GL_COLOR_ARRAY:
-        GL_KOS_VERTEX_PTR_MODE |= GL_KOS_USE_COLOR;
-    break;
-    case GL_NORMAL_ARRAY:
-        GL_KOS_VERTEX_PTR_MODE |= GL_KOS_USE_NORMAL;
-    break;
-    case GL_TEXTURE_COORD_ARRAY:
-        (GL_KOS_CLIENT_ACTIVE_TEXTURE) ?
-            (GL_KOS_VERTEX_PTR_MODE |= GL_KOS_USE_TEXTURE1):
-            (GL_KOS_VERTEX_PTR_MODE |= GL_KOS_USE_TEXTURE0);
-    break;
-    default:
-        _glKosThrowError(GL_INVALID_ENUM, "glEnableClientState");
-    }
-
-}
-
-void APIENTRY glDisableClientState(GLenum cap) {
-    switch(cap) {
-    case GL_VERTEX_ARRAY:
-        GL_KOS_VERTEX_PTR_MODE &= ~GL_KOS_USE_ARRAY;
-    break;
-    case GL_COLOR_ARRAY:
-        GL_KOS_VERTEX_PTR_MODE &= ~GL_KOS_USE_COLOR;
-    break;
-    case GL_NORMAL_ARRAY:
-        GL_KOS_VERTEX_PTR_MODE &= ~GL_KOS_USE_NORMAL;
-    break;
-    case GL_TEXTURE_COORD_ARRAY:
-        (GL_KOS_CLIENT_ACTIVE_TEXTURE) ?
-            (GL_KOS_VERTEX_PTR_MODE &= ~GL_KOS_USE_TEXTURE1):
-            (GL_KOS_VERTEX_PTR_MODE &= ~GL_KOS_USE_TEXTURE0);
-    break;
-    default:
-        _glKosThrowError(GL_INVALID_ENUM, "glDisableClientState");
-    }
-}
 
