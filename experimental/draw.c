@@ -144,6 +144,7 @@ static void submitVertices(GLenum mode, GLsizei first, GLsizei count, GLenum typ
     // Compile
     pvr_poly_cxt_t cxt = *getPVRContext();
     cxt.list_type = activePolyList()->list_type;
+
     updatePVRTextureContext(&cxt, getTexture0());
 
     pvr_poly_compile(hdr, &cxt);
@@ -167,7 +168,7 @@ static void submitVertices(GLenum mode, GLsizei first, GLsizei count, GLenum typ
     for(GLuint i = first; i < count; ++i) {
         pvr_vertex_t* vertex = (pvr_vertex_t*) dst;
         vertex->u = vertex->v = 0.0f;
-        vertex->argb = PVR_PACK_COLOR(0.0f, 0.0f, 0.0f, 0.0f);
+        vertex->argb = 0;
         vertex->oargb = 0;
         vertex->flags = PVR_CMD_VERTEX;
 
@@ -202,9 +203,19 @@ static void submitVertices(GLenum mode, GLsizei first, GLsizei count, GLenum typ
             for(GLubyte i = 0; i < MAX_LIGHTS; ++i) {
                 if(isLightEnabled(i)) {
                     calculateLightingContribution(i, &vertex->x, normal, contribution);
-                    to_add = PVR_PACK_COLOR(contribution[0], contribution[1], contribution[2], contribution[3]);
+                    to_add = PVR_PACK_COLOR(contribution[3], contribution[0], contribution[1], contribution[2]);
 
-                    /* FIXME: Add the colour to argb */
+                    GLubyte a = ((vertex->argb & 0xFF000000) >> 24) + ((to_add & 0xFF000000) >> 24);
+                    GLubyte r = ((vertex->argb & 0x00FF0000) >> 16) + ((to_add & 0x00FF0000) >> 16);
+                    GLubyte g = ((vertex->argb & 0x0000FF00) >> 8) + ((to_add & 0x0000FF00) >> 8);
+                    GLubyte b = ((vertex->argb & 0x000000FF) >> 0) + ((to_add & 0x000000FF) >> 0);
+
+                    a = (a > 255) ? 255 : a;
+                    r = (r > 255) ? 255 : r;
+                    g = (g > 255) ? 255 : g;
+                    b = (b > 255) ? 255 : b;
+
+                    vertex->argb = a << 24 | r << 16 | g << 8 | b;
                 }
             }
         }

@@ -135,5 +135,6 @@ void APIENTRY glMaterialfv(GLenum face, GLenum pname, const GLfloat *params) {
 }
 
 void calculateLightingContribution(const GLint light, const GLfloat* pos, const GLfloat* normal, GLfloat* colour) {
-
+    colour[0] = colour[3] = 0.0f;
+    colour[1] = colour[2] = 0.0f;
 }

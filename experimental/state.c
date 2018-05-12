@@ -78,7 +78,6 @@ static int _calcPVRBlendFactor(GLenum factor) {
     case GL_ZERO:
         return PVR_BLEND_ZERO;
     case GL_SRC_ALPHA:
-    case GL_SRC_COLOR:
         return PVR_BLEND_SRCALPHA;
     case GL_DST_COLOR:
         return PVR_BLEND_DESTCOLOR;
@@ -86,13 +85,14 @@ static int _calcPVRBlendFactor(GLenum factor) {
         return PVR_BLEND_DESTALPHA;
     case GL_ONE_MINUS_DST_COLOR:
         return PVR_BLEND_INVDESTCOLOR;
-    case GL_ONE_MINUS_SRC_COLOR:
     case GL_ONE_MINUS_SRC_ALPHA:
         return PVR_BLEND_INVSRCALPHA;
     case GL_ONE_MINUS_DST_ALPHA:
         return PVR_BLEND_INVDESTALPHA;
     case GL_ONE:
+        return PVR_BLEND_ONE;
     default:
+        fprintf(stderr, "Invalid blend mode: %d\n", factor);
         return PVR_BLEND_ONE;
     }
 }
@@ -132,7 +132,7 @@ void updatePVRTextureContext(pvr_poly_cxt_t* context, TextureObject *tx1) {
     }
 
     context->txr2.enable = PVR_TEXTURE_DISABLE;
-    context->txr2.alpha = PVR_ALPHA_DISABLE;
+    context->txr2.alpha = PVR_TXRALPHA_DISABLE;
 
     if(tx1) {
         context->txr.enable = PVR_TEXTURE_ENABLE;
@@ -145,6 +145,7 @@ void updatePVRTextureContext(pvr_poly_cxt_t* context, TextureObject *tx1) {
         context->txr.env = tx1->env;
         context->txr.uv_flip = PVR_UVFLIP_NONE;
         context->txr.uv_clamp = tx1->uv_clamp;
+        context->txr.alpha = PVR_TXRALPHA_ENABLE;
     } else {
         context->txr.enable = PVR_TEXTURE_DISABLE;
     }
