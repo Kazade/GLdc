@@ -248,16 +248,8 @@ void APIENTRY glColor4ub(GLubyte r, GLubyte  g, GLubyte b, GLubyte a) {
     GL_KOS_VERTEX_COLOR = a << 24 | r << 16 | g << 8 | b;
 }
 
-void APIENTRY glColor3f(GLfloat r, GLfloat g, GLfloat b) {
-    GL_KOS_VERTEX_COLOR = PVR_PACK_COLOR(1.0f, r, g, b);
-}
-
 void APIENTRY glColor3fv(const GLfloat *rgb) {
     GL_KOS_VERTEX_COLOR = PVR_PACK_COLOR(1.0f, rgb[0], rgb[1], rgb[2]);
-}
-
-void APIENTRY glColor4f(GLfloat r, GLfloat g, GLfloat b, GLfloat a) {
-    GL_KOS_VERTEX_COLOR = PVR_PACK_COLOR(a, r, g, b);
 }
 
 void APIENTRY glColor4fv(const GLfloat *rgba) {
@@ -295,8 +287,6 @@ void APIENTRY glTexCoord2fv(const GLfloat *uv) {
 }
 
 //== Vertex Position Submission Functions ==//
-
-void APIENTRY(*glVertex3f)(GLfloat, GLfloat, GLfloat);
 
 void APIENTRY(*glVertex3fv)(const GLfloat *);
 
@@ -370,92 +360,6 @@ void APIENTRY glKosVertex2fv(const GLfloat *xy) {
 
 //====================================================================================================//
 //== GL Begin / End ==//
-
-void APIENTRY glBegin(GLenum mode) {
-    _glKosMatrixApplyRender();
-
-    _glKosArrayBufReset();
-
-    _glKosEnabledTexture2D() ? _glKosCompileHdrTx() : _glKosCompileHdr();
-
-    GL_KOS_VERTEX_MODE = mode;
-    GL_KOS_VERTEX_COUNT = 0;
-
-    if(mode == GL_POINTS) {
-        glVertex3f = _glKosVertex3fp;
-        glVertex3fv = _glKosVertex3fpv;
-    }
-    else if(_glKosEnabledNearZClip()
-            && _glKosEnabledLighting()) {
-        glVertex3f = _glKosVertex3flc;
-        glVertex3fv = _glKosVertex3flcv;
-    }
-    else if(_glKosEnabledLighting()) {
-        glVertex3f = _glKosVertex3fl;
-        glVertex3fv = _glKosVertex3flv;
-    }
-    else if(_glKosEnabledNearZClip()) {
-        glVertex3f = _glKosVertex3fc;
-        glVertex3fv = _glKosVertex3fcv;
-    }
-    else {
-        glVertex3f = _glKosVertex3ft;
-        glVertex3fv = _glKosVertex3ftv;
-    }
-}
-
-void APIENTRY glEnd() {
-    if(_glKosEnabledNearZClip()) { /* Z-Clipping Enabled */
-        if(_glKosEnabledLighting()) {
-            _glKosVertexComputeLighting(_glKosClipBufAddress(), GL_KOS_VERTEX_COUNT);
-
-            _glKosMatrixLoadRender();
-        }
-
-        GLuint cverts;
-        pvr_vertex_t *v = _glKosVertexBufPointer();
-
-        switch(GL_KOS_VERTEX_MODE) {
-            case GL_TRIANGLES:
-                cverts = _glKosClipTriangles(_glKosClipBufAddress(), v, GL_KOS_VERTEX_COUNT);
-                _glKosTransformClipBuf(v, cverts);
-                _glKosVertexBufAdd(cverts);
-                break;
-
-            case GL_TRIANGLE_STRIP:
-                cverts = _glKosClipTriangleStrip(_glKosClipBufAddress(), v, GL_KOS_VERTEX_COUNT);
-                _glKosTransformClipBuf(v, cverts);
-                _glKosVertexBufAdd(cverts);
-                break;
-
-            case GL_QUADS:
-                cverts = _glKosClipQuads(_glKosClipBufAddress(), v, GL_KOS_VERTEX_COUNT);
-                _glKosTransformClipBuf(v, cverts);
-                _glKosVertexBufAdd(cverts);
-                break;
-        }
-
-        _glKosClipBufReset();
-    }
-    else { /* No Z-Clipping Enabled */
-        if(_glKosEnabledLighting())
-            _glKosVertexComputeLighting((pvr_vertex_t *)_glKosVertexBufPointer() - GL_KOS_VERTEX_COUNT, GL_KOS_VERTEX_COUNT);
-
-        switch(GL_KOS_VERTEX_MODE) {
-            case GL_TRIANGLES:
-                _glKosFlagsSetTriangle();
-                break;
-
-            case GL_TRIANGLE_STRIP:
-                _glKosFlagsSetTriangleStrip();
-                break;
-
-            case GL_QUADS:
-                _glKosFlagsSetQuad();
-                break;
-        }
-    }
-}
 
 //====================================================================================================//
 //== Misc. functions ==//
@@ -715,12 +619,6 @@ static inline void _glKosApplyBlendFunc() {
     }
 }
 
-static inline void _glKosApplyTextureFunc(GL_TEXTURE_OBJECT *tex) {
-    GL_KOS_POLY_CXT.txr.uv_clamp    = tex->uv_clamp;
-    GL_KOS_POLY_CXT.txr.mipmap      = tex->mip_map ? 1 : 0;
-    GL_KOS_POLY_CXT.txr.mipmap_bias = PVR_MIPBIAS_NORMAL;
-}
-
 void _glKosCompileHdr() {
     pvr_poly_hdr_t *hdr = _glKosVertexBufPointer();
 
@@ -742,74 +640,6 @@ void _glKosCompileHdr() {
 
     _glKosVertexBufIncrement();
 }
-
-void _glKosCompileHdrT(GL_TEXTURE_OBJECT *tex) {
-    pvr_poly_hdr_t *hdr = _glKosVertexBufPointer();
-
-    pvr_poly_cxt_txr(&GL_KOS_POLY_CXT,
-                     _glKosList() * 2,
-                     tex->color,
-                     tex->width,
-                     tex->height,
-                     tex->data,
-                     tex->filter);
-
-    GL_KOS_POLY_CXT.gen.shading = GL_KOS_SHADE_FUNC;
-
-    _glKosApplyDepthFunc();
-
-    _glKosApplyScissorFunc();
-
-    _glKosApplyFogFunc();
-
-    _glKosApplyCullingFunc();
-
-    _glKosApplyBlendFunc();
-
-    _glKosApplyTextureFunc(tex);
-
-    if(_glKosEnabledBlend())
-        GL_KOS_POLY_CXT.txr.env = tex->env;
-
-    pvr_poly_compile(hdr, &GL_KOS_POLY_CXT);
-
-    if(GL_KOS_SUPERSAMPLE)
-        hdr->mode2 |= GL_PVR_SAMPLE_SUPER << PVR_TA_SUPER_SAMPLE_SHIFT;
-
-    _glKosVertexBufIncrement();
-}
-
-void _glKosCompileHdrMT(pvr_poly_hdr_t *dst, GL_TEXTURE_OBJECT *tex) {
-    pvr_poly_cxt_txr(&GL_KOS_POLY_CXT,
-                     PVR_LIST_TR_POLY,
-                     tex->color,
-                     tex->width,
-                     tex->height,
-                     tex->data,
-                     tex->filter);
-
-    GL_KOS_POLY_CXT.gen.shading = GL_KOS_SHADE_FUNC;
-
-    _glKosApplyDepthFunc();
-
-    _glKosApplyScissorFunc();
-
-    _glKosApplyFogFunc();
-
-    _glKosApplyCullingFunc();
-
-    _glKosApplyTextureFunc(tex);
-
-    GL_KOS_POLY_CXT.blend.src = (GL_KOS_BLEND_FUNC & 0xF0) >> 4;
-    GL_KOS_POLY_CXT.blend.dst = (GL_KOS_BLEND_FUNC & 0x0F);
-    GL_KOS_POLY_CXT.txr.env = tex->env;
-
-    pvr_poly_compile(dst, &GL_KOS_POLY_CXT);
-
-    if(GL_KOS_SUPERSAMPLE)
-        dst->mode2 |= GL_PVR_SAMPLE_SUPER << PVR_TA_SUPER_SAMPLE_SHIFT;
-}
-
 //====================================================================================================//
 //== Internal GL KOS API State Functions ==//
 

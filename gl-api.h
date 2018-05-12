@@ -26,18 +26,6 @@ typedef struct {
 } glTexCoord4f; /* 3D Texture Coordinate */
 
 typedef struct {
-    GLushort width;
-    GLushort height;
-    GLuint   color; /* This is the PVR texture format */
-    GLubyte  env;
-    GLubyte  filter;
-    GLubyte  mip_map;
-    GLubyte  uv_clamp;
-    GLuint   index;
-    GLvoid *data;
-} GL_TEXTURE_OBJECT; /* KOS Open GL Texture Object */
-
-typedef struct {
     GLuint  texID;
     GLsizei index;
     GLvoid *data;
@@ -95,8 +83,6 @@ unsigned char  _glKosInitTextures();
 void _glKosCompileHdr();
 void _glKosCompileHdrTx();
 void _glKosCompileHdrMTx();
-void _glKosCompileHdrT(GL_TEXTURE_OBJECT *tex);
-void _glKosCompileHdrMT(pvr_poly_hdr_t *dst, GL_TEXTURE_OBJECT *tex);
 
 /* Clipping Internal Functions */
 void         _glKosTransformClipBuf(pvr_vertex_t *v, GLuint verts);
@@ -207,13 +193,7 @@ GLuint  _glKosVertexColor();
 GLubyte _glKosMaxTextureUnits();
 GLubyte _glKosEnabledTextureMatrix();
 
-GL_TEXTURE_OBJECT *_glKosBoundMultiTexObject();
-GL_TEXTURE_OBJECT *_glKosBoundTexObject();
 GLuint _glKosActiveTextureBoundTexID();
-
-void _glKosPushMultiTexObject(GL_TEXTURE_OBJECT *tex,
-                                     pvr_vertex_t *src,
-                                     GLuint count);
 
 static inline void _glKosVertexCopyPVR(const pvr_vertex_t *src, pvr_vertex_t *dst) {
     *dst = *src;

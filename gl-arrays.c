@@ -826,19 +826,6 @@ static GLuint _glKosArraysApplyClipping(GLfloat *uvsrc, GLuint uvstride, GLenum 
     return count;
 }
 
-static inline void _glKosArraysApplyMultiTexture(GLenum mode, GLuint count) {
-    if(GL_KOS_VERTEX_PTR_MODE & GL_KOS_USE_TEXTURE1) {
-        GL_TEXTURE_OBJECT* tex = _glKosBoundMultiTexObject();
-        if(tex) {
-            _glKosPushMultiTexObject(tex,
-                                     (pvr_vertex_t *)_glKosVertexBufPointer(),
-                                     count);
-
-            if(mode == GL_QUADS)
-                _glKosArraysSwizzleQuadsMultiTex(count);
-        }
-    }
-}
 
 static inline void _glKosArraysApplyVertexFlags(GLenum mode, pvr_vertex_t *dst, GLuint count) {
     switch(mode) {

@@ -395,3 +395,35 @@ void APIENTRY glScissor(GLint x, GLint y, GLsizei width, GLsizei height) {
     c->ey = CLAMP((maxy / 32) - 1, 0, vid_mode->height / 32);
 }
 
+
+GLboolean APIENTRY glIsEnabled(GLenum cap) {
+    switch(cap) {
+    case GL_DEPTH_TEST:
+        return DEPTH_TEST_ENABLED;
+    case GL_SCISSOR_TEST:
+        return GL_CONTEXT.gen.clip_mode == PVR_USERCLIP_INSIDE;
+    case GL_CULL_FACE:
+        return CULLING_ENABLED;
+    case GL_LIGHTING:
+        return LIGHTING_ENABLED;
+    case GL_BLEND:
+        return BLEND_ENABLED;
+    }
+
+    return GL_FALSE;
+}
+
+void APIENTRY glGetIntegerv(GLenum pname, GLint *params) {
+    switch(pname) {
+        case GL_MAX_LIGHTS:
+            *params = MAX_LIGHTS;
+        break;
+        case GL_TEXTURE_BINDING_2D:
+            *params = getBoundTexture()->index;
+        break;
+    default:
+        _glKosThrowError(GL_INVALID_ENUM, "glGetIntegerv");
+        _glKosPrintError();
+        break;
+    }
+}

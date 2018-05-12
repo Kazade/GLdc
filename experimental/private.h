@@ -71,6 +71,7 @@ PolyList *activePolyList();
 void initAttributePointers();
 void initContext();
 void initLights();
+void initImmediateMode();
 
 pvr_poly_cxt_t* getPVRContext();
 GLubyte _glKosInitTextures();

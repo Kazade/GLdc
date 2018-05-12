@@ -93,15 +93,6 @@ static void pvr_hdr_submit(const GLuint *src) {
 }
 #endif
 
-void _glKosPushMultiTexObject(GL_TEXTURE_OBJECT *tex,
-                                     pvr_vertex_t *src,
-                                     GLuint count) {
-    _glKosCompileHdrMT(&GL_MTOBJS[GL_MTOBJECTS].hdr, tex);
-
-    GL_MTOBJS[GL_MTOBJECTS].src = src;
-    GL_MTOBJS[GL_MTOBJECTS++].count = count;
-}
-
 void _glKosResetMultiTexObject() {
     GL_MTOBJECTS = 0;
 }
