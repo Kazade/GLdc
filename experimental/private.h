@@ -41,10 +41,37 @@ typedef struct {
     GLvoid *data;
 } TextureObject;
 
+typedef struct {
+    GLfloat ambient[4];
+    GLfloat diffuse[4];
+    GLfloat specular[4];
+    GLfloat emissive[4];
+    GLfloat exponent;
+    GLfloat ambient_color_index;
+    GLfloat diffuse_color_index;
+    GLfloat specular_color_index;
+} Material;
+
+typedef struct {
+    GLfloat ambient[4];
+    GLfloat diffuse[4];
+    GLfloat specular[4];
+    GLfloat position[4];
+    GLfloat spot_direction[3];
+    GLfloat spot_exponent;
+    GLfloat spot_cutoff;
+    GLfloat constant_attenuation;
+    GLfloat linear_attenuation;
+    GLfloat quadratic_attenuation;
+} LightSource;
+
+
 PolyList *activePolyList();
 
 void initAttributePointers();
 void initContext();
+void initLights();
+
 pvr_poly_cxt_t* getPVRContext();
 GLubyte _glKosInitTextures();
 void updatePVRTextureContext(pvr_poly_cxt_t* context, TextureObject* tx1);
@@ -53,8 +80,13 @@ TextureObject* getTexture1();
 TextureObject* getBoundTexture();
 GLboolean isBlendingEnabled();
 
+GLboolean isLightingEnabled();
+GLboolean isLightEnabled(GLubyte light);
+void calculateLightingContribution(const GLint light, const GLfloat* pos, const GLfloat* normal, GLfloat* colour);
+
 #define PVR_VERTEX_BUF_SIZE 2560 * 256
 #define MAX_TEXTURE_UNITS 2
+#define MAX_LIGHTS 8
 
 #define CLAMP( X, MIN, MAX )  ( (X)<(MIN) ? (MIN) : ((X)>(MAX) ? (MAX) : (X)) )
 

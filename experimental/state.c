@@ -150,6 +150,16 @@ void updatePVRTextureContext(pvr_poly_cxt_t* context, TextureObject *tx1) {
     }
 }
 
+static GLboolean LIGHTING_ENABLED = GL_FALSE;
+static GLboolean LIGHT_ENABLED[MAX_LIGHTS];
+
+GLboolean isLightingEnabled() {
+    return LIGHTING_ENABLED;
+}
+
+GLboolean isLightEnabled(unsigned char light) {
+    return LIGHT_ENABLED[light & 0xF];
+}
 
 static GLfloat CLEAR_COLOUR[3];
 
@@ -176,6 +186,11 @@ void initContext() {
     glDisable(GL_BLEND);
     glDisable(GL_DEPTH_TEST);
     glDisable(GL_TEXTURE_2D);
+
+    glDisable(GL_LIGHTING);
+    for(GLubyte i = 0; i < MAX_LIGHTS; ++i) {
+        glDisable(GL_LIGHT0 + i);
+    }
 }
 
 GLAPI void APIENTRY glEnable(GLenum cap) {
@@ -198,6 +213,19 @@ GLAPI void APIENTRY glEnable(GLenum cap) {
         case GL_SCISSOR_TEST: {
             GL_CONTEXT.gen.clip_mode = PVR_USERCLIP_INSIDE;
         } break;
+        case GL_LIGHTING: {
+            LIGHTING_ENABLED = GL_TRUE;
+        } break;
+        case GL_LIGHT0:
+        case GL_LIGHT1:
+        case GL_LIGHT2:
+        case GL_LIGHT3:
+        case GL_LIGHT4:
+        case GL_LIGHT5:
+        case GL_LIGHT6:
+        case GL_LIGHT7:
+            LIGHT_ENABLED[cap & 0xF] = GL_TRUE;
+        break;
     default:
         break;
     }
@@ -223,6 +251,19 @@ GLAPI void APIENTRY glDisable(GLenum cap) {
         case GL_SCISSOR_TEST: {
             GL_CONTEXT.gen.clip_mode = PVR_USERCLIP_DISABLE;
         } break;
+        case GL_LIGHTING: {
+            LIGHTING_ENABLED = GL_FALSE;
+        } break;
+        case GL_LIGHT0:
+        case GL_LIGHT1:
+        case GL_LIGHT2:
+        case GL_LIGHT3:
+        case GL_LIGHT4:
+        case GL_LIGHT5:
+        case GL_LIGHT6:
+        case GL_LIGHT7:
+            LIGHT_ENABLED[cap & 0xF] = GL_FALSE;
+        break;
     default:
         break;
     }

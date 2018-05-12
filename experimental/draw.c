@@ -162,6 +162,8 @@ static void submitVertices(GLenum mode, GLsizei first, GLsizei count, GLenum typ
 
     const GLubyte* indices_as_bytes = (GLubyte*) indices;
 
+    GLboolean lighting_enabled = isLightingEnabled();
+
     for(GLuint i = first; i < count; ++i) {
         pvr_vertex_t* vertex = (pvr_vertex_t*) dst;
         vertex->u = vertex->v = 0.0f;
@@ -191,6 +193,20 @@ static void submitVertices(GLenum mode, GLsizei first, GLsizei count, GLenum typ
 
         if(ENABLED_VERTEX_ATTRIBUTES & NORMAL_ENABLED_FLAG) {
             _parseFloats(normal, nptr + (idx * nstride), NORMAL_POINTER.size, NORMAL_POINTER.type);
+        }
+
+        if(lighting_enabled) {
+            GLfloat contribution[4];
+            uint32 to_add;
+
+            for(GLubyte i = 0; i < MAX_LIGHTS; ++i) {
+                if(isLightEnabled(i)) {
+                    calculateLightingContribution(i, &vertex->x, normal, contribution);
+                    to_add = PVR_PACK_COLOR(contribution[0], contribution[1], contribution[2], contribution[3]);
+
+                    /* FIXME: Add the colour to argb */
+                }
+            }
         }
 
         ++dst;

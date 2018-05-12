@@ -235,6 +235,11 @@ __BEGIN_DECLS
 #define GL_LIGHT14                        0x400E
 #define GL_LIGHT15                        0x400F
 
+/* EXT_separate_specular_color.txt */
+#define GL_LIGHT_MODEL_COLOR_CONTROL      0x81F8
+#define GL_SINGLE_COLOR                   0x81F9
+#define GL_SEPARATE_SPECULAR_COLOR		  0x81FA
+
 /* Client state caps */
 #define GL_VERTEX_ARRAY                   0x8074
 #define GL_NORMAL_ARRAY                   0x8075
@@ -620,7 +625,12 @@ GLAPI void APIENTRY glFogfv(GLenum pname, const GLfloat *params);
 /* Set Individual Light Parameters */
 GLAPI void APIENTRY glLightfv(GLenum light, GLenum pname, const GLfloat *params);
 GLAPI void APIENTRY glLightf(GLenum light, GLenum pname, GLfloat param);
+
+GLAPI void APIENTRY glLightModelf(GLenum pname, const GLfloat param);
+GLAPI void APIENTRY glLightModeli(GLenum pname, const GLint param);
 GLAPI void APIENTRY glLightModelfv(GLenum pname, const GLfloat *params);
+GLAPI void APIENTRY glLightModeliv(GLenum pname, const GLint *params);
+
 
 /* Set Global Material Parameters */
 GLAPI void APIENTRY glMateriali(GLenum face, GLenum pname, const GLint param);

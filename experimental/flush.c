@@ -66,6 +66,7 @@ void APIENTRY glKosInit() {
 
     initAttributePointers();
     initContext();
+    initLights();
 
     _glKosInitMatrix();
     _glKosInitTextures();
