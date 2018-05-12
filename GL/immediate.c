@@ -1,3 +1,12 @@
+/*
+ * This implements immediate mode over the top of glDrawArrays
+ * current problems:
+ *
+ * 1. Calling glNormal(); glVertex(); glVertex(); glVertex(); will break.
+ * 2. Mixing with glXPointer stuff will break badly
+ * 3. This is entirely untested.
+ */
+
 #include "../include/gl.h"
 #include "private.h"
 
@@ -7,11 +16,14 @@ static GLenum ACTIVE_POLYGON_MODE = GL_TRIANGLES;
 static AlignedVector VERTICES;
 static AlignedVector COLOURS;
 static AlignedVector TEXCOORDS;
+static AlignedVector NORMALS;
+
 
 void initImmediateMode() {
     aligned_vector_init(&VERTICES, sizeof(GLfloat));
     aligned_vector_init(&COLOURS, sizeof(GLfloat));
     aligned_vector_init(&TEXCOORDS, sizeof(GLfloat));
+    aligned_vector_init(&NORMALS, sizeof(GLfloat));
 }
 
 GLubyte checkImmediateModeInactive(const char* func) {
@@ -66,6 +78,12 @@ void APIENTRY glVertex3fv(const GLfloat* v) {
     glVertex3f(v[0], v[1], v[2]);
 }
 
+void APIENTRY glVertex4f(GLfloat x, GLfloat y, GLfloat z, GLfloat w) {
+    aligned_vector_push_back(&VERTICES, &x, 1);
+    aligned_vector_push_back(&VERTICES, &y, 1);
+    aligned_vector_push_back(&VERTICES, &z, 1);
+}
+
 void APIENTRY glVertex4fv(const GLfloat* v) {
     glVertex4f(v[0], v[1], v[2], v[3]);
 }
@@ -79,6 +97,16 @@ void APIENTRY glTexCoord2fv(const GLfloat* v) {
     glTexCoord2f(v[0], v[1]);
 }
 
+void APIENTRY glNormal3f(GLfloat x, GLfloat y, GLfloat z) {
+    aligned_vector_push_back(&NORMALS, &x, 1);
+    aligned_vector_push_back(&NORMALS, &y, 1);
+    aligned_vector_push_back(&NORMALS, &z, 1);
+}
+
+void APIENTRY glNormal3fv(const GLfloat* v) {
+    glNormal3f(v[0], v[1], v[2]);
+}
+
 void APIENTRY glEnd() {
     IMMEDIATE_MODE_ACTIVE = GL_FALSE;
 
@@ -86,6 +114,7 @@ void APIENTRY glEnd() {
 
     glVertexPointer(3, GL_FLOAT, 0, VERTICES.data);
     glColorPointer(4, GL_FLOAT, 0, COLOURS.data);
+    glNormalPointer(GL_FLOAT, 0, NORMALS.data);
 
     glClientActiveTextureARB(GL_TEXTURE0);
     glTexCoordPointer(2, GL_FLOAT, 0, TEXCOORDS.data);
@@ -95,6 +124,7 @@ void APIENTRY glEnd() {
     aligned_vector_clear(&VERTICES);
     aligned_vector_clear(&COLOURS);
     aligned_vector_clear(&TEXCOORDS);
+    aligned_vector_clear(&NORMALS);
 
     /* FIXME: Pop pointers */
 }

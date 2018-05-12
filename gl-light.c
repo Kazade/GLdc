@@ -94,19 +94,6 @@ GLubyte _glKosGetMaxLights() {
     return GL_KOS_MAX_LIGHTS;
 }
 
-/* Vertex Normal Submission */
-void glNormal3f(GLfloat x, GLfloat y, GLfloat z) {
-    GL_VERTEX_NORMAL[0] = x;
-    GL_VERTEX_NORMAL[1] = y;
-    GL_VERTEX_NORMAL[2] = z;
-}
-
-void glNormal3fv(const GLfloat *xyz) {
-    GL_VERTEX_NORMAL[0] = xyz[0];
-    GL_VERTEX_NORMAL[1] = xyz[1];
-    GL_VERTEX_NORMAL[2] = xyz[2];
-}
-
 /* Misc Lighting Functions ************************************/
 static inline void glCopyRGBA(const rgba *src, rgba *dst) {
     *dst = *src;
