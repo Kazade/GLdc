@@ -248,47 +248,8 @@ void APIENTRY glColor4ub(GLubyte r, GLubyte  g, GLubyte b, GLubyte a) {
     GL_KOS_VERTEX_COLOR = a << 24 | r << 16 | g << 8 | b;
 }
 
-void APIENTRY glColor3fv(const GLfloat *rgb) {
-    GL_KOS_VERTEX_COLOR = PVR_PACK_COLOR(1.0f, rgb[0], rgb[1], rgb[2]);
-}
-
-void APIENTRY glColor4fv(const GLfloat *rgba) {
-    GL_KOS_VERTEX_COLOR = PVR_PACK_COLOR(rgba[3], rgba[0], rgba[1], rgba[2]);
-}
-
-//== Texture Coordinate Submission ==//
-
-void APIENTRY glTexCoord2f(GLfloat u, GLfloat v) {
-    if(_glKosEnabledTextureMatrix()) {
-        _glKosMatrixLoadTexture();
-
-        mat_trans_texture2_nomod(u, v, GL_KOS_VERTEX_UV[0], GL_KOS_VERTEX_UV[1]);
-
-        _glKosMatrixLoadRender();
-    }
-    else {
-        GL_KOS_VERTEX_UV[0] = u;
-        GL_KOS_VERTEX_UV[1] = v;
-    }
-}
-
-void APIENTRY glTexCoord2fv(const GLfloat *uv) {
-    if(_glKosEnabledTextureMatrix()) {
-        _glKosMatrixLoadTexture();
-
-        mat_trans_texture2_nomod(uv[0], uv[1], GL_KOS_VERTEX_UV[0], GL_KOS_VERTEX_UV[1]);
-
-        _glKosMatrixLoadRender();
-    }
-    else {
-        GL_KOS_VERTEX_UV[0] = uv[0];
-        GL_KOS_VERTEX_UV[1] = uv[1];
-    }
-}
 
 //== Vertex Position Submission Functions ==//
-
-void APIENTRY(*glVertex3fv)(const GLfloat *);
 
 void APIENTRY glVertex2f(GLfloat x, GLfloat y) {
     return _glKosVertex3ft(x, y, 0.0f);

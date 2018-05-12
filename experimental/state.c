@@ -395,7 +395,6 @@ void APIENTRY glScissor(GLint x, GLint y, GLsizei width, GLsizei height) {
     c->ey = CLAMP((maxy / 32) - 1, 0, vid_mode->height / 32);
 }
 
-
 GLboolean APIENTRY glIsEnabled(GLenum cap) {
     switch(cap) {
     case GL_DEPTH_TEST:

@@ -446,7 +446,7 @@ GLAPI void APIENTRY glKosVertex2fv(const GLfloat *xy);
 
 /* Primitive 3D Position Submission */
 GLAPI void APIENTRY glVertex3f(GLfloat, GLfloat, GLfloat);
-GLAPI void APIENTRY(*glVertex3fv)(const GLfloat *);
+GLAPI void APIENTRY glVertex3fv(const GLfloat *);
 
 /* 2D Non-Textured Rectangle Submission */
 GLAPI GLvoid APIENTRY glRectf(GLfloat x1, GLfloat y1, GLfloat x2, GLfloat y2);

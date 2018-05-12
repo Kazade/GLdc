@@ -72,6 +72,7 @@ void initAttributePointers();
 void initContext();
 void initLights();
 void initImmediateMode();
+GLubyte checkImmediateModeInactive(const char* func);
 
 pvr_poly_cxt_t* getPVRContext();
 GLubyte _glKosInitTextures();

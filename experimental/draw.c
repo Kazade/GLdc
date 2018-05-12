@@ -216,11 +216,19 @@ static void submitVertices(GLenum mode, GLsizei first, GLsizei count, GLenum typ
 void APIENTRY glDrawElements(GLenum mode, GLsizei count, GLenum type, const GLvoid* indices) {
     TRACE();
 
+    if(checkImmediateModeInactive(__func__)) {
+        return;
+    }
+
     submitVertices(mode, 0, count, type, indices);
 }
 
 void APIENTRY glDrawArrays(GLenum mode, GLint first, GLsizei count) {
     TRACE();
+
+    if(checkImmediateModeInactive(__func__)) {
+        return;
+    }
 
     submitVertices(mode, first, count, GL_UNSIGNED_SHORT, NULL);
 }
