@@ -144,16 +144,55 @@ void APIENTRY glLightf(GLenum light, GLenum pname, GLfloat param) {
     }
 }
 
-void APIENTRY glMateriali(GLenum face, GLenum pname, const GLint param) {
+void APIENTRY glMaterialf(GLenum face, GLenum pname, const GLfloat param) {
+    if(face == GL_BACK || pname != GL_SHININESS) {
+        _glKosThrowError(GL_INVALID_ENUM, __func__);
+        _glKosPrintError();
+        return;
+    }
 
+    MATERIAL.exponent = param;
 }
 
-void APIENTRY glMaterialf(GLenum face, GLenum pname, const GLfloat param) {
-
+void APIENTRY glMateriali(GLenum face, GLenum pname, const GLint param) {
+    glMaterialf(face, pname, param);
 }
 
 void APIENTRY glMaterialfv(GLenum face, GLenum pname, const GLfloat *params) {
+    if(pname == GL_SHININESS) {
+        glMaterialf(face, pname, *params);
+        return;
+    }
 
+    if(face == GL_BACK) {
+        _glKosThrowError(GL_INVALID_ENUM, __func__);
+        _glKosPrintError();
+        return;
+    }
+
+    switch(pname) {
+        case GL_AMBIENT:
+            memcpy(MATERIAL.ambient, params, sizeof(GLfloat) * 4);
+        break;
+        case GL_DIFFUSE:
+            memcpy(MATERIAL.diffuse, params, sizeof(GLfloat) * 4);
+        break;
+        case GL_SPECULAR:
+            memcpy(MATERIAL.specular, params, sizeof(GLfloat) * 4);
+        break;
+        case GL_EMISSION:
+            memcpy(MATERIAL.specular, params, sizeof(GLfloat) * 4);
+        break;
+        case GL_AMBIENT_AND_DIFFUSE: {
+            glMaterialfv(face, GL_AMBIENT, params);
+            glMaterialfv(face, GL_DIFFUSE, params);
+        } break;
+        case GL_COLOR_INDEXES:
+        default: {
+            _glKosThrowError(GL_INVALID_ENUM, __func__);
+            _glKosPrintError();
+        }
+    }
 }
 
 void calculateLightingContribution(const GLint light, const GLfloat* pos, const GLfloat* normal, GLfloat* colour) {
