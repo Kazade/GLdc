@@ -106,12 +106,13 @@ void APIENTRY glLightfv(GLenum light, GLenum pname, const GLfloat *params) {
         case GL_POSITION:
             memcpy(LIGHTS[idx].position, params, sizeof(GLfloat) * 4);
         break;
+        case GL_CONSTANT_ATTENUATION:            
+        case GL_LINEAR_ATTENUATION:
+        case GL_QUADRATIC_ATTENUATION:
         case GL_SPOT_CUTOFF:
         case GL_SPOT_DIRECTION:
         case GL_SPOT_EXPONENT:
-        case GL_CONSTANT_ATTENUATION:
-        case GL_LINEAR_ATTENUATION:
-        case GL_QUADRATIC_ATTENUATION:
+            glLightf(light, pname, *params);
     default:
         _glKosThrowError(GL_INVALID_ENUM, __func__);
         _glKosPrintError();
@@ -119,7 +120,28 @@ void APIENTRY glLightfv(GLenum light, GLenum pname, const GLfloat *params) {
 }
 
 void APIENTRY glLightf(GLenum light, GLenum pname, GLfloat param) {
+    GLubyte idx = light & 0xF;
 
+    if(idx >= MAX_LIGHTS) {
+        return;
+    }
+
+    switch(pname) {
+        case GL_CONSTANT_ATTENUATION:
+            LIGHTS[idx].constant_attenuation = param;
+        break;
+        case GL_LINEAR_ATTENUATION:
+            LIGHTS[idx].linear_attenuation = param;
+        break;
+        case GL_QUADRATIC_ATTENUATION:
+            LIGHTS[idx].quadratic_attenuation = param;
+        break;
+        case GL_SPOT_EXPONENT:
+        case GL_SPOT_CUTOFF:
+    default:
+        _glKosThrowError(GL_INVALID_ENUM, __func__);
+        _glKosPrintError();
+    }
 }
 
 void APIENTRY glMateriali(GLenum face, GLenum pname, const GLint param) {
