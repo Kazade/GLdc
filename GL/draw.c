@@ -197,27 +197,23 @@ static void submitVertices(GLenum mode, GLsizei first, GLsizei count, GLenum typ
         }
 
         if(lighting_enabled) {
-            GLfloat contribution[4];
-            uint32 to_add;
+            /* We ignore diffuse colour when lighting is enabled. If GL_COLOR_MATERIAL is enabled
+             * then the lighting calculation should possibly take it into account */
+            GLfloat contribution [] = {0.0f, 0.0f, 0.0f, 0.0f};
+            GLfloat to_add [] = {0.0f, 0.0f, 0.0f, 0.0f};
 
             for(GLubyte i = 0; i < MAX_LIGHTS; ++i) {
                 if(isLightEnabled(i)) {
-                    calculateLightingContribution(i, &vertex->x, normal, contribution);
-                    to_add = PVR_PACK_COLOR(contribution[3], contribution[0], contribution[1], contribution[2]);
+                    calculateLightingContribution(i, &vertex->x, normal, to_add);
 
-                    GLubyte a = ((vertex->argb & 0xFF000000) >> 24) + ((to_add & 0xFF000000) >> 24);
-                    GLubyte r = ((vertex->argb & 0x00FF0000) >> 16) + ((to_add & 0x00FF0000) >> 16);
-                    GLubyte g = ((vertex->argb & 0x0000FF00) >> 8) + ((to_add & 0x0000FF00) >> 8);
-                    GLubyte b = ((vertex->argb & 0x000000FF) >> 0) + ((to_add & 0x000000FF) >> 0);
-
-                    a = (a > 255) ? 255 : a;
-                    r = (r > 255) ? 255 : r;
-                    g = (g > 255) ? 255 : g;
-                    b = (b > 255) ? 255 : b;
-
-                    vertex->argb = a << 24 | r << 16 | g << 8 | b;
+                    contribution[0] += to_add[0];
+                    contribution[1] += to_add[1];
+                    contribution[2] += to_add[2];
+                    contribution[3] += to_add[3];
                 }
             }
+
+            vertex->argb = PVR_PACK_COLOR(contribution[3], contribution[0], contribution[1], contribution[2]);
         }
 
         ++dst;
