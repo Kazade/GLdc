@@ -19,6 +19,11 @@ static AlignedVector TEXCOORDS;
 static AlignedVector NORMALS;
 
 
+static GLfloat NORMAL[3] = {0.0f, 0.0f, 1.0f};
+static GLfloat COLOR[4] = {1.0f, 1.0f, 1.0f, 1.0f};
+static GLfloat TEXCOORD[2] = {0.0f, 0.0f};
+
+
 void initImmediateMode() {
     aligned_vector_init(&VERTICES, sizeof(GLfloat));
     aligned_vector_init(&COLOURS, sizeof(GLfloat));
@@ -49,10 +54,10 @@ void APIENTRY glBegin(GLenum mode) {
 }
 
 void APIENTRY glColor4f(GLfloat r, GLfloat g, GLfloat b, GLfloat a) {
-    aligned_vector_push_back(&COLOURS, &r, 1);
-    aligned_vector_push_back(&COLOURS, &g, 1);
-    aligned_vector_push_back(&COLOURS, &b, 1);
-    aligned_vector_push_back(&COLOURS, &a, 1);
+    COLOR[0] = r;
+    COLOR[1] = g;
+    COLOR[2] = b;
+    COLOR[3] = a;
 }
 
 void APIENTRY glColor4fv(const GLfloat* v) {
@@ -72,6 +77,12 @@ void APIENTRY glVertex3f(GLfloat x, GLfloat y, GLfloat z) {
     aligned_vector_push_back(&VERTICES, &x, 1);
     aligned_vector_push_back(&VERTICES, &y, 1);
     aligned_vector_push_back(&VERTICES, &z, 1);
+
+
+    /* Push back the stashed colour, normal and texcoord */
+    aligned_vector_push_back(&COLOURS, COLOR, 4);
+    aligned_vector_push_back(&TEXCOORDS, TEXCOORD, 2);
+    aligned_vector_push_back(&NORMALS, NORMAL, 3);
 }
 
 void APIENTRY glVertex3fv(const GLfloat* v) {
@@ -79,9 +90,7 @@ void APIENTRY glVertex3fv(const GLfloat* v) {
 }
 
 void APIENTRY glVertex4f(GLfloat x, GLfloat y, GLfloat z, GLfloat w) {
-    aligned_vector_push_back(&VERTICES, &x, 1);
-    aligned_vector_push_back(&VERTICES, &y, 1);
-    aligned_vector_push_back(&VERTICES, &z, 1);
+    glVertex3f(x, y, z);
 }
 
 void APIENTRY glVertex4fv(const GLfloat* v) {
@@ -89,8 +98,8 @@ void APIENTRY glVertex4fv(const GLfloat* v) {
 }
 
 void APIENTRY glTexCoord2f(GLfloat u, GLfloat v) {
-    aligned_vector_push_back(&TEXCOORDS, &u, 1);
-    aligned_vector_push_back(&TEXCOORDS, &v, 1);
+    TEXCOORD[0] = u;
+    TEXCOORD[1] = v;
 }
 
 void APIENTRY glTexCoord2fv(const GLfloat* v) {
@@ -98,9 +107,9 @@ void APIENTRY glTexCoord2fv(const GLfloat* v) {
 }
 
 void APIENTRY glNormal3f(GLfloat x, GLfloat y, GLfloat z) {
-    aligned_vector_push_back(&NORMALS, &x, 1);
-    aligned_vector_push_back(&NORMALS, &y, 1);
-    aligned_vector_push_back(&NORMALS, &z, 1);
+    NORMAL[0] = x;
+    NORMAL[1] = y;
+    NORMAL[2] = z;
 }
 
 void APIENTRY glNormal3fv(const GLfloat* v) {
