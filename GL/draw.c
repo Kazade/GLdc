@@ -90,23 +90,25 @@ static void _parseColour(uint32* out, const GLubyte* in, GLint size, GLenum type
 }
 
 static void _parseFloats(GLfloat* out, const GLubyte* in, GLint size, GLenum type) {
+    GLubyte i = 0;
+
     switch(type) {
     case GL_SHORT: {
         GLshort* inp = (GLshort*) in;
-        for(GLubyte i = 0; i < size; ++i) {
+        for(i = 0; i < size; ++i) {
             out[i] = (GLfloat) inp[i];
         }
     } break;
     case GL_INT: {
         GLint* inp = (GLint*) in;
-        for(GLubyte i = 0; i < size; ++i) {
+        for(i = 0; i < size; ++i) {
             out[i] = (GLfloat) inp[i];
         }
     } break;
     case GL_FLOAT:
     case GL_DOUBLE:  /* Double == Float */
     default:
-        for(GLubyte i = 0; i < size; ++i) out[i] = ((GLfloat*) in)[i];
+        for(i = 0; i < size; ++i) out[i] = ((GLfloat*) in)[i];
     }
 }
 
@@ -165,7 +167,8 @@ static void submitVertices(GLenum mode, GLsizei first, GLsizei count, GLenum typ
 
     GLboolean lighting_enabled = isLightingEnabled();
 
-    for(GLuint i = first; i < count; ++i) {
+    GLushort i;
+    for(i = first; i < count; ++i) {
         pvr_vertex_t* vertex = (pvr_vertex_t*) dst;
         vertex->u = vertex->v = 0.0f;
         vertex->argb = 0;
@@ -202,9 +205,12 @@ static void submitVertices(GLenum mode, GLsizei first, GLsizei count, GLenum typ
             GLfloat contribution [] = {0.0f, 0.0f, 0.0f, 0.0f};
             GLfloat to_add [] = {0.0f, 0.0f, 0.0f, 0.0f};
 
-            for(GLubyte i = 0; i < MAX_LIGHTS; ++i) {
+            /* FIXME!!! Transform the position to eye space */
+
+            GLubyte j;
+            for(j = 0; j < MAX_LIGHTS; ++j) {
                 if(isLightEnabled(i)) {
-                    calculateLightingContribution(i, &vertex->x, normal, to_add);
+                    calculateLightingContribution(j, &vertex->x, normal, to_add);
 
                     contribution[0] += to_add[0];
                     contribution[1] += to_add[1];

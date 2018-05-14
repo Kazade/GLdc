@@ -23,7 +23,8 @@ void initLights() {
     MATERIAL.diffuse_color_index = 1.0f;
     MATERIAL.specular_color_index = 1.0f;
 
-    for(GLubyte i = 0; i < MAX_LIGHTS; ++i) {
+    GLubyte i;
+    for(i = 0; i < MAX_LIGHTS; ++i) {
         memcpy(LIGHTS[i].ambient, ZERO, sizeof(GLfloat) * 4);
         memcpy(LIGHTS[i].diffuse, ONE, sizeof(GLfloat) * 4);
         memcpy(LIGHTS[i].specular, ONE, sizeof(GLfloat) * 4);

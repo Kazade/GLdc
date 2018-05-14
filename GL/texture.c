@@ -549,7 +549,8 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
         }
 
         /* Perform the conversion */
-        for(GLuint i = 0; i < bytes; i += 2) {
+        GLuint i;
+        for(i = 0; i < bytes; i += 2) {
             convert(source, dest);
 
             dest++;

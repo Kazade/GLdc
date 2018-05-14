@@ -189,7 +189,8 @@ void initContext() {
     glDisable(GL_TEXTURE_2D);
 
     glDisable(GL_LIGHTING);
-    for(GLubyte i = 0; i < MAX_LIGHTS; ++i) {
+    GLubyte i;
+    for(i = 0; i < MAX_LIGHTS; ++i) {
         glDisable(GL_LIGHT0 + i);
     }
 }
