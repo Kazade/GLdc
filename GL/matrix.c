@@ -46,8 +46,47 @@ void initMatrices() {
     glViewport(0, 0, vid_mode->width, vid_mode->height);
 }
 
-static void recalculateNormalMatrix() {
+#define swap(a, b) { \
+    GLfloat x = (a); \
+    a = b; \
+    b = x; \
+}
 
+static void inverse(GLfloat* m) {
+    GLfloat f4 = m[4];
+    GLfloat f8 = m[8];
+    GLfloat f1 = m[1];
+    GLfloat f9 = m[9];
+    GLfloat f2 = m[2];
+    GLfloat f6 = m[6];
+    GLfloat f12 = m[12];
+    GLfloat f13 = m[13];
+    GLfloat f14 = m[14];
+
+    m[1]  =  f4;
+    m[2]  =  f8;
+    m[4]  =  f1;
+    m[6]  =  f9;
+    m[8]  =  f2;
+    m[9]  =  f6;
+    m[12] = -(f12 * m[0]  +  f13 * m[4]  +  f14 * m[8]);
+    m[13] = -(f12 * m[1]  +  f13 * m[5]  +  f14 * m[9]);
+    m[14] = -(f12 * m[2]  +  f13 * m[6]  +  f14 * m[10]);
+}
+
+static void transpose(GLfloat* m) {
+    swap(m[1], m[4]);
+    swap(m[2], m[8]);
+    swap(m[3], m[12]);
+    swap(m[6], m[9]);
+    swap(m[7], m[3]);
+    swap(m[11], m[14]);
+}
+
+static void recalculateNormalMatrix() {
+    memcpy(NORMAL_MATRIX, stack_top(MATRIX_STACKS + (GL_MODELVIEW & 0xF)), sizeof(matrix_t));
+    transpose((GLfloat*) NORMAL_MATRIX);
+    inverse((GLfloat*) NORMAL_MATRIX);
 }
 
 void APIENTRY glMatrixMode(GLenum mode) {

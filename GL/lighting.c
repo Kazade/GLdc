@@ -259,8 +259,8 @@ void calculateLightingContribution(const GLint light, const GLfloat* pos, const 
     GLfloat VdotR = VdotN - LdotN;
     GLfloat specularPower = FPOW(VdotR > 0 ? VdotR : 0, MATERIAL.exponent);
 
-    colour[0] = l->ambient[0] * MATERIAL.ambient[0] + f * (l->diffuse[0] * MATERIAL.diffuse[0] * LdotN); // + l->specular[0] * MATERIAL.specular[0] * specularPower);
-    colour[1] = l->ambient[1] * MATERIAL.ambient[1] + f * (l->diffuse[1] * MATERIAL.diffuse[1] * LdotN); // + l->specular[1] * MATERIAL.specular[1] * specularPower);
-    colour[2] = l->ambient[2] * MATERIAL.ambient[2] + f * (l->diffuse[2] * MATERIAL.diffuse[2] * LdotN); // + l->specular[2] * MATERIAL.specular[2] * specularPower);
+    colour[0] = l->ambient[0] * MATERIAL.ambient[0] + f * (l->diffuse[0] * MATERIAL.diffuse[0] * LdotN + l->specular[0] * MATERIAL.specular[0] * specularPower);
+    colour[1] = l->ambient[1] * MATERIAL.ambient[1] + f * (l->diffuse[1] * MATERIAL.diffuse[1] * LdotN + l->specular[1] * MATERIAL.specular[1] * specularPower);
+    colour[2] = l->ambient[2] * MATERIAL.ambient[2] + f * (l->diffuse[2] * MATERIAL.diffuse[2] * LdotN + l->specular[2] * MATERIAL.specular[2] * specularPower);
     colour[3] = MATERIAL.diffuse[3];
 }
