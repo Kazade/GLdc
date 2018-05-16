@@ -123,14 +123,35 @@ static void _parseIndex(GLshort* out, const GLubyte* in, GLenum type) {
     }
 }
 
+/*
+inline void mat_trans_float3_nodiv(const GLfloat* mat, GLfloat* v) {
+    GLfloat x = v[0] * mat[0] + v[1] * mat[4] + v[2] * mat[8] + mat[12];
+    GLfloat y = v[0] * mat[1] + v[1] * mat[5] + v[2] * mat[9] + mat[13];
+    GLfloat z = v[0] * mat[2] + v[1] * mat[6] + v[2] * mat[10] + mat[14];
+
+    v[0] = x;
+    v[1] = y;
+    v[2] = z;
+} */
+
+void transformToEyeSpace(GLfloat* point) {
+    _matrixLoadModelView();
+    mat_trans_single3_nodiv(point[0], point[1], point[2]);
+}
+
+void transformNormalToEyeSpace(GLfloat* normal) {
+    _matrixLoadNormal();
+    mat_trans_normal3(normal[0], normal[1], normal[2]);
+}
+
 static void submitVertices(GLenum mode, GLsizei first, GLsizei count, GLenum type, const GLvoid* indices) {
-    static float normal[3];
+    static GLfloat normal[3] = {0.0f, 0.0f, -1.0f};
+    static GLfloat eye_P[3];
+    static GLfloat eye_N[3];
 
     if(!(ENABLED_VERTEX_ATTRIBUTES & VERTEX_ENABLED_FLAG)) {
         return;
     }
-
-    _glKosMatrixApplyRender(); /* Apply the Render Matrix Stack */   
 
     const GLsizei elements = (mode == GL_QUADS) ? 4 : (mode == GL_TRIANGLES) ? 3 : (mode == GL_LINES) ? 2 : count;
 
@@ -185,7 +206,6 @@ static void submitVertices(GLenum mode, GLsizei first, GLsizei count, GLenum typ
         }
 
         _parseFloats(&vertex->x, vptr + (idx * vstride), VERTEX_POINTER.size, VERTEX_POINTER.type);
-        transformVertex(&vertex->x, &vertex->x, &vertex->y, &vertex->z);
 
         if(ENABLED_VERTEX_ATTRIBUTES & DIFFUSE_ENABLED_FLAG) {
             _parseColour(&vertex->argb, cptr + (idx * cstride), DIFFUSE_POINTER.size, DIFFUSE_POINTER.type);
@@ -197,6 +217,9 @@ static void submitVertices(GLenum mode, GLsizei first, GLsizei count, GLenum typ
 
         if(ENABLED_VERTEX_ATTRIBUTES & NORMAL_ENABLED_FLAG) {
             _parseFloats(normal, nptr + (idx * nstride), NORMAL_POINTER.size, NORMAL_POINTER.type);
+        } else {
+            normal[0] = normal[1] = 0.0f;
+            normal[2] = -1.0f;
         }
 
         if(lighting_enabled) {
@@ -205,12 +228,22 @@ static void submitVertices(GLenum mode, GLsizei first, GLsizei count, GLenum typ
             GLfloat contribution [] = {0.0f, 0.0f, 0.0f, 0.0f};
             GLfloat to_add [] = {0.0f, 0.0f, 0.0f, 0.0f};
 
-            /* FIXME!!! Transform the position to eye space */
+            /* Transform the vertex and normal into eye-space */
+            eye_P[0] = vertex->x;
+            eye_P[1] = vertex->y;
+            eye_P[2] = vertex->z;
+
+            eye_N[0] = normal[0];
+            eye_N[1] = normal[1];
+            eye_N[2] = normal[2];
+
+            transformToEyeSpace(eye_P);
+            transformNormalToEyeSpace(eye_N);
 
             GLubyte j;
             for(j = 0; j < MAX_LIGHTS; ++j) {
                 if(isLightEnabled(i)) {
-                    calculateLightingContribution(j, &vertex->x, normal, to_add);
+                    calculateLightingContribution(j, eye_P, eye_N, to_add);
 
                     contribution[0] += to_add[0];
                     contribution[1] += to_add[1];
@@ -221,6 +254,9 @@ static void submitVertices(GLenum mode, GLsizei first, GLsizei count, GLenum typ
 
             vertex->argb = PVR_PACK_COLOR(contribution[3], contribution[0], contribution[1], contribution[2]);
         }
+
+        _applyRenderMatrix(); /* Apply the Render Matrix Stack */
+        transformVertex(&vertex->x, &vertex->x, &vertex->y, &vertex->z);
 
         ++dst;
     }

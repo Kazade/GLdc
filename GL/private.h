@@ -72,6 +72,14 @@ void initAttributePointers();
 void initContext();
 void initLights();
 void initImmediateMode();
+void initMatrices();
+
+void _matrixLoadNormal();
+void _matrixLoadModelView();
+void _matrixLoadTexture();
+void _matrixLoadRender();
+void _applyRenderMatrix();
+
 GLubyte checkImmediateModeInactive(const char* func);
 
 pvr_poly_cxt_t* getPVRContext();

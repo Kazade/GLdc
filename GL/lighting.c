@@ -1,3 +1,5 @@
+#include <stdio.h>
+#include <dc/vec3f.h>
 #include "private.h"
 
 static GLfloat SCENE_AMBIENT [] = {0.2, 0.2, 0.2, 1.0};
@@ -107,7 +109,7 @@ void APIENTRY glLightfv(GLenum light, GLenum pname, const GLfloat *params) {
         case GL_POSITION:
             memcpy(LIGHTS[idx].position, params, sizeof(GLfloat) * 4);
         break;
-        case GL_CONSTANT_ATTENUATION:            
+        case GL_CONSTANT_ATTENUATION:
         case GL_LINEAR_ATTENUATION:
         case GL_QUADRATIC_ATTENUATION:
         case GL_SPOT_CUTOFF:
@@ -196,7 +198,69 @@ void APIENTRY glMaterialfv(GLenum face, GLenum pname, const GLfloat *params) {
     }
 }
 
+inline void initVec3(struct vec3f* v, const GLfloat* src) {
+    memcpy(v, src, sizeof(GLfloat) * 3);
+}
+
+/* Fast POW Implementation - Less accurate, but much faster than math.h */
+#define EXP_A 184
+#define EXP_C 16249
+
+static float FEXP(float y) {
+    union {
+        float d;
+        struct {
+            short j, i;
+        } n;
+    } eco;
+    eco.n.i = EXP_A * (y) + (EXP_C);
+    eco.n.j = 0;
+    return eco.d;
+}
+
+static float FLOG(float y) {
+    int *nTemp = (int *)&y;
+    y = (*nTemp) >> 16;
+    return (y - EXP_C) / EXP_A;
+}
+
+static float FPOW(float b, float p) {
+    return FEXP(FLOG(b) * p);
+}
+
 void calculateLightingContribution(const GLint light, const GLfloat* pos, const GLfloat* normal, GLfloat* colour) {
-    colour[0] = colour[3] = 0.0f;
-    colour[1] = colour[2] = 0.0f;
+    LightSource* l = &LIGHTS[light];
+
+    struct vec3f L, N, V;
+
+    L.x = l->position[0] - pos[0];
+    L.y = l->position[1] - pos[1];
+    L.z = l->position[2] - pos[2];
+
+    N.x = normal[0];
+    N.y = normal[1];
+    N.z = normal[2];
+
+    V.x = -pos[0];
+    V.y = -pos[1];
+    V.z = -pos[2];
+
+    vec3f_normalize(L.x, L.y, L.z);
+    vec3f_normalize(V.x, V.y, V.z);
+
+    GLfloat LdotN;
+    vec3f_dot(L.x, L.y, L.z, N.x, N.y, N.z, LdotN);
+
+    GLfloat f = (LdotN < 0) ? 0 : 1;
+
+    GLfloat VdotN;
+    vec3f_dot(V.x, V.y, V.z, N.x, N.y, N.z, VdotN);
+
+    GLfloat VdotR = VdotN - LdotN;
+    GLfloat specularPower = FPOW(VdotR > 0 ? VdotR : 0, MATERIAL.exponent);
+
+    colour[0] = l->ambient[0] * MATERIAL.ambient[0] + f * (l->diffuse[0] * MATERIAL.diffuse[0] * LdotN); // + l->specular[0] * MATERIAL.specular[0] * specularPower);
+    colour[1] = l->ambient[1] * MATERIAL.ambient[1] + f * (l->diffuse[1] * MATERIAL.diffuse[1] * LdotN); // + l->specular[1] * MATERIAL.specular[1] * specularPower);
+    colour[2] = l->ambient[2] * MATERIAL.ambient[2] + f * (l->diffuse[2] * MATERIAL.diffuse[2] * LdotN); // + l->specular[2] * MATERIAL.specular[2] * specularPower);
+    colour[3] = MATERIAL.diffuse[3];
 }

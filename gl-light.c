@@ -362,8 +362,3 @@ void _glKosVertexComputeLighting(pvr_vertex_t *v, int verts) {
     }
 }
 
-void _glKosLightTransformScreenSpace(float *xyz) {
-    _glKosMatrixApplyScreenSpace();
-    mat_trans_single(xyz[0], xyz[1], xyz[2]);
-    _glKosMatrixLoadRender();
-}

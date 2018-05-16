@@ -64,12 +64,12 @@ void APIENTRY glKosInit() {
 
     _initPVR();
 
+    initMatrices();
     initAttributePointers();
     initContext();
     initLights();
     initImmediateMode();
 
-    _glKosInitMatrix();
     _glKosInitTextures();
 
     OP_LIST.list_type = PVR_LIST_OP_POLY;

@@ -56,13 +56,9 @@ __BEGIN_DECLS
 
 /* Matrix modes */
 #define GL_MATRIX_MODE      0x0BA0
-#define GL_SCREENVIEW       0x00
-#define GL_MODELVIEW        0x01
-#define GL_PROJECTION       0x02
-#define GL_TEXTURE          0x03
-#define GL_IDENTITY         0x04
-#define GL_RENDER           0x05
-#define GL_MATRIX_COUNT     0x06
+#define GL_MODELVIEW        0x1700
+#define GL_PROJECTION       0x1701
+#define GL_TEXTURE          0x1702
 
 #define GL_MODELVIEW_MATRIX   0x0BA6
 #define GL_PROJECTION_MATRIX  0x0BA7
