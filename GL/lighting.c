@@ -21,9 +21,6 @@ void initLights() {
     memcpy(MATERIAL.specular, ZERO, sizeof(GLfloat) * 4);
     memcpy(MATERIAL.emissive, ZERO, sizeof(GLfloat) * 4);
     MATERIAL.exponent = 0.0f;
-    MATERIAL.ambient_color_index = 0.0f;
-    MATERIAL.diffuse_color_index = 1.0f;
-    MATERIAL.specular_color_index = 1.0f;
 
     GLubyte i;
     for(i = 0; i < MAX_LIGHTS; ++i) {
@@ -231,36 +228,52 @@ static float FPOW(float b, float p) {
 void calculateLightingContribution(const GLint light, const GLfloat* pos, const GLfloat* normal, GLfloat* colour) {
     LightSource* l = &LIGHTS[light];
 
-    struct vec3f L, N, V;
+    struct vec3f L = {
+        l->position[0] - pos[0],
+        l->position[1] - pos[1],
+        l->position[2] - pos[2]
+    };
 
-    L.x = l->position[0] - pos[0];
-    L.y = l->position[1] - pos[1];
-    L.z = l->position[2] - pos[2];
+    struct vec3f N = {
+        normal[0],
+        normal[1],
+        normal[2]
+    };
 
-    N.x = normal[0];
-    N.y = normal[1];
-    N.z = normal[2];
+    struct vec3f V = {
+        pos[0],
+        pos[1],
+        pos[2]
+    };
 
-    V.x = -pos[0];
-    V.y = -pos[1];
-    V.z = -pos[2];
+    GLfloat d;
+    vec3f_length(V.x, V.y, V.z, d);
 
     vec3f_normalize(L.x, L.y, L.z);
     vec3f_normalize(V.x, V.y, V.z);
 
-    GLfloat LdotN;
-    vec3f_dot(L.x, L.y, L.z, N.x, N.y, N.z, LdotN);
+    GLfloat NdotL;
+    vec3f_dot(N.x, N.y, N.z, L.x, L.y, L.z, NdotL);
 
-    GLfloat f = (LdotN < 0) ? 0 : 1;
+    GLfloat f = (NdotL < 0) ? 0 : 1;
 
     GLfloat VdotN;
     vec3f_dot(V.x, V.y, V.z, N.x, N.y, N.z, VdotN);
 
-    GLfloat VdotR = VdotN - LdotN;
+    GLfloat VdotR = VdotN - NdotL;
     GLfloat specularPower = FPOW(VdotR > 0 ? VdotR : 0, MATERIAL.exponent);
 
-    colour[0] = l->ambient[0] * MATERIAL.ambient[0] + f * (l->diffuse[0] * MATERIAL.diffuse[0] * LdotN + l->specular[0] * MATERIAL.specular[0] * specularPower);
-    colour[1] = l->ambient[1] * MATERIAL.ambient[1] + f * (l->diffuse[1] * MATERIAL.diffuse[1] * LdotN + l->specular[1] * MATERIAL.specular[1] * specularPower);
-    colour[2] = l->ambient[2] * MATERIAL.ambient[2] + f * (l->diffuse[2] * MATERIAL.diffuse[2] * LdotN + l->specular[2] * MATERIAL.specular[2] * specularPower);
+    GLfloat att = (l->position[3] == 0) ? 1.0f : (
+        l->constant_attenuation / (1.0f + l->linear_attenuation * d) * (1.0f + l->quadratic_attenuation * d * d)
+    );
+
+    colour[0] = att * l->ambient[0] * MATERIAL.ambient[0] + f * (l->diffuse[0] * MATERIAL.diffuse[0] * NdotL + l->specular[0] * MATERIAL.specular[0] * specularPower);
+    colour[1] = att * l->ambient[1] * MATERIAL.ambient[1] + f * (l->diffuse[1] * MATERIAL.diffuse[1] * NdotL + l->specular[1] * MATERIAL.specular[1] * specularPower);
+    colour[2] = att * l->ambient[2] * MATERIAL.ambient[2] + f * (l->diffuse[2] * MATERIAL.diffuse[2] * NdotL + l->specular[2] * MATERIAL.specular[2] * specularPower);
     colour[3] = MATERIAL.diffuse[3];
+
+    if(colour[0] > 1.0f) colour[0] = 1.0f;
+    if(colour[1] > 1.0f) colour[1] = 1.0f;
+    if(colour[2] > 1.0f) colour[2] = 1.0f;
+    if(colour[3] > 1.0f) colour[3] = 1.0f;
 }

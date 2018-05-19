@@ -85,8 +85,8 @@ static void transpose(GLfloat* m) {
 
 static void recalculateNormalMatrix() {
     memcpy(NORMAL_MATRIX, stack_top(MATRIX_STACKS + (GL_MODELVIEW & 0xF)), sizeof(matrix_t));
-    transpose((GLfloat*) NORMAL_MATRIX);
     inverse((GLfloat*) NORMAL_MATRIX);
+    transpose((GLfloat*) NORMAL_MATRIX);
 }
 
 void APIENTRY glMatrixMode(GLenum mode) {
@@ -271,6 +271,10 @@ void glMultTransposeMatrixf(const GLfloat *m) {
     mat_load(stack_top(MATRIX_STACKS + MATRIX_IDX));
     mat_apply(&ml);
     mat_store(stack_top(MATRIX_STACKS + MATRIX_IDX));
+
+    if(MATRIX_MODE == GL_MODELVIEW) {
+        recalculateNormalMatrix();
+    }
 }
 
 /* Set the GL viewport */

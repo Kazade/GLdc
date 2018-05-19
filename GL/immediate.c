@@ -89,6 +89,14 @@ void APIENTRY glVertex3fv(const GLfloat* v) {
     glVertex3f(v[0], v[1], v[2]);
 }
 
+void APIENTRY glVertex2f(GLfloat x, GLfloat y) {
+    glVertex3f(x, y, 0.0f);
+}
+
+void APIENTRY glVertex2fv(const GLfloat* v) {
+    glVertex2f(v[0], v[1]);
+}
+
 void APIENTRY glVertex4f(GLfloat x, GLfloat y, GLfloat z, GLfloat w) {
     glVertex3f(x, y, z);
 }

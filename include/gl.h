@@ -436,10 +436,6 @@ GLAPI void APIENTRY glVertex2f(GLfloat x, GLfloat y);
 GLAPI void APIENTRY glVertex2fv(const GLfloat *xy);
 #define glVertex2iv glVertex2fv
 
-/* Non-Standard KOS Primitive 2D Submission.  This will perform no tranformations on the vertices. */
-GLAPI void APIENTRY glKosVertex2f(GLfloat x, GLfloat y);
-GLAPI void APIENTRY glKosVertex2fv(const GLfloat *xy);
-
 /* Primitive 3D Position Submission */
 GLAPI void APIENTRY glVertex3f(GLfloat, GLfloat, GLfloat);
 GLAPI void APIENTRY glVertex3fv(const GLfloat *);

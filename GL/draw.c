@@ -35,6 +35,26 @@ void initAttributePointers() {
     VERTEX_POINTER.stride = 0;
     VERTEX_POINTER.type = GL_FLOAT;
     VERTEX_POINTER.size = 4;
+
+    DIFFUSE_POINTER.ptr = NULL;
+    DIFFUSE_POINTER.stride = 0;
+    DIFFUSE_POINTER.type = GL_FLOAT;
+    DIFFUSE_POINTER.size = 4;
+
+    UV_POINTER.ptr = NULL;
+    UV_POINTER.stride = 0;
+    UV_POINTER.type = GL_FLOAT;
+    UV_POINTER.size = 4;
+
+    ST_POINTER.ptr = NULL;
+    ST_POINTER.stride = 0;
+    ST_POINTER.type = GL_FLOAT;
+    ST_POINTER.size = 4;
+
+    NORMAL_POINTER.ptr = NULL;
+    NORMAL_POINTER.stride = 0;
+    NORMAL_POINTER.type = GL_FLOAT;
+    NORMAL_POINTER.size = 3;
 }
 
 static GLuint byte_size(GLenum type) {
@@ -46,6 +66,7 @@ static GLuint byte_size(GLenum type) {
     case GL_INT: return sizeof(GLint);
     case GL_UNSIGNED_INT: return sizeof(GLuint);
     case GL_DOUBLE: return sizeof(GLdouble);
+    case GL_FLOAT:
     default: return sizeof(GLfloat);
     }
 }
@@ -90,7 +111,7 @@ static void _parseColour(uint32* out, const GLubyte* in, GLint size, GLenum type
 }
 
 static void _parseFloats(GLfloat* out, const GLubyte* in, GLint size, GLenum type) {
-    GLubyte i = 0;
+    GLubyte i;
 
     switch(type) {
     case GL_SHORT: {
@@ -107,8 +128,10 @@ static void _parseFloats(GLfloat* out, const GLubyte* in, GLint size, GLenum typ
     } break;
     case GL_FLOAT:
     case GL_DOUBLE:  /* Double == Float */
-    default:
-        for(i = 0; i < size; ++i) out[i] = ((GLfloat*) in)[i];
+        default: {
+            const GLfloat* ptr = (const GLfloat*) in;
+            for(i = 0; i < size; ++i) out[i] = ptr[i];
+        }
     }
 }
 
@@ -123,26 +146,51 @@ static void _parseIndex(GLshort* out, const GLubyte* in, GLenum type) {
     }
 }
 
-/*
-inline void mat_trans_float3_nodiv(const GLfloat* mat, GLfloat* v) {
-    GLfloat x = v[0] * mat[0] + v[1] * mat[4] + v[2] * mat[8] + mat[12];
-    GLfloat y = v[0] * mat[1] + v[1] * mat[5] + v[2] * mat[9] + mat[13];
-    GLfloat z = v[0] * mat[2] + v[1] * mat[6] + v[2] * mat[10] + mat[14];
 
-    v[0] = x;
-    v[1] = y;
-    v[2] = z;
-} */
+/* There was a bug in this macro that shipped with Kos
+ * which has now been fixed. But just in case...
+ */
+#undef mat_trans_single3_nodiv
+#define mat_trans_single3_nodiv(x, y, z) { \
+    register float __x __asm__("fr12") = (x); \
+    register float __y __asm__("fr13") = (y); \
+    register float __z __asm__("fr14") = (z); \
+    __asm__ __volatile__( \
+                          "fldi1 fr15\n" \
+                          "ftrv  xmtrx, fv12\n" \
+                          : "=f" (__x), "=f" (__y), "=f" (__z) \
+                          : "0" (__x), "1" (__y), "2" (__z) \
+                          : "fr15"); \
+    x = __x; y = __y; z = __z; \
+}
 
-void transformToEyeSpace(GLfloat* point) {
+#undef mat_trans_normal3
+#define mat_trans_normal3(x, y, z) { \
+    register float __x __asm__("fr8") = (x); \
+    register float __y __asm__("fr9") = (y); \
+    register float __z __asm__("fr10") = (z); \
+    __asm__ __volatile__( \
+                          "fldi0 fr11\n" \
+                          "ftrv  xmtrx, fv8\n" \
+                          : "=f" (__x), "=f" (__y), "=f" (__z) \
+                          : "0" (__x), "1" (__y), "2" (__z) \
+                          : "fr11"); \
+    x = __x; y = __y; z = __z; \
+}
+
+
+
+inline void transformToEyeSpace(GLfloat* point) {
     _matrixLoadModelView();
     mat_trans_single3_nodiv(point[0], point[1], point[2]);
 }
 
-void transformNormalToEyeSpace(GLfloat* normal) {
+
+inline void transformNormalToEyeSpace(GLfloat* normal) {
     _matrixLoadNormal();
     mat_trans_normal3(normal[0], normal[1], normal[2]);
 }
+
 
 static void submitVertices(GLenum mode, GLsizei first, GLsizei count, GLenum type, const GLvoid* indices) {
     static GLfloat normal[3] = {0.0f, 0.0f, -1.0f};
@@ -242,7 +290,7 @@ static void submitVertices(GLenum mode, GLsizei first, GLsizei count, GLenum typ
 
             GLubyte j;
             for(j = 0; j < MAX_LIGHTS; ++j) {
-                if(isLightEnabled(i)) {
+                if(isLightEnabled(j)) {
                     calculateLightingContribution(j, eye_P, eye_N, to_add);
 
                     contribution[0] += to_add[0];

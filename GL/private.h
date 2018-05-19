@@ -42,27 +42,24 @@ typedef struct {
 } TextureObject;
 
 typedef struct {
+    GLfloat emissive[4];
     GLfloat ambient[4];
     GLfloat diffuse[4];
-    GLfloat specular[4];
-    GLfloat emissive[4];
+    GLfloat specular[4];    
     GLfloat exponent;
-    GLfloat ambient_color_index;
-    GLfloat diffuse_color_index;
-    GLfloat specular_color_index;
 } Material;
 
 typedef struct {
-    GLfloat ambient[4];
-    GLfloat diffuse[4];
-    GLfloat specular[4];
     GLfloat position[4];
     GLfloat spot_direction[3];
-    GLfloat spot_exponent;
     GLfloat spot_cutoff;
     GLfloat constant_attenuation;
     GLfloat linear_attenuation;
     GLfloat quadratic_attenuation;
+    GLfloat spot_exponent;
+    GLfloat diffuse[4];
+    GLfloat specular[4];
+    GLfloat ambient[4];
 } LightSource;
 
 

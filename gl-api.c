@@ -251,14 +251,6 @@ void APIENTRY glColor4ub(GLubyte r, GLubyte  g, GLubyte b, GLubyte a) {
 
 //== Vertex Position Submission Functions ==//
 
-void APIENTRY glVertex2f(GLfloat x, GLfloat y) {
-    return _glKosVertex3ft(x, y, 0.0f);
-}
-
-void APIENTRY glVertex2fv(const GLfloat *xy) {
-    return _glKosVertex3ft(xy[0], xy[1], 0.0f);
-}
-
 void APIENTRY glRectf(GLfloat x1, GLfloat y1, GLfloat x2, GLfloat y2) {
     pvr_vertex_t *v = _glKosVertexBufPointer();
 
@@ -287,36 +279,6 @@ void APIENTRY glRecti(GLint x1, GLint y1, GLint x2, GLint y2) {
 
 void APIENTRY glRectiv(const GLint *v1, const GLint *v2) {
     return glRectfv((const GLfloat *)v1, (const GLfloat *)v2);
-}
-
-void APIENTRY glKosVertex2f(GLfloat x, GLfloat y) {
-    pvr_vertex_t *v = _glKosVertexBufPointer();
-
-    v->x = x;
-    v->y = y;
-    v->z = 10;
-    v->u = GL_KOS_VERTEX_UV[0];
-    v->v = GL_KOS_VERTEX_UV[1];
-    v->argb  = GL_KOS_VERTEX_COLOR;
-
-    _glKosVertexBufIncrement();
-
-    ++GL_KOS_VERTEX_COUNT;
-}
-
-void APIENTRY glKosVertex2fv(const GLfloat *xy) {
-    pvr_vertex_t *v = _glKosVertexBufPointer();
-
-    v->x = xy[0];
-    v->y = xy[1];
-    v->z = 10;
-    v->u = GL_KOS_VERTEX_UV[0];
-    v->v = GL_KOS_VERTEX_UV[1];
-    v->argb  = GL_KOS_VERTEX_COLOR;
-
-    _glKosVertexBufIncrement();
-
-    ++GL_KOS_VERTEX_COUNT;
 }
 
 //====================================================================================================//
