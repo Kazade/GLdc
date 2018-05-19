@@ -225,6 +225,7 @@ static float FPOW(float b, float p) {
     return FEXP(FLOG(b) * p);
 }
 
+void calculateLightingContribution(const GLint light, const GLfloat* pos, const GLfloat* normal, GLfloat* colour) __attribute__((optimize("fast-math")));
 void calculateLightingContribution(const GLint light, const GLfloat* pos, const GLfloat* normal, GLfloat* colour) {
     LightSource* l = &LIGHTS[light];
 

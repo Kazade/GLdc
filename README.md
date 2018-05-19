@@ -12,10 +12,13 @@ features via extensions.
 
 Things left to (re)implement:
 
- - Fog
- - Near-Z clipping
- - Spotlights and point lights
- - Framebuffer extension
+ - Fog (Trivial)
+ - Near-Z clipping (Tricky)
+ - Spotlights (Trivial)
+ - Framebuffer extension (Trivial)
+ - Multitexturing (Trivial)
+ - Texture Matrix (Trivial)
+ - Mipmapping (Trivial)
  
 Things I'd like to do:
 
