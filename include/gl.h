@@ -642,14 +642,6 @@ GLAPI const GLbyte* APIENTRY glGetString(GLenum name);
 GLAPI void APIENTRY glActiveTextureARB(GLenum texture);
 GLAPI void APIENTRY glClientActiveTextureARB(GLenum texture);
 
-/* Frame Buffer Objects / Render-To-Texture Functions */
-GLAPI void APIENTRY glGenFramebuffers(GLsizei n, GLuint *framebuffers);
-GLAPI void APIENTRY glDeleteFramebuffers(GLsizei n, GLuint *framebuffers);
-GLAPI void APIENTRY glBindFramebuffer(GLenum target, GLuint framebuffer);
-GLAPI void APIENTRY glFramebufferTexture2D(GLenum target, GLenum attachment,
-        GLenum textarget, GLuint texture, GLint level);
-GLAPI GLenum APIENTRY glCheckFramebufferStatus(GLenum target);
-
 /* Error handling */
 GLAPI GLenum APIENTRY glGetError(void);
 

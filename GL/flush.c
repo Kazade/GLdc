@@ -4,7 +4,6 @@
 
 #include "../containers/aligned_vector.h"
 #include "private.h"
-#include "../gl-api.h"
 
 #define TA_SQ_ADDR (unsigned int *)(void *) \
     (0xe0000000 | (((unsigned long)0x10000000) & 0x03ffffe0))

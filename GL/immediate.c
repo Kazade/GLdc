@@ -60,6 +60,15 @@ void APIENTRY glColor4f(GLfloat r, GLfloat g, GLfloat b, GLfloat a) {
     COLOR[3] = a;
 }
 
+void APIENTRY glColor4ub(GLubyte r, GLubyte  g, GLubyte b, GLubyte a) {
+    glColor4f(
+        ((GLfloat) r) / 255.0f,
+        ((GLfloat) g) / 255.0f,
+        ((GLfloat) b) / 255.0f,
+        ((GLfloat) a) / 255.0f
+    );
+}
+
 void APIENTRY glColor4fv(const GLfloat* v) {
     glColor4f(v[0], v[1], v[2], v[3]);
 }
@@ -144,4 +153,30 @@ void APIENTRY glEnd() {
     aligned_vector_clear(&NORMALS);
 
     /* FIXME: Pop pointers */
+}
+
+void APIENTRY glRectf(GLfloat x1, GLfloat y1, GLfloat x2, GLfloat y2) {
+    glBegin(GL_QUADS);
+        glVertex2f(x1, y1);
+        glVertex2f(x2, y1);
+        glVertex2f(x2, y2);
+        glVertex2f(x1, y2);
+    glEnd();
+}
+
+void APIENTRY glRectfv(const GLfloat *v1, const GLfloat *v2) {
+    glBegin(GL_QUADS);
+        glVertex2f(v1[0], v1[1]);
+        glVertex2f(v2[0], v1[1]);
+        glVertex2f(v2[0], v2[1]);
+        glVertex2f(v1[0], v2[1]);
+    glEnd();
+}
+
+void APIENTRY glRecti(GLint x1, GLint y1, GLint x2, GLint y2) {
+    return glRectf((GLfloat)x1, (GLfloat)y1, (GLfloat)x2, (GLfloat)y2);
+}
+
+void APIENTRY glRectiv(const GLint *v1, const GLint *v2) {
+    return glRectfv((const GLfloat *)v1, (const GLfloat *)v2);
 }

@@ -3,7 +3,6 @@
 #include "../include/gl.h"
 #include "../include/glext.h"
 #include "private.h"
-#include "../gl-api.h"
 
 typedef struct {
     const void* ptr;

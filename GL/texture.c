@@ -454,7 +454,8 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
         _glKosThrowError(GL_INVALID_VALUE, "glTexImage2D");
     }
 
-    if(level < 0) {
+    /* FIXME: Mipmaps! */
+    if(level < 0 || level > 0) {
         _glKosThrowError(GL_INVALID_VALUE, "glTexImage2D");
     }
 
@@ -486,9 +487,9 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
             pvr_mem_free(active->data);
             active->data = NULL;
         }
-    }
+    }    
 
-    GLuint bytes = level ? glKosMipMapTexSize(width, height) : (width * height * 2);
+    GLuint bytes = (width * height * sizeof(GLushort));
 
     if(!active->data) {
         /* need texture memory */

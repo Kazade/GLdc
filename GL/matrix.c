@@ -2,7 +2,8 @@
 
 #include "../include/gl.h"
 #include "../containers/stack.h"
-#include "../gl-sh4.h"
+
+#define DEG2RAD (0.01745329251994329576923690768489)
 
 /* Viewport mapping */
 static GLfloat gl_viewport_scale[3], gl_viewport_offset[3];
@@ -320,26 +321,28 @@ void APIENTRY glDepthRange(GLclampf n, GLclampf f) {
 }
 
 /* Vector Cross Product - Used by glhLookAtf2 */
-static inline void vec3f_cross(vector3f v1, vector3f v2, vector3f result) {
+static inline void vec3f_cross(const GLfloat* v1, const GLfloat* v2, GLfloat* result) {
     result[0] = v1[1] * v2[2] - v1[2] * v2[1];
     result[1] = v1[2] * v2[0] - v1[0] * v2[2];
     result[2] = v1[0] * v2[1] - v1[1] * v2[0];
 }
 
 /* glhLookAtf2 adapted from http://www.opengl.org/wiki/GluLookAt_code */
-void glhLookAtf2(vector3f eyePosition3D,
-                 vector3f center3D,
-                 vector3f upVector3D) {
+void glhLookAtf2(const GLfloat* eyePosition3D,
+                 const GLfloat* center3D,
+                 const GLfloat* upVector3D) {
 
     /* Look-At Matrix */
-    static matrix4f MatrixLookAt __attribute__((aligned(32))) = {
+    static matrix_t MatrixLookAt __attribute__((aligned(32))) = {
         { 1.0f, 0.0f, 0.0f, 0.0f },
         { 0.0f, 1.0f, 0.0f, 0.0f },
         { 0.0f, 0.0f, 1.0f, 0.0f },
         { 0.0f, 0.0f, 0.0f, 1.0f }
     };
 
-    vector3f forward, side, up;
+    GLfloat forward[3];
+    GLfloat side[3];
+    GLfloat up[3];
 
     vec3f_sub_normalize(center3D[0], center3D[1], center3D[2],
                         eyePosition3D[0], eyePosition3D[1], eyePosition3D[2],
@@ -383,9 +386,9 @@ void glhLookAtf2(vector3f eyePosition3D,
 void gluLookAt(GLfloat eyex, GLfloat eyey, GLfloat eyez, GLfloat centerx,
                GLfloat centery, GLfloat centerz, GLfloat upx, GLfloat upy,
                GLfloat upz) {
-    vector3f eye = { eyex, eyey, eyez };
-    vector3f point = { centerx, centery, centerz };
-    vector3f up = { upx, upy, upz };
+    GLfloat eye [] = { eyex, eyey, eyez };
+    GLfloat point [] = { centerx, centery, centerz };
+    GLfloat up [] = { upx, upy, upz };
     glhLookAtf2(eye, point, up);
 }
 

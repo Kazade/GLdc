@@ -9,7 +9,6 @@
 */
 
 #include "gl.h"
-#include "gl-api.h"
 
 #include <stdio.h>
 

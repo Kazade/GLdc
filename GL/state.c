@@ -6,7 +6,6 @@
 #include <dc/video.h>
 
 #include "../include/gl.h"
-#include "../gl-api.h"
 #include "private.h"
 
 static pvr_poly_cxt_t GL_CONTEXT;
@@ -310,9 +309,11 @@ GLAPI void APIENTRY glDepthFunc(GLenum func) {
 
 /* Hints */
 /* Currently Supported Capabilities:
-      GL_PERSPECTIVE_CORRECTION_HINT - This will Enable Texture Super-Sampling on the PVR */
+      GL_PERSPECTIVE_CORRECTION_HINT - This will Enable  on the PVR */
 GLAPI void APIENTRY glHint(GLenum target, GLenum mode) {
-
+    if(target == GL_PERSPECTIVE_CORRECTION_HINT && mode == GL_NICEST) {
+        // FIXME: enable supersampling
+    }
 }
 
 /* Culling */

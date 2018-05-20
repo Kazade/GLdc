@@ -2,7 +2,6 @@
 #define PRIVATE_H
 
 #include "../include/gl.h"
-#include "../gl-api.h"
 #include "../containers/aligned_vector.h"
 #include "../containers/named_array.h"
 
@@ -90,6 +89,10 @@ GLboolean isBlendingEnabled();
 GLboolean isLightingEnabled();
 GLboolean isLightEnabled(GLubyte light);
 void calculateLightingContribution(const GLint light, const GLfloat* pos, const GLfloat* normal, GLfloat* colour);
+
+void _glKosThrowError(GLenum error, const char *function);
+void _glKosPrintError();
+GLubyte _glKosHasError();
 
 #define PVR_VERTEX_BUF_SIZE 2560 * 256
 #define MAX_TEXTURE_UNITS 2
