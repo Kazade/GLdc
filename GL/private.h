@@ -77,6 +77,7 @@ void _matrixLoadTexture();
 void _matrixLoadRender();
 void _applyRenderMatrix();
 
+void wipeTextureOnFramebuffers(GLuint texture);
 GLubyte checkImmediateModeInactive(const char* func);
 
 pvr_poly_cxt_t* getPVRContext();

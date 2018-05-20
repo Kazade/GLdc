@@ -62,6 +62,10 @@ void APIENTRY glActiveTextureARB(GLenum texture) {
     ACTIVE_TEXTURE = texture & 0xF;
 }
 
+GLboolean APIENTRY glIsTexture(GLuint texture) {
+    return (named_array_used(&TEXTURE_OBJECTS, texture)) ? GL_TRUE : GL_FALSE;
+}
+
 void APIENTRY glGenTextures(GLsizei n, GLuint *textures) {
     TRACE();
 
@@ -87,6 +91,9 @@ void APIENTRY glDeleteTextures(GLsizei n, GLuint *textures) {
 
     while(n--) {
         TextureObject* txr = (TextureObject*) named_array_get(&TEXTURE_OBJECTS, *textures);
+
+        /* Make sure we update framebuffer objects that have this texture attached */
+        wipeTextureOnFramebuffers(*textures);
 
         if(txr == TEXTURE_UNITS[ACTIVE_TEXTURE]) {
             TEXTURE_UNITS[ACTIVE_TEXTURE] = NULL;

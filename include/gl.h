@@ -495,6 +495,7 @@ GLAPI void APIENTRY glTexParameteri(GLenum target, GLenum pname, GLint param);
 GLAPI void APIENTRY glTexEnvi(GLenum target, GLenum pname, GLint param);
 GLAPI void APIENTRY glTexEnvf(GLenum target, GLenum pname, GLfloat param);
 
+GLAPI GLboolean APIENTRY glIsTexture(GLuint texture);
 GLAPI void APIENTRY glGenTextures(GLsizei n, GLuint *textures);
 GLAPI void APIENTRY glDeleteTextures(GLsizei n, GLuint *textures);
 GLAPI void APIENTRY glBindTexture(GLenum  target, GLuint texture);
