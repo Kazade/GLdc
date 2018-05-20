@@ -169,9 +169,6 @@ void initContext() {
     GL_CONTEXT.list_type = PVR_LIST_OP_POLY;
     GL_CONTEXT.fmt.color = PVR_CLRFMT_ARGBPACKED;
     GL_CONTEXT.fmt.uv = PVR_UVFMT_32BIT;
-    GL_CONTEXT.gen.fog_type = PVR_FOG_DISABLE;
-    GL_CONTEXT.gen.color_clamp = PVR_CLRCLAMP_DISABLE;
-    GL_CONTEXT.gen.fog_type = PVR_FOG_DISABLE;
     GL_CONTEXT.gen.color_clamp = PVR_CLRCLAMP_DISABLE;
 
     glDepthFunc(GL_LESS);
@@ -186,8 +183,9 @@ void initContext() {
     glDisable(GL_BLEND);
     glDisable(GL_DEPTH_TEST);
     glDisable(GL_TEXTURE_2D);
-
+    glDisable(GL_FOG);
     glDisable(GL_LIGHTING);
+
     GLubyte i;
     for(i = 0; i < MAX_LIGHTS; ++i) {
         glDisable(GL_LIGHT0 + i);
@@ -217,6 +215,9 @@ GLAPI void APIENTRY glEnable(GLenum cap) {
         case GL_LIGHTING: {
             LIGHTING_ENABLED = GL_TRUE;
         } break;
+        case GL_FOG:
+            GL_CONTEXT.gen.fog_type = PVR_FOG_TABLE;
+        break;
         case GL_LIGHT0:
         case GL_LIGHT1:
         case GL_LIGHT2:
@@ -255,6 +256,9 @@ GLAPI void APIENTRY glDisable(GLenum cap) {
         case GL_LIGHTING: {
             LIGHTING_ENABLED = GL_FALSE;
         } break;
+        case GL_FOG:
+            GL_CONTEXT.gen.fog_type = PVR_FOG_DISABLE;
+        break;
         case GL_LIGHT0:
         case GL_LIGHT1:
         case GL_LIGHT2:
