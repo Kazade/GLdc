@@ -69,6 +69,7 @@ void initContext();
 void initLights();
 void initImmediateMode();
 void initMatrices();
+void initFramebuffers();
 
 void _matrixLoadNormal();
 void _matrixLoadModelView();

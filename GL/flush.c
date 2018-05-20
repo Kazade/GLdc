@@ -68,6 +68,7 @@ void APIENTRY glKosInit() {
     initContext();
     initLights();
     initImmediateMode();
+    initFramebuffers();
 
     _glKosInitTextures();
 
