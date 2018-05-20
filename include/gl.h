@@ -56,13 +56,9 @@ __BEGIN_DECLS
 
 /* Matrix modes */
 #define GL_MATRIX_MODE      0x0BA0
-#define GL_SCREENVIEW       0x00
-#define GL_MODELVIEW        0x01
-#define GL_PROJECTION       0x02
-#define GL_TEXTURE          0x03
-#define GL_IDENTITY         0x04
-#define GL_RENDER           0x05
-#define GL_MATRIX_COUNT     0x06
+#define GL_MODELVIEW        0x1700
+#define GL_PROJECTION       0x1701
+#define GL_TEXTURE          0x1702
 
 #define GL_MODELVIEW_MATRIX   0x0BA6
 #define GL_PROJECTION_MATRIX  0x0BA7
@@ -234,6 +230,11 @@ __BEGIN_DECLS
 #define GL_LIGHT13                        0x400D
 #define GL_LIGHT14                        0x400E
 #define GL_LIGHT15                        0x400F
+
+/* EXT_separate_specular_color.txt */
+#define GL_LIGHT_MODEL_COLOR_CONTROL      0x81F8
+#define GL_SINGLE_COLOR                   0x81F9
+#define GL_SEPARATE_SPECULAR_COLOR		  0x81FA
 
 /* Client state caps */
 #define GL_VERTEX_ARRAY                   0x8074
@@ -435,13 +436,9 @@ GLAPI void APIENTRY glVertex2f(GLfloat x, GLfloat y);
 GLAPI void APIENTRY glVertex2fv(const GLfloat *xy);
 #define glVertex2iv glVertex2fv
 
-/* Non-Standard KOS Primitive 2D Submission.  This will perform no tranformations on the vertices. */
-GLAPI void APIENTRY glKosVertex2f(GLfloat x, GLfloat y);
-GLAPI void APIENTRY glKosVertex2fv(const GLfloat *xy);
-
 /* Primitive 3D Position Submission */
-GLAPI void APIENTRY(*glVertex3f)(GLfloat, GLfloat, GLfloat);
-GLAPI void APIENTRY(*glVertex3fv)(const GLfloat *);
+GLAPI void APIENTRY glVertex3f(GLfloat, GLfloat, GLfloat);
+GLAPI void APIENTRY glVertex3fv(const GLfloat *);
 
 /* 2D Non-Textured Rectangle Submission */
 GLAPI GLvoid APIENTRY glRectf(GLfloat x1, GLfloat y1, GLfloat x2, GLfloat y2);
@@ -473,8 +470,8 @@ GLAPI void APIENTRY glClear(GLuint mode);
 GLAPI void APIENTRY glClearColor(GLfloat r, GLfloat g, GLfloat b, GLfloat a);
 
 /* Depth Testing */
+GLAPI void APIENTRY glClearDepth(GLfloat depth);
 GLAPI void APIENTRY glClearDepthf(GLfloat depth);
-#define glClearDepth glClearDepthf
 GLAPI void APIENTRY glDepthMask(GLboolean flag);
 GLAPI void APIENTRY glDepthFunc(GLenum func);
 
@@ -620,7 +617,12 @@ GLAPI void APIENTRY glFogfv(GLenum pname, const GLfloat *params);
 /* Set Individual Light Parameters */
 GLAPI void APIENTRY glLightfv(GLenum light, GLenum pname, const GLfloat *params);
 GLAPI void APIENTRY glLightf(GLenum light, GLenum pname, GLfloat param);
+
+GLAPI void APIENTRY glLightModelf(GLenum pname, const GLfloat param);
+GLAPI void APIENTRY glLightModeli(GLenum pname, const GLint param);
 GLAPI void APIENTRY glLightModelfv(GLenum pname, const GLfloat *params);
+GLAPI void APIENTRY glLightModeliv(GLenum pname, const GLint *params);
+
 
 /* Set Global Material Parameters */
 GLAPI void APIENTRY glMateriali(GLenum face, GLenum pname, const GLint param);
@@ -639,14 +641,6 @@ GLAPI const GLbyte* APIENTRY glGetString(GLenum name);
 /* Multi-Texture Extensions - Currently not supported in immediate mode */
 GLAPI void APIENTRY glActiveTextureARB(GLenum texture);
 GLAPI void APIENTRY glClientActiveTextureARB(GLenum texture);
-
-/* Frame Buffer Objects / Render-To-Texture Functions */
-GLAPI void APIENTRY glGenFramebuffers(GLsizei n, GLuint *framebuffers);
-GLAPI void APIENTRY glDeleteFramebuffers(GLsizei n, GLuint *framebuffers);
-GLAPI void APIENTRY glBindFramebuffer(GLenum target, GLuint framebuffer);
-GLAPI void APIENTRY glFramebufferTexture2D(GLenum target, GLenum attachment,
-        GLenum textarget, GLuint texture, GLint level);
-GLAPI GLenum APIENTRY glCheckFramebufferStatus(GLenum target);
 
 /* Error handling */
 GLAPI GLenum APIENTRY glGetError(void);

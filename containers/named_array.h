@@ -43,8 +43,9 @@ inline char named_array_used(NamedArray* array, unsigned int id) {
 }
 
 inline void* named_array_alloc(NamedArray* array, unsigned int* new_id) {
-    for(unsigned int i = 0; i < array->marker_count; ++i) {
-        for(unsigned int j = 0; j < 8; ++j) {
+    unsigned int i = 0, j = 0;
+    for(i = 0; i < array->marker_count; ++i) {
+        for(j = 0; j < 8; ++j) {
             unsigned int id = (i * 8) + j + 1;
             if(!named_array_used(array, id)) {
                 array->used_markers[i] |= (unsigned char) 1 << j;

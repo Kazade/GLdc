@@ -1,101 +1,73 @@
-/* KallistiGL for KallistiOS ##version##
-
-   libgl/gl-texture.c
-   Copyright (C) 2014 Josh Pearson
-   Copyright (C) 2016 Joe Fenton
-
-   Open GL Texture Submission implementation.
-*/
-
-#include <malloc.h>
+#include "private.h"
+#include "../include/glext.h"
 #include <stdio.h>
-#include <stdlib.h>
 
-#include "gl.h"
-#include "glext.h"
-#include "gl-api.h"
-#include "gl-rgb.h"
-#include "containers/named_array.h"
+#define CLAMP_U (1<<1)
+#define CLAMP_V (1<<0)
 
-//========================================================================================//
-//== Internal KOS Open GL Texture Unit Structures / Global Variables ==//
-
-#define GL_KOS_MAX_TEXTURE_UNITS 2
-#define GL_KOS_CLAMP_U (1<<1)
-#define GL_KOS_CLAMP_V (1<<0)
-
-
-static GL_TEXTURE_OBJECT *GL_KOS_TEXTURE_UNIT[GL_KOS_MAX_TEXTURE_UNITS] = { NULL, NULL };
+static TextureObject* TEXTURE_UNITS[MAX_TEXTURE_UNITS] = {NULL, NULL};
 static NamedArray TEXTURE_OBJECTS;
-
-static GLubyte GL_KOS_ACTIVE_TEXTURE = GL_TEXTURE0_ARB & 0xF;
-
-//========================================================================================//
+static GLubyte ACTIVE_TEXTURE = 0;
 
 static GLuint _determinePVRFormat(GLint internalFormat, GLenum type);
 
 GLubyte _glKosInitTextures() {
-    named_array_init(&TEXTURE_OBJECTS, sizeof(GL_TEXTURE_OBJECT), 256);
+    named_array_init(&TEXTURE_OBJECTS, sizeof(TextureObject), 256);
     return 1;
 }
 
-static void _glKosBindTexture(GLuint index) {
-    GL_KOS_TEXTURE_UNIT[GL_KOS_ACTIVE_TEXTURE] = (GL_TEXTURE_OBJECT*) named_array_get(&TEXTURE_OBJECTS, index);
+TextureObject* getTexture0() {
+    return TEXTURE_UNITS[0];
 }
 
-static void _glKosUnbindTexture() {
-    GL_KOS_TEXTURE_UNIT[GL_KOS_ACTIVE_TEXTURE] = NULL;
+TextureObject* getTexture1() {
+    return TEXTURE_UNITS[1];
 }
 
-GLuint _glKosTextureWidth(GLuint index) {
-    GL_TEXTURE_OBJECT *tex = (GL_TEXTURE_OBJECT*) named_array_get(&TEXTURE_OBJECTS, index);
-    return tex->width;
+TextureObject* getBoundTexture() {
+    return TEXTURE_UNITS[ACTIVE_TEXTURE];
 }
 
-GLuint _glKosTextureHeight(GLuint index) {
-    GL_TEXTURE_OBJECT *tex = (GL_TEXTURE_OBJECT*) named_array_get(&TEXTURE_OBJECTS, index);
-    return tex->height;
+GLubyte check_valid_enum(GLint param, GLenum* values, const char* func) {
+    GLubyte found = 0;
+    while(*values != 0) {
+        if(*values == param) {
+            found++;
+            break;
+        }
+        values++;
+    }
+
+    if(!found) {
+        _glKosThrowError(GL_INVALID_ENUM, func);
+        _glKosPrintError();
+        return 1;
+    }
+
+    return 0;
 }
 
-GLvoid *_glKosTextureData(GLuint index) {
-    GL_TEXTURE_OBJECT *tex = (GL_TEXTURE_OBJECT*) named_array_get(&TEXTURE_OBJECTS, index);
-    return tex->data;
-}
 
-void _glKosCompileHdrTx() {
-    return GL_KOS_TEXTURE_UNIT[GL_TEXTURE0_ARB & 0xF] ?
-           _glKosCompileHdrT(GL_KOS_TEXTURE_UNIT[GL_TEXTURE0_ARB & 0xF]) : _glKosCompileHdr();
-}
+void APIENTRY glActiveTextureARB(GLenum texture) {
+    TRACE();
 
-GL_TEXTURE_OBJECT *_glKosBoundMultiTexObject() {
-    return GL_KOS_TEXTURE_UNIT[GL_TEXTURE1_ARB & 0xF];
-}
+    if(texture < GL_TEXTURE0_ARB || texture > GL_TEXTURE0_ARB + MAX_TEXTURE_UNITS)
+        _glKosThrowError(GL_INVALID_ENUM, "glActiveTextureARB");
 
-GLuint _glKosBoundMultiTexID() {
-    return GL_KOS_TEXTURE_UNIT[GL_TEXTURE1_ARB & 0xF] ?
-           GL_KOS_TEXTURE_UNIT[GL_TEXTURE1_ARB & 0xF]->index : 0;
-}
+    if(_glKosHasError()) {
+        _glKosPrintError();
+        return;
+    }
 
-GLuint _glKosBoundTexID() {
-    return GL_KOS_TEXTURE_UNIT[GL_TEXTURE0_ARB & 0xF] ?
-           GL_KOS_TEXTURE_UNIT[GL_TEXTURE0_ARB & 0xF]->index : 0;
+    ACTIVE_TEXTURE = texture & 0xF;
 }
-
-GLuint _glKosActiveTextureBoundTexID() {
-    return (GL_KOS_ACTIVE_TEXTURE) ? _glKosBoundMultiTexID() : _glKosBoundTexID();
-}
-
-GLubyte _glKosMaxTextureUnits() {
-    return GL_KOS_MAX_TEXTURE_UNITS;
-}
-
-//========================================================================================//
-//== Public KOS Open GL API Texture Unit Functionality ==//
 
 void APIENTRY glGenTextures(GLsizei n, GLuint *textures) {
+    TRACE();
+
     while(n--) {
         GLuint id = 0;
-        GL_TEXTURE_OBJECT* txr = (GL_TEXTURE_OBJECT*) named_array_alloc(&TEXTURE_OBJECTS, &id);
+        TextureObject* txr = (TextureObject*) named_array_alloc(&TEXTURE_OBJECTS, &id);
         txr->index = id;
         txr->width = txr->height = 0;
         txr->mip_map = 0;
@@ -111,11 +83,13 @@ void APIENTRY glGenTextures(GLsizei n, GLuint *textures) {
 }
 
 void APIENTRY glDeleteTextures(GLsizei n, GLuint *textures) {
-    while(n--) {
-        GL_TEXTURE_OBJECT* txr = (GL_TEXTURE_OBJECT*) named_array_get(&TEXTURE_OBJECTS, *textures);
+    TRACE();
 
-        if(txr == GL_KOS_TEXTURE_UNIT[GL_KOS_ACTIVE_TEXTURE]) {
-            GL_KOS_TEXTURE_UNIT[GL_KOS_ACTIVE_TEXTURE] = NULL;
+    while(n--) {
+        TextureObject* txr = (TextureObject*) named_array_get(&TEXTURE_OBJECTS, *textures);
+
+        if(txr == TEXTURE_UNITS[ACTIVE_TEXTURE]) {
+            TEXTURE_UNITS[ACTIVE_TEXTURE] = NULL;
         }
 
         if(txr->data) {
@@ -127,13 +101,61 @@ void APIENTRY glDeleteTextures(GLsizei n, GLuint *textures) {
 }
 
 void APIENTRY glBindTexture(GLenum  target, GLuint texture) {
-    if(target != GL_TEXTURE_2D) {
-        _glKosThrowError(GL_INVALID_ENUM, "glBindTexture");
-        _glKosPrintError();
+    TRACE();
+
+    GLenum target_values [] = {GL_TEXTURE_2D, 0};
+
+    if(check_valid_enum(target, target_values, __func__) != 0) {
         return;
     }
 
-    texture ? _glKosBindTexture(texture) : _glKosUnbindTexture();
+    if(texture) {
+        TEXTURE_UNITS[ACTIVE_TEXTURE] = (TextureObject*) named_array_get(&TEXTURE_OBJECTS, texture);
+    } else {
+        TEXTURE_UNITS[ACTIVE_TEXTURE] = NULL;
+    }
+}
+
+void APIENTRY glTexEnvi(GLenum target, GLenum pname, GLint param) {
+    TRACE();
+
+    GLenum target_values [] = {GL_TEXTURE_ENV, 0};
+    GLenum pname_values [] = {GL_TEXTURE_ENV_MODE, 0};
+    GLenum param_values [] = {GL_MODULATE, GL_DECAL, GL_REPLACE, 0};
+
+    GLubyte failures = 0;
+
+    failures += check_valid_enum(target, target_values, __func__);
+    failures += check_valid_enum(pname, pname_values, __func__);
+    failures += check_valid_enum(param, param_values, __func__);
+
+    TextureObject* active = TEXTURE_UNITS[ACTIVE_TEXTURE];
+
+    if(!active) {
+        return;
+    }
+
+    if(failures) {
+        return;
+    }
+
+    switch(param) {
+    case GL_MODULATE:
+        active->env = PVR_TXRENV_MODULATEALPHA;
+    break;
+    case GL_DECAL:
+        active->env = PVR_TXRENV_DECAL;
+    break;
+    case GL_REPLACE:
+        active->env = PVR_TXRENV_REPLACE;
+    break;
+    default:
+        break;
+    }
+}
+
+void APIENTRY glTexEnvf(GLenum target, GLenum pname, GLfloat param) {
+    glTexEnvi(target, pname, param);
 }
 
 void APIENTRY glCompressedTexImage2D(GLenum target,
@@ -144,6 +166,8 @@ void APIENTRY glCompressedTexImage2D(GLenum target,
                                      GLint border,
                                      GLsizei imageSize,
                                      const GLvoid *data) {
+    TRACE();
+
     if(target != GL_TEXTURE_2D)
         _glKosThrowError(GL_INVALID_ENUM, "glCompressedTexImage2D");
 
@@ -161,7 +185,7 @@ void APIENTRY glCompressedTexImage2D(GLenum target,
                         if(internalformat != GL_UNSIGNED_SHORT_1_5_5_5_REV_VQ_TWID_KOS)
                             _glKosThrowError(GL_INVALID_OPERATION, "glCompressedTexImage2D");
 
-    if(GL_KOS_TEXTURE_UNIT[GL_KOS_ACTIVE_TEXTURE] == NULL)
+    if(TEXTURE_UNITS[ACTIVE_TEXTURE] == NULL)
         _glKosThrowError(GL_INVALID_OPERATION, "glCompressedTexImage2D");
 
     if(_glKosHasError()) {
@@ -169,22 +193,24 @@ void APIENTRY glCompressedTexImage2D(GLenum target,
         return;
     }
 
-    GL_KOS_TEXTURE_UNIT[GL_KOS_ACTIVE_TEXTURE]->width   = width;
-    GL_KOS_TEXTURE_UNIT[GL_KOS_ACTIVE_TEXTURE]->height  = height;
-    GL_KOS_TEXTURE_UNIT[GL_KOS_ACTIVE_TEXTURE]->mip_map = level;
-    GL_KOS_TEXTURE_UNIT[GL_KOS_ACTIVE_TEXTURE]->color   = _determinePVRFormat(
+    TextureObject* active = TEXTURE_UNITS[ACTIVE_TEXTURE];
+
+    active->width   = width;
+    active->height  = height;
+    active->mip_map = level;
+    active->color   = _determinePVRFormat(
         internalformat,
         internalformat  /* Doesn't matter (see determinePVRFormat) */
     );
 
     /* Odds are slim new data is same size as old, so free always */
-    if(GL_KOS_TEXTURE_UNIT[GL_KOS_ACTIVE_TEXTURE]->data)
-        pvr_mem_free(GL_KOS_TEXTURE_UNIT[GL_KOS_ACTIVE_TEXTURE]->data);
+    if(active->data)
+        pvr_mem_free(active->data);
 
-    GL_KOS_TEXTURE_UNIT[GL_KOS_ACTIVE_TEXTURE]->data = pvr_mem_malloc(imageSize);
+    active->data = pvr_mem_malloc(imageSize);
 
     if(data)
-        sq_cpy(GL_KOS_TEXTURE_UNIT[GL_KOS_ACTIVE_TEXTURE]->data, data, imageSize);
+        sq_cpy(active->data, data, imageSize);
 }
 
 static GLint _cleanInternalFormat(GLint internalFormat) {
@@ -352,6 +378,7 @@ static TextureConversionFunc _determineConversion(GLint internalFormat, GLenum f
         }
     } break;
     default:
+        fprintf(stderr, "Unsupported conversion: %d -> %d, %d", internalFormat, format, type);
         break;
     }
     return 0;
@@ -395,6 +422,8 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
                            GLsizei width, GLsizei height, GLint border,
                            GLenum format, GLenum type, const GLvoid *data) {
 
+    TRACE();
+
     if(target != GL_TEXTURE_2D) {
         _glKosThrowError(GL_INVALID_ENUM, "glTexImage2D");
     }
@@ -425,7 +454,8 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
         _glKosThrowError(GL_INVALID_VALUE, "glTexImage2D");
     }
 
-    if(level < 0) {
+    /* FIXME: Mipmaps! */
+    if(level < 0 || level > 0) {
         _glKosThrowError(GL_INVALID_VALUE, "glTexImage2D");
     }
 
@@ -433,7 +463,7 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
         _glKosThrowError(GL_INVALID_VALUE, "glTexImage2D");
     }
 
-    if(!GL_KOS_TEXTURE_UNIT[GL_KOS_ACTIVE_TEXTURE]) {
+    if(!TEXTURE_UNITS[ACTIVE_TEXTURE]) {
         _glKosThrowError(GL_INVALID_OPERATION, "glTexImage2D");
     }
 
@@ -445,28 +475,29 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
     /* Calculate the format that we need to convert the data to */
     GLuint pvr_format = _determinePVRFormat(internalFormat, type);
 
-    if(GL_KOS_TEXTURE_UNIT[GL_KOS_ACTIVE_TEXTURE]->data) {
+    TextureObject* active = TEXTURE_UNITS[ACTIVE_TEXTURE];
+
+    if(active->data) {
         /* pre-existing texture - check if changed */
-        if(GL_KOS_TEXTURE_UNIT[GL_KOS_ACTIVE_TEXTURE]->width != width ||
-           GL_KOS_TEXTURE_UNIT[GL_KOS_ACTIVE_TEXTURE]->height != height ||
-           GL_KOS_TEXTURE_UNIT[GL_KOS_ACTIVE_TEXTURE]->mip_map != level ||
-           GL_KOS_TEXTURE_UNIT[GL_KOS_ACTIVE_TEXTURE]->color != pvr_format) {
+        if(active->width != width ||
+           active->height != height ||
+           active->mip_map != level ||
+           active->color != pvr_format) {
             /* changed - free old texture memory */
-            pvr_mem_free(GL_KOS_TEXTURE_UNIT[GL_KOS_ACTIVE_TEXTURE]->data);
-            GL_KOS_TEXTURE_UNIT[GL_KOS_ACTIVE_TEXTURE]->data = NULL;
+            pvr_mem_free(active->data);
+            active->data = NULL;
         }
-    }
+    }    
 
-    GLuint bytes = level ? glKosMipMapTexSize(width, height) : (width * height * 2);
+    GLuint bytes = (width * height * sizeof(GLushort));
 
-    if(!GL_KOS_TEXTURE_UNIT[GL_KOS_ACTIVE_TEXTURE]->data) {
+    if(!active->data) {
         /* need texture memory */
-        GL_KOS_TEXTURE_UNIT[GL_KOS_ACTIVE_TEXTURE]->width   = width;
-        GL_KOS_TEXTURE_UNIT[GL_KOS_ACTIVE_TEXTURE]->height  = height;
-        GL_KOS_TEXTURE_UNIT[GL_KOS_ACTIVE_TEXTURE]->mip_map = level;
-        GL_KOS_TEXTURE_UNIT[GL_KOS_ACTIVE_TEXTURE]->color   = pvr_format;
-
-        GL_KOS_TEXTURE_UNIT[GL_KOS_ACTIVE_TEXTURE]->data = pvr_mem_malloc(bytes);
+        active->width   = width;
+        active->height  = height;
+        active->mip_map = level;
+        active->color   = pvr_format;
+        active->data = pvr_mem_malloc(bytes);
     }
 
     /* Let's assume we need to convert */
@@ -495,7 +526,7 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
         return;
     } else if(!needsConversion) {
         /* No conversion? Just copy the data, and the pvr_format is correct */
-        sq_cpy(GL_KOS_TEXTURE_UNIT[GL_KOS_ACTIVE_TEXTURE]->data, data, bytes);
+        sq_cpy(active->data, data, bytes);
         return;
     } else {
         TextureConversionFunc convert = _determineConversion(
@@ -509,7 +540,7 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
             return;
         }
 
-        GLushort* dest = GL_KOS_TEXTURE_UNIT[GL_KOS_ACTIVE_TEXTURE]->data;
+        GLushort* dest = active->data;
         const GLubyte* source = data;
         GLint stride = _determineStride(format, type);
 
@@ -519,7 +550,8 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
         }
 
         /* Perform the conversion */
-        for(GLuint i = 0; i < bytes; i += 2) {
+        GLuint i;
+        for(i = 0; i < bytes; i += 2) {
             convert(source, dest);
 
             dest++;
@@ -529,25 +561,29 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
 }
 
 void APIENTRY glTexParameteri(GLenum target, GLenum pname, GLint param) {
+    TRACE();
+
+    TextureObject* active = getBoundTexture();
+
     if(target == GL_TEXTURE_2D) {
         switch(pname) {
             case GL_TEXTURE_MAG_FILTER:
             case GL_TEXTURE_MIN_FILTER:
                 switch(param) {
                     case GL_LINEAR:
-                        GL_KOS_TEXTURE_UNIT[GL_KOS_ACTIVE_TEXTURE]->filter = PVR_FILTER_BILINEAR;
+                        active->filter = PVR_FILTER_BILINEAR;
                         break;
 
                     case GL_NEAREST:
-                        GL_KOS_TEXTURE_UNIT[GL_KOS_ACTIVE_TEXTURE]->filter = PVR_FILTER_NEAREST;
+                        active->filter = PVR_FILTER_NEAREST;
                         break;
 
                     case GL_FILTER_NONE:
-                        GL_KOS_TEXTURE_UNIT[GL_KOS_ACTIVE_TEXTURE]->filter = PVR_FILTER_NONE;
+                        active->filter = PVR_FILTER_NONE;
                         break;
 
                     case GL_FILTER_BILINEAR:
-                        GL_KOS_TEXTURE_UNIT[GL_KOS_ACTIVE_TEXTURE]->filter = PVR_FILTER_BILINEAR;
+                        active->filter = PVR_FILTER_BILINEAR;
                         break;
 
                     default:
@@ -559,11 +595,11 @@ void APIENTRY glTexParameteri(GLenum target, GLenum pname, GLint param) {
             case GL_TEXTURE_WRAP_S:
                 switch(param) {
                     case GL_CLAMP:
-                        GL_KOS_TEXTURE_UNIT[GL_KOS_ACTIVE_TEXTURE]->uv_clamp |= GL_KOS_CLAMP_U;
+                        active->uv_clamp |= CLAMP_U;
                         break;
 
                     case GL_REPEAT:
-                        GL_KOS_TEXTURE_UNIT[GL_KOS_ACTIVE_TEXTURE]->uv_clamp &= ~GL_KOS_CLAMP_U;
+                        active->uv_clamp &= ~CLAMP_U;
                         break;
                 }
 
@@ -572,48 +608,15 @@ void APIENTRY glTexParameteri(GLenum target, GLenum pname, GLint param) {
             case GL_TEXTURE_WRAP_T:
                 switch(param) {
                     case GL_CLAMP:
-                        GL_KOS_TEXTURE_UNIT[GL_KOS_ACTIVE_TEXTURE]->uv_clamp |= GL_KOS_CLAMP_V;
+                        active->uv_clamp |= CLAMP_V;
                         break;
 
                     case GL_REPEAT:
-                        GL_KOS_TEXTURE_UNIT[GL_KOS_ACTIVE_TEXTURE]->uv_clamp &= ~GL_KOS_CLAMP_V;
+                        active->uv_clamp &= ~CLAMP_V;
                         break;
                 }
 
                 break;
         }
     }
-}
-
-void APIENTRY glTexEnvi(GLenum target, GLenum pname, GLint param) {
-    if(target != GL_TEXTURE_ENV)
-        _glKosThrowError(GL_INVALID_ENUM, "glTexEnvi");
-
-    if(pname != GL_TEXTURE_ENV_MODE)
-        _glKosThrowError(GL_INVALID_ENUM, "glTexEnvi");
-
-    if(_glKosHasError()) {
-        _glKosPrintError();
-        return;
-    }
-
-    if(param >= PVR_TXRENV_REPLACE && param <= PVR_TXRENV_MODULATEALPHA)
-        GL_KOS_TEXTURE_UNIT[GL_KOS_ACTIVE_TEXTURE]->env = param;
-}
-
-void APIENTRY glTexEnvf(GLenum target, GLenum pname, GLfloat param) {
-    glTexEnvi(target, pname, param);
-}
-
-void APIENTRY glActiveTextureARB(GLenum texture) {
-    if(texture < GL_TEXTURE0_ARB || texture > GL_TEXTURE0_ARB + GL_KOS_MAX_TEXTURE_UNITS)
-        _glKosThrowError(GL_INVALID_ENUM, "glActiveTextureARB");
-
-    if(_glKosHasError()) {
-
-        _glKosPrintError();
-        return;
-    }
-
-    GL_KOS_ACTIVE_TEXTURE = texture & 0xF;
 }

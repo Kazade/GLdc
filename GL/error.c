@@ -9,7 +9,6 @@
 */
 
 #include "gl.h"
-#include "gl-api.h"
 
 #include <stdio.h>
 
@@ -25,7 +24,7 @@ static char error_function[64] = { '\0' };
    Nothing in the spec requires recording multiple error flags, although it is
    allowed by the spec. We take the easy way out for now. */
 
-void _glKosThrowError(GLenum error, char *function) {
+void _glKosThrowError(GLenum error, const char *function) {
     if(last_error == GL_NO_ERROR) {
         last_error = error;
         sprintf(error_function, "%s\n", function);
