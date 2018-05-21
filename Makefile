@@ -5,7 +5,7 @@
 # Copyright (C) 2014 Lawrence Sebald
 # Copyright (C) 2018 Luke Benstead
 
-TARGET = libGL.a
+TARGET = libGLdc.a
 OBJS = GL/draw.o GL/flush.o GL/framebuffer.o GL/immediate.o GL/lighting.o GL/state.o GL/texture.o
 OBJS += GL/matrix.o GL/fog.o GL/error.o
 
@@ -19,11 +19,11 @@ link:
 build: $(OBJS) link
 
 
-defaultall: build subdirs linklib create_kos_link
+defaultall: create_kos_link $(OBJS) subdirs linklib
 
 include $(KOS_BASE)/addons/Makefile.prefab
 
 # creates the kos link to the headers
 create_kos_link:
 	rm -f ../include/GL
-	ln -s ../libgl/include ../include/GL
+	ln -s ../GLdc/include ../include/GL
