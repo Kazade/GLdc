@@ -1,8 +1,15 @@
 #ifndef STACK_H
 #define STACK_H
 
-#include <malloc.h>
 #include <string.h>
+
+#ifndef __APPLE__
+#include <malloc.h>
+#else
+/* Linux + Kos define this, OSX does not, so just use malloc there */
+#define memalign(x, size) malloc((size))
+#endif
+
 
 typedef struct {
     unsigned char* data;

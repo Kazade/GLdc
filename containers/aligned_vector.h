@@ -2,9 +2,16 @@
 #define ALIGNED_VECTOR_H
 
 #include <stdlib.h>
-#include <malloc.h>
 #include <string.h>
 #include <math.h>
+
+#ifndef __APPLE__
+#include <malloc.h>
+#else
+/* Linux + Kos define this, OSX does not, so just use malloc there */
+#define memalign(x, size) malloc((size))
+#endif
+
 
 #define ALIGNED_VECTOR_INITIAL_CAPACITY 256u
 
