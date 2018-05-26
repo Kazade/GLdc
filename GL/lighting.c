@@ -1,4 +1,6 @@
 #include <stdio.h>
+#include <string.h>
+
 #include <dc/vec3f.h>
 #include "private.h"
 

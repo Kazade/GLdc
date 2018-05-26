@@ -1,3 +1,5 @@
+#include <string.h>
+
 #include <dc/matrix.h>
 
 #include "../include/gl.h"
