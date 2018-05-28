@@ -101,24 +101,14 @@ static void _updatePVRBlend(pvr_poly_cxt_t* context) {
         context->gen.alpha = PVR_ALPHA_ENABLE;
         context->blend.src = _calcPVRBlendFactor(BLEND_SFACTOR);
         context->blend.dst = _calcPVRBlendFactor(BLEND_DFACTOR);
-        context->blend.src_enable = PVR_BLEND_ENABLE;
-        context->blend.dst_enable = PVR_BLEND_ENABLE;
-
-        context->blend.src2 = PVR_BLEND_ONE;
-        context->blend.dst2 = PVR_BLEND_ZERO;
-        context->blend.src_enable2 = PVR_BLEND_DISABLE;
-        context->blend.dst_enable2 = PVR_BLEND_DISABLE;
+        context->blend.src_enable = PVR_BLEND_DISABLE;
+        context->blend.dst_enable = PVR_BLEND_DISABLE;
     } else {
         context->gen.alpha = PVR_ALPHA_DISABLE;
         context->blend.src = PVR_BLEND_ONE;
         context->blend.dst = PVR_BLEND_ZERO;
         context->blend.src_enable = PVR_BLEND_DISABLE;
         context->blend.dst_enable = PVR_BLEND_DISABLE;
-
-        context->blend.src2 = PVR_BLEND_ONE;
-        context->blend.dst2 = PVR_BLEND_ZERO;
-        context->blend.src_enable2 = PVR_BLEND_DISABLE;
-        context->blend.dst_enable2 = PVR_BLEND_DISABLE;
     }
 }
 
