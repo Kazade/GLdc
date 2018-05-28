@@ -8,6 +8,8 @@ typedef struct {
     unsigned int element_size;
 } AlignedVector;
 
+#define ALIGNED_VECTOR_INITIAL_CAPACITY 256u
+
 void aligned_vector_init(AlignedVector* vector, unsigned int element_size);
 void aligned_vector_reserve(AlignedVector* vector, unsigned int element_count);
 void aligned_vector_push_back(AlignedVector* vector, const void* objs, unsigned int count);

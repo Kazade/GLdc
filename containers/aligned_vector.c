@@ -11,8 +11,6 @@
 
 #include "aligned_vector.h"
 
-#define ALIGNED_VECTOR_INITIAL_CAPACITY 256u
-
 void aligned_vector_init(AlignedVector* vector, unsigned int element_size) {
     vector->size = vector->capacity = 0;
     vector->element_size = element_size;
