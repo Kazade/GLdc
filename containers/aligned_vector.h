@@ -1,6 +1,10 @@
 #ifndef ALIGNED_VECTOR_H
 #define ALIGNED_VECTOR_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 typedef struct {
     unsigned int size;
     unsigned int capacity;
@@ -19,5 +23,9 @@ void* aligned_vector_extend(AlignedVector* vector, const unsigned int additional
 void aligned_vector_clear(AlignedVector* vector);
 void aligned_vector_shrink_to_fit(AlignedVector* vector);
 void aligned_vector_cleanup(AlignedVector* vector);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif // ALIGNED_VECTOR_H
