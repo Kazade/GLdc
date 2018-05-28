@@ -572,6 +572,10 @@ void APIENTRY glTexParameteri(GLenum target, GLenum pname, GLint param) {
 
     TextureObject* active = getBoundTexture();
 
+    if(!active) {
+        return;
+    }
+
     if(target == GL_TEXTURE_2D) {
         switch(pname) {
             case GL_TEXTURE_MAG_FILTER:
