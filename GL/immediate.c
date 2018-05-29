@@ -138,6 +138,10 @@ void APIENTRY glEnd() {
 
     /* FIXME: Push pointer state */
 
+    glEnableClientState(GL_VERTEX_ARRAY);
+    glEnableClientState(GL_COLOR_ARRAY);
+    glEnableClientState(GL_NORMAL_ARRAY);
+
     glVertexPointer(3, GL_FLOAT, 0, VERTICES.data);
     glColorPointer(4, GL_FLOAT, 0, COLOURS.data);
     glNormalPointer(GL_FLOAT, 0, NORMALS.data);

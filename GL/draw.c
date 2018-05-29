@@ -235,7 +235,7 @@ static void submitVertices(GLenum mode, GLsizei first, GLsizei count, GLenum typ
 
     GLboolean lighting_enabled = isLightingEnabled();
 
-    GLushort i;
+    GLushort i, last_vertex;
     for(i = first; i < count; ++i) {
         pvr_vertex_t* vertex = (pvr_vertex_t*) dst;
         vertex->u = vertex->v = 0.0f;
@@ -243,7 +243,9 @@ static void submitVertices(GLenum mode, GLsizei first, GLsizei count, GLenum typ
         vertex->oargb = 0;
         vertex->flags = PVR_CMD_VERTEX;
 
-        if(((i + 1) % elements) == 0) {
+        last_vertex = ((i + 1) % elements) == 0;
+
+        if(last_vertex) {
             vertex->flags = PVR_CMD_VERTEX_EOL;
         }
 
@@ -304,6 +306,21 @@ static void submitVertices(GLenum mode, GLsizei first, GLsizei count, GLenum typ
 
         _applyRenderMatrix(); /* Apply the Render Matrix Stack */
         transformVertex(&vertex->x, &vertex->x, &vertex->y, &vertex->z);
+
+        /* The PVR doesn't support quads, only triangle strips, so we need to
+         * swap the last two vertices of each set */
+        if(last_vertex && mode == GL_QUADS) {
+            /* This vertex becomes the previous vertex so store it*/
+            pvr_vertex_t tmp = *vertex;
+            tmp.flags = PVR_CMD_VERTEX;
+
+            /* Overwrite this vertex with the previous one, make it last */
+            *vertex = *(vertex - 1);
+            vertex->flags = PVR_CMD_VERTEX_EOL;
+
+            /* Now make the previous one the original last one */
+            *(vertex - 1) = tmp;
+        }
 
         ++dst;
     }

@@ -23,12 +23,6 @@ __BEGIN_DECLS
 #define GLU_FALSE 0
 #define GLU_TRUE  1
 
-/* Mip-Mapped Textures MUST be square or rectangle */
-GLAPI GLint APIENTRY gluBuild2DMipmaps(GLenum target, GLint internalFormat,
-                                       GLsizei width, GLsizei height,
-                                       GLenum format, GLenum type,
-                                       const void *data);
-
 /* gluPerspective - Set the Perspective for Rendering. */
 GLAPI void APIENTRY gluPerspective(GLdouble fovy, GLdouble aspect,
                                    GLdouble zNear, GLdouble zFar);
@@ -37,11 +31,6 @@ GLAPI void APIENTRY gluPerspective(GLdouble fovy, GLdouble aspect,
 GLAPI void APIENTRY gluLookAt(GLfloat eyex, GLfloat eyey, GLfloat eyez,
                               GLfloat centerx, GLfloat centery, GLfloat centerz,
                               GLfloat upx, GLfloat upy, GLfloat upz);
-
-/* glhLookAtf2 = gluLookAt operating on 3 float vectors. */
-GLAPI void APIENTRY glhLookAtf2(GLfloat *eyePosition3D,
-                                GLfloat *center3D,
-                                GLfloat *upVector3D);
 
 GLAPI const GLubyte* APIENTRY gluErrorString(GLenum error);
 

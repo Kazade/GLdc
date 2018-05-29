@@ -19,7 +19,10 @@ link:
 build: $(OBJS) link
 
 
-defaultall: create_kos_link $(OBJS) subdirs linklib
+samples: build
+	$(KOS_MAKE) -C samples all
+
+defaultall: create_kos_link $(OBJS) subdirs linklib samples
 
 include $(KOS_BASE)/addons/Makefile.prefab
 
