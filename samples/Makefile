@@ -10,3 +10,4 @@ all:
 	$(KOS_MAKE) -C nehe02 all
 	$(KOS_MAKE) -C nehe02va all
 	$(KOS_MAKE) -C nehe03 all
+	$(KOS_MAKE) -C nehe06 all

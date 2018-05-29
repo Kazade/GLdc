@@ -147,6 +147,7 @@ void APIENTRY glEnd() {
     glNormalPointer(GL_FLOAT, 0, NORMALS.data);
 
     glClientActiveTextureARB(GL_TEXTURE0);
+    glEnableClientState(GL_TEXTURE_COORD_ARRAY);
     glTexCoordPointer(2, GL_FLOAT, 0, TEXCOORDS.data);
 
     glDrawArrays(ACTIVE_POLYGON_MODE, 0, VERTICES.size / 3);
