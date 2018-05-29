@@ -258,6 +258,9 @@ static void submitVertices(GLenum mode, GLsizei first, GLsizei count, GLenum typ
 
         if(ENABLED_VERTEX_ATTRIBUTES & DIFFUSE_ENABLED_FLAG) {
             _parseColour(&vertex->argb, cptr + (idx * cstride), DIFFUSE_POINTER.size, DIFFUSE_POINTER.type);
+        } else {
+            /* Default to white if colours are disabled */
+            vertex->argb = PVR_PACK_COLOR(1.0f, 1.0f, 1.0f, 1.0f);
         }
 
         if(ENABLED_VERTEX_ATTRIBUTES & UV_ENABLED_FLAG) {
