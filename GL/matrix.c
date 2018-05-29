@@ -176,9 +176,9 @@ void APIENTRY glOrtho(GLfloat left, GLfloat right,
     OrthoMatrix[3][1] = -(top + bottom) / (top - bottom);
     OrthoMatrix[3][2] = -(zfar + znear) / (zfar - znear);
 
-    mat_load(stack_top(MATRIX_STACKS + MATRIX_MODE));
+    mat_load(stack_top(MATRIX_STACKS + MATRIX_IDX));
     mat_apply(&OrthoMatrix);
-    mat_store(stack_top(MATRIX_STACKS + MATRIX_MODE));
+    mat_store(stack_top(MATRIX_STACKS + MATRIX_IDX));
 }
 
 
@@ -207,18 +207,6 @@ void APIENTRY glFrustum(GLfloat left, GLfloat right,
     mat_store(stack_top(MATRIX_STACKS + MATRIX_IDX));
 }
 
-/* Set the Perspective */
-void gluPerspective(GLfloat angle, GLfloat aspect,
-                    GLfloat znear, GLfloat zfar) {
-    GLfloat xmin, xmax, ymin, ymax;
-
-    ymax = znear * ftan(angle * F_PI / 360.0f);
-    ymin = -ymax;
-    xmin = ymin * aspect;
-    xmax = ymax * aspect;
-
-    glFrustum(xmin, xmax, ymin, ymax, znear, zfar);
-}
 
 /* Multiply the current matrix by an arbitrary matrix */
 void glMultMatrixf(const GLfloat *m) {

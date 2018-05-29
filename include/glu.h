@@ -23,6 +23,8 @@ __BEGIN_DECLS
 #define GLU_FALSE 0
 #define GLU_TRUE  1
 
+GLAPI void APIENTRY gluOrtho2D(GLdouble left, GLdouble right, GLdouble bottom, GLdouble top);
+
 /* gluPerspective - Set the Perspective for Rendering. */
 GLAPI void APIENTRY gluPerspective(GLdouble fovy, GLdouble aspect,
                                    GLdouble zNear, GLdouble zFar);

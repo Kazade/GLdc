@@ -2,7 +2,7 @@
 #include "private.h"
 
 /* Set the Perspective */
-void gluPerspective(GLfloat angle, GLfloat aspect,
+void APIENTRY gluPerspective(GLfloat angle, GLfloat aspect,
                     GLfloat znear, GLfloat zfar) {
     GLfloat xmin, xmax, ymin, ymax;
 
@@ -12,4 +12,8 @@ void gluPerspective(GLfloat angle, GLfloat aspect,
     xmax = ymax * aspect;
 
     glFrustum(xmin, xmax, ymin, ymax, znear, zfar);
+}
+
+void APIENTRY gluOrtho2D(GLdouble left, GLdouble right, GLdouble bottom, GLdouble top) {
+    glOrtho(left, right, bottom, top, -1.0f, 1.0f);
 }
