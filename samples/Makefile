@@ -12,4 +12,5 @@ all:
 	$(KOS_MAKE) -C nehe03 all
 	$(KOS_MAKE) -C nehe06 all
 	$(KOS_MAKE) -C ortho2d all
+	$(KOS_MAKE) -C lerabot01 all
 	$(KOS_MAKE) -C zclip all
