@@ -12,8 +12,5 @@ all:
 	$(KOS_MAKE) -C nehe03 all
 	$(KOS_MAKE) -C nehe06 all
 	$(KOS_MAKE) -C ortho2d all
-<<<<<<< HEAD
 	$(KOS_MAKE) -C lerabot01 all
-=======
 	$(KOS_MAKE) -C zclip all
->>>>>>> 5b05039dfd461861a8541aa66ea325f59bb9f746
