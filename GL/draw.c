@@ -190,11 +190,22 @@ inline void transformNormalToEyeSpace(GLfloat* normal) {
     mat_trans_normal3(normal[0], normal[1], normal[2]);
 }
 
+/* If this has a value other than zero, it must be negative! */
+#define NEAR_DEPTH 0.0f
 
 static void submitVertices(GLenum mode, GLsizei first, GLsizei count, GLenum type, const GLvoid* indices) {
     static GLfloat normal[3] = {0.0f, 0.0f, -1.0f};
     static GLfloat eye_P[3];
     static GLfloat eye_N[3];
+
+    /* When clipping triangle strips we need to keep a stash of the last two vertices *before*
+     * they were manipulated, because, imagine this scenario:
+     * - A triangle has 2 vertices hidden
+     * - We manipulate those 2 vertices to coincide with the near plane
+     * - We end that triangle strip, then start a new one with the next triangle
+     * - That triangle needs to be formed with the original vertices
+     */
+    static pvr_vertex_t clip_stash[2];
 
     if(!(ENABLED_VERTEX_ATTRIBUTES & VERTEX_ENABLED_FLAG)) {
         return;
@@ -235,8 +246,10 @@ static void submitVertices(GLenum mode, GLsizei first, GLsizei count, GLenum typ
 
     GLboolean lighting_enabled = isLightingEnabled();
 
-    GLushort i, last_vertex;
-    for(i = first; i < count; ++i) {
+    GLushort i, last_vertex
+    GLshort rel; // Has to be signed as we drop below zero so we can re-enter the loop at 1.
+
+    for(rel = 0, i = first; i < count; ++i, ++rel) {
         pvr_vertex_t* vertex = (pvr_vertex_t*) dst;
         vertex->u = vertex->v = 0.0f;
         vertex->argb = 0;
@@ -308,6 +321,8 @@ static void submitVertices(GLenum mode, GLsizei first, GLsizei count, GLenum typ
         }
 
         _applyRenderMatrix(); /* Apply the Render Matrix Stack */
+
+        // FIXME: Don't perspective divide!
         transformVertex(&vertex->x, &vertex->x, &vertex->y, &vertex->z);
 
         /* The PVR doesn't support quads, only triangle strips, so we need to
@@ -324,6 +339,74 @@ static void submitVertices(GLenum mode, GLsizei first, GLsizei count, GLenum typ
             /* Now make the previous one the original last one */
             *(vertex - 1) = tmp;
         }
+
+        // Store this for the clip stash
+        pvr_vertex_t original_vertex = *dst;
+
+        if(rel >= 2) {            
+            /* We have at least one complete triangle, let's start clipping! */
+            pvr_vertex_t* v1 = &clip_stash[0];
+            pvr_vertex_t* v2 = &clip_stash[1];
+            pvr_vertex_t* v3 = dst;
+
+            pvr_vertex_t* v1out = dst - 2;
+            pvr_vertex_t* v2out = dst - 1;
+            pvr_vertex_t* v3out = v3;
+            pvr_vertex_t v4out;
+
+            TriangleClipResult ret = clipTriangleToNearZ(
+                NEAR_DEPTH,
+                rel - 2,
+                v1, v2, v3,
+                v1out, v2out, v3out, &v4out
+            );
+
+            if(ret == TRIANGLE_CLIP_RESULT_DROP_TRIANGLE) {
+                /* If we're here, then none of the 3 points were visible, that means we drop the entire triangle and start
+                 * anew with the next one. We rollback rel as we always need 3 vertices and if this was the first triangle in the strip
+                 * we need to build up the stash again
+                 * we point dst back at the first vertex. We would actually have access space at the end of the array
+                 * so we move that back too (this won't reallocate, we never reallocate on shrink unless we call vector_shrink_to_fit
+                 */
+                dst = dst - 3; // This might seem like we're going back too many, but we increment further down
+                rel = rel - 3; // This might drop down to -1, but the next loop will go up to 0 again
+
+                aligned_vector_resize(
+                    &activePolyList()->vector,
+                    activePolyList->size - 3
+                );
+
+            } else if(ret == TRIANGLE_CLIP_RESULT_ALTERED_VERTICES) {
+                /*
+                 * Two vertices were behind the clip plane, we just manipulated them.
+                   we have to end the triangle strip here and pick up next vertex */
+
+                v3out->flags = PVR_CMD_VERTEX_EOL;
+
+                /* Now we push back the original 2 vertices, so that the next triangle strip will be properly
+                 * formed (or dropped) next time around */
+                aligned_vector_resize(
+                    &activePolyList()->vector,
+                    activePolyList->size + 2
+                );
+
+                *(++dst) = clip_stash[1];
+                *(++dst) = original_vertex;
+
+            } else if(ret == TRIANGLE_CLIP_RESULT_ALTERED_AND_CREATED_VERTEX) {
+                /* One vertex was behind the clip plane, we need to create another triangle */
+                /* We need to push back v4 and then deal with a possible reallocation by updating dst */
+
+            } else {
+                /* OK nothing changed, don't do anything */
+            }
+        }
+
+        /* Update the clip stash */
+        clip_stash[0] = clip_stash[1];
+        clip_stash[1] = original_vertex;
+
+        //FIXME: Peform perspective division
 
         ++dst;
     }

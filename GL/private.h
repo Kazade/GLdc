@@ -4,7 +4,9 @@
 #include "../include/gl.h"
 #include "../containers/aligned_vector.h"
 #include "../containers/named_array.h"
+
 #include "./clip.h"
+#include "./pvr.h"
 
 #define TRACE_ENABLED 0
 #define TRACE() if(TRACE_ENABLED) {fprintf(stderr, "%s\n", __func__);}
