@@ -1,4 +1,6 @@
 #include <float.h>
+#include <stdio.h>
+
 #include "clip.h"
 
 ClipResult clipLineToNearZ(const float* v1, const float* v2, const float dist, float* vout, float* t) {
@@ -45,7 +47,7 @@ TriangleClipResult clipTriangleToNearZ(
      */
 
     typedef unsigned char uint8;
-    uint8 visible = ((uint8) v1->z < plane_dist) | ((uint8) v2->z < plane_dist) << 1 | ((uint8) v3->z < plane_dist) << 2;
+    uint8 visible = (v1->z >= plane_dist) ? 1 : 0 | (v2->z >= plane_dist) ? 2 : 0 | (v3->z >= plane_dist) ? 4 : 0;
 
     switch(visible) {
     case 0b000:
@@ -67,27 +69,31 @@ TriangleClipResult clipTriangleToNearZ(
     default: {
         /* One vertex is visible */
         /* This is the "easy" case, we simply find the vertex which is visible, and clip the lines to the other 2 against the plane */
+        fprintf(stderr, "Clipping triangle\n");
 
         pvr_vertex_t tmp1, tmp2;
         float t1, t2;
 
         if(visible == 0b001) {
-            ClipResult l1 = clipLineToNearZ(&v1->x, &v2->x, plane_dist, &tmp1, &t1);
-            ClipResult l2 = clipLineToNearZ(&v1->x, &v3->x, plane_dist, &tmp2, &t2);
+            ClipResult l1 = clipLineToNearZ(&v1->x, &v2->x, plane_dist, &tmp1.x, &t1);
+            ClipResult l2 = clipLineToNearZ(&v1->x, &v3->x, plane_dist, &tmp2.x, &t2);
+
+            fprintf(stderr, "New V2: %f, %f, %f. T: %f\n", tmp1.x, tmp1.y, tmp1.z, t1);
+            fprintf(stderr, "New V3: %f, %f, %f. T: %f\n", tmp2.x, tmp2.y, tmp2.z, t2);
 
             *v1out = *v1;
             *v2out = tmp1;
             *v3out = tmp2;
         } else if(visible == 0b010) {
-            ClipResult l1 = clipLineToNearZ(&v2->x, &v1->x, plane_dist, &tmp1, &t1);
-            ClipResult l2 = clipLineToNearZ(&v2->x, &v3->x, plane_dist, &tmp2, &t2);
+            ClipResult l1 = clipLineToNearZ(&v2->x, &v1->x, plane_dist, &tmp1.x, &t1);
+            ClipResult l2 = clipLineToNearZ(&v2->x, &v3->x, plane_dist, &tmp2.x, &t2);
 
             *v1out = tmp1;
             *v2out = *v2;
             *v3out = tmp2;
         } else {
-            ClipResult l1 = clipLineToNearZ(&v3->x, &v1->x, plane_dist, &tmp1, &t1);
-            ClipResult l2 = clipLineToNearZ(&v3->x, &v2->x, plane_dist, &tmp2, &t2);
+            ClipResult l1 = clipLineToNearZ(&v3->x, &v1->x, plane_dist, &tmp1.x, &t1);
+            ClipResult l2 = clipLineToNearZ(&v3->x, &v2->x, plane_dist, &tmp2.x, &t2);
 
             *v1out = tmp1;
             *v2out = tmp2;

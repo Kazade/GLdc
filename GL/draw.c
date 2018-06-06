@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <string.h>
 
 #include "../include/gl.h"
 #include "../include/glext.h"
@@ -190,8 +191,8 @@ inline void transformNormalToEyeSpace(GLfloat* normal) {
     mat_trans_normal3(normal[0], normal[1], normal[2]);
 }
 
-/* If this has a value other than zero, it must be negative! */
-#define NEAR_DEPTH 0.0f
+/* If this has a value other than zero, it must be positive! */
+#define NEAR_DEPTH 0.0001f
 
 static void submitVertices(GLenum mode, GLsizei first, GLsizei count, GLenum type, const GLvoid* indices) {
     static GLfloat normal[3] = {0.0f, 0.0f, -1.0f};
@@ -322,6 +323,8 @@ static void submitVertices(GLenum mode, GLsizei first, GLsizei count, GLenum typ
 
         _applyRenderMatrix(); /* Apply the Render Matrix Stack */
 
+        float W_stash[3];
+
         // FIXME: Don't perspective divide!
         transformVertex(&vertex->x, &vertex->x, &vertex->y, &vertex->z);
 
@@ -343,7 +346,7 @@ static void submitVertices(GLenum mode, GLsizei first, GLsizei count, GLenum typ
         // Store this for the clip stash
         pvr_vertex_t original_vertex = *((pvr_vertex_t*) dst);
 
-        if(rel >= 2) {            
+        if(rel >= 2) {
             /* We have at least one complete triangle, let's start clipping! */
             pvr_vertex_t* v1 = (pvr_vertex_t*) &clip_stash[0];
             pvr_vertex_t* v2 = (pvr_vertex_t*) &clip_stash[1];
@@ -380,7 +383,6 @@ static void submitVertices(GLenum mode, GLsizei first, GLsizei count, GLenum typ
                 /*
                  * Two vertices were behind the clip plane, we just manipulated them.
                    we have to end the triangle strip here and pick up next vertex */
-
                 v3out->flags = PVR_CMD_VERTEX_EOL;
 
                 /* Now we push back the original 2 vertices, so that the next triangle strip will be properly
@@ -390,8 +392,9 @@ static void submitVertices(GLenum mode, GLsizei first, GLsizei count, GLenum typ
                     activePolyList()->vector.size + 2
                 );
 
-                *(++dst) = (PVRCommand) clip_stash[1];
-                *(++dst) = (PVRCommand) original_vertex;
+                /* clip_stash[1] holds the previous vertex, original_vertex holds the current one */
+                memcpy(++dst, &clip_stash[1], sizeof(PVRCommand));
+                memcpy(++dst, &original_vertex, sizeof(PVRCommand));
 
             } else if(ret == TRIANGLE_CLIP_RESULT_ALTERED_AND_CREATED_VERTEX) {
                 /* One vertex was behind the clip plane, we need to create another triangle */
@@ -407,7 +410,7 @@ static void submitVertices(GLenum mode, GLsizei first, GLsizei count, GLenum typ
         clip_stash[0] = clip_stash[1];
         clip_stash[1] = original_vertex;
 
-        //FIXME: Peform perspective division
+        //FIXME: Perform perspective division
 
         ++dst;
     }

@@ -19,6 +19,8 @@ typedef struct {
     uint32  argb;               /**< \brief Vertex color */
     uint32  oargb;              /**< \brief Vertex offset color */
 } pvr_vertex_t;
+#else
+#include <dc/pvr.h>
 #endif
 
 typedef enum {
