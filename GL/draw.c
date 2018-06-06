@@ -246,7 +246,7 @@ static void submitVertices(GLenum mode, GLsizei first, GLsizei count, GLenum typ
 
     GLboolean lighting_enabled = isLightingEnabled();
 
-    GLushort i, last_vertex
+    GLushort i, last_vertex;
     GLshort rel; // Has to be signed as we drop below zero so we can re-enter the loop at 1.
 
     for(rel = 0, i = first; i < count; ++i, ++rel) {
@@ -341,16 +341,16 @@ static void submitVertices(GLenum mode, GLsizei first, GLsizei count, GLenum typ
         }
 
         // Store this for the clip stash
-        pvr_vertex_t original_vertex = *dst;
+        pvr_vertex_t original_vertex = *((pvr_vertex_t*) dst);
 
         if(rel >= 2) {            
             /* We have at least one complete triangle, let's start clipping! */
-            pvr_vertex_t* v1 = &clip_stash[0];
-            pvr_vertex_t* v2 = &clip_stash[1];
-            pvr_vertex_t* v3 = dst;
+            pvr_vertex_t* v1 = (pvr_vertex_t*) &clip_stash[0];
+            pvr_vertex_t* v2 = (pvr_vertex_t*) &clip_stash[1];
+            pvr_vertex_t* v3 = (pvr_vertex_t*) dst;
 
-            pvr_vertex_t* v1out = dst - 2;
-            pvr_vertex_t* v2out = dst - 1;
+            pvr_vertex_t* v1out = (pvr_vertex_t*) dst - 2;
+            pvr_vertex_t* v2out = (pvr_vertex_t*) dst - 1;
             pvr_vertex_t* v3out = v3;
             pvr_vertex_t v4out;
 
@@ -373,7 +373,7 @@ static void submitVertices(GLenum mode, GLsizei first, GLsizei count, GLenum typ
 
                 aligned_vector_resize(
                     &activePolyList()->vector,
-                    activePolyList->size - 3
+                    activePolyList()->vector.size - 3
                 );
 
             } else if(ret == TRIANGLE_CLIP_RESULT_ALTERED_VERTICES) {
@@ -387,15 +387,16 @@ static void submitVertices(GLenum mode, GLsizei first, GLsizei count, GLenum typ
                  * formed (or dropped) next time around */
                 aligned_vector_resize(
                     &activePolyList()->vector,
-                    activePolyList->size + 2
+                    activePolyList()->vector.size + 2
                 );
 
-                *(++dst) = clip_stash[1];
-                *(++dst) = original_vertex;
+                *(++dst) = (PVRCommand) clip_stash[1];
+                *(++dst) = (PVRCommand) original_vertex;
 
             } else if(ret == TRIANGLE_CLIP_RESULT_ALTERED_AND_CREATED_VERTEX) {
                 /* One vertex was behind the clip plane, we need to create another triangle */
                 /* We need to push back v4 and then deal with a possible reallocation by updating dst */
+
 
             } else {
                 /* OK nothing changed, don't do anything */
