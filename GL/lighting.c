@@ -250,7 +250,7 @@ void calculateLightingContribution(const GLint light, const GLfloat* pos, const 
     };
 
     GLfloat d;
-    vec3f_length(V.x, V.y, V.z, d);
+    vec3f_length(L.x, L.y, L.z, d);
 
     vec3f_normalize(L.x, L.y, L.z);
     vec3f_normalize(V.x, V.y, V.z);
@@ -266,13 +266,13 @@ void calculateLightingContribution(const GLint light, const GLfloat* pos, const 
     GLfloat VdotR = VdotN - NdotL;
     GLfloat specularPower = FPOW(VdotR > 0 ? VdotR : 0, MATERIAL.exponent);
 
-    GLfloat att = (l->position[3] == 0) ? 1.0f : (
-        l->constant_attenuation / (1.0f + l->linear_attenuation * d) * (1.0f + l->quadratic_attenuation * d * d)
+    GLfloat att = (l->position[3] == 0.0f) ? 1.0f : (
+        1.0f / (l->constant_attenuation + (l->linear_attenuation * d) + (l->quadratic_attenuation * d * d))
     );
 
-    colour[0] = att * l->ambient[0] * MATERIAL.ambient[0] + f * (l->diffuse[0] * MATERIAL.diffuse[0] * NdotL + l->specular[0] * MATERIAL.specular[0] * specularPower);
-    colour[1] = att * l->ambient[1] * MATERIAL.ambient[1] + f * (l->diffuse[1] * MATERIAL.diffuse[1] * NdotL + l->specular[1] * MATERIAL.specular[1] * specularPower);
-    colour[2] = att * l->ambient[2] * MATERIAL.ambient[2] + f * (l->diffuse[2] * MATERIAL.diffuse[2] * NdotL + l->specular[2] * MATERIAL.specular[2] * specularPower);
+    colour[0] = att * (l->ambient[0] * MATERIAL.ambient[0] + f * (l->diffuse[0] * MATERIAL.diffuse[0] * NdotL + l->specular[0] * MATERIAL.specular[0] * specularPower));
+    colour[1] = att * (l->ambient[1] * MATERIAL.ambient[1] + f * (l->diffuse[1] * MATERIAL.diffuse[1] * NdotL + l->specular[1] * MATERIAL.specular[1] * specularPower));
+    colour[2] = att * (l->ambient[2] * MATERIAL.ambient[2] + f * (l->diffuse[2] * MATERIAL.diffuse[2] * NdotL + l->specular[2] * MATERIAL.specular[2] * specularPower));
     colour[3] = MATERIAL.diffuse[3];
 
     if(colour[0] > 1.0f) colour[0] = 1.0f;
