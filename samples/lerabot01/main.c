@@ -161,8 +161,8 @@ void InitGL(int Width, int Height)	        // We call this right after our OpenG
     glLightfv(GL_LIGHT1, GL_DIFFUSE,  l1_diff);
     glLightfv(GL_LIGHT1, GL_POSITION, l1_pos);
     glLightf(GL_LIGHT1, GL_CONSTANT_ATTENUATION, 1.0f);
-    glLightf(GL_LIGHT1, GL_LINEAR_ATTENUATION, 0.000005);
-    glLightf(GL_LIGHT1, GL_QUADRATIC_ATTENUATION, 0.00001);
+    glLightf(GL_LIGHT1, GL_LINEAR_ATTENUATION, 0.0003);
+    glLightf(GL_LIGHT1, GL_QUADRATIC_ATTENUATION, 0.000007);
 
     GLfloat l2_pos[] = {5.0, 0.0, 1.0, 1.0};
     GLfloat l2_diff[] = {0.0, 0.0, 1.0, 1.0};
@@ -171,9 +171,9 @@ void InitGL(int Width, int Height)	        // We call this right after our OpenG
     //glLightfv(GL_LIGHT1, GL_AMBIENT,  l1_amb);
     glLightfv(GL_LIGHT2, GL_DIFFUSE,  l2_diff);
     glLightfv(GL_LIGHT2, GL_POSITION, l2_pos);
-    glLightf(GL_LIGHT2, GL_CONSTANT_ATTENUATION, 2.0f);
-    glLightf(GL_LIGHT2, GL_LINEAR_ATTENUATION, 0.1);
-    glLightf(GL_LIGHT2, GL_QUADRATIC_ATTENUATION, 0.1);
+    glLightf(GL_LIGHT2, GL_CONSTANT_ATTENUATION, 1.0f);
+    glLightf(GL_LIGHT2, GL_LINEAR_ATTENUATION, 0.0003);
+    glLightf(GL_LIGHT2, GL_QUADRATIC_ATTENUATION, 0.000007);
 }
 
 /* The function called when our window is resized (which shouldn't happen, because we're fullscreen) */
@@ -278,9 +278,9 @@ void DrawGLScene()
     glLightfv(GL_LIGHT1, GL_POSITION, l1_pos);
     DrawTexturedQuad(texture[0], l1_pos[0], l1_pos[1], l1_pos[2]);
 
-    //GLfloat l2_pos[] = {100, 50 + sin(delta/2) * -150.0f, 1.0, 1.0};
-    //glLightfv(GL_LIGHT1, GL_POSITION, l2_pos);
-    //DrawTexturedQuad(texture[0], l2_pos[0], l2_pos[1], l2_pos[2]);
+    GLfloat l2_pos[] = {100, 50 + sin(delta/2) * -150.0f, 1.0, 1.0};
+    glLightfv(GL_LIGHT1, GL_POSITION, l2_pos);
+    DrawTexturedQuad(texture[0], l2_pos[0], l2_pos[1], l2_pos[2]);
 
     delta+= 0.03;
     for (int i = 0; i < 5; i++)
