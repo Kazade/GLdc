@@ -71,20 +71,24 @@ static GLuint byte_size(GLenum type) {
     }
 }
 
-static void transformVertex(GLfloat* src, float* x, float* y, float* z) {
-    register float __x  __asm__("fr12");
-    register float __y  __asm__("fr13");
-    register float __z  __asm__("fr14");
+static GLfloat transformVertexWithoutPerspectiveDivide(GLfloat* src, float* x, float* y, float* z) {
+    register float __x __asm__("fr12") = (src[0]);
+    register float __y __asm__("fr13") = (src[1]);
+    register float __z __asm__("fr14") = (src[2]);
+    register float __w __asm__("fr15");
 
-    __x = src[0];
-    __y = src[1];
-    __z = src[2];
-
-    mat_trans_fv12()
+    __asm__ __volatile__(
+        "fldi1 fr15\n"
+        "ftrv  xmtrx, fv12\n"
+        : "=f" (__x), "=f" (__y), "=f" (__z)
+        : "0" (__x), "1" (__y), "2" (__z)
+    );
 
     *x = __x;
     *y = __y;
     *z = __z;
+
+    return __w;
 }
 
 static void _parseColour(uint32* out, const GLubyte* in, GLint size, GLenum type) {
@@ -199,20 +203,15 @@ static void submitVertices(GLenum mode, GLsizei first, GLsizei count, GLenum typ
     static GLfloat eye_P[3];
     static GLfloat eye_N[3];
 
-    /* When clipping triangle strips we need to keep a stash of the last two vertices *before*
-     * they were manipulated, because, imagine this scenario:
-     * - A triangle has 2 vertices hidden
-     * - We manipulate those 2 vertices to coincide with the near plane
-     * - We end that triangle strip, then start a new one with the next triangle
-     * - That triangle needs to be formed with the original vertices
-     */
-    static pvr_vertex_t clip_stash[2];
-
     if(!(ENABLED_VERTEX_ATTRIBUTES & VERTEX_ENABLED_FLAG)) {
         return;
     }
 
     const GLsizei elements = (mode == GL_QUADS) ? 4 : (mode == GL_TRIANGLES) ? 3 : (mode == GL_LINES) ? 2 : count;
+
+    // Point dest at the first new vertex to populate. This is the size of the container before extending,
+    // with the additional space for the header.
+    GLsizei start_of_output = activePolyList()->vector.size + 1;
 
     // Make room for the element + the header
     PVRCommand* dst = (PVRCommand*) aligned_vector_extend(&activePolyList()->vector, count + 1);
@@ -220,7 +219,6 @@ static void submitVertices(GLenum mode, GLsizei first, GLsizei count, GLenum typ
     // Store a pointer to the header
     pvr_poly_hdr_t* hdr = (pvr_poly_hdr_t*) dst;
 
-    // Point dest at the first new vertex to populate
     dst++;
 
     // Compile
@@ -250,6 +248,23 @@ static void submitVertices(GLenum mode, GLsizei first, GLsizei count, GLenum typ
     GLushort i, last_vertex;
     GLshort rel; // Has to be signed as we drop below zero so we can re-enter the loop at 1.
 
+    static AlignedVector w_coordinates;
+    static GLboolean w_coordinates_initialized = GL_FALSE;
+    if(!w_coordinates_initialized) {
+        aligned_vector_init(&w_coordinates, sizeof(GLfloat));
+        w_coordinates_initialized = GL_TRUE;
+    }
+    aligned_vector_resize(&w_coordinates, 0);
+
+    struct {
+        pvr_vertex_t* vout[3];
+        GLfloat w[3];
+        GLubyte vcount;
+    } Triangle;
+
+    Triangle.vcount = 0;
+
+    /* Loop 1. Calculate vertex colours, transform, but don't apply perspective division */
     for(rel = 0, i = first; i < count; ++i, ++rel) {
         pvr_vertex_t* vertex = (pvr_vertex_t*) dst;
         vertex->u = vertex->v = 0.0f;
@@ -323,96 +338,52 @@ static void submitVertices(GLenum mode, GLsizei first, GLsizei count, GLenum typ
 
         _applyRenderMatrix(); /* Apply the Render Matrix Stack */
 
-        float W_stash[3];
+        /* Perform transformation without perspective division. Perspective divide will occur
+         * per-triangle after clipping */
+        GLfloat W = transformVertexWithoutPerspectiveDivide(&vertex->x, &vertex->x, &vertex->y, &vertex->z);
+        aligned_vector_push_back(&w_coordinates, &W, 1);
 
-        // FIXME: Don't perspective divide!
-        transformVertex(&vertex->x, &vertex->x, &vertex->y, &vertex->z);
+        Triangle.w[Triangle.vcount] = W;
+        Triangle.vout[Triangle.vcount] = vertex;
+        Triangle.vcount++;
+        if(Triangle.vcount == 3) {
+            /* OK we have a whole triangle, we may have to clip */
 
-        /* The PVR doesn't support quads, only triangle strips, so we need to
-         * swap the last two vertices of each set */
-        if(last_vertex && mode == GL_QUADS) {
-            /* This vertex becomes the previous vertex so store it*/
-            pvr_vertex_t tmp = *vertex;
-            tmp.flags = PVR_CMD_VERTEX;
-
-            /* Overwrite this vertex with the previous one, make it last */
-            *vertex = *(vertex - 1);
-            vertex->flags = PVR_CMD_VERTEX_EOL;
-
-            /* Now make the previous one the original last one */
-            *(vertex - 1) = tmp;
+            /* Reset for the next triangle */
+            Triangle.vout[0] = Triangle.vout[1];
+            Triangle.vout[1] = Triangle.vout[2];
+            Triangle.w[0] = Triangle.w[1];
+            Triangle.w[1] = Triangle.w[2];
+            Triangle.vcount = 2;
         }
-
-        // Store this for the clip stash
-        pvr_vertex_t original_vertex = *((pvr_vertex_t*) dst);
-
-        if(rel >= 2) {
-            /* We have at least one complete triangle, let's start clipping! */
-            pvr_vertex_t* v1 = (pvr_vertex_t*) &clip_stash[0];
-            pvr_vertex_t* v2 = (pvr_vertex_t*) &clip_stash[1];
-            pvr_vertex_t* v3 = (pvr_vertex_t*) dst;
-
-            pvr_vertex_t* v1out = (pvr_vertex_t*) dst - 2;
-            pvr_vertex_t* v2out = (pvr_vertex_t*) dst - 1;
-            pvr_vertex_t* v3out = v3;
-            pvr_vertex_t v4out;
-
-            TriangleClipResult ret = clipTriangleToNearZ(
-                NEAR_DEPTH,
-                rel - 2,
-                v1, v2, v3,
-                v1out, v2out, v3out, &v4out
-            );
-
-            if(ret == TRIANGLE_CLIP_RESULT_DROP_TRIANGLE) {
-                /* If we're here, then none of the 3 points were visible, that means we drop the entire triangle and start
-                 * anew with the next one. We rollback rel as we always need 3 vertices and if this was the first triangle in the strip
-                 * we need to build up the stash again
-                 * we point dst back at the first vertex. We would actually have access space at the end of the array
-                 * so we move that back too (this won't reallocate, we never reallocate on shrink unless we call vector_shrink_to_fit
-                 */
-                dst = dst - 3; // This might seem like we're going back too many, but we increment further down
-                rel = rel - 3; // This might drop down to -1, but the next loop will go up to 0 again
-
-                aligned_vector_resize(
-                    &activePolyList()->vector,
-                    activePolyList()->vector.size - 3
-                );
-
-            } else if(ret == TRIANGLE_CLIP_RESULT_ALTERED_VERTICES) {
-                /*
-                 * Two vertices were behind the clip plane, we just manipulated them.
-                   we have to end the triangle strip here and pick up next vertex */
-                v3out->flags = PVR_CMD_VERTEX_EOL;
-
-                /* Now we push back the original 2 vertices, so that the next triangle strip will be properly
-                 * formed (or dropped) next time around */
-                aligned_vector_resize(
-                    &activePolyList()->vector,
-                    activePolyList()->vector.size + 2
-                );
-
-                /* clip_stash[1] holds the previous vertex, original_vertex holds the current one */
-                memcpy(++dst, &clip_stash[1], sizeof(PVRCommand));
-                memcpy(++dst, &original_vertex, sizeof(PVRCommand));
-
-            } else if(ret == TRIANGLE_CLIP_RESULT_ALTERED_AND_CREATED_VERTEX) {
-                /* One vertex was behind the clip plane, we need to create another triangle */
-                /* We need to push back v4 and then deal with a possible reallocation by updating dst */
-
-
-            } else {
-                /* OK nothing changed, don't do anything */
-            }
-        }
-
-        /* Update the clip stash */
-        clip_stash[0] = clip_stash[1];
-        clip_stash[1] = original_vertex;
-
-        //FIXME: Perform perspective division
 
         ++dst;
+    }
+
+    pvr_vertex_t* v = (pvr_vertex_t*) aligned_vector_at(&activePolyList()->vector, start_of_output);
+
+    /* Loop 2: Perspective division */
+    for(rel = 0, i = start_of_output; i < activePolyList()->vector.size; ++rel, ++i) {
+        GLfloat* w = aligned_vector_at(&w_coordinates, rel);
+
+        register float __x __asm__("fr12") = (v->x);
+        register float __y __asm__("fr13") = (v->y);
+        register float __z __asm__("fr14") = (v->z);
+        register float __w __asm__("fr15") = (*w);
+
+        __asm__ __volatile__(
+            "fldi1 fr14\n" \
+            "fdiv	 fr15, fr14\n" \
+            "fmul	 fr14, fr12\n" \
+            "fmul	 fr14, fr13\n" \
+            : "=f" (__x), "=f" (__y), "=f" (__z)
+            : "0" (__x), "1" (__y), "2" (__z)
+        );
+
+        v->x = __x;
+        v->y = __y;
+        v->z = __z;
+        ++v;
     }
 }
 
