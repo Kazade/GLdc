@@ -47,7 +47,7 @@ TriangleClipResult clipTriangleToNearZ(
      */
 
     typedef unsigned char uint8;
-    uint8 visible = (v1->z >= plane_dist) ? 1 : 0 | (v2->z >= plane_dist) ? 2 : 0 | (v3->z >= plane_dist) ? 4 : 0;
+    uint8 visible = ((v1->z <= -plane_dist) ? 1 : 0) | ((v2->z <= -plane_dist) ? 2 : 0) | ((v3->z <= -plane_dist) ? 4 : 0);
 
     switch(visible) {
     case 0b000:
@@ -69,8 +69,6 @@ TriangleClipResult clipTriangleToNearZ(
     default: {
         /* One vertex is visible */
         /* This is the "easy" case, we simply find the vertex which is visible, and clip the lines to the other 2 against the plane */
-        fprintf(stderr, "Clipping triangle\n");
-
         pvr_vertex_t tmp1, tmp2;
         float t1, t2;
 

@@ -213,8 +213,10 @@ static void submitVertices(GLenum mode, GLsizei first, GLsizei count, GLenum typ
     // with the additional space for the header.
     GLsizei start_of_output = activePolyList()->vector.size + 1;
 
+    AlignedVector* list_vector = &activePolyList()->vector;
+
     // Make room for the element + the header
-    PVRCommand* dst = (PVRCommand*) aligned_vector_extend(&activePolyList()->vector, count + 1);
+    PVRCommand* dst = (PVRCommand*) aligned_vector_extend(list_vector, count + 1);
 
     // Store a pointer to the header
     pvr_poly_hdr_t* hdr = (pvr_poly_hdr_t*) dst;
@@ -256,8 +258,8 @@ static void submitVertices(GLenum mode, GLsizei first, GLsizei count, GLenum typ
     }
     aligned_vector_resize(&w_coordinates, 0);
 
-    struct {
-        pvr_vertex_t* vout[3];
+    static struct {
+        pvr_vertex_t* vin[3];
         GLfloat w[3];
         GLubyte vcount;
     } Triangle;
@@ -265,7 +267,7 @@ static void submitVertices(GLenum mode, GLsizei first, GLsizei count, GLenum typ
     Triangle.vcount = 0;
 
     /* Loop 1. Calculate vertex colours, transform, but don't apply perspective division */
-    for(rel = 0, i = first; i < count; ++i, ++rel) {
+    for(rel = 0, i = first; i < count; ++i, ++rel) {       
         pvr_vertex_t* vertex = (pvr_vertex_t*) dst;
         vertex->u = vertex->v = 0.0f;
         vertex->argb = 0;
@@ -344,14 +346,116 @@ static void submitVertices(GLenum mode, GLsizei first, GLsizei count, GLenum typ
         aligned_vector_push_back(&w_coordinates, &W, 1);
 
         Triangle.w[Triangle.vcount] = W;
-        Triangle.vout[Triangle.vcount] = vertex;
+        Triangle.vin[Triangle.vcount] = vertex;
         Triangle.vcount++;
         if(Triangle.vcount == 3) {
+            pvr_vertex_t clipped[4];
+
             /* OK we have a whole triangle, we may have to clip */
+            TriangleClipResult tri_result = clipTriangleToNearZ(
+                NEAR_DEPTH,
+                (rel - 2),
+                Triangle.vin[0],
+                Triangle.vin[1],
+                Triangle.vin[2],
+                &clipped[0],
+                &clipped[1],
+                &clipped[2],
+                &clipped[3]
+            );
+
+            /* The potential 4 new vertices that can be output by clipping the triangle. Initialized in the below branches */
+            pvr_vertex_t* vout[4];
+
+            if(tri_result == TRIANGLE_CLIP_RESULT_NO_CHANGE) {
+                /* Nothing changed, we're fine */
+            } else if(tri_result == TRIANGLE_CLIP_RESULT_DROP_TRIANGLE) {
+                /* As we're dealing with triangle strips, we have the following situations:
+                 * 1. This is the first trangle. We can drop the first vertex, reverse the other two, subsequent
+                 *    triangles will be formed from them. If there are no remaining vertices (i == count - 1) then
+                 *    we can drop all three.
+                 * 2. This is the second+ triangle. We mark the second triangle vertex as the "last" vertex, then
+                 *    push the second and third vertices again (reversed) to start the new triangle. If there are no
+                 *    more vertices (i == count - 1) we can just drop the final vertex.
+                 * By first triangle, it means that rel == 2 or dst - 3 is marked as a "last" vertex.
+                 */
+                fprintf(stderr, "Dropping triangle\n");
+
+                /* Is this the first triangle in the strip? */
+                GLboolean first_triangle = (rel == 2) || ((vertex - 3)->flags == PVR_CMD_VERTEX_EOL);
+                if(first_triangle) {
+                    vout[0] = vertex - 2;
+                    vout[1] = vertex - 1;
+                    vout[2] = vertex;
+
+                    if(rel == (count - 1)) {
+                        /* Lose all 3 vertices */
+                        aligned_vector_resize(list_vector, list_vector->size - 3);
+                        dst -= 3;
+                        vertex = (pvr_vertex_t*) dst;
+
+                        /* Next triangle is a new one */
+                        Triangle.vcount = 0;
+                    } else {
+                        vout[0] = vout[2];
+                        /* vout[1] = vout[1]; no-op, just here as a comment so things make a bit more sense */
+
+                        /* Rewind dst by one as we just lost a vertex */
+                        aligned_vector_resize(list_vector, list_vector->size - 1);
+                        dst--;
+                        vertex = (pvr_vertex_t*) dst;
+
+                        /* Two vertices are populated for the current triangle now */
+                        Triangle.vcount = 2;
+                    }
+                } else {
+                    if(rel == (count - 1)) {
+                        /* This is the last vertex in the strip and we're dropping this triangle so just drop a vertex*/
+                        aligned_vector_resize(list_vector, list_vector->size - 1);
+                        dst--;
+                        vertex = (pvr_vertex_t*) dst;
+                    } else {
+                        /* This is a bit weird. We're dropping a triangle, but we have to add an additional vertex. This is because
+                         * if this triangle is in the middle of the strip, and we drop the 3rd vertex then we break the following triangle.
+                         * so what we do is end the triangle strip at vertex 2 of the current triangle, then re-add vertex 2 and vertex 3
+                         * in reverse so that the next triangle works. This might seem wasteful but actually that triangle could be subsequently
+                         * dropped entirely as it'll be the "first_triangle" next time around. */
+
+                        /* Make room at the end of the vector */
+                        aligned_vector_extend(list_vector, 1);
+
+                        /* Deal with any realloc that just happened */
+                        dst = aligned_vector_at(list_vector, i);
+                        vertex = (pvr_vertex_t*) dst;
+
+                        /* Set up the output pointers */
+                        vout[0] = vertex - 2;
+                        vout[1] = vertex - 1;
+                        vout[2] = vertex;
+                        vout[3] = vertex + 3;
+
+                        /* Mark second vertex as the end of the strip, duplicate the second vertex
+                         * to create the start of the next strip
+                         */
+                        vout[1]->flags = PVR_CMD_VERTEX_EOL;
+                        *vout[3] = *Triangle.vin[1];
+
+                        dst = (PVRCommand*) vout[3];
+                        vertex = vout[3];
+
+                        /* Current triangle has two vertices */
+                        Triangle.vcount = 2;
+                    }
+                }
+            } else if(tri_result == TRIANGLE_CLIP_RESULT_ALTERED_VERTICES) {
+
+            } else if(tri_result == TRIANGLE_CLIP_RESULT_ALTERED_AND_CREATED_VERTEX) {
+
+            }
 
             /* Reset for the next triangle */
-            Triangle.vout[0] = Triangle.vout[1];
-            Triangle.vout[1] = Triangle.vout[2];
+            Triangle.vin[0] = Triangle.vin[1];
+            Triangle.vin[1] = Triangle.vin[2];
             Triangle.w[0] = Triangle.w[1];
             Triangle.w[1] = Triangle.w[2];
             Triangle.vcount = 2;
@@ -360,7 +464,7 @@ static void submitVertices(GLenum mode, GLsizei first, GLsizei count, GLenum typ
         ++dst;
     }
 
-    pvr_vertex_t* v = (pvr_vertex_t*) aligned_vector_at(&activePolyList()->vector, start_of_output);
+    pvr_vertex_t* v = (pvr_vertex_t*) aligned_vector_at(list_vector, start_of_output);
 
     /* Loop 2: Perspective division */
     for(rel = 0, i = start_of_output; i < activePolyList()->vector.size; ++rel, ++i) {
