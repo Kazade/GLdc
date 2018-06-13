@@ -379,7 +379,6 @@ static void submitVertices(GLenum mode, GLsizei first, GLsizei count, GLenum typ
                  *    more vertices (i == count - 1) we can just drop the final vertex.
                  * By first triangle, it means that rel == 2 or dst - 3 is marked as a "last" vertex.
                  */
-                fprintf(stderr, "Dropping triangle\n");
 
                 /* Is this the first triangle in the strip? */
                 GLboolean first_triangle = (rel == 2) || ((vertex - 3)->flags == PVR_CMD_VERTEX_EOL);
@@ -425,7 +424,7 @@ static void submitVertices(GLenum mode, GLsizei first, GLsizei count, GLenum typ
                         aligned_vector_extend(list_vector, 1);
 
                         /* Deal with any realloc that just happened */
-                        dst = aligned_vector_at(list_vector, i);
+                        dst = aligned_vector_at(list_vector, rel);
                         vertex = (pvr_vertex_t*) dst;
 
                         /* Set up the output pointers */
@@ -437,8 +436,11 @@ static void submitVertices(GLenum mode, GLsizei first, GLsizei count, GLenum typ
                         /* Mark second vertex as the end of the strip, duplicate the second vertex
                          * to create the start of the next strip
                          */
-                        vout[1]->flags = PVR_CMD_VERTEX_EOL;
                         *vout[3] = *Triangle.vin[1];
+
+                        vout[1]->flags = PVR_CMD_VERTEX_EOL;
+                        vout[2]->flags = PVR_CMD_VERTEX;
+                        vout[3]->flags = PVR_CMD_VERTEX;
 
                         dst = (PVRCommand*) vout[3];
                         vertex = vout[3];
