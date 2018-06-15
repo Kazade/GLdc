@@ -267,7 +267,7 @@ static void submitVertices(GLenum mode, GLsizei first, GLsizei count, GLenum typ
     Triangle.vcount = 0;
 
     /* Loop 1. Calculate vertex colours, transform, but don't apply perspective division */
-    for(rel = 0, i = first; i < count; ++i, ++rel) {       
+    for(rel = 0, i = first; i < first + count; ++i, ++rel) {
         pvr_vertex_t* vertex = (pvr_vertex_t*) dst;
         vertex->u = vertex->v = 0.0f;
         vertex->argb = 0;
@@ -350,6 +350,7 @@ static void submitVertices(GLenum mode, GLsizei first, GLsizei count, GLenum typ
         Triangle.vcount++;
         if(Triangle.vcount == 3) {
             pvr_vertex_t clipped[4];
+            GLubyte visible; /* Bitmask of which of the 3 input vertices are visible */
 
             /* OK we have a whole triangle, we may have to clip */
             TriangleClipResult tri_result = clipTriangleToNearZ(
@@ -361,7 +362,8 @@ static void submitVertices(GLenum mode, GLsizei first, GLsizei count, GLenum typ
                 &clipped[0],
                 &clipped[1],
                 &clipped[2],
-                &clipped[3]
+                &clipped[3],
+                &visible
             );
 
             /* The potential 4 new vertices that can be output by clipping the triangle. Initialized in the below branches */
@@ -450,6 +452,8 @@ static void submitVertices(GLenum mode, GLsizei first, GLsizei count, GLenum typ
                     }
                 }
             } else if(tri_result == TRIANGLE_CLIP_RESULT_ALTERED_VERTICES) {
+                /* We're here because a single vertex was visible, the other two vertices were changed */
+
 
             } else if(tri_result == TRIANGLE_CLIP_RESULT_ALTERED_AND_CREATED_VERTEX) {
 

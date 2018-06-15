@@ -39,7 +39,7 @@ ClipResult clipLineToNearZ(const float* v1, const float* v2, const float dist, f
 TriangleClipResult clipTriangleToNearZ(
     const float plane_dist,
     const unsigned short triangle_n, const pvr_vertex_t* v1, const pvr_vertex_t* v2, const pvr_vertex_t *v3,
-    pvr_vertex_t* v1out, pvr_vertex_t* v2out, pvr_vertex_t* v3out, pvr_vertex_t* v4out
+    pvr_vertex_t* v1out, pvr_vertex_t* v2out, pvr_vertex_t* v3out, pvr_vertex_t* v4out, unsigned char* visible
 ) {
 
     /* Fast out. Let's just see if everything is in front of the clip plane (and as in OpenGL Z comes out of the screen
@@ -47,9 +47,9 @@ TriangleClipResult clipTriangleToNearZ(
      */
 
     typedef unsigned char uint8;
-    uint8 visible = ((v1->z <= -plane_dist) ? 1 : 0) | ((v2->z <= -plane_dist) ? 2 : 0) | ((v3->z <= -plane_dist) ? 4 : 0);
+    *visible = ((v1->z <= -plane_dist) ? 1 : 0) | ((v2->z <= -plane_dist) ? 2 : 0) | ((v3->z <= -plane_dist) ? 4 : 0);
 
-    switch(visible) {
+    switch(*visible) {
     case 0b000:
         /* If behind is zero, then none of the vertices are visible */
         return TRIANGLE_CLIP_RESULT_DROP_TRIANGLE;
