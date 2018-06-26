@@ -343,26 +343,22 @@ static void submitVertices(GLenum mode, GLsizei first, GLsizei count, GLenum typ
         /* Perform transformation without perspective division. Perspective divide will occur
          * per-triangle after clipping */
         GLfloat W = transformVertexWithoutPerspectiveDivide(&vertex->x, &vertex->x, &vertex->y, &vertex->z);
-        aligned_vector_push_back(&w_coordinates, &W, 1);
 
         Triangle.w[Triangle.vcount] = W;
         Triangle.vin[Triangle.vcount] = vertex;
         Triangle.vcount++;
         if(Triangle.vcount == 3) {
             pvr_vertex_t clipped[4];
+            float clipped_w[4];
             GLubyte visible; /* Bitmask of which of the 3 input vertices are visible */
 
             /* OK we have a whole triangle, we may have to clip */
             TriangleClipResult tri_result = clipTriangleToNearZ(
                 NEAR_DEPTH,
-                (rel - 2),
-                Triangle.vin[0],
-                Triangle.vin[1],
-                Triangle.vin[2],
-                &clipped[0],
-                &clipped[1],
-                &clipped[2],
-                &clipped[3],
+                Triangle.vin,
+                Triangle.w,
+                clipped,
+                clipped_w,
                 &visible
             );
 

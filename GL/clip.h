@@ -57,9 +57,9 @@ typedef enum {
  * The outputs can be the same as the inputs.
  */
 TriangleClipResult clipTriangleToNearZ(
-    const float plane_dist,
-    const unsigned short triangle_n, const pvr_vertex_t* v1, const pvr_vertex_t* v2, const pvr_vertex_t *v3,
-    pvr_vertex_t* v1out, pvr_vertex_t* v2out, pvr_vertex_t* v3out, pvr_vertex_t* v4out, unsigned char* visible
+    const float plane_dist, const pvr_vertex_t** vertices_in, const float* w_coordinates_in,
+    pvr_vertex_t* vertices_out, float* w_coordinates_out,
+    unsigned char* visible
 );
 
 #ifdef __cplusplus

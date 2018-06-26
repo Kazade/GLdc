@@ -38,9 +38,29 @@ ClipResult clipLineToNearZ(const float* v1, const float* v2, const float dist, f
 
 TriangleClipResult clipTriangleToNearZ(
     const float plane_dist,
-    const unsigned short triangle_n, const pvr_vertex_t* v1, const pvr_vertex_t* v2, const pvr_vertex_t *v3,
-    pvr_vertex_t* v1out, pvr_vertex_t* v2out, pvr_vertex_t* v3out, pvr_vertex_t* v4out, unsigned char* visible
+    const pvr_vertex_t** vertices_in,
+    const float* w_coordinates_in,
+    pvr_vertex_t** vertices_out,
+    float* w_coordinates_out,
+    unsigned char* visible
 ) {
+    const pvr_vertex_t* v1 = vertices_in[0];
+    const pvr_vertex_t* v2 = vertices_in[1];
+    const pvr_vertex_t* v3 = vertices_in[2];
+
+    const float w1 = w_coordinates_in[0];
+    const float w2 = w_coordinates_in[1];
+    const float w3 = w_coordinates_in[2];
+
+    pvr_vertex_t* v1out = vertices_out[0];
+    pvr_vertex_t* v2out = vertices_out[1];
+    pvr_vertex_t* v3out = vertices_out[2];
+    pvr_vertex_t* v4out = vertices_out[3];
+
+    float* w1out = w_coordinates_out[0];
+    float* w2out = w_coordinates_out[1];
+    float* w3out = w_coordinates_out[2];
+    float* w4out = w_coordinates_out[3];
 
     /* Fast out. Let's just see if everything is in front of the clip plane (and as in OpenGL Z comes out of the screen
      * we check to see if they are all < -dist
@@ -73,29 +93,38 @@ TriangleClipResult clipTriangleToNearZ(
         float t1, t2;
 
         if(visible == 0b001) {
-            ClipResult l1 = clipLineToNearZ(&v1->x, &v2->x, plane_dist, &tmp1.x, &t1);
-            ClipResult l2 = clipLineToNearZ(&v1->x, &v3->x, plane_dist, &tmp2.x, &t2);
-
-            fprintf(stderr, "New V2: %f, %f, %f. T: %f\n", tmp1.x, tmp1.y, tmp1.z, t1);
-            fprintf(stderr, "New V3: %f, %f, %f. T: %f\n", tmp2.x, tmp2.y, tmp2.z, t2);
+            clipLineToNearZ(&v1->x, &v2->x, plane_dist, &tmp1.x, &t1);
+            clipLineToNearZ(&v1->x, &v3->x, plane_dist, &tmp2.x, &t2);
 
             *v1out = *v1;
             *v2out = tmp1;
             *v3out = tmp2;
+
+            *w1out = w1;
+            *w2out = w1 + ((w2 - w1) * t1);
+            *w3out = w1 + ((w3 - w1) * t2);
         } else if(visible == 0b010) {
-            ClipResult l1 = clipLineToNearZ(&v2->x, &v1->x, plane_dist, &tmp1.x, &t1);
-            ClipResult l2 = clipLineToNearZ(&v2->x, &v3->x, plane_dist, &tmp2.x, &t2);
+            clipLineToNearZ(&v2->x, &v1->x, plane_dist, &tmp1.x, &t1);
+            clipLineToNearZ(&v2->x, &v3->x, plane_dist, &tmp2.x, &t2);
 
             *v1out = tmp1;
             *v2out = *v2;
             *v3out = tmp2;
+
+            *w1out = w2 + ((w1 - w2) * t1);
+            *w2out = w2;
+            *w3out = w2 + ((w3 - w2) * t2);
         } else {
-            ClipResult l1 = clipLineToNearZ(&v3->x, &v1->x, plane_dist, &tmp1.x, &t1);
-            ClipResult l2 = clipLineToNearZ(&v3->x, &v2->x, plane_dist, &tmp2.x, &t2);
+            clipLineToNearZ(&v3->x, &v1->x, plane_dist, &tmp1.x, &t1);
+            clipLineToNearZ(&v3->x, &v2->x, plane_dist, &tmp2.x, &t2);
 
             *v1out = tmp1;
             *v2out = tmp2;
             *v3out = *v3;
+
+            *w1out = w3 + ((w3 - w1) * t1);
+            *w2out = w3 + ((w3 - w2) * t2);
+            *w3out = w3;
         }
 
         return TRIANGLE_CLIP_RESULT_ALTERED_VERTICES;
