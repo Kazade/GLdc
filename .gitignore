@@ -4,3 +4,5 @@
 *.a
 *.elf
 *.img
+dc-build.sh
+.buildconfig
