@@ -3,6 +3,7 @@
 #include "../include/gl.h"
 #include "../include/glext.h"
 #include "private.h"
+#include "profile.h"
 
 typedef struct {
     const void* ptr;
@@ -192,6 +193,8 @@ inline void transformNormalToEyeSpace(GLfloat* normal) {
 
 
 static void submitVertices(GLenum mode, GLsizei first, GLsizei count, GLenum type, const GLvoid* indices) {
+    TRACE_START();
+
     static GLfloat normal[3] = {0.0f, 0.0f, -1.0f};
     static GLfloat eye_P[3];
     static GLfloat eye_N[3];
