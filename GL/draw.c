@@ -281,12 +281,10 @@ static void generate(AlignedVector* output, const GLenum mode, const GLsizei fir
 
                 vertex->flags = PVR_CMD_VERTEX_EOL;
             }
+        } else if(mode == GL_TRIANGLE_STRIP && j == (max - 1)) {
+            /* If the mode was triangle strip, then the last vertex is the last vertex */
+            vertex->flags = PVR_CMD_VERTEX_EOL;
         }
-    }
-
-    /* If the mode was triangle strip, then the last vertex is the last vertex */
-    if(mode == GL_TRIANGLE_STRIP) {
-        vertex->flags = PVR_CMD_VERTEX_EOL;
     }
 }
 
