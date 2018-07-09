@@ -88,8 +88,8 @@ static void transpose(GLfloat* m) {
 
 static void recalculateNormalMatrix() {
     memcpy(NORMAL_MATRIX, stack_top(MATRIX_STACKS + (GL_MODELVIEW & 0xF)), sizeof(matrix_t));
-    inverse((GLfloat*) NORMAL_MATRIX);
     transpose((GLfloat*) NORMAL_MATRIX);
+    inverse((GLfloat*) NORMAL_MATRIX);
 }
 
 void APIENTRY glMatrixMode(GLenum mode) {
