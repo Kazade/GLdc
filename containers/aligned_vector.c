@@ -70,6 +70,10 @@ void* aligned_vector_at(const AlignedVector* vector, const unsigned int index) {
     return &vector->data[index * vector->element_size];
 }
 
+void* aligned_vector_back(AlignedVector* vector) {
+    return aligned_vector_at(vector, vector->size - 1);
+}
+
 void* aligned_vector_extend(AlignedVector* vector, const unsigned int additional_count) {
     const unsigned int current = vector->size;
     aligned_vector_resize(vector, vector->size + additional_count);

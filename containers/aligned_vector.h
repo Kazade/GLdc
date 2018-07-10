@@ -23,6 +23,7 @@ void* aligned_vector_extend(AlignedVector* vector, const unsigned int additional
 void aligned_vector_clear(AlignedVector* vector);
 void aligned_vector_shrink_to_fit(AlignedVector* vector);
 void aligned_vector_cleanup(AlignedVector* vector);
+void* aligned_vector_back(AlignedVector* vector);
 
 #ifdef __cplusplus
 }

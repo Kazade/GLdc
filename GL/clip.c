@@ -78,15 +78,18 @@ void clipTriangleStrip(AlignedVector* vertices, AlignedVector* outBuffer) {
             aligned_vector_at(vertices, i)
         };
 
-        ClipVertex* v1 = sourceTriangle[0];
-        ClipVertex* v2 = sourceTriangle[1];
+        /* If we're on an odd vertex, we need to swap the order of the first two vertices, as that's what
+         * triangle strips do */
+        ClipVertex* v1 = (i % 2 == 0) ? sourceTriangle[0] : sourceTriangle[1];
+        ClipVertex* v2 = (i % 2 == 0) ? sourceTriangle[1] : sourceTriangle[0];
         ClipVertex* v3 = sourceTriangle[2];
 
         uint8_t visible = ((v1->xyz[2] <= 0) ? 4 : 0) | ((v2->xyz[2] <= 0) ? 2 : 0) | ((v3->xyz[2] <= 0) ? 1 : 0);
+        uint8_t startOfStrip = (i == 2) || (outBuffer->size > 2 && ((ClipVertex*) aligned_vector_back(outBuffer))->flags == VERTEX_CMD_EOL);
 
         /* All visible, we're fine! */
         if(visible == 0b111) {
-            if(i == 2) {
+            if(startOfStrip) {
                 aligned_vector_push_back(outBuffer, v1, 1);
                 aligned_vector_push_back(outBuffer, v2, 1);
             }
