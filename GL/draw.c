@@ -178,27 +178,8 @@ inline void transformNormalToEyeSpace(GLfloat* normal) {
 }
 
 
-typedef struct {
-    uint8_t a;
-    uint8_t r;
-    uint8_t g;
-    uint8_t b;
-} Colour;
 
-/* Note: This structure is the almost the same format as pvr_vertex_t aside from the offet
- * (oargb) which is replaced by the floating point w value. This is so that we can
- * simply zero it and memcpy the lot into the output */
-typedef struct {
-    uint32_t flags;
-    float xyz[3];
-    float uv[2];
-    Colour argb;
-    float nxyz[3];
-    float w;
 
-    float xyzES[3]; /* Coordinate in eye space */
-    float nES[3]; /* Normal in eye space */
-} ClipVertex;
 
 
 static void swapVertex(ClipVertex* v1, ClipVertex* v2) {
@@ -317,6 +298,27 @@ static void transform(AlignedVector* vertices) {
 
 static void clip(AlignedVector* vertices) {
     /* Perform clipping, generating new vertices as necessary */
+
+    static AlignedVector* CLIP_BUFFER = NULL;
+
+    /* First entry into this, allocate the clip buffer */
+    if(!CLIP_BUFFER) {
+        CLIP_BUFFER = (AlignedVector*) malloc(sizeof(AlignedVector));
+        aligned_vector_init(CLIP_BUFFER, sizeof(ClipVertex));
+    }
+
+    /* Make sure we allocate roughly enough space */
+    aligned_vector_reserve(CLIP_BUFFER, vertices->size);
+
+    /* Start from empty */
+    aligned_vector_resize(CLIP_BUFFER, 0);
+
+    /* Now perform clipping! */
+    clipTriangleStrip(vertices, CLIP_BUFFER);
+
+    /* Copy the clip buffer over the vertices */
+    aligned_vector_resize(vertices, CLIP_BUFFER->size);
+    memcpy(vertices->data, CLIP_BUFFER->data, CLIP_BUFFER->size * CLIP_BUFFER->element_size);
 }
 
 static void mat_transform3(const float* xyz, const float* xyzOut, const uint32_t count, const uint32_t stride) {
@@ -385,7 +387,7 @@ static void light(AlignedVector* vertices) {
         }
 
         uint32_t final = PVR_PACK_COLOR(contribution[3], contribution[0], contribution[1], contribution[2]);
-        vertex->argb = *((Colour*) &final);
+        vertex->argb = *((ClipColour*) &final);
     }
 }
 
@@ -465,8 +467,8 @@ static void submitVertices(GLenum mode, GLsizei first, GLsizei count, GLenum typ
     generate(buffer, mode, first, count, (GLubyte*) indices, type, vptr, vstride, cptr, cstride, uvptr, uvstride, nptr, nstride);
     light(buffer);
     transform(buffer);
+    clip(buffer);
     divide(buffer);
-
     push(buffer, activePolyList());
 }
 
