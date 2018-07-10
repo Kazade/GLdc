@@ -66,7 +66,7 @@ void aligned_vector_resize(AlignedVector* vector, const unsigned int element_cou
     vector->size = element_count;
 }
 
-void* aligned_vector_at(AlignedVector* vector, const unsigned int index) {
+void* aligned_vector_at(const AlignedVector* vector, const unsigned int index) {
     return &vector->data[index * vector->element_size];
 }
 

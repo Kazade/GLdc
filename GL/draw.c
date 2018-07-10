@@ -1,4 +1,7 @@
 #include <stdio.h>
+#include <stdint.h>
+#include <string.h>
+#include <stdlib.h>
 
 #include "../include/gl.h"
 #include "../include/glext.h"
@@ -68,22 +71,6 @@ static GLuint byte_size(GLenum type) {
     case GL_FLOAT:
     default: return sizeof(GLfloat);
     }
-}
-
-static void transformVertex(GLfloat* src, float* x, float* y, float* z) {
-    register float __x  __asm__("fr12");
-    register float __y  __asm__("fr13");
-    register float __z  __asm__("fr14");
-
-    __x = src[0];
-    __y = src[1];
-    __z = src[2];
-
-    mat_trans_fv12()
-
-    *x = __x;
-    *y = __y;
-    *z = __z;
 }
 
 static void _parseColour(uint32* out, const GLubyte* in, GLint size, GLenum type) {
@@ -191,19 +178,234 @@ inline void transformNormalToEyeSpace(GLfloat* normal) {
 }
 
 
-static void submitVertices(GLenum mode, GLsizei first, GLsizei count, GLenum type, const GLvoid* indices) {
-    static GLfloat normal[3] = {0.0f, 0.0f, -1.0f};
-    static GLfloat eye_P[3];
-    static GLfloat eye_N[3];
+typedef struct {
+    uint8_t a;
+    uint8_t r;
+    uint8_t g;
+    uint8_t b;
+} Colour;
 
-    if(!(ENABLED_VERTEX_ATTRIBUTES & VERTEX_ENABLED_FLAG)) {
+/* Note: This structure is the almost the same format as pvr_vertex_t aside from the offet
+ * (oargb) which is replaced by the floating point w value. This is so that we can
+ * simply zero it and memcpy the lot into the output */
+typedef struct {
+    uint32_t flags;
+    float xyz[3];
+    float uv[2];
+    Colour argb;
+    float nxyz[3];
+    float w;
+
+    float xyzES[3]; /* Coordinate in eye space */
+    float nES[3]; /* Normal in eye space */
+} ClipVertex;
+
+
+static void swapVertex(ClipVertex* v1, ClipVertex* v2) {
+    ClipVertex tmp = *v1;
+    *v1 = *v2;
+    *v2 = tmp;
+}
+
+static void generate(AlignedVector* output, const GLenum mode, const GLsizei first, const GLsizei count,
+        const GLubyte* indices, const GLenum type,
+        const GLubyte* vptr, const GLubyte vstride, const GLubyte* cptr, const GLubyte cstride,
+        const GLubyte* uvptr, const GLubyte uvstride, const GLubyte* nptr, const GLubyte nstride) {
+    /* Read from the client buffers and generate an array of ClipVertices */
+
+    GLsizei max = first + count;
+
+    GLsizei spaceNeeded = (mode == GL_POLYGON || mode == GL_TRIANGLE_FAN) ? ((count - 2) * 3) : count;
+
+    /* Make sure we have room for the output */
+    aligned_vector_resize(output, spaceNeeded);
+
+    ClipVertex* vertex = (ClipVertex*) output->data;
+
+    GLsizei j;
+    GLsizei i = 0;
+    for(j = first; j < max; ++i, ++j, ++vertex) {
+        vertex->flags = PVR_CMD_VERTEX;
+
+        GLshort idx = j;
+        if(indices) {
+            _parseIndex(&idx, &indices[byte_size(type) * j], type);
+        }
+
+        _parseFloats(vertex->xyz, vptr + (idx * vstride), VERTEX_POINTER.size, VERTEX_POINTER.type);
+
+        if(ENABLED_VERTEX_ATTRIBUTES & DIFFUSE_ENABLED_FLAG) {
+            _parseColour((uint32_t*) &vertex->argb, cptr + (idx * cstride), DIFFUSE_POINTER.size, DIFFUSE_POINTER.type);
+        } else {
+            /* Default to white if colours are disabled */
+            vertex->argb.a = 255;
+            vertex->argb.r = 255;
+            vertex->argb.g = 255;
+            vertex->argb.b = 255;
+        }
+
+        if(ENABLED_VERTEX_ATTRIBUTES & UV_ENABLED_FLAG) {
+            _parseFloats(vertex->uv, uvptr + (idx * uvstride), UV_POINTER.size, UV_POINTER.type);
+        }
+
+        if(ENABLED_VERTEX_ATTRIBUTES & NORMAL_ENABLED_FLAG) {
+            _parseFloats(vertex->nxyz, nptr + (idx * nstride), NORMAL_POINTER.size, NORMAL_POINTER.type);
+        } else {
+            vertex->nxyz[0] = 0.0f;
+            vertex->nxyz[1] = 0.0f;
+            vertex->nxyz[2] = -1.0f;
+        }
+
+        if((mode == GL_TRIANGLES) && ((i + 1) % 3) == 0) {
+            vertex->flags = PVR_CMD_VERTEX_EOL;
+        } else if((mode == GL_QUADS) && ((i + 1) % 4) == 0) {
+            ClipVertex* previous = vertex - 1;
+            previous->flags = PVR_CMD_VERTEX_EOL;
+            swapVertex(previous, vertex);
+        } else if((mode == GL_POLYGON || mode == GL_TRIANGLE_FAN)) {
+            ClipVertex* previous = vertex - 1;
+            if(i == 2) {
+                swapVertex(previous, vertex);
+                vertex->flags = PVR_CMD_VERTEX_EOL;
+            } else if(i > 2) {
+                ClipVertex* first = (ClipVertex*) output->data;
+                ClipVertex* previous = vertex - 1;
+                ClipVertex* next = vertex + 1;
+
+                *next = *first;
+
+                swapVertex(next, vertex);
+
+                vertex = next + 1;
+                *vertex = *previous;
+
+                vertex->flags = PVR_CMD_VERTEX_EOL;
+            }
+        } else if(mode == GL_TRIANGLE_STRIP && j == (max - 1)) {
+            /* If the mode was triangle strip, then the last vertex is the last vertex */
+            vertex->flags = PVR_CMD_VERTEX_EOL;
+        }
+    }
+}
+
+static void transform(AlignedVector* vertices) {
+    /* Perform modelview transform, storing W */
+
+    ClipVertex* vertex = (ClipVertex*) vertices->data;
+
+    _applyRenderMatrix(); /* Apply the Render Matrix Stack */
+
+    GLsizei i;
+    for(i = 0; i < vertices->size; ++i, ++vertex) {
+        register float __x __asm__("fr12") = (vertex->xyz[0]);
+        register float __y __asm__("fr13") = (vertex->xyz[1]);
+        register float __z __asm__("fr14") = (vertex->xyz[2]);
+        register float __w __asm__("fr15") = 1.0f;
+
+        __asm__ __volatile__(
+            "ftrv   xmtrx,fv12\n"
+            : "=f" (__x), "=f" (__y), "=f" (__z), "=f" (__w)
+            : "0" (__x), "1" (__y), "2" (__z), "3" (__w)
+        );
+
+        vertex->xyz[0] = __x;
+        vertex->xyz[1] = __y;
+        vertex->xyz[2] = __z;
+        vertex->w = __w;
+    }
+}
+
+static void clip(AlignedVector* vertices) {
+    /* Perform clipping, generating new vertices as necessary */
+}
+
+static void mat_transform3(const float* xyz, const float* xyzOut, const uint32_t count, const uint32_t stride) {
+    uint8_t* dataIn = (uint8_t*) xyz;
+    uint8_t* dataOut = (uint8_t*) xyzOut;
+    uint32_t i = count;
+
+    while(i--) {
+        float* in = (float*) dataIn;
+        float* out = (float*) dataOut;
+
+        mat_trans_single3_nodiv_nomod(in[0], in[1], in[2], out[0], out[1], out[2]);
+
+        dataIn += stride;
+        dataOut += stride;
+    }
+}
+
+static void mat_transform_normal3(const float* xyz, const float* xyzOut, const uint32_t count, const uint32_t stride) {
+    uint8_t* dataIn = (uint8_t*) xyz;
+    uint8_t* dataOut = (uint8_t*) xyzOut;
+    uint32_t i = count;
+
+    while(i--) {
+        float* in = (float*) dataIn;
+        float* out = (float*) dataOut;
+
+        mat_trans_normal3_nomod(in[0], in[1], in[2], out[0], out[1], out[2]);
+
+        dataIn += stride;
+        dataOut += stride;
+    }
+}
+
+static void light(AlignedVector* vertices) {
+    if(!isLightingEnabled()) {
         return;
     }
 
-    const GLsizei elements = (mode == GL_QUADS) ? 4 : (mode == GL_TRIANGLES) ? 3 : (mode == GL_LINES) ? 2 : count;
+    /* Perform lighting calculations and manipulate the colour */
+    ClipVertex* vertex = (ClipVertex*) vertices->data;
+
+    _matrixLoadModelView();
+    mat_transform3(vertex->xyz, vertex->xyzES, vertices->size, sizeof(ClipVertex));
+
+    _matrixLoadNormal();
+    mat_transform_normal3(vertex->nxyz, vertex->nES, vertices->size, sizeof(ClipVertex));
+
+    GLsizei i;
+    for(i = 0; i < vertices->size; ++i, ++vertex) {
+        /* We ignore diffuse colour when lighting is enabled. If GL_COLOR_MATERIAL is enabled
+         * then the lighting calculation should possibly take it into account */
+        GLfloat contribution [] = {0.0f, 0.0f, 0.0f, 0.0f};
+        GLfloat to_add [] = {0.0f, 0.0f, 0.0f, 0.0f};
+
+        GLubyte j;
+        for(j = 0; j < MAX_LIGHTS; ++j) {
+            if(isLightEnabled(j)) {
+                calculateLightingContribution(j, vertex->xyzES, vertex->nES, to_add);
+
+                contribution[0] += to_add[0];
+                contribution[1] += to_add[1];
+                contribution[2] += to_add[2];
+                contribution[3] += to_add[3];
+            }
+        }
+
+        uint32_t final = PVR_PACK_COLOR(contribution[3], contribution[0], contribution[1], contribution[2]);
+        vertex->argb = *((Colour*) &final);
+    }
+}
+
+static void divide(AlignedVector* vertices) {
+    /* Perform perspective divide on each vertex */
+    ClipVertex* vertex = (ClipVertex*) vertices->data;
+
+    GLsizei i;
+    for(i = 0; i < vertices->size; ++i, ++vertex) {
+        vertex->xyz[2] = 1.0f / vertex->w;
+        vertex->xyz[0] *= vertex->xyz[2];
+        vertex->xyz[1] *= vertex->xyz[2];
+    }
+}
+
+static void push(const AlignedVector* vertices, PolyList* activePolyList) {
+    /* Copy the vertices to the active poly list */
 
     // Make room for the element + the header
-    PVRCommand* dst = (PVRCommand*) aligned_vector_extend(&activePolyList()->vector, count + 1);
+    PVRCommand* dst = (PVRCommand*) aligned_vector_extend(&activePolyList->vector, vertices->size + 1);
 
     // Store a pointer to the header
     pvr_poly_hdr_t* hdr = (pvr_poly_hdr_t*) dst;
@@ -213,11 +415,40 @@ static void submitVertices(GLenum mode, GLsizei first, GLsizei count, GLenum typ
 
     // Compile
     pvr_poly_cxt_t cxt = *getPVRContext();
-    cxt.list_type = activePolyList()->list_type;
+    cxt.list_type = activePolyList->list_type;
 
     updatePVRTextureContext(&cxt, getTexture0());
 
     pvr_poly_compile(hdr, &cxt);
+
+    GLsizei i;
+    for(i = 0; i < vertices->size; ++i, dst++) {
+        pvr_vertex_t* vout = (pvr_vertex_t*) dst;
+
+        /* The first part of ClipVertex is the same as the first part of pvr_vertex_t */
+        memcpy(vout, aligned_vector_at(vertices, i), sizeof(pvr_vertex_t));
+
+        /* Except for this bit */
+        vout->oargb = 0;
+    }
+}
+
+static void submitVertices(GLenum mode, GLsizei first, GLsizei count, GLenum type, const GLvoid* indices) {
+    static AlignedVector* buffer = NULL;
+
+    /* Do nothing if vertices aren't enabled */
+    if(!(ENABLED_VERTEX_ATTRIBUTES & VERTEX_ENABLED_FLAG)) {
+        return;
+    }
+
+    /* Initialize the buffer on first call */
+    if(!buffer) {
+        buffer = (AlignedVector*) malloc(sizeof(AlignedVector));
+        aligned_vector_init(buffer, sizeof(ClipVertex));
+    } else {
+        /* Else, resize to zero (this will retain the allocated memory) */
+        aligned_vector_resize(buffer, 0);
+    }
 
     GLubyte vstride = (VERTEX_POINTER.stride) ? VERTEX_POINTER.stride : VERTEX_POINTER.size * byte_size(VERTEX_POINTER.type);
     const GLubyte* vptr = VERTEX_POINTER.ptr;
@@ -231,102 +462,12 @@ static void submitVertices(GLenum mode, GLsizei first, GLsizei count, GLenum typ
     GLubyte nstride = (NORMAL_POINTER.stride) ? NORMAL_POINTER.stride : NORMAL_POINTER.size * byte_size(NORMAL_POINTER.type);
     const GLubyte* nptr = NORMAL_POINTER.ptr;
 
-    const GLubyte* indices_as_bytes = (GLubyte*) indices;
+    generate(buffer, mode, first, count, (GLubyte*) indices, type, vptr, vstride, cptr, cstride, uvptr, uvstride, nptr, nstride);
+    light(buffer);
+    transform(buffer);
+    divide(buffer);
 
-    GLboolean lighting_enabled = isLightingEnabled();
-
-    GLushort i, last_vertex;
-    for(i = first; i < count; ++i) {
-        pvr_vertex_t* vertex = (pvr_vertex_t*) dst;
-        vertex->u = vertex->v = 0.0f;
-        vertex->argb = 0;
-        vertex->oargb = 0;
-        vertex->flags = PVR_CMD_VERTEX;
-
-        last_vertex = ((i + 1) % elements) == 0;
-
-        if(last_vertex) {
-            vertex->flags = PVR_CMD_VERTEX_EOL;
-        }
-
-        GLshort idx = i;
-        if(indices) {
-            _parseIndex(&idx, &indices_as_bytes[byte_size(type) * i], type);
-        }
-
-        _parseFloats(&vertex->x, vptr + (idx * vstride), VERTEX_POINTER.size, VERTEX_POINTER.type);
-
-        if(ENABLED_VERTEX_ATTRIBUTES & DIFFUSE_ENABLED_FLAG) {
-            _parseColour(&vertex->argb, cptr + (idx * cstride), DIFFUSE_POINTER.size, DIFFUSE_POINTER.type);
-        } else {
-            /* Default to white if colours are disabled */
-            vertex->argb = PVR_PACK_COLOR(1.0f, 1.0f, 1.0f, 1.0f);
-        }
-
-        if(ENABLED_VERTEX_ATTRIBUTES & UV_ENABLED_FLAG) {
-            _parseFloats(&vertex->u, uvptr + (idx * uvstride), UV_POINTER.size, UV_POINTER.type);
-        }
-
-        if(ENABLED_VERTEX_ATTRIBUTES & NORMAL_ENABLED_FLAG) {
-            _parseFloats(normal, nptr + (idx * nstride), NORMAL_POINTER.size, NORMAL_POINTER.type);
-        } else {
-            normal[0] = normal[1] = 0.0f;
-            normal[2] = -1.0f;
-        }
-
-        if(lighting_enabled) {
-            /* We ignore diffuse colour when lighting is enabled. If GL_COLOR_MATERIAL is enabled
-             * then the lighting calculation should possibly take it into account */
-            GLfloat contribution [] = {0.0f, 0.0f, 0.0f, 0.0f};
-            GLfloat to_add [] = {0.0f, 0.0f, 0.0f, 0.0f};
-
-            /* Transform the vertex and normal into eye-space */
-            eye_P[0] = vertex->x;
-            eye_P[1] = vertex->y;
-            eye_P[2] = vertex->z;
-
-            eye_N[0] = normal[0];
-            eye_N[1] = normal[1];
-            eye_N[2] = normal[2];
-
-            transformToEyeSpace(eye_P);
-            transformNormalToEyeSpace(eye_N);
-
-            GLubyte j;
-            for(j = 0; j < MAX_LIGHTS; ++j) {
-                if(isLightEnabled(j)) {
-                    calculateLightingContribution(j, eye_P, eye_N, to_add);
-
-                    contribution[0] += to_add[0];
-                    contribution[1] += to_add[1];
-                    contribution[2] += to_add[2];
-                    contribution[3] += to_add[3];
-                }
-            }
-
-            vertex->argb = PVR_PACK_COLOR(contribution[3], contribution[0], contribution[1], contribution[2]);
-        }
-
-        _applyRenderMatrix(); /* Apply the Render Matrix Stack */
-        transformVertex(&vertex->x, &vertex->x, &vertex->y, &vertex->z);
-
-        /* The PVR doesn't support quads, only triangle strips, so we need to
-         * swap the last two vertices of each set */
-        if(last_vertex && mode == GL_QUADS) {
-            /* This vertex becomes the previous vertex so store it*/
-            pvr_vertex_t tmp = *vertex;
-            tmp.flags = PVR_CMD_VERTEX;
-
-            /* Overwrite this vertex with the previous one, make it last */
-            *vertex = *(vertex - 1);
-            vertex->flags = PVR_CMD_VERTEX_EOL;
-
-            /* Now make the previous one the original last one */
-            *(vertex - 1) = tmp;
-        }
-
-        ++dst;
-    }
+    push(buffer, activePolyList());
 }
 
 void APIENTRY glDrawElements(GLenum mode, GLsizei count, GLenum type, const GLvoid* indices) {

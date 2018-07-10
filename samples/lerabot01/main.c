@@ -191,7 +191,7 @@ void ReSizeGLScene(int Width, int Height)
     glMatrixMode(GL_MODELVIEW);
 }
 
-void DrawTexturedQuad(int *tex, float x, float y, float z)
+void DrawTexturedQuad(int tex, float x, float y, float z)
 {
   GLfloat texW = 10;
   GLfloat texH = 10;
