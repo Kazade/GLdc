@@ -144,6 +144,7 @@ void InitGL(int Width, int Height)	        // We call this right after our OpenG
     gluPerspective(45.0f,(GLfloat)Width/(GLfloat)Height,0.1f,100.0f);	// Calculate The Aspect Ratio Of The Window
 
     glMatrixMode(GL_MODELVIEW);
+    glLoadIdentity();
 }
 
 /* The function called when our window is resized (which shouldn't happen, because we're fullscreen) */
@@ -205,9 +206,9 @@ void RenderFloor() {
     glBindTexture(GL_TEXTURE_2D, road.texID);
     glBegin(GL_QUADS);
         glTexCoord2f(0.0f, 0.0f);
-        glVertex3f(-100, 0, -0.0);
+        glVertex3f(-100, 0, 0);
         glTexCoord2f(50.0f, 0.0f);
-        glVertex3f( 100, 0, -0.0);
+        glVertex3f( 100, 0, 0);
         glTexCoord2f(50.0f, 100.0f);
         glVertex3f( 100, 0, -200.0);
         glTexCoord2f(0.0f, 100.0f);

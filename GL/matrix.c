@@ -1,6 +1,7 @@
 #include <string.h>
 
 #include <dc/matrix.h>
+#include <stdio.h>
 
 #include "../include/gl.h"
 #include "../containers/stack.h"
@@ -19,7 +20,6 @@ static GLint gl_viewport_x1, gl_viewport_y1, gl_viewport_width, gl_viewport_heig
 static Stack MATRIX_STACKS[3]; // modelview, projection, texture
 static matrix_t NORMAL_MATRIX __attribute__((aligned(32)));
 static matrix_t SCREENVIEW_MATRIX __attribute__((aligned(32)));
-static matrix_t RENDER_MATRIX __attribute__((aligned(32)));
 
 static GLenum MATRIX_MODE = GL_MODELVIEW;
 static GLubyte MATRIX_IDX = 0;
@@ -163,9 +163,9 @@ void APIENTRY glOrtho(GLfloat left, GLfloat right,
 
     /* Ortho Matrix */
     static matrix_t OrthoMatrix __attribute__((aligned(32))) = {
-        { 0.0f, 0.0f, 0.0f, 0.0f },
-        { 0.0f, 0.0f, 0.0f, 0.0f },
-        { 0.0f, 0.0f, 0.0f, 0.0f },
+        { 1.0f, 0.0f, 0.0f, 0.0f },
+        { 0.0f, 1.0f, 0.0f, 0.0f },
+        { 0.0f, 0.0f, 1.0f, 0.0f },
         { 0.0f, 0.0f, 0.0f, 1.0f }
     };
 
@@ -275,27 +275,30 @@ void APIENTRY glViewport(GLint x, GLint y, GLsizei width, GLsizei height) {
     gl_viewport_width = width;
     gl_viewport_height = height;
 
-    /* Calculate the viewport scale and offset */
-    gl_viewport_scale[0] = (GLfloat)width / 2.0f;
-    gl_viewport_offset[0] = gl_viewport_scale[0] + (GLfloat)x;
-    gl_viewport_scale[1] = (GLfloat)height / 2.0f;
-    gl_viewport_offset[1] = gl_viewport_scale[1] + (GLfloat)y;
-    gl_viewport_scale[2] = (gl_depthrange_far - gl_depthrange_near) / 2.0f;
-    gl_viewport_offset[2] = (gl_depthrange_near + gl_depthrange_far) / 2.0f;
+    GLfloat rw = x + width;
+    GLfloat lw = x;
+    GLfloat tw = y + height;
+    GLfloat bw = y;
 
-    gl_viewport_offset[2] += 0.0001f;
+    GLfloat hw = ((GLfloat) width) / 2.0f;
+    GLfloat hh = ((GLfloat) height) / 2.0f;
 
-    /* Set the Screenview Matrix based on the viewport */
-    SCREENVIEW_MATRIX[0][0] = gl_viewport_scale[0];
-    SCREENVIEW_MATRIX[1][1] = -gl_viewport_scale[1];
-    SCREENVIEW_MATRIX[2][2] = 1;
-    SCREENVIEW_MATRIX[3][0] = gl_viewport_offset[0];
-    SCREENVIEW_MATRIX[3][1] = vid_mode->height - gl_viewport_offset[1];
+    SCREENVIEW_MATRIX[0][0] = hw;
+    SCREENVIEW_MATRIX[1][1] = -hh;
+    SCREENVIEW_MATRIX[2][2] = 1; //(gl_depthrange_far - gl_depthrange_near) / 2.0f;
+    SCREENVIEW_MATRIX[3][0] = (rw + lw) / 2.0f;
+    SCREENVIEW_MATRIX[3][1] = (tw + bw) / 2.0f;
+    // SCREENVIEW_MATRIX[3][2] = (gl_depthrange_far + gl_depthrange_near) / 2.0f;
 }
 
 /* Set the depth range */
 void APIENTRY glDepthRange(GLclampf n, GLclampf f) {
-    /* clamp the values... */
+    /* FIXME: This currently does nothing because the SCREENVIEW_MATRIX is multiplied prior to perpective division
+     * and not after as traditional GL. See here for more info: http://www.thecodecrate.com/opengl-es/opengl-viewport-matrix/
+     *
+     * We probably need to make tweaks to the SCREENVIEW matrix or clipping or whatever to make this work
+     */
+
     if(n < 0.0f) n = 0.0f;
     else if(n > 1.0f) n = 1.0f;
 
@@ -304,10 +307,6 @@ void APIENTRY glDepthRange(GLclampf n, GLclampf f) {
 
     gl_depthrange_near = n;
     gl_depthrange_far = f;
-
-    /* Adjust the viewport scale and offset for Z */
-    gl_viewport_scale[2] = ((f - n) / 2.0f);
-    gl_viewport_offset[2] = (n + f) / 2.0f;
 }
 
 /* Vector Cross Product - Used by glhLookAtf2 */
@@ -386,11 +385,6 @@ void _applyRenderMatrix() {
     mat_load(&SCREENVIEW_MATRIX);
     mat_apply(stack_top(MATRIX_STACKS + (GL_PROJECTION & 0xF)));
     mat_apply(stack_top(MATRIX_STACKS + (GL_MODELVIEW & 0xF)));
-    mat_store(&RENDER_MATRIX);
-}
-
-void _matrixLoadRender() {
-    mat_load(&RENDER_MATRIX);
 }
 
 void _matrixLoadTexture() {

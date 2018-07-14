@@ -150,6 +150,8 @@ static void _parseIndex(GLshort* out, const GLubyte* in, GLenum type) {
     x = __x; y = __y; z = __z; \
 }
 
+
+/* FIXME: Is this right? Shouldn't it be fr12->15? */
 #undef mat_trans_normal3
 #define mat_trans_normal3(x, y, z) { \
     register float __x __asm__("fr8") = (x); \
@@ -165,22 +167,15 @@ static void _parseIndex(GLshort* out, const GLubyte* in, GLenum type) {
 }
 
 
-
-inline void transformToEyeSpace(GLfloat* point) {
+static inline void transformToEyeSpace(GLfloat* point) {
     _matrixLoadModelView();
     mat_trans_single3_nodiv(point[0], point[1], point[2]);
 }
 
-
-inline void transformNormalToEyeSpace(GLfloat* normal) {
+static inline void transformNormalToEyeSpace(GLfloat* normal) {
     _matrixLoadNormal();
     mat_trans_normal3(normal[0], normal[1], normal[2]);
 }
-
-
-
-
-
 
 static void swapVertex(ClipVertex* v1, ClipVertex* v2) {
     ClipVertex tmp = *v1;
@@ -281,9 +276,10 @@ static void transform(AlignedVector* vertices) {
         register float __x __asm__("fr12") = (vertex->xyz[0]);
         register float __y __asm__("fr13") = (vertex->xyz[1]);
         register float __z __asm__("fr14") = (vertex->xyz[2]);
-        register float __w __asm__("fr15") = 1.0f;
+        register float __w __asm__("fr15");
 
         __asm__ __volatile__(
+            "fldi1 fr15\n"
             "ftrv   xmtrx,fv12\n"
             : "=f" (__x), "=f" (__y), "=f" (__z), "=f" (__w)
             : "0" (__x), "1" (__y), "2" (__z), "3" (__w)
@@ -396,10 +392,10 @@ static void divide(AlignedVector* vertices) {
     ClipVertex* vertex = (ClipVertex*) vertices->data;
 
     GLsizei i;
-    for(i = 0; i < vertices->size; ++i, ++vertex) {
+    for(i = 0; i < vertices->size; ++i, ++vertex) {        
         vertex->xyz[2] = 1.0f / vertex->w;
         vertex->xyz[0] *= vertex->xyz[2];
-        vertex->xyz[1] *= vertex->xyz[2];
+        vertex->xyz[1] *= vertex->xyz[2]; 
     }
 }
 
