@@ -96,13 +96,6 @@ void clipTriangleStrip(AlignedVector* vertices, AlignedVector* outBuffer) {
      * difficult to even write them down!
      */
 
-    /* FIXME: Why this value? This was copied from libGL because using zero wasn't working right.
-     *
-     * I think this is a hack. We should really be clipping against the W coordinate of each vertex... but I'm not sure
-     * how yet..
-     */
-    const float CLIP_DISTANCE = -0.2;
-
     uint32_t i;
 
     for(i = 2; i < vertices->size; ++i) {
@@ -119,7 +112,7 @@ void clipTriangleStrip(AlignedVector* vertices, AlignedVector* outBuffer) {
         ClipVertex* v2 = even ? sourceTriangle[1] : sourceTriangle[0];
         ClipVertex* v3 = sourceTriangle[2];
 
-        uint8_t visible = ((v1->w > 0) ? 4 : 0) | ((v2->w > 0) ? 2 : 0) | ((v3->w > 0) ? 1 : 0);
+        uint8_t visible = ((v1->xyz[2] < CLIP_DISTANCE) ? 4 : 0) | ((v2->xyz[2] < CLIP_DISTANCE) ? 2 : 0) | ((v3->xyz[2] < CLIP_DISTANCE) ? 1 : 0);
         uint8_t startOfStrip = (i == 2) || (outBuffer->size > 2 && ((ClipVertex*) aligned_vector_back(outBuffer))->flags == VERTEX_CMD_EOL);
 
         /* All visible, we're fine! */
