@@ -228,7 +228,6 @@ void clipTriangleStrip(AlignedVector* vertices, AlignedVector* outBuffer) {
 
             ClipVertex output[4];
 
-            /* FIXME: Interpolate other values (colors etc.) */
             clipLineToNearZ(v2->xyz, v3->xyz, CLIP_DISTANCE, output[2].xyz, &t1);
             clipLineToNearZ(v1->xyz, v3->xyz, CLIP_DISTANCE, output[3].xyz, &t2);
 
@@ -261,7 +260,6 @@ void clipTriangleStrip(AlignedVector* vertices, AlignedVector* outBuffer) {
 
             ClipVertex output[4];
 
-            /* FIXME: Interpolate other values (colors etc.) */
             clipLineToNearZ(v1->xyz, v2->xyz, CLIP_DISTANCE, output[0].xyz, &t1);
             clipLineToNearZ(v1->xyz, v3->xyz, CLIP_DISTANCE, output[2].xyz, &t2);
 
@@ -294,26 +292,25 @@ void clipTriangleStrip(AlignedVector* vertices, AlignedVector* outBuffer) {
 
             ClipVertex output[4];
 
-            /* FIXME: Interpolate other values (colors etc.) */
             clipLineToNearZ(v1->xyz, v2->xyz, CLIP_DISTANCE, output[1].xyz, &t1);
-            clipLineToNearZ(v3->xyz, v2->xyz, CLIP_DISTANCE, output[2].xyz, &t2);
+            clipLineToNearZ(v3->xyz, v2->xyz, CLIP_DISTANCE, output[3].xyz, &t2);
 
             interpolateFloat(v1->w, v2->w, t1, &output[1].w);
-            interpolateFloat(v3->w, v2->w, t2, &output[2].w);
+            interpolateFloat(v3->w, v2->w, t2, &output[3].w);
 
             output[0] = *v1;
-            output[3] = *v3;
+            output[2] = *v3;
 
             /* Interpolate normals */
             interpolateVec3(v1->nxyz, v2->nxyz, t1, output[1].nxyz);
-            interpolateVec3(v3->nxyz, v2->nxyz, t2, output[2].nxyz);
+            interpolateVec3(v3->nxyz, v2->nxyz, t2, output[3].nxyz);
 
             /* Interpolate texcoords */
             interpolateVec2(v1->uv, v2->uv, t1, output[1].uv);
-            interpolateVec2(v3->uv, v2->uv, t2, output[2].uv);
+            interpolateVec2(v3->uv, v2->uv, t2, output[3].uv);
 
             interpolateColour((uint32_t*) &v1->argb, (uint32_t*) &v2->argb, t1, (uint32_t*) &output[1].argb);
-            interpolateColour((uint32_t*) &v3->argb, (uint32_t*) &v2->argb, t2, (uint32_t*) &output[2].argb);
+            interpolateColour((uint32_t*) &v3->argb, (uint32_t*) &v2->argb, t2, (uint32_t*) &output[3].argb);
 
             output[0].flags = VERTEX_CMD;
             output[1].flags = VERTEX_CMD;

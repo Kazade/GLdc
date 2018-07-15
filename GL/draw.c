@@ -392,7 +392,7 @@ static void divide(AlignedVector* vertices) {
     ClipVertex* vertex = (ClipVertex*) vertices->data;
 
     GLsizei i;
-    for(i = 0; i < vertices->size; ++i, ++vertex) {        
+    for(i = 0; i < vertices->size; ++i, ++vertex) {
         vertex->xyz[2] = 1.0f / vertex->w;
         vertex->xyz[0] *= vertex->xyz[2];
         vertex->xyz[1] *= vertex->xyz[2]; 
