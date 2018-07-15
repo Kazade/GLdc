@@ -74,7 +74,6 @@ void initFramebuffers();
 void _matrixLoadNormal();
 void _matrixLoadModelView();
 void _matrixLoadTexture();
-void _matrixLoadRender();
 void _applyRenderMatrix();
 
 void wipeTextureOnFramebuffers(GLuint texture);
