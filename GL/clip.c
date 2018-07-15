@@ -1,7 +1,11 @@
 #include <float.h>
 #include <stdio.h>
 
+#ifdef _arch_dreamcast
 #include <dc/pvr.h>
+#else
+#define PVR_PACK_COLOR(a, r, g, b) {}
+#endif
 
 #include "clip.h"
 #include "../containers/aligned_vector.h"
