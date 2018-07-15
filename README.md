@@ -12,7 +12,6 @@ features via extensions.
 
 Things left to (re)implement:
 
- - Near-Z clipping (Tricky)
  - Spotlights (Trivial)
  - Framebuffer extension (Trivial)
  - Multitexturing (Trivial)
