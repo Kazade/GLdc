@@ -12,7 +12,9 @@
 
 
 void clipLineToNearZ(const ClipVertex* v1, const ClipVertex* v2, ClipVertex* vout, float* t) {
-    *t = (1.0 - v1->w) / (v2->w - v1->w);
+    const float NEAR_PLANE = 0.2; // FIXME: this needs to be read from the projection matrix.. somehow
+
+    *t = (NEAR_PLANE - v1->w) / (v2->w - v1->w);
 
     float vec [] = {v2->xyz[0] - v1->xyz[0], v2->xyz[1] - v1->xyz[1], v2->xyz[2] - v1->xyz[2]};
 
