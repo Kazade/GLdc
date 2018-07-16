@@ -45,6 +45,7 @@ void ReSizeGLScene(int Width, int Height)
 void DrawGLScene()
 {
     static GLfloat movement = 0.0f;
+    static GLfloat rotation = 0.0f;
     static GLboolean increasing = GL_TRUE;
 
     if(movement > 10.0) {
@@ -59,24 +60,36 @@ void DrawGLScene()
         movement -= 0.05f;
     }
 
+    rotation += 0.1f;
+    if(rotation > 360.0f) {
+        rotation -= 360.0f;
+    }
+
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);		// Clear The Screen And The Depth Buffer
     glLoadIdentity();				// Reset The View
 
     glPushMatrix();
         glTranslatef(0.0f, -1.0f, movement);
+        glRotatef(rotation, 0.0f, 1.0, 0.0f);
 
         glBegin(GL_TRIANGLE_STRIP);
             glColor3f(1.0f, 1.0f, 0.0f);
-            glVertex3f(-2.5f, 0.0f, -5.0f);
-
-            glColor3f(1.0f, 0.0f, 0.0f);
             glVertex3f(-2.5f, 0.0f, 5.0f);
 
+            glColor3f(1.0f, 0.0f, 0.0f);
+            glVertex3f(2.5f, 0.0f, 5.0f);
+
             glColor3f(0.0f, 1.0f, 0.0f);
-            glVertex3f(2.5f, 0.0f, -5.0f);
+            glVertex3f(-2.5f, 0.0f, -5.0f);
 
             glColor3f(0.0f, 0.0f, 1.0f);
-            glVertex3f(2.5f, 0.0f, 5.0f);
+            glVertex3f(2.5f, 0.0f, -5.0f);
+
+            glColor3f(0.0f, 1.0f, 1.0f);
+            glVertex3f(-2.5f, 0.0f, -10.0f);
+
+            glColor3f(1.0f, 0.0f, 1.0f);
+            glVertex3f(2.5f, 0.0f, -10.0f);
         glEnd();
     glPopMatrix();
 
