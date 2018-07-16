@@ -10,36 +10,15 @@
 #include "clip.h"
 #include "../containers/aligned_vector.h"
 
-ClipResult clipLineToNearZ(const float* v1, const float* v2, const float dist, float* vout, float* t) {
-    if(v1[2] < dist && v2[2] < dist) {
-        // Both behind, no clipping
-        return CLIP_RESULT_ALL_BEHIND;
-    }
 
-    if(v1[2] > dist && v2[2] > dist) {
-        return CLIP_RESULT_ALL_IN_FRONT;
-    }
+void clipLineToNearZ(const ClipVertex* v1, const ClipVertex* v2, ClipVertex* vout, float* t) {
+    *t = (1.0 - v1->w) / (v2->w - v1->w);
 
-    float vec [] = {v2[0] - v1[0], v2[1] - v1[1], v2[2] - v1[2]};
+    float vec [] = {v2->xyz[0] - v1->xyz[0], v2->xyz[1] - v1->xyz[1], v2->xyz[2] - v1->xyz[2]};
 
-    /*
-     * The plane normal will always be pointing down the negative Z so we can simplify the dot products as x and y will always be zero
-     * the resulting calculation will result in simply -z of the vector
-    */
-    float vecDotP = -vec[2];
-
-    /* If the dot product is zero there is no intersection */
-    if(vecDotP > FLT_MIN || vecDotP < -FLT_MIN) {
-        *t = (-(dist - v1[2])) / vecDotP;
-
-        vout[0] = v1[0] + (vec[0] * (*t));
-        vout[1] = v1[1] + (vec[1] * (*t));
-        vout[2] = v1[2] + (vec[2] * (*t));
-
-        return (v1[2] >= dist) ? CLIP_RESULT_FRONT_TO_BACK : CLIP_RESULT_BACK_TO_FRONT;
-    } else {
-        return CLIP_RESULT_ALL_ON_PLANE;
-    }
+    vout->xyz[0] = v1->xyz[0] + (vec[0] * (*t));
+    vout->xyz[1] = v1->xyz[1] + (vec[1] * (*t));
+    vout->xyz[2] = v1->xyz[2] + (vec[2] * (*t));
 }
 
 static void interpolateFloat(const float v1, const float v2, const float t, float* out) {
@@ -112,7 +91,7 @@ void clipTriangleStrip(AlignedVector* vertices, AlignedVector* outBuffer) {
         ClipVertex* v2 = even ? sourceTriangle[1] : sourceTriangle[0];
         ClipVertex* v3 = sourceTriangle[2];
 
-        uint8_t visible = ((v1->xyz[2] < CLIP_DISTANCE) ? 4 : 0) | ((v2->xyz[2] < CLIP_DISTANCE) ? 2 : 0) | ((v3->xyz[2] < CLIP_DISTANCE) ? 1 : 0);
+        uint8_t visible = ((v1->w > 0) ? 4 : 0) | ((v2->w > 0) ? 2 : 0) | ((v3->w > 0) ? 1 : 0);
         uint8_t startOfStrip = (i == 2) || (outBuffer->size > 2 && ((ClipVertex*) aligned_vector_back(outBuffer))->flags == VERTEX_CMD_EOL);
 
         /* All visible, we're fine! */
@@ -132,8 +111,8 @@ void clipTriangleStrip(AlignedVector* vertices, AlignedVector* outBuffer) {
 
             ClipVertex output[3];
 
-            clipLineToNearZ(v1->xyz, v2->xyz, CLIP_DISTANCE, output[1].xyz, &t1);
-            clipLineToNearZ(v1->xyz, v3->xyz, CLIP_DISTANCE, output[2].xyz, &t2);
+            clipLineToNearZ(v1, v2, &output[1], &t1);
+            clipLineToNearZ(v1, v3, &output[2], &t2);
 
             interpolateFloat(v1->w, v2->w, t1, &output[1].w);
             interpolateFloat(v1->w, v3->w, t2, &output[2].w);
@@ -163,8 +142,8 @@ void clipTriangleStrip(AlignedVector* vertices, AlignedVector* outBuffer) {
 
             ClipVertex output[3];
 
-            clipLineToNearZ(v2->xyz, v1->xyz, CLIP_DISTANCE, output[0].xyz, &t1);
-            clipLineToNearZ(v2->xyz, v3->xyz, CLIP_DISTANCE, output[2].xyz, &t2);
+            clipLineToNearZ(v2, v1, &output[0], &t1);
+            clipLineToNearZ(v2, v3, &output[2], &t2);
 
             interpolateFloat(v2->w, v1->w, t1, &output[0].w);
             interpolateFloat(v2->w, v3->w, t2, &output[2].w);
@@ -194,8 +173,8 @@ void clipTriangleStrip(AlignedVector* vertices, AlignedVector* outBuffer) {
 
             ClipVertex output[3];
 
-            clipLineToNearZ(v3->xyz, v1->xyz, CLIP_DISTANCE, output[0].xyz, &t1);
-            clipLineToNearZ(v3->xyz, v2->xyz, CLIP_DISTANCE, output[1].xyz, &t2);
+            clipLineToNearZ(v3, v1, &output[0], &t1);
+            clipLineToNearZ(v3, v2, &output[1], &t2);
 
             interpolateFloat(v3->w, v1->w, t1, &output[0].w);
             interpolateFloat(v3->w, v2->w, t2, &output[1].w);
@@ -225,8 +204,8 @@ void clipTriangleStrip(AlignedVector* vertices, AlignedVector* outBuffer) {
 
             ClipVertex output[4];
 
-            clipLineToNearZ(v2->xyz, v3->xyz, CLIP_DISTANCE, output[2].xyz, &t1);
-            clipLineToNearZ(v1->xyz, v3->xyz, CLIP_DISTANCE, output[3].xyz, &t2);
+            clipLineToNearZ(v2, v3, &output[2], &t1);
+            clipLineToNearZ(v1, v3, &output[3], &t2);
 
             interpolateFloat(v2->w, v3->w, t1, &output[2].w);
             interpolateFloat(v1->w, v3->w, t2, &output[3].w);
@@ -257,8 +236,8 @@ void clipTriangleStrip(AlignedVector* vertices, AlignedVector* outBuffer) {
 
             ClipVertex output[4];
 
-            clipLineToNearZ(v1->xyz, v2->xyz, CLIP_DISTANCE, output[0].xyz, &t1);
-            clipLineToNearZ(v1->xyz, v3->xyz, CLIP_DISTANCE, output[2].xyz, &t2);
+            clipLineToNearZ(v1, v2, &output[0], &t1);
+            clipLineToNearZ(v1, v3, &output[2], &t2);
 
             interpolateFloat(v1->w, v2->w, t1, &output[0].w);
             interpolateFloat(v1->w, v3->w, t2, &output[2].w);
@@ -289,8 +268,8 @@ void clipTriangleStrip(AlignedVector* vertices, AlignedVector* outBuffer) {
 
             ClipVertex output[4];
 
-            clipLineToNearZ(v1->xyz, v2->xyz, CLIP_DISTANCE, output[1].xyz, &t1);
-            clipLineToNearZ(v3->xyz, v2->xyz, CLIP_DISTANCE, output[3].xyz, &t2);
+            clipLineToNearZ(v1, v2, &output[1], &t1);
+            clipLineToNearZ(v3, v2, &output[3], &t2);
 
             interpolateFloat(v1->w, v2->w, t1, &output[1].w);
             interpolateFloat(v3->w, v2->w, t2, &output[3].w);

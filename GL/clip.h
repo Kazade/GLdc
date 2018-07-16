@@ -39,18 +39,8 @@ typedef struct {
     float nES[3]; /* Normal in eye space */
 } ClipVertex;
 
-ClipResult clipLineToNearZ(const float* v1, const float* v2, const float dist, float* vout, float* t);
-
-
+void clipLineToNearZ(const ClipVertex* v1, const ClipVertex* v2, ClipVertex* vout, float* t);
 void clipTriangleStrip(AlignedVector* vertices, AlignedVector* outBuffer);
-
-
-/* FIXME: Why this value? This was copied from libGL because using zero wasn't working right.
- *
- * I think this is a hack. We should really be clipping against the W coordinate of each vertex... but I'm not sure
- * how yet.. this is probably related to the way the z coordinate is mapped to window coordinates or something
- */
-#define CLIP_DISTANCE -0.2
 
 #ifdef __cplusplus
 }
