@@ -78,19 +78,27 @@ void clipTriangleStrip(AlignedVector* vertices, AlignedVector* outBuffer) {
      */
 
     uint32_t i;
+    uint32_t stripCount = 2; /* The number of vertices in the source strip so far */
 
     for(i = 2; i < vertices->size; ++i) {
+        if(stripCount < 2) {
+            stripCount++;
+            continue;
+        }
+
+        ClipVertex* thisVertex = aligned_vector_at(vertices, i);
+
         ClipVertex* sourceTriangle[3] = {
             aligned_vector_at(vertices, i - 2),
             aligned_vector_at(vertices, i - 1),
-            aligned_vector_at(vertices, i)
+            thisVertex
         };
 
         /* If we're on an odd vertex, we need to swap the order of the first two vertices, as that's what
          * triangle strips do */
-        uint8_t even = i % 2 == 0;
-        ClipVertex* v1 = even ? sourceTriangle[0] : sourceTriangle[1];
-        ClipVertex* v2 = even ? sourceTriangle[1] : sourceTriangle[0];
+        uint8_t swap = stripCount > 2 && (stripCount % 2 != 0);
+        ClipVertex* v1 = swap ? sourceTriangle[1] : sourceTriangle[0];
+        ClipVertex* v2 = swap ? sourceTriangle[0] : sourceTriangle[1];
         ClipVertex* v3 = sourceTriangle[2];
 
         uint8_t visible = ((v1->w > 0) ? 4 : 0) | ((v2->w > 0) ? 2 : 0) | ((v3->w > 0) ? 1 : 0);
@@ -297,5 +305,13 @@ void clipTriangleStrip(AlignedVector* vertices, AlignedVector* outBuffer) {
 
             aligned_vector_push_back(outBuffer, output, 4);
         }
+
+        /* If this vertex was the last in the list, reset the stripCount */
+        if(thisVertex->flags == VERTEX_CMD_EOL) {
+            stripCount = 0;
+        } else {
+            stripCount++;
+        }
+
     }
 }
