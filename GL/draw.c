@@ -420,17 +420,29 @@ static void divide(AlignedVector* vertices) {
     }
 }
 
+typedef struct {
+    PolyList* list;
+    pvr_poly_hdr_t hdr;
+} ListToHeader;
+
+
+#define MAX_LISTS 5
+
 static void push(const AlignedVector* vertices, PolyList* activePolyList) {
     /* Copy the vertices to the active poly list */
 
+    static GLuint LIST_COUNTER = 0;
+    static ListToHeader LAST_HEADERS[MAX_LISTS];
+
+    /* If the list was empty, this is the first submission this frame so we
+     * always send the header in this case */
+    GLboolean listWasEmpty = activePolyList->vector.size > 0;
+
     // Make room for the element + the header
-    PVRCommand* dst = (PVRCommand*) aligned_vector_extend(&activePolyList->vector, vertices->size + 1);
+    PVRCommand* dst = (PVRCommand*) aligned_vector_extend(&activePolyList->vector, vertices->size);
 
     // Store a pointer to the header
     pvr_poly_hdr_t* hdr = (pvr_poly_hdr_t*) dst;
-
-    // Point dest at the first new vertex to populate
-    dst++;
 
     // Compile
     pvr_poly_cxt_t cxt = *getPVRContext();
@@ -439,6 +451,43 @@ static void push(const AlignedVector* vertices, PolyList* activePolyList) {
     updatePVRTextureContext(&cxt, getTexture0());
 
     pvr_poly_compile(hdr, &cxt);
+
+    /* We store a list of the last "hdr" to be submitted for a list, and then compare before
+     * specifying another one. Apparently it's quite slow to change header
+     */
+
+    GLuint c;
+    GLboolean sendHeader = GL_FALSE;
+    GLboolean listFound = GL_FALSE;
+
+    for(c = 0; c < LIST_COUNTER; ++c) {
+        if(LAST_HEADERS[c].list == activePolyList) {
+            /* Send the header if this was the first submission to this list, or the header has changed since
+             * the last sent */
+            sendHeader = listWasEmpty || memcmp(&LAST_HEADERS[c].hdr, &hdr, sizeof(pvr_poly_hdr_t)) != 0;
+            listFound = GL_TRUE;
+            break;
+        }
+    }
+
+    if(!listFound) {
+        if(LIST_COUNTER == MAX_LISTS) {
+            fprintf(stderr, "Ran out of space!\n");
+        }
+        /* First time we've seen this list, add it to the array */
+        LAST_HEADERS[LIST_COUNTER].list = activePolyList;
+        LAST_HEADERS[LIST_COUNTER++].hdr = *hdr;
+    }
+
+    if(sendHeader) {
+        // Point dest at the first new vertex to populate, if we're not sending a header
+        // we won't increment and instead overwrite the header we just created with the
+        // first vertex
+        dst++;
+
+        // Add one more to the list
+        aligned_vector_extend(&activePolyList->vector, 1);
+    }
 
     GLsizei i;
     ClipVertex* vin = aligned_vector_at(vertices, 0);
