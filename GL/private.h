@@ -44,7 +44,7 @@ typedef struct {
     GLfloat emissive[4];
     GLfloat ambient[4];
     GLfloat diffuse[4];
-    GLfloat specular[4];    
+    GLfloat specular[4];
     GLfloat exponent;
 } Material;
 
@@ -90,6 +90,9 @@ GLboolean isBlendingEnabled();
 GLboolean isLightingEnabled();
 GLboolean isLightEnabled(GLubyte light);
 void calculateLightingContribution(const GLint light, const GLfloat* pos, const GLfloat* normal, GLfloat* colour);
+
+unsigned char isClippingEnabled();
+void enableClipping(unsigned char v);
 
 void _glKosThrowError(GLenum error, const char *function);
 void _glKosPrintError();

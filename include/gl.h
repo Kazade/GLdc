@@ -329,9 +329,6 @@ __BEGIN_DECLS
 #define GL_VERSION                        0x1F02
 #define GL_EXTENSIONS                     0x1F03
 
-/* GL KOS near Z-CLIPPING */
-#define GL_KOS_NEARZ_CLIPPING       0x0020      /* capability bit */
-
 /* GL KOS Texture Matrix Enable Bit */
 #define GL_KOS_TEXTURE_MATRIX       0x002F
 

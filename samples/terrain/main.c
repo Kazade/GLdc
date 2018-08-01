@@ -5,7 +5,7 @@
 #include "glu.h"
 #include "glkos.h"
 
-#define TERRAIN_SIZE 250
+#define TERRAIN_SIZE 100
 #define TERRAIN_SCALE 1.0f
 #define TERRAIN_HEIGHT_SCALE 1.0f
 

@@ -11,6 +11,16 @@
 #include "../containers/aligned_vector.h"
 
 
+static unsigned char ZCLIP_ENABLED = 1;
+
+unsigned char isClippingEnabled() {
+    return ZCLIP_ENABLED;
+}
+
+void enableClipping(unsigned char v) {
+    ZCLIP_ENABLED = v;
+}
+
 void clipLineToNearZ(const ClipVertex* v1, const ClipVertex* v2, ClipVertex* vout, float* t) {
     const float NEAR_PLANE = 0.2; // FIXME: this needs to be read from the projection matrix.. somehow
 

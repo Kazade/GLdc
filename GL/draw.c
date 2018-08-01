@@ -479,7 +479,11 @@ static void submitVertices(GLenum mode, GLsizei first, GLsizei count, GLenum typ
     generate(buffer, mode, first, count, (GLubyte*) indices, type, vptr, vstride, cptr, cstride, uvptr, uvstride, nptr, nstride);
     light(buffer);
     transform(buffer);
-    clip(buffer);
+
+    if(isClippingEnabled()) {
+        clip(buffer);
+    }
+
     divide(buffer);
     push(buffer, activePolyList());
 }
