@@ -16,3 +16,4 @@ all:
 	$(KOS_MAKE) -C zclip all
 	$(KOS_MAKE) -C zclip_triangle all
 	$(KOS_MAKE) -C zclip_trianglestrip all
+	$(KOS_MAKE) -C terrain all
