@@ -73,11 +73,16 @@ static GLuint byte_size(GLenum type) {
     }
 }
 
-static void _parseColour(uint32* out, const GLubyte* in, GLint size, GLenum type) {
+static void _parseColour(float* out, const GLubyte* in, GLint size, GLenum type) {
+    const float ONE_OVER_255 = 1.0f / 255.0f;
+
     switch(type) {
     case GL_BYTE: {
     case GL_UNSIGNED_BYTE:
-        *out = in[3] << 24 | in[0] << 16 | in[1] << 8 | in[0];
+        out[0] = ((GLfloat)in[0]) * ONE_OVER_255;
+        out[1] = ((GLfloat)in[1]) * ONE_OVER_255;
+        out[2] = ((GLfloat)in[2]) * ONE_OVER_255;
+        out[3] = ((GLfloat)in[3]) * ONE_OVER_255;
     } break;
     case GL_SHORT:
     case GL_UNSIGNED_SHORT:
@@ -90,8 +95,10 @@ static void _parseColour(uint32* out, const GLubyte* in, GLint size, GLenum type
     case GL_FLOAT:
     case GL_DOUBLE:
     default: {
-        const GLfloat* src = (GLfloat*) in;
-        *out = PVR_PACK_COLOR(src[3], src[0], src[1], src[2]);
+        out[0] = ((GLfloat*) in)[0];
+        out[1] = ((GLfloat*) in)[1];
+        out[2] = ((GLfloat*) in)[2];
+        out[3] = ((GLfloat*) in)[3];
     } break;
     }
 }
@@ -214,10 +221,10 @@ static void generate(AlignedVector* output, const GLenum mode, const GLsizei fir
         _parseFloats(vertex->xyz, vptr + (idx * vstride), VERTEX_POINTER.size, VERTEX_POINTER.type);
 
         if(ENABLED_VERTEX_ATTRIBUTES & DIFFUSE_ENABLED_FLAG) {
-            _parseColour((uint32_t*) &vertex->argb, cptr + (idx * cstride), DIFFUSE_POINTER.size, DIFFUSE_POINTER.type);
+            _parseColour(vertex->diffuse, cptr + (idx * cstride), DIFFUSE_POINTER.size, DIFFUSE_POINTER.type);
         } else {
             /* Default to white if colours are disabled */
-            *((uint32_t*) &vertex->argb) = ~0;
+            vertex->diffuse[0] = vertex->diffuse[1] = vertex->diffuse[2] = vertex->diffuse[3] = 1.0f;
         }
 
         if(ENABLED_VERTEX_ATTRIBUTES & UV_ENABLED_FLAG) {
@@ -383,7 +390,8 @@ static void light(AlignedVector* vertices) {
     for(i = 0; i < vertices->size; ++i, ++vertex) {
         /* We ignore diffuse colour when lighting is enabled. If GL_COLOR_MATERIAL is enabled
          * then the lighting calculation should possibly take it into account */
-        GLfloat contribution [] = {0.0f, 0.0f, 0.0f, 0.0f};
+        memset(vertex->diffuse, 0, sizeof(float) * 4);
+
         GLfloat to_add [] = {0.0f, 0.0f, 0.0f, 0.0f};
 
         GLubyte j;
@@ -391,15 +399,12 @@ static void light(AlignedVector* vertices) {
             if(isLightEnabled(j)) {
                 calculateLightingContribution(j, vertex->xyzES, vertex->nES, to_add);
 
-                contribution[0] += to_add[0];
-                contribution[1] += to_add[1];
-                contribution[2] += to_add[2];
-                contribution[3] += to_add[3];
+                vertex->diffuse[0] += to_add[0];
+                vertex->diffuse[1] += to_add[1];
+                vertex->diffuse[2] += to_add[2];
+                vertex->diffuse[3] += to_add[3];
             }
         }
-
-        uint32_t final = PVR_PACK_COLOR(contribution[3], contribution[0], contribution[1], contribution[2]);
-        vertex->argb = *((ClipColour*) &final);
     }
 }
 
@@ -436,14 +441,20 @@ static void push(const AlignedVector* vertices, PolyList* activePolyList) {
     pvr_poly_compile(hdr, &cxt);
 
     GLsizei i;
+    ClipVertex* vin = aligned_vector_at(vertices, 0);
+
     for(i = 0; i < vertices->size; ++i, dst++) {
         pvr_vertex_t* vout = (pvr_vertex_t*) dst;
-
-        /* The first part of ClipVertex is the same as the first part of pvr_vertex_t */
-        memcpy(vout, aligned_vector_at(vertices, i), sizeof(pvr_vertex_t));
-
-        /* Except for this bit */
+        vout->flags = vin->flags;
+        vout->x = vin->xyz[0];
+        vout->y = vin->xyz[1];
+        vout->z = vin->xyz[2];
+        vout->u = vin->uv[0];
+        vout->v = vin->uv[1];
+        vout->argb = PVR_PACK_COLOR(vin->diffuse[3], vin->diffuse[0], vin->diffuse[1], vin->diffuse[2]);
         vout->oargb = 0;
+
+        vin++;
     }
 }
 
@@ -459,6 +470,9 @@ static void submitVertices(GLenum mode, GLsizei first, GLsizei count, GLenum typ
     if(!buffer) {
         buffer = (AlignedVector*) malloc(sizeof(AlignedVector));
         aligned_vector_init(buffer, sizeof(ClipVertex));
+
+        /* Reserve 64k up-front */
+        aligned_vector_reserve(buffer, 64 * 1024);
     } else {
         /* Else, resize to zero (this will retain the allocated memory) */
         aligned_vector_resize(buffer, 0);

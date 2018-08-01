@@ -50,24 +50,12 @@ static void interpolateVec3(const float* v1, const float* v2, const float t, flo
     out[2] = v1[2] + (v2[2] - v1[2]) * t;
 }
 
-static void interpolateColour(const uint32_t* c1, const uint32_t* c2, const float t, uint32_t* out) {
-    float r1 = (*c1 >> 16) & 0xFF;
-    float r2 = (*c2 >> 16) & 0xFF;
-    uint8_t r = (r1 + (r2 - r1) * t);
-
-    r1 = (*c1 >> 24) & 0xFF;
-    r2 = (*c2 >> 24) & 0xFF;
-    uint8_t a = (r1 + (r2 - r1) * t);
-
-    r1 = (*c1 >> 8) & 0xFF;
-    r2 = (*c2 >> 8) & 0xFF;
-    uint8_t g = (r1 + (r2 - r1) * t);
-
-    r1 = (*c1 >> 0) & 0xFF;
-    r2 = (*c2 >> 0) & 0xFF;
-    uint8_t b = (r1 + (r2 - r1) * t);
-
-    *out = (a << 24 | r << 16 | g << 8 | b);
+static void interpolateVec4(const float* v1, const float* v2, const float t, float* out) {
+    /* FIXME: SH4 has an asm instruction for this */
+    out[0] = v1[0] + (v2[0] - v1[0]) * t;
+    out[1] = v1[1] + (v2[1] - v1[1]) * t;
+    out[2] = v1[2] + (v2[2] - v1[2]) * t;
+    out[3] = v1[3] + (v2[3] - v1[3]) * t;
 }
 
 const uint32_t VERTEX_CMD_EOL = 0xf0000000;
@@ -147,8 +135,8 @@ void clipTriangleStrip(AlignedVector* vertices, AlignedVector* outBuffer) {
             interpolateVec2(v1->uv, v2->uv, t1, output[1].uv);
             interpolateVec2(v1->uv, v3->uv, t2, output[2].uv);
 
-            interpolateColour((uint32_t*) &v1->argb, (uint32_t*) &v2->argb, t1, (uint32_t*) &output[1].argb);
-            interpolateColour((uint32_t*) &v1->argb, (uint32_t*) &v3->argb, t2, (uint32_t*) &output[2].argb);
+            interpolateVec4(v1->diffuse, v2->diffuse, t1, output[1].diffuse);
+            interpolateVec4(v1->diffuse, v3->diffuse, t2, output[2].diffuse);
 
             output[0].flags = VERTEX_CMD;
             output[1].flags = VERTEX_CMD;
@@ -178,8 +166,8 @@ void clipTriangleStrip(AlignedVector* vertices, AlignedVector* outBuffer) {
             interpolateVec2(v2->uv, v1->uv, t1, output[0].uv);
             interpolateVec2(v2->uv, v3->uv, t2, output[2].uv);
 
-            interpolateColour((uint32_t*) &v2->argb, (uint32_t*) &v1->argb, t1, (uint32_t*) &output[0].argb);
-            interpolateColour((uint32_t*) &v2->argb, (uint32_t*) &v3->argb, t2, (uint32_t*) &output[2].argb);
+            interpolateVec4(v2->diffuse, v1->diffuse, t1, output[0].diffuse);
+            interpolateVec4(v2->diffuse, v3->diffuse, t2, output[2].diffuse);
 
             output[0].flags = VERTEX_CMD;
             output[1].flags = VERTEX_CMD;
@@ -209,8 +197,8 @@ void clipTriangleStrip(AlignedVector* vertices, AlignedVector* outBuffer) {
             interpolateVec2(v3->uv, v1->uv, t1, output[0].uv);
             interpolateVec2(v3->uv, v2->uv, t2, output[1].uv);
 
-            interpolateColour((uint32_t*) &v3->argb, (uint32_t*) &v1->argb, t1, (uint32_t*) &output[0].argb);
-            interpolateColour((uint32_t*) &v3->argb, (uint32_t*) &v2->argb, t2, (uint32_t*) &output[1].argb);
+            interpolateVec4(v3->diffuse, v1->diffuse, t1, output[0].diffuse);
+            interpolateVec4(v3->diffuse, v2->diffuse, t2, output[1].diffuse);
 
             output[0].flags = VERTEX_CMD;
             output[1].flags = VERTEX_CMD;
@@ -241,8 +229,8 @@ void clipTriangleStrip(AlignedVector* vertices, AlignedVector* outBuffer) {
             interpolateVec2(v2->uv, v3->uv, t1, output[2].uv);
             interpolateVec2(v1->uv, v3->uv, t2, output[3].uv);
 
-            interpolateColour((uint32_t*) &v2->argb, (uint32_t*) &v3->argb, t1, (uint32_t*) &output[2].argb);
-            interpolateColour((uint32_t*) &v1->argb, (uint32_t*) &v3->argb, t2, (uint32_t*) &output[3].argb);
+            interpolateVec4(v2->diffuse, v3->diffuse, t1, output[2].diffuse);
+            interpolateVec4(v1->diffuse, v3->diffuse, t2, output[3].diffuse);
 
             output[0].flags = VERTEX_CMD;
             output[1].flags = VERTEX_CMD;
@@ -273,8 +261,8 @@ void clipTriangleStrip(AlignedVector* vertices, AlignedVector* outBuffer) {
             interpolateVec2(v1->uv, v2->uv, t1, output[0].uv);
             interpolateVec2(v1->uv, v3->uv, t2, output[2].uv);
 
-            interpolateColour((uint32_t*) &v1->argb, (uint32_t*) &v2->argb, t1, (uint32_t*) &output[0].argb);
-            interpolateColour((uint32_t*) &v1->argb, (uint32_t*) &v3->argb, t2, (uint32_t*) &output[2].argb);
+            interpolateVec4(v1->diffuse, v2->diffuse, t1, output[0].diffuse);
+            interpolateVec4(v1->diffuse, v3->diffuse, t2, output[2].diffuse);
 
             output[0].flags = VERTEX_CMD;
             output[1].flags = VERTEX_CMD;
@@ -305,8 +293,8 @@ void clipTriangleStrip(AlignedVector* vertices, AlignedVector* outBuffer) {
             interpolateVec2(v1->uv, v2->uv, t1, output[1].uv);
             interpolateVec2(v3->uv, v2->uv, t2, output[3].uv);
 
-            interpolateColour((uint32_t*) &v1->argb, (uint32_t*) &v2->argb, t1, (uint32_t*) &output[1].argb);
-            interpolateColour((uint32_t*) &v3->argb, (uint32_t*) &v2->argb, t2, (uint32_t*) &output[3].argb);
+            interpolateVec4(v1->diffuse, v2->diffuse, t1, output[1].diffuse);
+            interpolateVec4(v3->diffuse, v2->diffuse, t2, output[3].diffuse);
 
             output[0].flags = VERTEX_CMD;
             output[1].flags = VERTEX_CMD;
