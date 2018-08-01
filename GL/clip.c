@@ -33,34 +33,37 @@ void clipLineToNearZ(const ClipVertex* v1, const ClipVertex* v2, ClipVertex* vou
     vout->xyz[2] = v1->xyz[2] + (vec[2] * (*t));
 }
 
-static void interpolateFloat(const float v1, const float v2, const float t, float* out) {
-    *out = v1 + (v2 - v1) * t;
+static inline void interpolateFloat(const float v1, const float v2, const float t, float* out) {
+    float v = v2 - v1;
+    *out = (v * t) + v1;
 }
 
 static void interpolateVec2(const float* v1, const float* v2, const float t, float* out) {
     /* FIXME: SH4 has an asm instruction for this */
-    out[0] = v1[0] + (v2[0] - v1[0]) * t;
-    out[1] = v1[1] + (v2[1] - v1[1]) * t;
+    interpolateFloat(v1[0], v2[0], t, &out[0]);
+    interpolateFloat(v1[1], v2[1], t, &out[1]);
 }
 
 static void interpolateVec3(const float* v1, const float* v2, const float t, float* out) {
     /* FIXME: SH4 has an asm instruction for this */
-    out[0] = v1[0] + (v2[0] - v1[0]) * t;
-    out[1] = v1[1] + (v2[1] - v1[1]) * t;
-    out[2] = v1[2] + (v2[2] - v1[2]) * t;
+
+    interpolateFloat(v1[0], v2[0], t, &out[0]);
+    interpolateFloat(v1[1], v2[1], t, &out[1]);
+    interpolateFloat(v1[2], v2[2], t, &out[2]);
 }
 
 static void interpolateVec4(const float* v1, const float* v2, const float t, float* out) {
     /* FIXME: SH4 has an asm instruction for this */
-    out[0] = v1[0] + (v2[0] - v1[0]) * t;
-    out[1] = v1[1] + (v2[1] - v1[1]) * t;
-    out[2] = v1[2] + (v2[2] - v1[2]) * t;
-    out[3] = v1[3] + (v2[3] - v1[3]) * t;
+    interpolateFloat(v1[0], v2[0], t, &out[0]);
+    interpolateFloat(v1[1], v2[1], t, &out[1]);
+    interpolateFloat(v1[2], v2[2], t, &out[2]);
+    interpolateFloat(v1[3], v2[3], t, &out[3]);
 }
 
 const uint32_t VERTEX_CMD_EOL = 0xf0000000;
 const uint32_t VERTEX_CMD = 0xe0000000;
 
+void clipTriangleStrip(AlignedVector* vertices, AlignedVector* outBuffer) __attribute__((optimize("fast-math")));
 void clipTriangleStrip(AlignedVector* vertices, AlignedVector* outBuffer) {
 
     /* Clipping triangle strips is *hard* this is the algorithm we follow:
