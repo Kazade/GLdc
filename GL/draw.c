@@ -121,10 +121,13 @@ static void _parseFloats(GLfloat* out, const GLubyte* in, GLint size, GLenum typ
     }
 }
 
-static void _parseIndex(GLshort* out, const GLubyte* in, GLenum type) {
+static void _parseIndex(GLuint* out, const GLubyte* in, GLenum type) {
     switch(type) {
     case GL_UNSIGNED_BYTE:
-        *out = (GLshort) *in;
+        *out = (GLuint) *in;
+    break;
+    case GL_UNSIGNED_INT:
+        *out = *((GLuint*) in);
     break;
     case GL_UNSIGNED_SHORT:
     default:
@@ -203,7 +206,7 @@ static void generate(AlignedVector* output, const GLenum mode, const GLsizei fir
     for(j = first; j < max; ++i, ++j, ++vertex) {
         vertex->flags = PVR_CMD_VERTEX;
 
-        GLshort idx = j;
+        GLuint idx = j;
         if(indices) {
             _parseIndex(&idx, &indices[byte_size(type) * j], type);
         }
@@ -408,7 +411,7 @@ static void divide(AlignedVector* vertices) {
     for(i = 0; i < vertices->size; ++i, ++vertex) {
         vertex->xyz[2] = 1.0f / vertex->w;
         vertex->xyz[0] *= vertex->xyz[2];
-        vertex->xyz[1] *= vertex->xyz[2]; 
+        vertex->xyz[1] *= vertex->xyz[2];
     }
 }
 
