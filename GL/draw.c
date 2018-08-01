@@ -214,14 +214,13 @@ static void generate(AlignedVector* output, const GLenum mode, const GLsizei fir
             _parseColour((uint32_t*) &vertex->argb, cptr + (idx * cstride), DIFFUSE_POINTER.size, DIFFUSE_POINTER.type);
         } else {
             /* Default to white if colours are disabled */
-            vertex->argb.a = 255;
-            vertex->argb.r = 255;
-            vertex->argb.g = 255;
-            vertex->argb.b = 255;
+            *((uint32_t*) &vertex->argb) = ~0;
         }
 
         if(ENABLED_VERTEX_ATTRIBUTES & UV_ENABLED_FLAG) {
             _parseFloats(vertex->uv, uvptr + (idx * uvstride), UV_POINTER.size, UV_POINTER.type);
+        } else {
+            vertex->uv[0] = vertex->uv[1] = 0.0f;
         }
 
         if(ENABLED_VERTEX_ATTRIBUTES & NORMAL_ENABLED_FLAG) {
@@ -232,13 +231,21 @@ static void generate(AlignedVector* output, const GLenum mode, const GLsizei fir
             vertex->nxyz[2] = -1.0f;
         }
 
-        if((mode == GL_TRIANGLES) && ((i + 1) % 3) == 0) {
-            vertex->flags = PVR_CMD_VERTEX_EOL;
-        } else if((mode == GL_QUADS) && ((i + 1) % 4) == 0) {
-            ClipVertex* previous = vertex - 1;
-            previous->flags = PVR_CMD_VERTEX_EOL;
-            swapVertex(previous, vertex);
-        } else if((mode == GL_POLYGON || mode == GL_TRIANGLE_FAN)) {
+        switch(mode) {
+        case GL_TRIANGLES: {
+            if(((i + 1) % 3) == 0) {
+                vertex->flags = PVR_CMD_VERTEX_EOL;
+            }
+        } break;
+        case GL_QUADS: {
+            if(((i + 1) % 4) == 0) {
+                ClipVertex* previous = vertex - 1;
+                previous->flags = PVR_CMD_VERTEX_EOL;
+                swapVertex(previous, vertex);
+            }
+        } break;
+        case GL_POLYGON:
+        case GL_TRIANGLE_FAN: {
             ClipVertex* previous = vertex - 1;
             if(i == 2) {
                 swapVertex(previous, vertex);
@@ -257,9 +264,15 @@ static void generate(AlignedVector* output, const GLenum mode, const GLsizei fir
 
                 vertex->flags = PVR_CMD_VERTEX_EOL;
             }
-        } else if(mode == GL_TRIANGLE_STRIP && j == (max - 1)) {
-            /* If the mode was triangle strip, then the last vertex is the last vertex */
-            vertex->flags = PVR_CMD_VERTEX_EOL;
+        } break;
+        case GL_TRIANGLE_STRIP:
+        default: {
+            if(j == (max - 1)) {
+                /* If the mode was triangle strip, then the last vertex is the last vertex */
+                vertex->flags = PVR_CMD_VERTEX_EOL;
+            }
+        }
+
         }
     }
 }
