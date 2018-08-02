@@ -232,7 +232,7 @@ void DrawTexturedQuad(int tex, float x, float y, float z)
   glEnableClientState(GL_VERTEX_ARRAY);
   glEnableClientState(GL_TEXTURE_COORD_ARRAY);
   glEnableClientState(GL_NORMAL_ARRAY);
-  glEnableClientState(GL_COLOR_ARRAY);
+  //glEnableClientState(GL_COLOR_ARRAY);
 
   glVertexPointer(3, GL_FLOAT, 0, vertex_data);
   glTexCoordPointer(2, GL_FLOAT, 0, uv_data);
@@ -249,7 +249,7 @@ void DrawTexturedQuad(int tex, float x, float y, float z)
   glDisableClientState(GL_VERTEX_ARRAY);
   glDisableClientState(GL_TEXTURE_COORD_ARRAY);
   glDisableClientState(GL_NORMAL_ARRAY);
-  glDisableClientState(GL_COLOR_ARRAY);
+  //glDisableClientState(GL_COLOR_ARRAY);
 }
 
 

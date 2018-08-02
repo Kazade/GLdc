@@ -421,7 +421,7 @@ static void divide(AlignedVector* vertices) {
 }
 
 typedef struct {
-    PolyList* list;
+    unsigned int list_type;
     pvr_poly_hdr_t hdr;
 } ListToHeader;
 
@@ -461,7 +461,7 @@ static void push(const AlignedVector* vertices, PolyList* activePolyList) {
     GLboolean listFound = GL_FALSE;
 
     for(c = 0; c < LIST_COUNTER; ++c) {
-        if(LAST_HEADERS[c].list == activePolyList) {
+        if(LAST_HEADERS[c].list_type == activePolyList->list_type) {
             /* Send the header if this was the first submission to this list, or the header has changed since
              * the last sent */
             sendHeader = listWasEmpty || memcmp(&LAST_HEADERS[c].hdr, &hdr, sizeof(pvr_poly_hdr_t)) != 0;
@@ -475,8 +475,11 @@ static void push(const AlignedVector* vertices, PolyList* activePolyList) {
             fprintf(stderr, "Ran out of space!\n");
         }
         /* First time we've seen this list, add it to the array */
-        LAST_HEADERS[LIST_COUNTER].list = activePolyList;
+        LAST_HEADERS[LIST_COUNTER].list_type = activePolyList->list_type;
         LAST_HEADERS[LIST_COUNTER++].hdr = *hdr;
+
+        /* Send the header the first time */
+        sendHeader = GL_TRUE;
     }
 
     if(sendHeader) {
