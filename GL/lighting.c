@@ -105,8 +105,17 @@ void APIENTRY glLightfv(GLenum light, GLenum pname, const GLfloat *params) {
         case GL_SPECULAR:
             memcpy(LIGHTS[idx].specular, params, sizeof(GLfloat) * 4);
         break;
-        case GL_POSITION:
+        case GL_POSITION: {
+            _matrixLoadModelView();
             memcpy(LIGHTS[idx].position, params, sizeof(GLfloat) * 4);
+
+            mat_trans_single4(
+                LIGHTS[idx].position[0],
+                LIGHTS[idx].position[1],
+                LIGHTS[idx].position[2],
+                LIGHTS[idx].position[3]
+            );
+        }
         break;
         case GL_CONSTANT_ATTENUATION:
         case GL_LINEAR_ATTENUATION:
@@ -252,7 +261,12 @@ void calculateLightingContribution(const GLint light, const GLfloat* pos, const 
     GLfloat d;
     vec3f_length(L.x, L.y, L.z, d);
 
-    vec3f_normalize(L.x, L.y, L.z);
+    GLfloat oneOverL = 1.0f / d;
+
+    L.x *= oneOverL;
+    L.y *= oneOverL;
+    L.z *= oneOverL;
+
     vec3f_normalize(V.x, V.y, V.z);
 
     GLfloat NdotL;

@@ -245,7 +245,6 @@ void DrawTexturedQuad(int tex, float x, float y, float z)
   glVertexPointer(3, GL_FLOAT, 0, vertex_data);
   glDrawArrays(GL_QUADS, 0, 4);
 
-
   glDisableClientState(GL_VERTEX_ARRAY);
   glDisableClientState(GL_TEXTURE_COORD_ARRAY);
   glDisableClientState(GL_NORMAL_ARRAY);
@@ -259,11 +258,11 @@ void DrawGLScene()
 {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);		// Clear The Screen And The Depth Buffer
     glLoadIdentity();				// Reset The View
-    //glTranslatef(-5.0f, -5.0f, -10.0f);
-    glTranslatef(-50.0f, 0.0f, -200.0f);
 
-    GLfloat l1_pos[] = {50 + sin(delta) * 100.0f, 25.0, 1.0, 1.0};
-    delta+= 0.03;
+    glTranslatef(-50.0f, 0.0f, -100.0f);
+
+    GLfloat l1_pos[] = {50 + sin(delta) * 100.0f, 6.0, 5.0, 1.0};
+    delta += 0.03;
 
     glLightfv(GL_LIGHT1, GL_POSITION, l1_pos);
     //glLightfv(GL_LIGHT1, GL_SPOT_EXPONENT, 3);
