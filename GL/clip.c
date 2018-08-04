@@ -138,6 +138,9 @@ void clipTriangleStrip(AlignedVector* vertices, AlignedVector* outBuffer) {
             interpolateVec2(v1->uv, v2->uv, t1, output[1].uv);
             interpolateVec2(v1->uv, v3->uv, t2, output[2].uv);
 
+            interpolateVec2(v1->st, v2->st, t1, output[1].st);
+            interpolateVec2(v1->st, v3->st, t2, output[2].st);
+
             interpolateVec4(v1->diffuse, v2->diffuse, t1, output[1].diffuse);
             interpolateVec4(v1->diffuse, v3->diffuse, t2, output[2].diffuse);
 
@@ -169,6 +172,9 @@ void clipTriangleStrip(AlignedVector* vertices, AlignedVector* outBuffer) {
             interpolateVec2(v2->uv, v1->uv, t1, output[0].uv);
             interpolateVec2(v2->uv, v3->uv, t2, output[2].uv);
 
+            interpolateVec2(v2->st, v1->st, t1, output[0].st);
+            interpolateVec2(v2->st, v3->st, t2, output[2].st);
+
             interpolateVec4(v2->diffuse, v1->diffuse, t1, output[0].diffuse);
             interpolateVec4(v2->diffuse, v3->diffuse, t2, output[2].diffuse);
 
@@ -199,6 +205,9 @@ void clipTriangleStrip(AlignedVector* vertices, AlignedVector* outBuffer) {
             /* Interpolate texcoords */
             interpolateVec2(v3->uv, v1->uv, t1, output[0].uv);
             interpolateVec2(v3->uv, v2->uv, t2, output[1].uv);
+
+            interpolateVec2(v3->st, v1->st, t1, output[0].st);
+            interpolateVec2(v3->st, v2->st, t2, output[1].st);
 
             interpolateVec4(v3->diffuse, v1->diffuse, t1, output[0].diffuse);
             interpolateVec4(v3->diffuse, v2->diffuse, t2, output[1].diffuse);
@@ -232,6 +241,9 @@ void clipTriangleStrip(AlignedVector* vertices, AlignedVector* outBuffer) {
             interpolateVec2(v2->uv, v3->uv, t1, output[2].uv);
             interpolateVec2(v1->uv, v3->uv, t2, output[3].uv);
 
+            interpolateVec2(v2->st, v3->st, t1, output[2].st);
+            interpolateVec2(v1->st, v3->st, t2, output[3].st);
+
             interpolateVec4(v2->diffuse, v3->diffuse, t1, output[2].diffuse);
             interpolateVec4(v1->diffuse, v3->diffuse, t2, output[3].diffuse);
 
@@ -264,6 +276,9 @@ void clipTriangleStrip(AlignedVector* vertices, AlignedVector* outBuffer) {
             interpolateVec2(v1->uv, v2->uv, t1, output[0].uv);
             interpolateVec2(v1->uv, v3->uv, t2, output[2].uv);
 
+            interpolateVec2(v1->st, v2->st, t1, output[0].st);
+            interpolateVec2(v1->st, v3->st, t2, output[2].st);
+
             interpolateVec4(v1->diffuse, v2->diffuse, t1, output[0].diffuse);
             interpolateVec4(v1->diffuse, v3->diffuse, t2, output[2].diffuse);
 
@@ -295,6 +310,9 @@ void clipTriangleStrip(AlignedVector* vertices, AlignedVector* outBuffer) {
             /* Interpolate texcoords */
             interpolateVec2(v1->uv, v2->uv, t1, output[1].uv);
             interpolateVec2(v3->uv, v2->uv, t2, output[3].uv);
+
+            interpolateVec2(v1->st, v2->st, t1, output[1].st);
+            interpolateVec2(v3->st, v2->st, t2, output[3].st);
 
             interpolateVec4(v1->diffuse, v2->diffuse, t1, output[1].diffuse);
             interpolateVec4(v3->diffuse, v2->diffuse, t2, output[3].diffuse);

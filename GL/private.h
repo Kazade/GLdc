@@ -64,6 +64,7 @@ typedef struct {
 
 
 PolyList *activePolyList();
+PolyList *transparentPolyList();
 
 void initAttributePointers();
 void initContext();

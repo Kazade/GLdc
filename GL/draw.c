@@ -196,7 +196,8 @@ static void swapVertex(ClipVertex* v1, ClipVertex* v2) {
 static void generate(AlignedVector* output, const GLenum mode, const GLsizei first, const GLsizei count,
         const GLubyte* indices, const GLenum type,
         const GLubyte* vptr, const GLubyte vstride, const GLubyte* cptr, const GLubyte cstride,
-        const GLubyte* uvptr, const GLubyte uvstride, const GLubyte* nptr, const GLubyte nstride) {
+        const GLubyte* uvptr, const GLubyte uvstride, const GLubyte* stptr, const GLubyte ststride,
+        const GLubyte* nptr, const GLubyte nstride) {
     /* Read from the client buffers and generate an array of ClipVertices */
 
     GLsizei max = first + count;
@@ -231,6 +232,12 @@ static void generate(AlignedVector* output, const GLenum mode, const GLsizei fir
             _parseFloats(vertex->uv, uvptr + (idx * uvstride), UV_POINTER.size, UV_POINTER.type);
         } else {
             vertex->uv[0] = vertex->uv[1] = 0.0f;
+        }
+
+        if(ENABLED_VERTEX_ATTRIBUTES & ST_ENABLED_FLAG) {
+            _parseFloats(vertex->st, stptr + (idx * ststride), ST_POINTER.size, ST_POINTER.type);
+        } else {
+            vertex->st[0] = vertex->st[1] = 0.0f;
         }
 
         if(ENABLED_VERTEX_ATTRIBUTES & NORMAL_ENABLED_FLAG) {
@@ -428,7 +435,7 @@ typedef struct {
 
 #define MAX_LISTS 5
 
-static void push(const AlignedVector* vertices, PolyList* activePolyList) {
+static void push(const AlignedVector* vertices, PolyList* activePolyList, TextureObject* textureObject) {
     /* Copy the vertices to the active poly list */
 
     static GLuint LIST_COUNTER = 0;
@@ -448,7 +455,7 @@ static void push(const AlignedVector* vertices, PolyList* activePolyList) {
     pvr_poly_cxt_t cxt = *getPVRContext();
     cxt.list_type = activePolyList->list_type;
 
-    updatePVRTextureContext(&cxt, getTexture0());
+    updatePVRTextureContext(&cxt, textureObject);
 
     pvr_poly_compile(hdr, &cxt);
 
@@ -539,10 +546,19 @@ static void submitVertices(GLenum mode, GLsizei first, GLsizei count, GLenum typ
     GLubyte uvstride = (UV_POINTER.stride) ? UV_POINTER.stride : UV_POINTER.size * byte_size(UV_POINTER.type);
     const GLubyte* uvptr = UV_POINTER.ptr;
 
+    GLubyte ststride = (ST_POINTER.stride) ? ST_POINTER.stride : ST_POINTER.size * byte_size(ST_POINTER.type);
+    const GLubyte* stptr = ST_POINTER.ptr;
+
     GLubyte nstride = (NORMAL_POINTER.stride) ? NORMAL_POINTER.stride : NORMAL_POINTER.size * byte_size(NORMAL_POINTER.type);
     const GLubyte* nptr = NORMAL_POINTER.ptr;
 
-    generate(buffer, mode, first, count, (GLubyte*) indices, type, vptr, vstride, cptr, cstride, uvptr, uvstride, nptr, nstride);
+    generate(
+        buffer, mode, first, count, (GLubyte*) indices, type,
+        vptr, vstride, cptr, cstride,
+        uvptr, uvstride, stptr, ststride,
+        nptr, nstride
+    );
+
     light(buffer);
     transform(buffer);
 
@@ -551,7 +567,53 @@ static void submitVertices(GLenum mode, GLsizei first, GLsizei count, GLenum typ
     }
 
     divide(buffer);
-    push(buffer, activePolyList());
+    push(buffer, activePolyList(), getTexture0());
+
+    /*
+       Now, if multitexturing is enabled, we want to send exactly the same vertices again, except:
+       - We want to enable blending, and send them to the TR list
+       - We want to set the depth func to GL_EQUAL
+       - We want to set the second texture ID
+       - We want to set the uv coordinates to the passed st ones
+    */
+
+    TextureObject* texture1 = getTexture1();
+
+    if(!texture1 || ((ENABLED_VERTEX_ATTRIBUTES & ST_ENABLED_FLAG) != ST_ENABLED_FLAG)) {
+        /* Multitexture disabled */
+        return;
+    }
+
+    ClipVertex* vertex = (ClipVertex*) aligned_vector_at(buffer, 0);
+
+    /* Copy ST coordinates to UV ones */
+    GLsizei i = 0;
+    for(; i < buffer->size; ++i, ++vertex) {
+        vertex->uv[0] = vertex->st[0];
+        vertex->uv[1] = vertex->st[1];
+    }
+
+    /* Store state, as we're about to mess around with it */
+    GLint depthFunc, blendSrc, blendDst;
+    glGetIntegerv(GL_DEPTH_FUNC, &depthFunc);
+    glGetIntegerv(GL_BLEND_SRC, &blendSrc);
+    glGetIntegerv(GL_BLEND_DST, &blendDst);
+
+    GLboolean blendEnabled = glIsEnabled(GL_BLEND);
+    GLboolean depthEnabled = glIsEnabled(GL_DEPTH_TEST);
+
+    glDepthFunc(GL_EQUAL);
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+    /* Send the buffer again to the transparent list */
+    push(buffer, transparentPolyList(), texture1);
+
+    /* Reset state */
+    glDepthFunc(depthFunc);
+    glBlendFunc(blendSrc, blendDst);
+    (blendEnabled) ? glEnable(GL_BLEND) : glDisable(GL_BLEND);
+    (depthEnabled) ? glEnable(GL_DEPTH_TEST) : glDisable(GL_DEPTH_TEST);
 }
 
 void APIENTRY glDrawElements(GLenum mode, GLsizei count, GLenum type, const GLvoid* indices) {

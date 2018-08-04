@@ -28,15 +28,13 @@ typedef struct {
     float uv[2];
     uint32_t argb;
 
-    float nxyz[3];
+    float nxyz[3]; /* Normal */
     float w;
     float xyzES[3]; /* Coordinate in eye space */
     float nES[3]; /* Normal in eye space */
 
     float diffuse[4]; /* Colour in floating point */
-
-    /* Keep things 32 byte aligned */
-    unsigned char padding[8];
+    float st[2]; /* 8-bytes makes this 96 bytes in total */
 } ClipVertex;
 
 void clipLineToNearZ(const ClipVertex* v1, const ClipVertex* v2, ClipVertex* vout, float* t);

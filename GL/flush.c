@@ -58,6 +58,10 @@ PolyList* activePolyList() {
     }
 }
 
+PolyList *transparentPolyList() {
+    return &TR_LIST;
+}
+
 void APIENTRY glKosInit() {
     TRACE();
 

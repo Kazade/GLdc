@@ -425,6 +425,15 @@ void APIENTRY glGetIntegerv(GLenum pname, GLint *params) {
         case GL_TEXTURE_BINDING_2D:
             *params = getBoundTexture()->index;
         break;
+        case GL_DEPTH_FUNC:
+            *params = DEPTH_FUNC;
+        break;
+        case GL_BLEND_SRC:
+            *params = BLEND_SFACTOR;
+        break;
+        case GL_BLEND_DST:
+            *params = BLEND_DFACTOR;
+        break;
     default:
         _glKosThrowError(GL_INVALID_ENUM, "glGetIntegerv");
         _glKosPrintError();
