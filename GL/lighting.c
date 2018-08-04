@@ -47,6 +47,8 @@ void initLights() {
         LIGHTS[i].constant_attenuation = 1.0f;
         LIGHTS[i].linear_attenuation = 0.0f;
         LIGHTS[i].quadratic_attenuation = 0.0f;
+
+        LIGHTS[i].is_directional = GL_FALSE;
     }
 }
 
@@ -105,8 +107,19 @@ void APIENTRY glLightfv(GLenum light, GLenum pname, const GLfloat *params) {
         case GL_SPECULAR:
             memcpy(LIGHTS[idx].specular, params, sizeof(GLfloat) * 4);
         break;
-        case GL_POSITION:
+        case GL_POSITION: {
+            _matrixLoadModelView();
             memcpy(LIGHTS[idx].position, params, sizeof(GLfloat) * 4);
+
+            LIGHTS[idx].is_directional = (params[3] == 0.0f) ? GL_TRUE : GL_FALSE;
+
+            mat_trans_single4(
+                LIGHTS[idx].position[0],
+                LIGHTS[idx].position[1],
+                LIGHTS[idx].position[2],
+                LIGHTS[idx].position[3]
+            );
+        }
         break;
         case GL_CONSTANT_ATTENUATION:
         case GL_LINEAR_ATTENUATION:
@@ -252,28 +265,41 @@ void calculateLightingContribution(const GLint light, const GLfloat* pos, const 
     GLfloat d;
     vec3f_length(L.x, L.y, L.z, d);
 
-    vec3f_normalize(L.x, L.y, L.z);
+    GLfloat oneOverL = 1.0f / d;
+
+    L.x *= oneOverL;
+    L.y *= oneOverL;
+    L.z *= oneOverL;
+
     vec3f_normalize(V.x, V.y, V.z);
 
-    GLfloat NdotL;
+    GLfloat NdotL, VdotN;
     vec3f_dot(N.x, N.y, N.z, L.x, L.y, L.z, NdotL);
-
-    GLfloat f = (NdotL < 0) ? 0 : 1;
-
-    GLfloat VdotN;
     vec3f_dot(V.x, V.y, V.z, N.x, N.y, N.z, VdotN);
 
     GLfloat VdotR = VdotN - NdotL;
     GLfloat specularPower = FPOW(VdotR > 0 ? VdotR : 0, MATERIAL.exponent);
 
-    GLfloat att = (l->position[3] == 0.0f) ? 1.0f : (
-        1.0f / (l->constant_attenuation + (l->linear_attenuation * d) + (l->quadratic_attenuation * d * d))
-    );
-
-    colour[0] = att * (l->ambient[0] * MATERIAL.ambient[0] + f * (l->diffuse[0] * MATERIAL.diffuse[0] * NdotL + l->specular[0] * MATERIAL.specular[0] * specularPower));
-    colour[1] = att * (l->ambient[1] * MATERIAL.ambient[1] + f * (l->diffuse[1] * MATERIAL.diffuse[1] * NdotL + l->specular[1] * MATERIAL.specular[1] * specularPower));
-    colour[2] = att * (l->ambient[2] * MATERIAL.ambient[2] + f * (l->diffuse[2] * MATERIAL.diffuse[2] * NdotL + l->specular[2] * MATERIAL.specular[2] * specularPower));
+    colour[0] = l->ambient[0] * MATERIAL.ambient[0];
+    colour[1] = l->ambient[1] * MATERIAL.ambient[1];
+    colour[2] = l->ambient[2] * MATERIAL.ambient[2];
     colour[3] = MATERIAL.diffuse[3];
+
+    if(NdotL >= 0) {
+        colour[0] += (l->diffuse[0] * MATERIAL.diffuse[0] * NdotL + l->specular[0] * MATERIAL.specular[0] * specularPower);
+        colour[1] += (l->diffuse[1] * MATERIAL.diffuse[1] * NdotL + l->specular[1] * MATERIAL.specular[1] * specularPower);
+        colour[2] += (l->diffuse[2] * MATERIAL.diffuse[2] * NdotL + l->specular[2] * MATERIAL.specular[2] * specularPower);
+    }
+
+    if(!l->is_directional) {
+        GLfloat att = (
+            1.0f / (l->constant_attenuation + (l->linear_attenuation * d) + (l->quadratic_attenuation * d * d))
+        );
+
+        colour[0] *= att;
+        colour[1] *= att;
+        colour[2] *= att;
+    }
 
     if(colour[0] > 1.0f) colour[0] = 1.0f;
     if(colour[1] > 1.0f) colour[1] = 1.0f;

@@ -6,6 +6,8 @@
 #include <dc/video.h>
 
 #include "../include/gl.h"
+#include "../include/glkos.h"
+
 #include "private.h"
 
 static pvr_poly_cxt_t GL_CONTEXT;
@@ -218,6 +220,9 @@ GLAPI void APIENTRY glEnable(GLenum cap) {
         case GL_LIGHT7:
             LIGHT_ENABLED[cap & 0xF] = GL_TRUE;
         break;
+        case GL_NEARZ_CLIPPING_KOS:
+            enableClipping(GL_TRUE);
+        break;
     default:
         break;
     }
@@ -258,6 +263,9 @@ GLAPI void APIENTRY glDisable(GLenum cap) {
         case GL_LIGHT6:
         case GL_LIGHT7:
             LIGHT_ENABLED[cap & 0xF] = GL_FALSE;
+        break;
+        case GL_NEARZ_CLIPPING_KOS:
+            enableClipping(GL_FALSE);
         break;
     default:
         break;
@@ -416,6 +424,15 @@ void APIENTRY glGetIntegerv(GLenum pname, GLint *params) {
         break;
         case GL_TEXTURE_BINDING_2D:
             *params = getBoundTexture()->index;
+        break;
+        case GL_DEPTH_FUNC:
+            *params = DEPTH_FUNC;
+        break;
+        case GL_BLEND_SRC:
+            *params = BLEND_SFACTOR;
+        break;
+        case GL_BLEND_DST:
+            *params = BLEND_DFACTOR;
         break;
     default:
         _glKosThrowError(GL_INVALID_ENUM, "glGetIntegerv");

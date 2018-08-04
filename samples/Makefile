@@ -14,3 +14,7 @@ all:
 	$(KOS_MAKE) -C ortho2d all
 	$(KOS_MAKE) -C lerabot01 all
 	$(KOS_MAKE) -C zclip all
+	$(KOS_MAKE) -C zclip_triangle all
+	$(KOS_MAKE) -C zclip_trianglestrip all
+	$(KOS_MAKE) -C terrain all
+	$(KOS_MAKE) -C quadmark all

@@ -44,7 +44,7 @@ typedef struct {
     GLfloat emissive[4];
     GLfloat ambient[4];
     GLfloat diffuse[4];
-    GLfloat specular[4];    
+    GLfloat specular[4];
     GLfloat exponent;
 } Material;
 
@@ -59,10 +59,12 @@ typedef struct {
     GLfloat diffuse[4];
     GLfloat specular[4];
     GLfloat ambient[4];
+    GLboolean is_directional;
 } LightSource;
 
 
 PolyList *activePolyList();
+PolyList *transparentPolyList();
 
 void initAttributePointers();
 void initContext();
@@ -74,7 +76,6 @@ void initFramebuffers();
 void _matrixLoadNormal();
 void _matrixLoadModelView();
 void _matrixLoadTexture();
-void _matrixLoadRender();
 void _applyRenderMatrix();
 
 void wipeTextureOnFramebuffers(GLuint texture);
@@ -91,6 +92,9 @@ GLboolean isBlendingEnabled();
 GLboolean isLightingEnabled();
 GLboolean isLightEnabled(GLubyte light);
 void calculateLightingContribution(const GLint light, const GLfloat* pos, const GLfloat* normal, GLfloat* colour);
+
+unsigned char isClippingEnabled();
+void enableClipping(unsigned char v);
 
 void _glKosThrowError(GLenum error, const char *function);
 void _glKosPrintError();

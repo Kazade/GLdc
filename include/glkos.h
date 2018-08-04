@@ -5,6 +5,9 @@
 
 __BEGIN_DECLS
 
+
+#define GL_NEARZ_CLIPPING_KOS                 0xEEFA
+
 #define GL_COLOR_ATTACHMENT0_EXT              0x8CE0
 #define GL_COLOR_ATTACHMENT1_EXT              0x8CE1
 #define GL_COLOR_ATTACHMENT2_EXT              0x8CE2
