@@ -59,6 +59,7 @@ typedef struct {
     GLfloat diffuse[4];
     GLfloat specular[4];
     GLfloat ambient[4];
+    GLboolean is_directional;
 } LightSource;
 
 
