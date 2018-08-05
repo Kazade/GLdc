@@ -636,9 +636,10 @@ GLAPI void APIENTRY glGetFloatv(GLenum pname, GLfloat *params);
 GLAPI GLboolean APIENTRY glIsEnabled(GLenum cap);
 GLAPI const GLbyte* APIENTRY glGetString(GLenum name);
 
-/* Multi-Texture Extensions - Currently not supported in immediate mode */
+/* Multitexture extensions */
 GLAPI void APIENTRY glActiveTextureARB(GLenum texture);
 GLAPI void APIENTRY glClientActiveTextureARB(GLenum texture);
+GLAPI void APIENTRY glMultiTexCoord2fARB(GLenum target, GLfloat s, GLfloat t);
 
 /* Error handling */
 GLAPI GLenum APIENTRY glGetError(void);

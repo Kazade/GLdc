@@ -15,19 +15,22 @@ static GLenum ACTIVE_POLYGON_MODE = GL_TRIANGLES;
 
 static AlignedVector VERTICES;
 static AlignedVector COLOURS;
-static AlignedVector TEXCOORDS;
+static AlignedVector UV_COORDS;
+static AlignedVector ST_COORDS;
 static AlignedVector NORMALS;
 
 
 static GLfloat NORMAL[3] = {0.0f, 0.0f, 1.0f};
 static GLfloat COLOR[4] = {1.0f, 1.0f, 1.0f, 1.0f};
-static GLfloat TEXCOORD[2] = {0.0f, 0.0f};
+static GLfloat UV_COORD[2] = {0.0f, 0.0f};
+static GLfloat ST_COORD[2] = {0.0f, 0.0f};
 
 
 void initImmediateMode() {
     aligned_vector_init(&VERTICES, sizeof(GLfloat));
     aligned_vector_init(&COLOURS, sizeof(GLfloat));
-    aligned_vector_init(&TEXCOORDS, sizeof(GLfloat));
+    aligned_vector_init(&UV_COORDS, sizeof(GLfloat));
+    aligned_vector_init(&ST_COORDS, sizeof(GLfloat));
     aligned_vector_init(&NORMALS, sizeof(GLfloat));
 }
 
@@ -88,9 +91,10 @@ void APIENTRY glVertex3f(GLfloat x, GLfloat y, GLfloat z) {
     aligned_vector_push_back(&VERTICES, &z, 1);
 
 
-    /* Push back the stashed colour, normal and texcoord */
+    /* Push back the stashed colour, normal and uv_coordinate */
     aligned_vector_push_back(&COLOURS, COLOR, 4);
-    aligned_vector_push_back(&TEXCOORDS, TEXCOORD, 2);
+    aligned_vector_push_back(&UV_COORDS, UV_COORD, 2);
+    aligned_vector_push_back(&ST_COORDS, ST_COORD, 2);
     aligned_vector_push_back(&NORMALS, NORMAL, 3);
 }
 
@@ -114,9 +118,23 @@ void APIENTRY glVertex4fv(const GLfloat* v) {
     glVertex4f(v[0], v[1], v[2], v[3]);
 }
 
+void APIENTRY glMultiTexCoord2fARB(GLenum target, GLfloat s, GLfloat t) {
+    if(target == GL_TEXTURE0) {
+        UV_COORD[0] = s;
+        UV_COORD[1] = t;
+    } else if(target == GL_TEXTURE1) {
+        ST_COORD[0] = s;
+        ST_COORD[1] = t;
+    } else {
+        _glKosThrowError(GL_INVALID_ENUM, __func__);
+        _glKosPrintError();
+        return;
+    }
+}
+
 void APIENTRY glTexCoord2f(GLfloat u, GLfloat v) {
-    TEXCOORD[0] = u;
-    TEXCOORD[1] = v;
+    UV_COORD[0] = u;
+    UV_COORD[1] = v;
 }
 
 void APIENTRY glTexCoord2fv(const GLfloat* v) {
@@ -148,13 +166,18 @@ void APIENTRY glEnd() {
 
     glClientActiveTextureARB(GL_TEXTURE0);
     glEnableClientState(GL_TEXTURE_COORD_ARRAY);
-    glTexCoordPointer(2, GL_FLOAT, 0, TEXCOORDS.data);
+    glTexCoordPointer(2, GL_FLOAT, 0, UV_COORDS.data);
+
+    glClientActiveTextureARB(GL_TEXTURE1);
+    glEnableClientState(GL_TEXTURE_COORD_ARRAY);
+    glTexCoordPointer(2, GL_FLOAT, 0, ST_COORDS.data);
 
     glDrawArrays(ACTIVE_POLYGON_MODE, 0, VERTICES.size / 3);
 
     aligned_vector_clear(&VERTICES);
     aligned_vector_clear(&COLOURS);
-    aligned_vector_clear(&TEXCOORDS);
+    aligned_vector_clear(&UV_COORDS);
+    aligned_vector_clear(&ST_COORDS);
     aligned_vector_clear(&NORMALS);
 
     /* FIXME: Pop pointers */
