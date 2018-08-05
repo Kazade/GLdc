@@ -245,10 +245,20 @@ void calculateLightingContribution(const GLint light, const GLfloat* pos, const 
     LightSource* l = &LIGHTS[light];
 
     struct vec3f L = {
-        l->position[0] - pos[0],
-        l->position[1] - pos[1],
-        l->position[2] - pos[2]
+        l->position[0],
+        l->position[1],
+        l->position[2]
     };
+
+    if(l->is_directional) {
+        L.x *= -1.0f;
+        L.y *= -1.0f;
+        L.z *= -1.0f;
+    } else {
+        L.x -= pos[0];
+        L.y -= pos[1];
+        L.z -= pos[2];
+    }
 
     struct vec3f N = {
         normal[0],
