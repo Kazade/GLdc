@@ -6,6 +6,7 @@
 #include <dc/video.h>
 
 #include "../include/gl.h"
+#include "../include/glext.h"
 #include "../include/glkos.h"
 
 #include "private.h"
@@ -417,6 +418,17 @@ GLboolean APIENTRY glIsEnabled(GLenum cap) {
     return GL_FALSE;
 }
 
+static GLenum COMPRESSED_FORMATS [] = {
+    GL_COMPRESSED_ARGB_1555_VQ_KOS,
+    GL_COMPRESSED_ARGB_1555_VQ_TWID_KOS,
+    GL_COMPRESSED_ARGB_4444_VQ_KOS,
+    GL_COMPRESSED_ARGB_4444_VQ_TWID_KOS,
+    GL_COMPRESSED_RGB_565_VQ_KOS,
+    GL_COMPRESSED_RGB_565_VQ_TWID_KOS
+};
+
+static GLint NUM_COMPRESSED_FORMATS = sizeof(COMPRESSED_FORMATS) / sizeof(GLenum);
+
 void APIENTRY glGetIntegerv(GLenum pname, GLint *params) {
     switch(pname) {
         case GL_MAX_LIGHTS:
@@ -437,6 +449,15 @@ void APIENTRY glGetIntegerv(GLenum pname, GLint *params) {
         case GL_MAX_TEXTURE_SIZE:
             *params = MAX_TEXTURE_SIZE;
         break;
+        case GL_NUM_COMPRESSED_TEXTURE_FORMATS_ARB:
+            *params = NUM_COMPRESSED_FORMATS;
+        break;
+        case GL_COMPRESSED_TEXTURE_FORMATS_ARB: {
+            GLuint i = 0;
+            for(; i < NUM_COMPRESSED_FORMATS; ++i) {
+                params[i] = COMPRESSED_FORMATS[i];
+            }
+        } break;
     default:
         _glKosThrowError(GL_INVALID_ENUM, "glGetIntegerv");
         _glKosPrintError();
