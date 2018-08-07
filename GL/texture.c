@@ -168,7 +168,7 @@ void APIENTRY glTexEnvf(GLenum target, GLenum pname, GLfloat param) {
     glTexEnvi(target, pname, param);
 }
 
-void APIENTRY glCompressedTexImage2D(GLenum target,
+void APIENTRY glCompressedTexImage2DARB(GLenum target,
                                      GLint level,
                                      GLenum internalFormat,
                                      GLsizei width,
@@ -179,10 +179,10 @@ void APIENTRY glCompressedTexImage2D(GLenum target,
     TRACE();
 
     if(target != GL_TEXTURE_2D)
-        _glKosThrowError(GL_INVALID_ENUM, "glCompressedTexImage2D");
+        _glKosThrowError(GL_INVALID_ENUM, __func__);
 
     if(level < 0 || border)
-        _glKosThrowError(GL_INVALID_VALUE, "glCompressedTexImage2D");
+        _glKosThrowError(GL_INVALID_VALUE, __func__);
 
     switch(internalFormat) {
         case GL_COMPRESSED_ARGB_1555_VQ_KOS:
@@ -193,11 +193,11 @@ void APIENTRY glCompressedTexImage2D(GLenum target,
         case GL_COMPRESSED_RGB_565_VQ_TWID_KOS:
         break;
         default:
-        _glKosThrowError(GL_INVALID_OPERATION, "glCompressedTexImage2D");
+        _glKosThrowError(GL_INVALID_OPERATION, __func__);
     }
 
     if(TEXTURE_UNITS[ACTIVE_TEXTURE] == NULL) {
-        _glKosThrowError(GL_INVALID_OPERATION, "glCompressedTexImage2D");
+        _glKosThrowError(GL_INVALID_OPERATION, __func__);
     }
 
     if(_glKosHasError()) {

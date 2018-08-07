@@ -510,23 +510,6 @@ GLAPI void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalForma
                                  GLsizei width, GLsizei height, GLint border,
                                  GLenum format, GLenum type, const GLvoid *data);
 
-/* Loads VQ compressed texture from SH4 RAM into PVR VRAM */
-/* internalformat must be one of the following constants:
-    GL_UNSIGNED_SHORT_5_6_5_VQ
-    GL_UNSIGNED_SHORT_5_6_5_VQ_TWID
-    GL_UNSIGNED_SHORT_4_4_4_4_VQ
-    GL_UNSIGNED_SHORT_4_4_4_4_VQ_TWID
-    GL_UNSIGNED_SHORT_1_5_5_5_VQ
-    GL_UNSIGNED_SHORT_1_5_5_5_VQ_TWID
- */
-GLAPI void APIENTRY glCompressedTexImage2D(GLenum target,
-        GLint level,
-        GLenum internalformat,
-        GLsizei width,
-        GLsizei height,
-        GLint border,
-        GLsizei imageSize,
-        const GLvoid *data);
 
 /* GL Array API - Only GL_TRIANGLES, GL_TRIANGLE_STRIP, and GL_QUADS are supported */
 GLAPI void APIENTRY glVertexPointer(GLint size, GLenum type,
