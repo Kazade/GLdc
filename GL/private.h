@@ -9,6 +9,7 @@
 #define TRACE_ENABLED 0
 #define TRACE() if(TRACE_ENABLED) {fprintf(stderr, "%s\n", __func__);}
 
+#define MAX_TEXTURE_SIZE 1024
 
 typedef struct {
     unsigned int cmd[8];
