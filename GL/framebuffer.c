@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include "private.h"
 #include "../include/glkos.h"
+#include "../include/glext.h"
 
 typedef struct {
     GLuint index;

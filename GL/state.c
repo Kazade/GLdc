@@ -434,6 +434,9 @@ void APIENTRY glGetIntegerv(GLenum pname, GLint *params) {
         case GL_BLEND_DST:
             *params = BLEND_DFACTOR;
         break;
+        case GL_MAX_TEXTURE_SIZE:
+            *params = MAX_TEXTURE_SIZE;
+        break;
     default:
         _glKosThrowError(GL_INVALID_ENUM, "glGetIntegerv");
         _glKosPrintError();

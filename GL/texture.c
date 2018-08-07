@@ -1,6 +1,9 @@
 #include "private.h"
-#include "../include/glext.h"
+
 #include <stdio.h>
+
+#include "../include/glext.h"
+#include "../include/glkos.h"
 
 #define CLAMP_U (1<<1)
 #define CLAMP_V (1<<0)
@@ -167,7 +170,7 @@ void APIENTRY glTexEnvf(GLenum target, GLenum pname, GLfloat param) {
 
 void APIENTRY glCompressedTexImage2D(GLenum target,
                                      GLint level,
-                                     GLenum internalformat,
+                                     GLenum internalFormat,
                                      GLsizei width,
                                      GLsizei height,
                                      GLint border,
@@ -178,22 +181,24 @@ void APIENTRY glCompressedTexImage2D(GLenum target,
     if(target != GL_TEXTURE_2D)
         _glKosThrowError(GL_INVALID_ENUM, "glCompressedTexImage2D");
 
-    if(level < 0)
+    if(level < 0 || border)
         _glKosThrowError(GL_INVALID_VALUE, "glCompressedTexImage2D");
 
-    if(border)
-        _glKosThrowError(GL_INVALID_VALUE, "glCompressedTexImage2D");
-
-    if(internalformat != GL_UNSIGNED_SHORT_5_6_5_VQ_KOS)
-        if(internalformat != GL_UNSIGNED_SHORT_5_6_5_VQ_TWID_KOS)
-            if(internalformat != GL_UNSIGNED_SHORT_4_4_4_4_VQ_KOS)
-                if(internalformat != GL_UNSIGNED_SHORT_4_4_4_4_REV_VQ_TWID_KOS)
-                    if(internalformat != GL_UNSIGNED_SHORT_1_5_5_5_REV_VQ_KOS)
-                        if(internalformat != GL_UNSIGNED_SHORT_1_5_5_5_REV_VQ_TWID_KOS)
-                            _glKosThrowError(GL_INVALID_OPERATION, "glCompressedTexImage2D");
-
-    if(TEXTURE_UNITS[ACTIVE_TEXTURE] == NULL)
+    switch(internalFormat) {
+        case GL_COMPRESSED_ARGB_1555_VQ_KOS:
+        case GL_COMPRESSED_ARGB_1555_VQ_TWID_KOS:
+        case GL_COMPRESSED_ARGB_4444_VQ_KOS:
+        case GL_COMPRESSED_ARGB_4444_VQ_TWID_KOS:
+        case GL_COMPRESSED_RGB_565_VQ_KOS:
+        case GL_COMPRESSED_RGB_565_VQ_TWID_KOS:
+        break;
+        default:
         _glKosThrowError(GL_INVALID_OPERATION, "glCompressedTexImage2D");
+    }
+
+    if(TEXTURE_UNITS[ACTIVE_TEXTURE] == NULL) {
+        _glKosThrowError(GL_INVALID_OPERATION, "glCompressedTexImage2D");
+    }
 
     if(_glKosHasError()) {
         _glKosPrintError();
@@ -206,8 +211,8 @@ void APIENTRY glCompressedTexImage2D(GLenum target,
     active->height  = height;
     active->mip_map = level;
     active->color   = _determinePVRFormat(
-        internalformat,
-        internalformat  /* Doesn't matter (see determinePVRFormat) */
+        internalFormat,
+        internalFormat  /* Doesn't matter (see determinePVRFormat) */
     );
 
     /* Odds are slim new data is same size as old, so free always */
@@ -312,21 +317,21 @@ static GLuint _determinePVRFormat(GLint internalFormat, GLenum type) {
         /* Compressed and twiddled versions */
         case GL_UNSIGNED_SHORT_5_6_5_TWID_KOS:
             return PVR_TXRFMT_RGB565 | PVR_TXRFMT_TWIDDLED;
-        case GL_UNSIGNED_SHORT_5_6_5_VQ_KOS:
+        case GL_COMPRESSED_RGB_565_VQ_KOS:
             return PVR_TXRFMT_RGB565 | PVR_TXRFMT_NONTWIDDLED | PVR_TXRFMT_VQ_ENABLE;
-        case GL_UNSIGNED_SHORT_5_6_5_VQ_TWID_KOS:
+        case GL_COMPRESSED_RGB_565_VQ_TWID_KOS:
             return PVR_TXRFMT_RGB565 | PVR_TXRFMT_TWIDDLED | PVR_TXRFMT_VQ_ENABLE;
         case GL_UNSIGNED_SHORT_4_4_4_4_REV_TWID_KOS:
             return PVR_TXRFMT_ARGB4444 | PVR_TXRFMT_TWIDDLED;
-        case GL_UNSIGNED_SHORT_4_4_4_4_REV_VQ_TWID_KOS:
+        case GL_COMPRESSED_ARGB_4444_VQ_TWID_KOS:
             return PVR_TXRFMT_ARGB4444 | PVR_TXRFMT_TWIDDLED | PVR_TXRFMT_VQ_ENABLE;
-        case GL_UNSIGNED_SHORT_4_4_4_4_VQ_KOS:
+        case GL_COMPRESSED_ARGB_4444_VQ_KOS:
             return PVR_TXRFMT_ARGB4444 | PVR_TXRFMT_NONTWIDDLED | PVR_TXRFMT_VQ_ENABLE;
         case GL_UNSIGNED_SHORT_1_5_5_5_REV_TWID_KOS:
             return PVR_TXRFMT_ARGB1555 | PVR_TXRFMT_TWIDDLED;
-        case GL_UNSIGNED_SHORT_1_5_5_5_REV_VQ_KOS:
+        case GL_COMPRESSED_ARGB_1555_VQ_KOS:
             return PVR_TXRFMT_ARGB1555 | PVR_TXRFMT_NONTWIDDLED | PVR_TXRFMT_VQ_ENABLE;
-        case GL_UNSIGNED_SHORT_1_5_5_5_REV_VQ_TWID_KOS:
+        case GL_COMPRESSED_ARGB_1555_VQ_TWID_KOS:
             return PVR_TXRFMT_ARGB1555 | PVR_TXRFMT_TWIDDLED | PVR_TXRFMT_VQ_ENABLE;
         default:
             return 0;
@@ -494,7 +499,7 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
             pvr_mem_free(active->data);
             active->data = NULL;
         }
-    }    
+    }
 
     GLuint bytes = (width * height * sizeof(GLushort));
 

@@ -339,24 +339,6 @@ __BEGIN_DECLS
 #define GL_UNSIGNED_SHORT_4_4_4_4_REV   0x8365
 #define GL_UNSIGNED_SHORT_1_5_5_5_REV   0x8366
 
-/*
- * Dreamcast specific compressed + twiddled formats.
- * We use constants from the range 0xEEE0 onwards
- * to avoid trampling any real GL constants (this is in the middle of the
- * any_vendor_future_use range defined in the GL enum.spec file.
-*/
-#define GL_UNSIGNED_SHORT_5_6_5_TWID_KOS       0xEEE0
-#define GL_UNSIGNED_SHORT_1_5_5_5_REV_TWID_KOS     0xEEE2
-#define GL_UNSIGNED_SHORT_4_4_4_4_REV_TWID_KOS     0xEEE3
-
-#define GL_UNSIGNED_SHORT_5_6_5_VQ_KOS       0xEEE4
-#define GL_UNSIGNED_SHORT_1_5_5_5_REV_VQ_KOS     0xEEE6
-#define GL_UNSIGNED_SHORT_4_4_4_4_VQ_KOS     0xEEE7
-
-#define GL_UNSIGNED_SHORT_5_6_5_VQ_TWID_KOS       0xEEE8
-#define GL_UNSIGNED_SHORT_1_5_5_5_REV_VQ_TWID_KOS     0xEEEA
-#define GL_UNSIGNED_SHORT_4_4_4_4_REV_VQ_TWID_KOS     0xEEEB
-
 #define GL_RED                            0x1903
 #define GL_GREEN                          0x1904
 #define GL_BLUE                           0x1905
