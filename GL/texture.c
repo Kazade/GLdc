@@ -16,6 +16,75 @@ static GLubyte ACTIVE_TEXTURE = 0;
 
 static GLuint _determinePVRFormat(GLint internalFormat, GLenum type);
 
+static GLint _determineStride(GLenum format, GLenum type) {
+    switch(type) {
+    case GL_BYTE:
+    case GL_UNSIGNED_BYTE:
+        return (format == GL_RED) ? 1 : (format == GL_RGB) ? 3 : 4;
+    case GL_UNSIGNED_SHORT:
+        return (format == GL_RED) ? 2 : (format == GL_RGB) ? 6 : 8;
+    case GL_UNSIGNED_SHORT_5_6_5_REV:
+    case GL_UNSIGNED_SHORT_5_6_5_TWID_KOS:
+    case GL_UNSIGNED_SHORT_5_5_5_1:
+    case GL_UNSIGNED_SHORT_1_5_5_5_REV_TWID_KOS:
+    case GL_UNSIGNED_SHORT_1_5_5_5_REV:
+    case GL_UNSIGNED_SHORT_4_4_4_4:
+    case GL_UNSIGNED_SHORT_4_4_4_4_REV_TWID_KOS:
+    case GL_UNSIGNED_SHORT_4_4_4_4_REV:
+        return 2;
+    }
+
+    return -1;
+}
+
+GLubyte* _glGetMipmapLocation(TextureObject* obj, GLuint level) {
+    GLuint offset = 0;
+
+    GLuint i = 0;
+    GLuint width = obj->width;
+    GLuint height = obj->height;
+
+    for(; i < level; ++i) {
+        offset += (width * height * obj->dataStride);
+
+        if(width > 1) {
+            width /= 2;
+        }
+
+        if(height > 1) {
+            height /= 2;
+        }
+    }
+
+    return ((GLubyte*) obj->data) + offset;
+}
+
+GLuint _glGetMipmapLevelCount(TextureObject* obj) {
+    return 1 + floor(log2(MAX(obj->width, obj->height)));
+}
+
+static GLuint _glGetMipmapDataSize(TextureObject* obj) {
+    GLuint size = 0;
+
+    GLuint i = 0;
+    GLuint width = obj->width;
+    GLuint height = obj->height;
+
+    for(; i < _glGetMipmapLevelCount(obj); ++i) {
+        size += (width * height * obj->dataStride);
+
+        if(width > 1) {
+            width /= 2;
+        }
+
+        if(height > 1) {
+            height /= 2;
+        }
+    }
+
+    return size;
+}
+
 GLubyte _glKosInitTextures() {
     named_array_init(&TEXTURE_OBJECTS, sizeof(TextureObject), 256);
     return 1;
@@ -240,7 +309,7 @@ void APIENTRY glCompressedTexImage2DARB(GLenum target,
     TextureObject* active = TEXTURE_UNITS[ACTIVE_TEXTURE];
 
     /* Set the required mipmap count */
-    active->mipmapCount = 1 + floor(log2(MAX(width, height)));
+    active->mipmapCount = _glGetMipmapLevelCount(active);
     active->mipmap = (mipmapped) ? ~0 : (1 << level);  /* Set only a single bit if this wasn't mipmapped otherwise set all */
     active->width   = width;
     active->height  = height;
@@ -436,27 +505,6 @@ static TextureConversionFunc _determineConversion(GLint internalFormat, GLenum f
     return 0;
 }
 
-static GLint _determineStride(GLenum format, GLenum type) {
-    switch(type) {
-    case GL_BYTE:
-    case GL_UNSIGNED_BYTE:
-        return (format == GL_RED) ? 1 : (format == GL_RGB) ? 3 : 4;
-    case GL_UNSIGNED_SHORT:
-        return (format == GL_RED) ? 2 : (format == GL_RGB) ? 6 : 8;
-    case GL_UNSIGNED_SHORT_5_6_5_REV:
-    case GL_UNSIGNED_SHORT_5_6_5_TWID_KOS:
-    case GL_UNSIGNED_SHORT_5_5_5_1:
-    case GL_UNSIGNED_SHORT_1_5_5_5_REV_TWID_KOS:
-    case GL_UNSIGNED_SHORT_1_5_5_5_REV:
-    case GL_UNSIGNED_SHORT_4_4_4_4:
-    case GL_UNSIGNED_SHORT_4_4_4_4_REV_TWID_KOS:
-    case GL_UNSIGNED_SHORT_4_4_4_4_REV:
-        return 2;
-    }
-
-    return -1;
-}
-
 static GLboolean _isSupportedFormat(GLenum format) {
     switch(format) {
     case GL_RED:
@@ -552,11 +600,16 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
             pvr_mem_free(active->data);
             active->data = NULL;
             active->mipmap = 0;
+            active->mipmapCount = 0;
+            active->dataStride = 0;
         }
     }
 
     /* Set the required mipmap count */
-    active->mipmapCount = 1 + floor(log2(MAX(width, height)));
+    active->mipmapCount = _glGetMipmapLevelCount(active);
+
+    /* Mark this level as set in the mipmap bitmask */
+    active->mipmap |= (1 << level);
 
     GLuint bytes = (width * height * sizeof(GLushort));
 
@@ -564,9 +617,9 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
         /* need texture memory */
         active->width   = width;
         active->height  = height;
-        active->mipmap |= (1 << level); /* Mark this level as set in the mipmap bitmask */
         active->color   = pvr_format;
-        active->data = pvr_mem_malloc(bytes);
+        active->data = pvr_mem_malloc(_glGetMipmapDataSize(active));
+        active->dataStride = _determineStride(format, type);
     }
 
     /* Let's assume we need to convert */
@@ -590,12 +643,14 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
         needsConversion = GL_FALSE;
     }
 
+    GLubyte* targetData = _glGetMipmapLocation(active, level);
+
     if(!data) {
         /* No data? Do nothing! */
         return;
     } else if(!needsConversion) {
         /* No conversion? Just copy the data, and the pvr_format is correct */
-        sq_cpy(active->data, data, bytes);
+        sq_cpy(targetData, data, bytes);
         return;
     } else {
         TextureConversionFunc convert = _determineConversion(
@@ -605,16 +660,15 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
         );
 
         if(!convert) {
-            _glKosThrowError(GL_INVALID_OPERATION, "glTexImage2D");
+            _glKosThrowError(GL_INVALID_OPERATION, __func__);
             return;
         }
 
-        GLushort* dest = active->data;
+        GLushort* dest = (GLushort*) targetData;
         const GLubyte* source = data;
-        GLint stride = _determineStride(format, type);
 
-        if(stride == -1) {
-            _glKosThrowError(GL_INVALID_OPERATION, "glTexImage2D");
+        if(active->dataStride == -1) {
+            _glKosThrowError(GL_INVALID_OPERATION, __func__);
             return;
         }
 
@@ -624,7 +678,7 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
             convert(source, dest);
 
             dest++;
-            source += stride;
+            source += active->dataStride;
         }
     }
 }

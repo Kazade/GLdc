@@ -40,6 +40,7 @@ typedef struct {
     GLubyte  uv_clamp;
     GLuint   index;
     GLvoid *data;
+    GLuint dataStride;
 } TextureObject;
 
 typedef struct {
