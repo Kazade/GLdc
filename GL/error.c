@@ -40,29 +40,23 @@ static void _glKosResetError() {
     sprintf(error_function, "\n");
 }
 
+static const char* _glErrorEnumAsString(GLenum error) {
+    switch(error) {
+        case GL_INVALID_ENUM: return "GL_INVALID_ENUM";
+        case GL_OUT_OF_MEMORY: return "GL_OUT_OF_MEMORY";
+        case GL_INVALID_OPERATION: return "GL_INVALID_OPERATION";
+        case GL_INVALID_VALUE: return "GL_INVALID_VALUE";
+        default:
+            return "GL_UNKNOWN_ERROR";
+    }
+}
+
 void _glKosPrintError() {
     if(!_glKosHasError()) {
         return;
     }
 
-    printf("\nKOS GL ERROR THROWN BY FUNCTION: %s\n", error_function);
-
-    switch(last_error) {
-    case GL_INVALID_ENUM:
-        printf("KOS GL ERROR: GL_INVALID_ENUM\n");
-    break;
-    case GL_OUT_OF_MEMORY:
-        printf("KOS GL ERROR: GL_OUT_OF_MEMORY\n");
-    break;
-    case GL_INVALID_OPERATION:
-        printf("KOS GL ERROR: GL_INVALID_OPERATION\n");
-    break;
-    case GL_INVALID_VALUE:
-        printf("KOS GL ERROR: GL_INVALID_VALUE\n");
-    break;
-    default:
-        break;
-    }
+    fprintf(stderr, "GL ERROR: %s when calling %s\n", _glErrorEnumAsString(last_error), error_function);
 }
 
 GLenum glGetError(void) {

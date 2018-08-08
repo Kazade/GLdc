@@ -200,6 +200,22 @@ void APIENTRY glCompressedTexImage2DARB(GLenum target,
         _glKosThrowError(GL_INVALID_OPERATION, __func__);
     }
 
+    /* Guess whether we have mipmaps or not */
+
+    /* `expected` is the uncompressed size */
+    GLuint expected = sizeof(GLshort) * width * height;
+
+    /* The ratio is the uncompressed vs compressed data size */
+    GLuint ratio = (GLuint) (((GLfloat) expected) / ((GLfloat) imageSize));
+
+    if(ratio < 7) {
+        /* If the ratio is less than 1:7 then we assume that the reason for that
+        is the extra data used for mipmaps. Testing shows that a single VQ compressed
+        image is around 1:7 or 1:8. We may need to tweak this if it detects false positives */
+        fprintf(stderr, "GL ERROR: Detected multiple mipmap levels being uploaded to %s\n", __func__);
+        _glKosThrowError(GL_INVALID_OPERATION, __func__);
+    }
+
     if(_glKosHasError()) {
         _glKosPrintError();
         return;

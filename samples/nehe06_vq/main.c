@@ -3,6 +3,7 @@
 #include "gl.h"
 #include "glu.h"
 #include "glkos.h"
+#include "glext.h"
 
 extern uint8 romdisk[];
 KOS_INIT_ROMDISK(romdisk);
@@ -55,6 +56,9 @@ int ImageLoad(char *filename, Image *image) {
     image->sizeX = header.width;
     image->sizeY = header.height;
     image->dataSize = header.size;
+
+    GLuint expected = 2 * header.width * header.height;
+    GLuint ratio = (GLuint) (((GLfloat) expected) / ((GLfloat) header.size));
 
     fread(image->data, image->dataSize, 1, file);
     fclose(file);
