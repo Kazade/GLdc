@@ -35,7 +35,8 @@ typedef struct {
     GLuint   color; /* This is the PVR texture format */
     GLubyte  env;
     GLubyte  filter;
-    GLubyte  mip_map;
+    GLushort  mipmap;  /* Bitmask of supplied mipmap levels */
+    GLubyte mipmapCount; /* The number of mipmap levels */
     GLubyte  uv_clamp;
     GLuint   index;
     GLvoid *data;
@@ -89,6 +90,7 @@ TextureObject* getTexture0();
 TextureObject* getTexture1();
 TextureObject* getBoundTexture();
 GLboolean isBlendingEnabled();
+GLboolean _glIsMipmapComplete(TextureObject* obj);
 
 GLboolean isLightingEnabled();
 GLboolean isLightEnabled(GLubyte light);

@@ -129,6 +129,7 @@ void updatePVRTextureContext(pvr_poly_cxt_t* context, TextureObject *tx1) {
     if(tx1) {
         context->txr.enable = PVR_TEXTURE_ENABLE;
         context->txr.filter = tx1->filter;
+        context->txr.mipmap = (_glIsMipmapComplete(tx1)) ? PVR_MIPMAP_ENABLE : PVR_MIPMAP_DISABLE;
         context->txr.mipmap_bias = PVR_MIPBIAS_NORMAL;
         context->txr.width = tx1->width;
         context->txr.height = tx1->height;

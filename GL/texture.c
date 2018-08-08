@@ -8,6 +8,8 @@
 #define CLAMP_U (1<<1)
 #define CLAMP_V (1<<0)
 
+#define MAX(x, y) ((x > y) ? x : y)
+
 static TextureObject* TEXTURE_UNITS[MAX_TEXTURE_UNITS] = {NULL, NULL};
 static NamedArray TEXTURE_OBJECTS;
 static GLubyte ACTIVE_TEXTURE = 0;
@@ -77,11 +79,12 @@ void APIENTRY glGenTextures(GLsizei n, GLuint *textures) {
         TextureObject* txr = (TextureObject*) named_array_alloc(&TEXTURE_OBJECTS, &id);
         txr->index = id;
         txr->width = txr->height = 0;
-        txr->mip_map = 0;
+        txr->mipmap = 0;
         txr->uv_clamp = 0;
         txr->env = PVR_TXRENV_MODULATEALPHA;
         txr->filter = PVR_FILTER_NONE;
         txr->data = NULL;
+        txr->mipmapCount = 0;
 
         *textures = id;
 
@@ -181,8 +184,13 @@ void APIENTRY glCompressedTexImage2DARB(GLenum target,
     if(target != GL_TEXTURE_2D)
         _glKosThrowError(GL_INVALID_ENUM, __func__);
 
-    if(level < 0 || border)
+    if(level || border) {
+        /* We don't support setting mipmap levels manually with compressed textures
+           maybe one day */
         _glKosThrowError(GL_INVALID_VALUE, __func__);
+    }
+
+    GLboolean mipmapped = GL_FALSE;
 
     switch(internalFormat) {
         case GL_COMPRESSED_ARGB_1555_VQ_KOS:
@@ -191,6 +199,14 @@ void APIENTRY glCompressedTexImage2DARB(GLenum target,
         case GL_COMPRESSED_ARGB_4444_VQ_TWID_KOS:
         case GL_COMPRESSED_RGB_565_VQ_KOS:
         case GL_COMPRESSED_RGB_565_VQ_TWID_KOS:
+        break;
+        case GL_COMPRESSED_ARGB_1555_VQ_MIPMAP_KOS:
+        case GL_COMPRESSED_ARGB_1555_VQ_MIPMAP_TWID_KOS:
+        case GL_COMPRESSED_ARGB_4444_VQ_MIPMAP_KOS:
+        case GL_COMPRESSED_ARGB_4444_VQ_MIPMAP_TWID_KOS:
+        case GL_COMPRESSED_RGB_565_VQ_MIPMAP_KOS:
+        case GL_COMPRESSED_RGB_565_VQ_MIPMAP_TWID_KOS:
+            mipmapped = GL_TRUE;
         break;
         default:
         _glKosThrowError(GL_INVALID_OPERATION, __func__);
@@ -208,7 +224,7 @@ void APIENTRY glCompressedTexImage2DARB(GLenum target,
     /* The ratio is the uncompressed vs compressed data size */
     GLuint ratio = (GLuint) (((GLfloat) expected) / ((GLfloat) imageSize));
 
-    if(ratio < 7) {
+    if(ratio < 7 && !mipmapped) {
         /* If the ratio is less than 1:7 then we assume that the reason for that
         is the extra data used for mipmaps. Testing shows that a single VQ compressed
         image is around 1:7 or 1:8. We may need to tweak this if it detects false positives */
@@ -223,9 +239,11 @@ void APIENTRY glCompressedTexImage2DARB(GLenum target,
 
     TextureObject* active = TEXTURE_UNITS[ACTIVE_TEXTURE];
 
+    /* Set the required mipmap count */
+    active->mipmapCount = 1 + floor(log2(MAX(width, height)));
+    active->mipmap = (mipmapped) ? ~0 : (1 << level);  /* Set only a single bit if this wasn't mipmapped otherwise set all */
     active->width   = width;
     active->height  = height;
-    active->mip_map = level;
     active->color   = _determinePVRFormat(
         internalFormat,
         internalFormat  /* Doesn't matter (see determinePVRFormat) */
@@ -333,21 +351,27 @@ static GLuint _determinePVRFormat(GLint internalFormat, GLenum type) {
         /* Compressed and twiddled versions */
         case GL_UNSIGNED_SHORT_5_6_5_TWID_KOS:
             return PVR_TXRFMT_RGB565 | PVR_TXRFMT_TWIDDLED;
-        case GL_COMPRESSED_RGB_565_VQ_KOS:
-            return PVR_TXRFMT_RGB565 | PVR_TXRFMT_NONTWIDDLED | PVR_TXRFMT_VQ_ENABLE;
-        case GL_COMPRESSED_RGB_565_VQ_TWID_KOS:
-            return PVR_TXRFMT_RGB565 | PVR_TXRFMT_TWIDDLED | PVR_TXRFMT_VQ_ENABLE;
         case GL_UNSIGNED_SHORT_4_4_4_4_REV_TWID_KOS:
             return PVR_TXRFMT_ARGB4444 | PVR_TXRFMT_TWIDDLED;
-        case GL_COMPRESSED_ARGB_4444_VQ_TWID_KOS:
-            return PVR_TXRFMT_ARGB4444 | PVR_TXRFMT_TWIDDLED | PVR_TXRFMT_VQ_ENABLE;
-        case GL_COMPRESSED_ARGB_4444_VQ_KOS:
-            return PVR_TXRFMT_ARGB4444 | PVR_TXRFMT_NONTWIDDLED | PVR_TXRFMT_VQ_ENABLE;
         case GL_UNSIGNED_SHORT_1_5_5_5_REV_TWID_KOS:
             return PVR_TXRFMT_ARGB1555 | PVR_TXRFMT_TWIDDLED;
+        case GL_COMPRESSED_RGB_565_VQ_KOS:
+        case GL_COMPRESSED_RGB_565_VQ_MIPMAP_KOS:
+            return PVR_TXRFMT_RGB565 | PVR_TXRFMT_NONTWIDDLED | PVR_TXRFMT_VQ_ENABLE;
+        case GL_COMPRESSED_RGB_565_VQ_TWID_KOS:
+        case GL_COMPRESSED_RGB_565_VQ_MIPMAP_TWID_KOS:
+            return PVR_TXRFMT_RGB565 | PVR_TXRFMT_TWIDDLED | PVR_TXRFMT_VQ_ENABLE;
+        case GL_COMPRESSED_ARGB_4444_VQ_TWID_KOS:
+        case GL_COMPRESSED_ARGB_4444_VQ_MIPMAP_TWID_KOS:
+            return PVR_TXRFMT_ARGB4444 | PVR_TXRFMT_TWIDDLED | PVR_TXRFMT_VQ_ENABLE;
+        case GL_COMPRESSED_ARGB_4444_VQ_KOS:
+        case GL_COMPRESSED_ARGB_4444_VQ_MIPMAP_KOS:
+            return PVR_TXRFMT_ARGB4444 | PVR_TXRFMT_NONTWIDDLED | PVR_TXRFMT_VQ_ENABLE;
         case GL_COMPRESSED_ARGB_1555_VQ_KOS:
+        case GL_COMPRESSED_ARGB_1555_VQ_MIPMAP_KOS:
             return PVR_TXRFMT_ARGB1555 | PVR_TXRFMT_NONTWIDDLED | PVR_TXRFMT_VQ_ENABLE;
         case GL_COMPRESSED_ARGB_1555_VQ_TWID_KOS:
+        case GL_COMPRESSED_ARGB_1555_VQ_MIPMAP_TWID_KOS:
             return PVR_TXRFMT_ARGB1555 | PVR_TXRFMT_TWIDDLED | PVR_TXRFMT_VQ_ENABLE;
         default:
             return 0;
@@ -445,6 +469,20 @@ static GLboolean _isSupportedFormat(GLenum format) {
     }
 }
 
+GLboolean _glIsMipmapComplete(TextureObject* obj) {
+    if(!obj->mipmap || !obj->mipmapCount) {
+        return GL_FALSE;
+    }
+
+    GLsizei i = 0;
+    for(; i < obj->mipmapCount; ++i) {
+        if((obj->mipmap & (1 << i)) == 0) {
+            return GL_FALSE;
+        }
+    }
+
+    return GL_TRUE;
+}
 
 void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
                            GLsizei width, GLsizei height, GLint border,
@@ -509,13 +547,16 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
         /* pre-existing texture - check if changed */
         if(active->width != width ||
            active->height != height ||
-           active->mip_map != level ||
            active->color != pvr_format) {
             /* changed - free old texture memory */
             pvr_mem_free(active->data);
             active->data = NULL;
+            active->mipmap = 0;
         }
     }
+
+    /* Set the required mipmap count */
+    active->mipmapCount = 1 + floor(log2(MAX(width, height)));
 
     GLuint bytes = (width * height * sizeof(GLushort));
 
@@ -523,7 +564,7 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
         /* need texture memory */
         active->width   = width;
         active->height  = height;
-        active->mip_map = level;
+        active->mipmap |= (1 << level); /* Mark this level as set in the mipmap bitmask */
         active->color   = pvr_format;
         active->data = pvr_mem_malloc(bytes);
     }

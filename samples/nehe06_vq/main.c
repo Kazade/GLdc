@@ -38,10 +38,10 @@ int ImageLoad(char *filename, Image *image) {
 
     struct {
         char	id[4];	// 'DTEX'
-        short	width;
-        short	height;
-        int		type;
-        int		size;
+        GLushort	width;
+        GLushort	height;
+        GLuint		type;
+        GLuint		size;
     } header;
 
     fread(&header, sizeof(header), 1, file);
@@ -66,14 +66,27 @@ int ImageLoad(char *filename, Image *image) {
     if(compressed) {
         if(twiddled) {
             switch(format) {
-                case 0:
-                    image->internalFormat = GL_COMPRESSED_ARGB_1555_VQ_TWID_KOS;
-                break;
-                case 1:
-                    image->internalFormat = GL_COMPRESSED_RGB_565_VQ_TWID_KOS;
-                break;
-                case 2:
-                    image->internalFormat = GL_COMPRESSED_ARGB_4444_VQ_TWID_KOS;
+                case 0: {
+                    if(mipmapped) {
+                        image->internalFormat = GL_COMPRESSED_ARGB_1555_VQ_MIPMAP_TWID_KOS;
+                    } else {
+                        image->internalFormat = GL_COMPRESSED_ARGB_1555_VQ_TWID_KOS;
+                    }
+                } break;
+                case 1: {
+                    if(mipmapped) {
+                        image->internalFormat = GL_COMPRESSED_RGB_565_VQ_MIPMAP_TWID_KOS;
+                    } else {
+                        image->internalFormat = GL_COMPRESSED_RGB_565_VQ_TWID_KOS;
+                    }
+                } break;
+                case 2: {
+                    if(mipmapped) {
+                        image->internalFormat = GL_COMPRESSED_ARGB_4444_VQ_MIPMAP_TWID_KOS;
+                    } else {
+                        image->internalFormat = GL_COMPRESSED_ARGB_4444_VQ_TWID_KOS;
+                    }
+                }
                 break;
                 default:
                     fprintf(stderr, "Invalid texture format");
@@ -81,14 +94,27 @@ int ImageLoad(char *filename, Image *image) {
             }
         } else {
             switch(format) {
-                case 0:
-                    image->internalFormat = GL_COMPRESSED_ARGB_1555_VQ_KOS;
-                break;
-                case 1:
-                    image->internalFormat = GL_COMPRESSED_RGB_565_VQ_KOS;
-                break;
-                case 2:
-                    image->internalFormat = GL_COMPRESSED_ARGB_4444_VQ_KOS;
+                case 0: {
+                    if(mipmapped) {
+                        image->internalFormat = GL_COMPRESSED_ARGB_1555_VQ_MIPMAP_KOS;
+                    } else {
+                        image->internalFormat = GL_COMPRESSED_ARGB_1555_VQ_KOS;
+                    }
+                } break;
+                case 1: {
+                    if(mipmapped) {
+                        image->internalFormat = GL_COMPRESSED_RGB_565_VQ_MIPMAP_KOS;
+                    } else {
+                        image->internalFormat = GL_COMPRESSED_RGB_565_VQ_KOS;
+                    }
+                } break;
+                case 2: {
+                    if(mipmapped) {
+                        image->internalFormat = GL_COMPRESSED_ARGB_4444_VQ_MIPMAP_KOS;
+                    } else {
+                        image->internalFormat = GL_COMPRESSED_ARGB_4444_VQ_KOS;
+                    }
+                }
                 break;
                 default:
                     fprintf(stderr, "Invalid texture format");
