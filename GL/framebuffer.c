@@ -228,7 +228,7 @@ void APIENTRY glGenerateMipmapEXT(GLenum target) {
 
         /* Do the minification */
         for(sx = 0, dx = 0; sx < prevWidth; sx += 2, dx += 1) {
-            for(sy = 0, sy = 0; sy < prevHeight; sy += 2, dy += 1) {
+            for(sy = 0, dy = 0; sy < prevHeight; sy += 2, dy += 1) {
                 GLubyte* srcTexel = &prevData[
                     ((sy * prevWidth) + sx) * tex->dataStride
                 ];

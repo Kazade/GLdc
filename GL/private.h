@@ -34,13 +34,15 @@ typedef struct {
     GLushort height;
     GLuint   color; /* This is the PVR texture format */
     GLubyte  env;
-    GLubyte  filter;
     GLushort  mipmap;  /* Bitmask of supplied mipmap levels */
     GLubyte mipmapCount; /* The number of mipmap levels */
     GLubyte  uv_clamp;
     GLuint   index;
     GLvoid *data;
     GLuint dataStride;
+
+    GLenum minFilter;
+    GLenum magFilter;
 } TextureObject;
 
 typedef struct {

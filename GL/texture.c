@@ -151,9 +151,10 @@ void APIENTRY glGenTextures(GLsizei n, GLuint *textures) {
         txr->mipmap = 0;
         txr->uv_clamp = 0;
         txr->env = PVR_TXRENV_MODULATEALPHA;
-        txr->filter = PVR_FILTER_NONE;
         txr->data = NULL;
         txr->mipmapCount = 0;
+        txr->minFilter = GL_NEAREST;
+        txr->magFilter = GL_NEAREST;
 
         *textures = id;
 
@@ -696,30 +697,35 @@ void APIENTRY glTexParameteri(GLenum target, GLenum pname, GLint param) {
     if(target == GL_TEXTURE_2D) {
         switch(pname) {
             case GL_TEXTURE_MAG_FILTER:
+                switch(param) {
+                    case GL_NEAREST:
+                    case GL_LINEAR:
+                    break;
+                    default: {
+                        _glKosThrowError(GL_INVALID_VALUE, __func__);
+                        _glKosPrintError();
+                        return;
+                    }
+                }
+                active->magFilter = param;
+            break;
             case GL_TEXTURE_MIN_FILTER:
                 switch(param) {
-                    case GL_LINEAR:
-                        active->filter = PVR_FILTER_BILINEAR;
-                        break;
-
                     case GL_NEAREST:
-                        active->filter = PVR_FILTER_NEAREST;
-                        break;
-
-                    case GL_FILTER_NONE:
-                        active->filter = PVR_FILTER_NONE;
-                        break;
-
-                    case GL_FILTER_BILINEAR:
-                        active->filter = PVR_FILTER_BILINEAR;
-                        break;
-
-                    default:
-                        break;
+                    case GL_LINEAR:
+                    case GL_NEAREST_MIPMAP_LINEAR:
+                    case GL_NEAREST_MIPMAP_NEAREST:
+                    case GL_LINEAR_MIPMAP_LINEAR:
+                    case GL_LINEAR_MIPMAP_NEAREST:
+                    break;
+                    default: {
+                        _glKosThrowError(GL_INVALID_VALUE, __func__);
+                        _glKosPrintError();
+                        return;
+                    }
                 }
-
-                break;
-
+                active->minFilter = param;
+            break;
             case GL_TEXTURE_WRAP_S:
                 switch(param) {
                     case GL_CLAMP:

@@ -126,10 +126,38 @@ void updatePVRTextureContext(pvr_poly_cxt_t* context, TextureObject *tx1) {
     context->txr2.enable = PVR_TEXTURE_DISABLE;
     context->txr2.alpha = PVR_TXRALPHA_DISABLE;
 
+    GLuint filter = PVR_FILTER_NEAREST;
+    GLboolean enableMipmaps = GL_FALSE;
+
+    switch(tx1->minFilter) {
+        case GL_NEAREST_MIPMAP_LINEAR:
+        case GL_NEAREST_MIPMAP_NEAREST:
+        case GL_LINEAR_MIPMAP_LINEAR:
+        case GL_LINEAR_MIPMAP_NEAREST:
+            enableMipmaps = GL_TRUE;
+        break;
+    }
+
+    if(enableMipmaps) {
+        if(tx1->minFilter == GL_LINEAR_MIPMAP_NEAREST) {
+            filter = PVR_FILTER_TRILINEAR1;
+        } else if(tx1->minFilter == GL_LINEAR_MIPMAP_LINEAR) {
+            filter = PVR_FILTER_TRILINEAR2;
+        } else if(tx1->minFilter == GL_NEAREST_MIPMAP_LINEAR) {
+            filter = PVR_FILTER_BILINEAR;
+        } else {
+            filter = PVR_FILTER_NEAREST;
+        }
+    } else {
+        if(tx1->minFilter == GL_LINEAR && tx1->magFilter == GL_LINEAR) {
+            filter = PVR_FILTER_BILINEAR;
+        }
+    }
+
     if(tx1) {
         context->txr.enable = PVR_TEXTURE_ENABLE;
-        context->txr.filter = tx1->filter;
-        context->txr.mipmap = (_glIsMipmapComplete(tx1)) ? PVR_MIPMAP_ENABLE : PVR_MIPMAP_DISABLE;
+        context->txr.filter = filter;
+        context->txr.mipmap = (enableMipmaps) ? PVR_MIPMAP_ENABLE : PVR_MIPMAP_DISABLE;
         context->txr.mipmap_bias = PVR_MIPBIAS_NORMAL;
         context->txr.width = tx1->width;
         context->txr.height = tx1->height;
