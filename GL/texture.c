@@ -605,12 +605,6 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
         }
     }
 
-    /* Set the required mipmap count */
-    active->mipmapCount = _glGetMipmapLevelCount(active);
-
-    /* Mark this level as set in the mipmap bitmask */
-    active->mipmap |= (1 << level);
-
     GLuint bytes = (width * height * sizeof(GLushort));
 
     if(!active->data) {
@@ -618,9 +612,14 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
         active->width   = width;
         active->height  = height;
         active->color   = pvr_format;
+        /* Set the required mipmap count */
+        active->mipmapCount = _glGetMipmapLevelCount(active);
         active->data = pvr_mem_malloc(_glGetMipmapDataSize(active));
-        active->dataStride = _determineStride(format, type);
+        active->dataStride = sizeof(GLshort);
     }
+
+    /* Mark this level as set in the mipmap bitmask */
+    active->mipmap |= (1 << level);
 
     /* Let's assume we need to convert */
     GLboolean needsConversion = GL_TRUE;
@@ -667,7 +666,9 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
         GLushort* dest = (GLushort*) targetData;
         const GLubyte* source = data;
 
-        if(active->dataStride == -1) {
+        GLint stride = _determineStride(format, type);
+
+        if(stride == -1) {
             _glKosThrowError(GL_INVALID_OPERATION, __func__);
             return;
         }
@@ -678,7 +679,7 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
             convert(source, dest);
 
             dest++;
-            source += active->dataStride;
+            source += stride;
         }
     }
 }

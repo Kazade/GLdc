@@ -92,6 +92,8 @@ TextureObject* getTexture1();
 TextureObject* getBoundTexture();
 GLboolean isBlendingEnabled();
 GLboolean _glIsMipmapComplete(TextureObject* obj);
+GLubyte* _glGetMipmapLocation(TextureObject* obj, GLuint level);
+GLuint _glGetMipmapLevelCount(TextureObject* obj);
 
 GLboolean isLightingEnabled();
 GLboolean isLightEnabled(GLubyte light);
