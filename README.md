@@ -14,9 +14,7 @@ Things left to (re)implement:
 
  - Spotlights (Trivial)
  - Framebuffer extension (Trivial)
- - Multitexturing (Trivial)
  - Texture Matrix (Trivial)
- - Mipmapping (Trivial)
  
 Things I'd like to do:
 
