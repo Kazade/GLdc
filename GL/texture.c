@@ -23,6 +23,7 @@ static GLint _determineStride(GLenum format, GLenum type) {
         return (format == GL_RED) ? 1 : (format == GL_RGB) ? 3 : 4;
     case GL_UNSIGNED_SHORT:
         return (format == GL_RED) ? 2 : (format == GL_RGB) ? 6 : 8;
+    case GL_UNSIGNED_SHORT_5_6_5:
     case GL_UNSIGNED_SHORT_5_6_5_REV:
     case GL_UNSIGNED_SHORT_5_6_5_TWID_KOS:
     case GL_UNSIGNED_SHORT_5_5_5_1:
@@ -251,8 +252,21 @@ void APIENTRY glCompressedTexImage2DARB(GLenum target,
                                      const GLvoid *data) {
     TRACE();
 
-    if(target != GL_TEXTURE_2D)
+    if(target != GL_TEXTURE_2D) {
         _glKosThrowError(GL_INVALID_ENUM, __func__);
+    }
+
+    GLint w = width;
+    if(w < 8 || (w & -w) != w) {
+        /* Width is not a power of two. Must be!*/
+        _glKosThrowError(GL_INVALID_VALUE, "glTexImage2D");
+    }
+
+    GLint h = height;
+    if(h < 8 || (h & -h) != h) {
+        /* Width is not a power of two. Must be!*/
+        _glKosThrowError(GL_INVALID_VALUE, "glTexImage2D");
+    }
 
     if(level || border) {
         /* We don't support setting mipmap levels manually with compressed textures
@@ -558,19 +572,18 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
     }
 
     GLint w = width;
-    if(w == 0 || (w & -w) != w) {
+    if(w < 8 || (w & -w) != w) {
         /* Width is not a power of two. Must be!*/
         _glKosThrowError(GL_INVALID_VALUE, "glTexImage2D");
     }
 
     GLint h = height;
-    if(h == 0 || (h & -h) != h) {
+    if(h < 8 || (h & -h) != h) {
         /* height is not a power of two. Must be!*/
         _glKosThrowError(GL_INVALID_VALUE, "glTexImage2D");
     }
 
-    /* FIXME: Mipmaps! */
-    if(level < 0 || level > 0) {
+    if(level < 0) {
         _glKosThrowError(GL_INVALID_VALUE, "glTexImage2D");
     }
 
