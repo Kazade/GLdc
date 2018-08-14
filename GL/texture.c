@@ -270,7 +270,7 @@ void APIENTRY glCompressedTexImage2DARB(GLenum target,
 
     GLint h = height;
     if(h < 8 || (h & -h) != h) {
-        /* Width is not a power of two. Must be!*/
+        /* Height is not a power of two. Must be!*/
         _glKosThrowError(GL_INVALID_VALUE, "glTexImage2D");
     }
 
@@ -501,6 +501,12 @@ static TextureConversionFunc _determineConversion(GLint internalFormat, GLenum f
             return _rgba8888_to_a000;
         }
     } break;
+    case GL_RED: {
+        if(type == GL_UNSIGNED_BYTE && format == GL_RED) {
+            /* Dreamcast doesn't really support GL_RED internally, so store as rgb */
+            return _r8_to_rgb565;
+        }
+    } break;
     case GL_RGB: {
         if(type == GL_UNSIGNED_BYTE && format == GL_RGB) {
             return _rgb888_to_rgb565;
@@ -520,7 +526,7 @@ static TextureConversionFunc _determineConversion(GLint internalFormat, GLenum f
         }
     } break;
     default:
-        fprintf(stderr, "Unsupported conversion: %d -> %d, %d", internalFormat, format, type);
+        fprintf(stderr, "Unsupported conversion: %x -> %x, %x\n", internalFormat, format, type);
         break;
     }
     return 0;
