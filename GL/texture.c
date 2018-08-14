@@ -1,5 +1,6 @@
 #include "private.h"
 
+#include <stddef.h>
 #include <stdio.h>
 
 #include "../include/glext.h"
@@ -15,6 +16,10 @@ static NamedArray TEXTURE_OBJECTS;
 static GLubyte ACTIVE_TEXTURE = 0;
 
 static GLuint _determinePVRFormat(GLint internalFormat, GLenum type);
+
+GLubyte _glGetActiveTexture() {
+    return ACTIVE_TEXTURE;
+}
 
 static GLint _determineStride(GLenum format, GLenum type) {
     switch(type) {
@@ -178,6 +183,7 @@ void APIENTRY glDeleteTextures(GLsizei n, GLuint *textures) {
 
         if(txr->data) {
             pvr_mem_free(txr->data);
+            txr->data = NULL;
         }
 
         named_array_release(&TEXTURE_OBJECTS, *textures++);
@@ -532,7 +538,7 @@ static GLboolean _isSupportedFormat(GLenum format) {
     }
 }
 
-GLboolean _glIsMipmapComplete(TextureObject* obj) {
+GLboolean _glIsMipmapComplete(const TextureObject* obj) {
     if(!obj->mipmap || !obj->mipmapCount) {
         return GL_FALSE;
     }
@@ -628,8 +634,10 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
         active->color   = pvr_format;
         /* Set the required mipmap count */
         active->mipmapCount = _glGetMipmapLevelCount(active);
-        active->data = pvr_mem_malloc(_glGetMipmapDataSize(active));
         active->dataStride = sizeof(GLshort);
+
+        GLuint size = _glGetMipmapDataSize(active);
+        active->data = pvr_mem_malloc(size);
     }
 
     /* Mark this level as set in the mipmap bitmask */

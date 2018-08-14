@@ -596,6 +596,7 @@ GLAPI void APIENTRY glMaterialfv(GLenum face, GLenum pname, const GLfloat *param
 GLAPI GLuint APIENTRY glKosMipMapTexSize(GLuint width, GLuint height);
 
 /* glGet Functions */
+GLAPI void APIENTRY glGetBooleanv(GLenum pname, GLboolean* params);
 GLAPI void APIENTRY glGetIntegerv(GLenum pname, GLint *params);
 GLAPI void APIENTRY glGetFloatv(GLenum pname, GLfloat *params);
 GLAPI GLboolean APIENTRY glIsEnabled(GLenum cap);

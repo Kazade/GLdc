@@ -1,3 +1,4 @@
+#include <stddef.h>
 #include <string.h>
 #include <stdio.h>
 
@@ -115,11 +116,15 @@ static void _updatePVRBlend(pvr_poly_cxt_t* context) {
     }
 }
 
-static GLboolean TEXTURES_ENABLED = GL_FALSE;
+static GLboolean TEXTURES_ENABLED [] = {GL_FALSE, GL_FALSE};
 
-void updatePVRTextureContext(pvr_poly_cxt_t* context, TextureObject *tx1) {
-    if(!TEXTURES_ENABLED) {
-        context->txr2.enable = context->txr.enable = PVR_TEXTURE_DISABLE;
+void _glUpdatePVRTextureContext(pvr_poly_cxt_t* context, GLshort textureUnit) {
+    const TextureObject *tx1 = (textureUnit == 0) ? getTexture0() : getTexture1();
+
+    if(!TEXTURES_ENABLED[textureUnit] || !tx1) {
+        context->txr.enable = PVR_TEXTURE_DISABLE;
+        context->txr.base = 0;
+        context->txr.format = 0;
         return;
     }
 
@@ -135,6 +140,9 @@ void updatePVRTextureContext(pvr_poly_cxt_t* context, TextureObject *tx1) {
         case GL_LINEAR_MIPMAP_LINEAR:
         case GL_LINEAR_MIPMAP_NEAREST:
             enableMipmaps = GL_TRUE;
+        break;
+    default:
+        enableMipmaps = GL_FALSE;
         break;
     }
 
@@ -154,7 +162,17 @@ void updatePVRTextureContext(pvr_poly_cxt_t* context, TextureObject *tx1) {
         }
     }
 
-    if(tx1) {
+    /* If we don't have complete mipmaps, and yet mipmapping was enabled, we disable texturing.
+     * This is effectively what standard GL does (it renders a white texture)
+     */
+    if(!_glIsMipmapComplete(tx1) && enableMipmaps) {
+        context->txr.enable = PVR_TEXTURE_DISABLE;
+        context->txr.base = 0;
+        context->txr.format = 0;
+        return;
+    }
+
+    if(tx1->data) {
         context->txr.enable = PVR_TEXTURE_ENABLE;
         context->txr.filter = filter;
         context->txr.mipmap = (enableMipmaps) ? PVR_MIPMAP_ENABLE : PVR_MIPMAP_DISABLE;
@@ -217,7 +235,7 @@ void initContext() {
 GLAPI void APIENTRY glEnable(GLenum cap) {
     switch(cap) {
         case GL_TEXTURE_2D:
-            TEXTURES_ENABLED = GL_TRUE;
+            TEXTURES_ENABLED[_glGetActiveTexture()] = GL_TRUE;
         break;
         case GL_CULL_FACE: {
             CULLING_ENABLED = GL_TRUE;
@@ -261,7 +279,7 @@ GLAPI void APIENTRY glEnable(GLenum cap) {
 GLAPI void APIENTRY glDisable(GLenum cap) {
     switch(cap) {
         case GL_TEXTURE_2D: {
-            TEXTURES_ENABLED = GL_FALSE;
+            TEXTURES_ENABLED[_glGetActiveTexture()] = GL_FALSE;
         } break;
         case GL_CULL_FACE: {
             CULLING_ENABLED = GL_FALSE;
@@ -457,6 +475,17 @@ static GLenum COMPRESSED_FORMATS [] = {
 };
 
 static GLint NUM_COMPRESSED_FORMATS = sizeof(COMPRESSED_FORMATS) / sizeof(GLenum);
+
+void APIENTRY glGetBooleanv(GLenum pname, GLboolean* params) {
+    switch(pname) {
+    case GL_TEXTURE_2D:
+        *params = TEXTURES_ENABLED[_glGetActiveTexture()];
+    break;
+    default:
+        _glKosThrowError(GL_INVALID_ENUM, __func__);
+        _glKosPrintError();
+    }
+}
 
 void APIENTRY glGetIntegerv(GLenum pname, GLint *params) {
     switch(pname) {

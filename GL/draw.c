@@ -435,7 +435,7 @@ typedef struct {
 
 #define MAX_LISTS 5
 
-static void push(const AlignedVector* vertices, PolyList* activePolyList, TextureObject* textureObject) {
+static void push(const AlignedVector* vertices, PolyList* activePolyList, GLshort textureUnit) {
     /* Copy the vertices to the active poly list */
 
     static GLuint LIST_COUNTER = 0;
@@ -455,7 +455,7 @@ static void push(const AlignedVector* vertices, PolyList* activePolyList, Textur
     pvr_poly_cxt_t cxt = *getPVRContext();
     cxt.list_type = activePolyList->list_type;
 
-    updatePVRTextureContext(&cxt, textureObject);
+    _glUpdatePVRTextureContext(&cxt, textureUnit);
 
     pvr_poly_compile(hdr, &cxt);
 
@@ -567,7 +567,7 @@ static void submitVertices(GLenum mode, GLsizei first, GLsizei count, GLenum typ
     }
 
     divide(buffer);
-    push(buffer, activePolyList(), getTexture0());
+    push(buffer, activePolyList(), 0);
 
     /*
        Now, if multitexturing is enabled, we want to send exactly the same vertices again, except:
@@ -577,10 +577,18 @@ static void submitVertices(GLenum mode, GLsizei first, GLsizei count, GLenum typ
        - We want to set the uv coordinates to the passed st ones
     */
 
+    GLboolean doMultitexture;
+    glGetBooleanv(GL_TEXTURE_2D, &doMultitexture);
+
+    if(!doMultitexture) {
+        /* Multitexture actively disabled */
+        return;
+    }
+
     TextureObject* texture1 = getTexture1();
 
     if(!texture1 || ((ENABLED_VERTEX_ATTRIBUTES & ST_ENABLED_FLAG) != ST_ENABLED_FLAG)) {
-        /* Multitexture disabled */
+        /* Multitexture implicitly disabled */
         return;
     }
 
@@ -607,7 +615,7 @@ static void submitVertices(GLenum mode, GLsizei first, GLsizei count, GLenum typ
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
     /* Send the buffer again to the transparent list */
-    push(buffer, transparentPolyList(), texture1);
+    push(buffer, transparentPolyList(), 1);
 
     /* Reset state */
     glDepthFunc(depthFunc);

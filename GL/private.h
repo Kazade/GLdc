@@ -88,12 +88,16 @@ GLubyte checkImmediateModeInactive(const char* func);
 
 pvr_poly_cxt_t* getPVRContext();
 GLubyte _glKosInitTextures();
-void updatePVRTextureContext(pvr_poly_cxt_t* context, TextureObject* tx1);
+
+void _glUpdatePVRTextureContext(pvr_poly_cxt_t* context, GLshort textureUnit);
+
 TextureObject* getTexture0();
 TextureObject* getTexture1();
 TextureObject* getBoundTexture();
+GLubyte _glGetActiveTexture();
+
 GLboolean isBlendingEnabled();
-GLboolean _glIsMipmapComplete(TextureObject* obj);
+GLboolean _glIsMipmapComplete(const TextureObject* obj);
 GLubyte* _glGetMipmapLocation(TextureObject* obj, GLuint level);
 GLuint _glGetMipmapLevelCount(TextureObject* obj);
 
