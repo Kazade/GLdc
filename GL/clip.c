@@ -7,6 +7,7 @@
 #define PVR_PACK_COLOR(a, r, g, b) {}
 #endif
 
+#include "profiler.h"
 #include "clip.h"
 #include "../containers/aligned_vector.h"
 
@@ -21,6 +22,7 @@ void enableClipping(unsigned char v) {
     ZCLIP_ENABLED = v;
 }
 
+void clipLineToNearZ(const ClipVertex* v1, const ClipVertex* v2, ClipVertex* vout, float* t) __attribute__((optimize("fast-math")));
 void clipLineToNearZ(const ClipVertex* v1, const ClipVertex* v2, ClipVertex* vout, float* t) {
     const float NEAR_PLANE = 0.2; // FIXME: this needs to be read from the projection matrix.. somehow
 
@@ -38,13 +40,13 @@ static inline void interpolateFloat(const float v1, const float v2, const float 
     *out = (v * t) + v1;
 }
 
-static void interpolateVec2(const float* v1, const float* v2, const float t, float* out) {
+static inline void interpolateVec2(const float* v1, const float* v2, const float t, float* out) {
     /* FIXME: SH4 has an asm instruction for this */
     interpolateFloat(v1[0], v2[0], t, &out[0]);
     interpolateFloat(v1[1], v2[1], t, &out[1]);
 }
 
-static void interpolateVec3(const float* v1, const float* v2, const float t, float* out) {
+static inline void interpolateVec3(const float* v1, const float* v2, const float t, float* out) {
     /* FIXME: SH4 has an asm instruction for this */
 
     interpolateFloat(v1[0], v2[0], t, &out[0]);
@@ -52,7 +54,7 @@ static void interpolateVec3(const float* v1, const float* v2, const float t, flo
     interpolateFloat(v1[2], v2[2], t, &out[2]);
 }
 
-static void interpolateVec4(const float* v1, const float* v2, const float t, float* out) {
+static inline void interpolateVec4(const float* v1, const float* v2, const float t, float* out) {
     /* FIXME: SH4 has an asm instruction for this */
     interpolateFloat(v1[0], v2[0], t, &out[0]);
     interpolateFloat(v1[1], v2[1], t, &out[1]);
@@ -81,29 +83,31 @@ void clipTriangleStrip(AlignedVector* vertices, AlignedVector* outBuffer) {
     uint32_t i;
     uint32_t stripCount = 2; /* The number of vertices in the source strip so far */
 
+    ClipVertex* thisVertex = aligned_vector_at(vertices, 1);
+
     for(i = 2; i < vertices->size; ++i) {
+        ++thisVertex;
+
         if(stripCount < 2) {
             stripCount++;
             continue;
         }
 
-        ClipVertex* thisVertex = aligned_vector_at(vertices, i);
-
-        ClipVertex* sourceTriangle[3] = {
-            aligned_vector_at(vertices, i - 2),
-            aligned_vector_at(vertices, i - 1),
+        const ClipVertex* sourceTriangle[3] = {
+            thisVertex - 2,
+            thisVertex - 1,
             thisVertex
         };
 
         /* If we're on an odd vertex, we need to swap the order of the first two vertices, as that's what
          * triangle strips do */
-        uint8_t swap = stripCount > 2 && (stripCount % 2 != 0);
-        ClipVertex* v1 = swap ? sourceTriangle[1] : sourceTriangle[0];
-        ClipVertex* v2 = swap ? sourceTriangle[0] : sourceTriangle[1];
-        ClipVertex* v3 = sourceTriangle[2];
+        uint32_t swap = stripCount > 2 && (stripCount % 2 != 0);
+        const ClipVertex* v1 = swap ? sourceTriangle[1] : sourceTriangle[0];
+        const ClipVertex* v2 = swap ? sourceTriangle[0] : sourceTriangle[1];
+        const ClipVertex* v3 = sourceTriangle[2];
 
-        uint8_t visible = ((v1->w > 0) ? 4 : 0) | ((v2->w > 0) ? 2 : 0) | ((v3->w > 0) ? 1 : 0);
-        uint8_t startOfStrip = (i == 2) || (outBuffer->size > 2 && ((ClipVertex*) aligned_vector_back(outBuffer))->flags == VERTEX_CMD_EOL);
+        uint32_t visible = ((v1->w > 0) ? 4 : 0) | ((v2->w > 0) ? 2 : 0) | ((v3->w > 0) ? 1 : 0);
+        uint32_t startOfStrip = (i == 2) || (outBuffer->size > 2 && ((ClipVertex*) aligned_vector_back(outBuffer))->flags == VERTEX_CMD_EOL);
 
         /* All visible, we're fine! */
         if(visible == 0b111) {

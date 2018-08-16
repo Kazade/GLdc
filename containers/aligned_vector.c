@@ -50,11 +50,13 @@ void aligned_vector_push_back(AlignedVector* vector, const void* objs, unsigned 
     memcpy(dest, objs, vector->element_size * count);
 }
 
-void aligned_vector_resize(AlignedVector* vector, const unsigned int element_count) {
+void* aligned_vector_resize(AlignedVector* vector, const unsigned int element_count) {
+    unsigned int previousCount = vector->size;
+
     /* Don't change memory when resizing downwards, just change the size */
     if(element_count <= vector->size) {
         vector->size = element_count;
-        return;
+        return NULL;
     }
 
     if(vector->capacity < element_count) {
@@ -64,6 +66,12 @@ void aligned_vector_resize(AlignedVector* vector, const unsigned int element_cou
     }
 
     vector->size = element_count;
+
+    if(previousCount < vector->size) {
+        return aligned_vector_at(vector, previousCount);
+    } else {
+        return NULL;
+    }
 }
 
 void* aligned_vector_at(const AlignedVector* vector, const unsigned int index) {

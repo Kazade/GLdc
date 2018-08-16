@@ -6,6 +6,7 @@
 #include "../include/gl.h"
 #include "../include/glext.h"
 #include "private.h"
+#include "profiler.h"
 
 typedef struct {
     const void* ptr;
@@ -59,7 +60,7 @@ void initAttributePointers() {
     NORMAL_POINTER.size = 3;
 }
 
-static GLuint byte_size(GLenum type) {
+static inline GLuint byte_size(GLenum type) {
     switch(type) {
     case GL_BYTE: return sizeof(GLbyte);
     case GL_UNSIGNED_BYTE: return sizeof(GLubyte);
@@ -73,73 +74,121 @@ static GLuint byte_size(GLenum type) {
     }
 }
 
-static void _parseColour(float* out, const GLubyte* in, GLint size, GLenum type) {
+typedef void (*FloatParseFunc)(GLfloat* out, const GLubyte* in);
+typedef void (*PolyBuildFunc)(ClipVertex* first, ClipVertex* previous, ClipVertex* vertex, ClipVertex* next, const GLsizei i);
+
+static inline void _parseVec3FromShort3(GLfloat* out, const GLubyte* in) {
+    GLshort* ptr = (GLshort*) in;
+
+    out[0] = (GLfloat) ptr[0];
+    out[1] = (GLfloat) ptr[1];
+    out[2] = (GLfloat) ptr[2];
+}
+
+static inline void _parseVec3FromInt3(GLfloat* out, const GLubyte* in) {
+    GLint* ptr = (GLint*) in;
+
+    out[0] = (GLfloat) ptr[0];
+    out[1] = (GLfloat) ptr[1];
+    out[2] = (GLfloat) ptr[2];
+}
+
+static inline void _parseVec3FromFloat3(GLfloat* out, const GLubyte* in) {
+    GLfloat* ptr = (GLfloat*) in;
+
+    out[0] = ptr[0];
+    out[1] = ptr[1];
+    out[2] = ptr[2];
+}
+
+static inline void _parseVec2FromFloat2(GLfloat* out, const GLubyte* in) {
+    GLfloat* ptr = (GLfloat*) in;
+
+    out[0] = ptr[0];
+    out[1] = ptr[1];
+}
+
+static inline void _parseVec3FromFloat2(GLfloat* out, const GLubyte* in) {
+    GLfloat* ptr = (GLfloat*) in;
+
+    out[0] = ptr[0];
+    out[1] = ptr[1];
+    out[2] = 0.0f;
+}
+
+static inline void _parseVec4FromFloat3(GLfloat* out, const GLubyte* in) {
+    GLfloat* ptr = (GLfloat*) in;
+
+    out[0] = ptr[0];
+    out[1] = ptr[1];
+    out[2] = ptr[2];
+    out[3] = 1.0;
+}
+
+static inline void _parseVec4FromFloat4(GLfloat* out, const GLubyte* in) {
+    GLfloat* ptr = (GLfloat*) in;
+
+    out[0] = ptr[0];
+    out[1] = ptr[1];
+    out[2] = ptr[2];
+    out[3] = ptr[3];
+}
+
+static inline void _parseColourFromUByte4(GLfloat* out, const GLubyte* in) {
     const float ONE_OVER_255 = 1.0f / 255.0f;
-
-    switch(type) {
-    case GL_BYTE: {
-    case GL_UNSIGNED_BYTE:
-        out[0] = ((GLfloat)in[0]) * ONE_OVER_255;
-        out[1] = ((GLfloat)in[1]) * ONE_OVER_255;
-        out[2] = ((GLfloat)in[2]) * ONE_OVER_255;
-        out[3] = ((GLfloat)in[3]) * ONE_OVER_255;
-    } break;
-    case GL_SHORT:
-    case GL_UNSIGNED_SHORT:
-        /* FIXME!!!! */
-    break;
-    case GL_INT:
-    case GL_UNSIGNED_INT:
-        /* FIXME!!!! */
-    break;
-    case GL_FLOAT:
-    case GL_DOUBLE:
-    default: {
-        out[0] = ((GLfloat*) in)[0];
-        out[1] = ((GLfloat*) in)[1];
-        out[2] = ((GLfloat*) in)[2];
-        out[3] = ((GLfloat*) in)[3];
-    } break;
-    }
+    out[0] = ((GLfloat) in[0]) * ONE_OVER_255;
+    out[1] = ((GLfloat) in[1]) * ONE_OVER_255;
+    out[2] = ((GLfloat) in[2]) * ONE_OVER_255;
+    out[3] = ((GLfloat) in[3]) * ONE_OVER_255;
 }
 
-static void _parseFloats(GLfloat* out, const GLubyte* in, GLint size, GLenum type) {
-    GLubyte i;
-
-    switch(type) {
-    case GL_SHORT: {
-        GLshort* inp = (GLshort*) in;
-        for(i = 0; i < size; ++i) {
-            out[i] = (GLfloat) inp[i];
-        }
-    } break;
-    case GL_INT: {
-        GLint* inp = (GLint*) in;
-        for(i = 0; i < size; ++i) {
-            out[i] = (GLfloat) inp[i];
-        }
-    } break;
-    case GL_FLOAT:
-    case GL_DOUBLE:  /* Double == Float */
-        default: {
-            const GLfloat* ptr = (const GLfloat*) in;
-            for(i = 0; i < size; ++i) out[i] = ptr[i];
-        }
-    }
+static inline void _constVec2Zero(GLfloat* out, const GLubyte* in) {
+    out[0] = 0.0f;
+    out[1] = 0.0f;
 }
 
-static void _parseIndex(GLuint* out, const GLubyte* in, GLenum type) {
+static inline void _constVec3NegZ(GLfloat* out, const GLubyte* in) {
+    out[0] = 0.0f;
+    out[1] = 0.0f;
+    out[2] = -1.0f;
+}
+
+static inline void _constVec4One(GLfloat* out, const GLubyte* in) {
+    out[0] = 1.0f;
+    out[1] = 1.0f;
+    out[2] = 1.0f;
+    out[3] = 1.0f;
+}
+
+typedef GLuint (*IndexParseFunc)(const GLubyte* in);
+
+static inline GLuint _parseUByteIndex(const GLubyte* in) {
+    return (GLuint) *in;
+}
+
+static inline GLuint _parseUIntIndex(const GLubyte* in) {
+    return *((GLuint*) in);
+}
+
+static inline GLuint _parseUShortIndex(const GLubyte* in) {
+    return *((GLshort*) in);
+}
+
+
+static inline IndexParseFunc _calcParseIndexFunc(GLenum type) {
     switch(type) {
     case GL_UNSIGNED_BYTE:
-        *out = (GLuint) *in;
+        return &_parseUByteIndex;
     break;
     case GL_UNSIGNED_INT:
-        *out = *((GLuint*) in);
+        return &_parseUIntIndex;
     break;
     case GL_UNSIGNED_SHORT:
     default:
-        *out = *((GLshort*) in);
+        break;
     }
+
+    return &_parseUShortIndex;
 }
 
 
@@ -187,110 +236,264 @@ static inline void transformNormalToEyeSpace(GLfloat* normal) {
     mat_trans_normal3(normal[0], normal[1], normal[2]);
 }
 
-static void swapVertex(ClipVertex* v1, ClipVertex* v2) {
-    ClipVertex tmp = *v1;
+static inline void swapVertex(ClipVertex* v1, ClipVertex* v2) {
+    static ClipVertex tmp;
+
+    tmp = *v1;
     *v1 = *v2;
     *v2 = tmp;
 }
 
+static inline FloatParseFunc _calcVertexParseFunc() {
+    switch(VERTEX_POINTER.type) {
+    case GL_SHORT: {
+        if(VERTEX_POINTER.size == 3) {
+            return &_parseVec3FromShort3;
+        }
+    } break;
+    case GL_INT: {
+        if(VERTEX_POINTER.size == 3) {
+            return &_parseVec3FromInt3;
+        }
+    } break;
+    case GL_FLOAT: {
+        if(VERTEX_POINTER.size == 3) {
+            return &_parseVec3FromFloat3;
+        } else if(VERTEX_POINTER.size == 2) {
+            return &_parseVec3FromFloat2;
+        }
+    } break;
+    default:
+        break;
+    }
+
+    return NULL;
+}
+
+static inline FloatParseFunc _calcDiffuseParseFunc() {
+    if((ENABLED_VERTEX_ATTRIBUTES & DIFFUSE_ENABLED_FLAG) != DIFFUSE_ENABLED_FLAG) {
+        return &_constVec4One;
+    }
+
+    switch(DIFFUSE_POINTER.type) {
+    case GL_BYTE:
+    case GL_UNSIGNED_BYTE: {
+        if(DIFFUSE_POINTER.size == 4) {
+            return &_parseColourFromUByte4;
+        }
+    } break;
+    case GL_INT: {
+        if(DIFFUSE_POINTER.size == 3) {
+            return &_parseVec3FromInt3;
+        }
+    } break;
+    case GL_FLOAT: {
+        if(DIFFUSE_POINTER.size == 3) {
+            return &_parseVec4FromFloat3;
+        } else if(DIFFUSE_POINTER.size == 4) {
+            return &_parseVec4FromFloat4;
+        }
+    } break;
+    default:
+        break;
+    }
+
+    return &_constVec4One;
+}
+
+static inline FloatParseFunc _calcUVParseFunc() {
+    if((ENABLED_VERTEX_ATTRIBUTES & UV_ENABLED_FLAG) != UV_ENABLED_FLAG) {
+        return &_constVec2Zero;
+    }
+
+    switch(UV_POINTER.type) {
+    case GL_FLOAT: {
+        if(UV_POINTER.size == 2) {
+            return &_parseVec2FromFloat2;
+        }
+    } break;
+    default:
+        break;
+    }
+
+    return &_constVec2Zero;
+}
+
+static inline FloatParseFunc _calcSTParseFunc() {
+    if((ENABLED_VERTEX_ATTRIBUTES & ST_ENABLED_FLAG) != ST_ENABLED_FLAG) {
+        return &_constVec2Zero;
+    }
+
+    switch(ST_POINTER.type) {
+    case GL_FLOAT: {
+        if(ST_POINTER.size == 2) {
+            return &_parseVec2FromFloat2;
+        }
+    } break;
+    default:
+        break;
+    }
+
+    return &_constVec2Zero;
+}
+
+static inline FloatParseFunc _calcNormalParseFunc() {
+    if((ENABLED_VERTEX_ATTRIBUTES & NORMAL_ENABLED_FLAG) != NORMAL_ENABLED_FLAG) {
+        return &_constVec3NegZ;
+    }
+
+    switch(NORMAL_POINTER.type) {
+    case GL_SHORT: {
+        if(NORMAL_POINTER.size == 3) {
+            return &_parseVec3FromShort3;
+        }
+    } break;
+    case GL_INT: {
+        if(NORMAL_POINTER.size == 3) {
+            return &_parseVec3FromInt3;
+        }
+    } break;
+    case GL_FLOAT: {
+        if(NORMAL_POINTER.size == 3) {
+            return &_parseVec3FromFloat3;
+        } else if(NORMAL_POINTER.size == 2) {
+            return &_parseVec3FromFloat2;
+        }
+    } break;
+    default:
+        break;
+    }
+
+    return &_constVec3NegZ;
+}
+
+
+static void _buildTriangle(ClipVertex* first, ClipVertex* previous, ClipVertex* vertex, ClipVertex* next, const GLsizei i) {
+    if(((i + 1) % 3) == 0) {
+        vertex->flags = PVR_CMD_VERTEX_EOL;
+    }
+}
+
+static inline GLsizei fast_mod(const GLsizei input, const GLsizei ceil) {
+    return input >= ceil ? input % ceil : input;
+}
+
+static void _buildQuad(ClipVertex* first, ClipVertex* previous, ClipVertex* vertex, ClipVertex* next, const GLsizei i) {
+    if((i + 1) % 4 == 0) {
+        previous->flags = PVR_CMD_VERTEX_EOL;
+        swapVertex(previous, vertex);
+    }
+}
+
+static void _buildTriangleFan(ClipVertex* first, ClipVertex* previous, ClipVertex* vertex, ClipVertex* next, const GLsizei i) {
+    if(i == 2) {
+        swapVertex(previous, vertex);
+        vertex->flags = PVR_CMD_VERTEX_EOL;
+    } else if(i > 2) {
+        ClipVertex* next = vertex + 1;
+
+        *next = *first;
+
+        swapVertex(next, vertex);
+
+        vertex = next + 1;
+        *vertex = *previous;
+
+        vertex->flags = PVR_CMD_VERTEX_EOL;
+    }
+}
+
+static void _buildStrip(ClipVertex* first, ClipVertex* previous, ClipVertex* vertex, ClipVertex* next, const GLsizei i) {
+    if(!next) {
+        /* If the mode was triangle strip, then the last vertex is the last vertex */
+        vertex->flags = PVR_CMD_VERTEX_EOL;
+    }
+}
+
+static inline PolyBuildFunc _calcBuildFunc(const GLenum type) {
+    switch(type) {
+    case GL_TRIANGLES:
+        return &_buildTriangle;
+    break;
+    case GL_QUADS:
+        return &_buildQuad;
+    break;
+    case GL_TRIANGLE_FAN:
+    case GL_POLYGON:
+        return &_buildTriangleFan;
+    break;
+    default:
+        break;
+    }
+
+    return &_buildStrip;
+}
+
+typedef struct {
+    const GLubyte* vptr;
+    const GLuint vstride;
+    const GLubyte* cptr;
+    const GLuint cstride;
+    const GLubyte* uvptr;
+    const GLuint uvstride;
+    const GLubyte* stptr;
+    const GLuint ststride;
+    const GLubyte* nptr;
+    const GLuint nstride;
+} GenerateParams;
+
 static void generate(AlignedVector* output, const GLenum mode, const GLsizei first, const GLsizei count,
-        const GLubyte* indices, const GLenum type,
-        const GLubyte* vptr, const GLubyte vstride, const GLubyte* cptr, const GLubyte cstride,
-        const GLubyte* uvptr, const GLubyte uvstride, const GLubyte* stptr, const GLubyte ststride,
-        const GLubyte* nptr, const GLubyte nstride) {
+        const GLubyte* indices, const GLenum type, const GenerateParams* pointers) {
     /* Read from the client buffers and generate an array of ClipVertices */
 
-    GLsizei max = first + count;
-
-    GLsizei spaceNeeded = (mode == GL_POLYGON || mode == GL_TRIANGLE_FAN) ? ((count - 2) * 3) : count;
+    const GLsizei max = first + count;
+    const GLsizei spaceNeeded = (mode == GL_POLYGON || mode == GL_TRIANGLE_FAN) ? ((count - 2) * 3) : count;
 
     /* Make sure we have room for the output */
-    aligned_vector_resize(output, spaceNeeded);
+    ClipVertex* vertex = aligned_vector_resize(output, spaceNeeded);
 
-    ClipVertex* vertex = (ClipVertex*) output->data;
+    const FloatParseFunc vertexFunc = _calcVertexParseFunc();
+    const FloatParseFunc diffuseFunc = _calcDiffuseParseFunc();
+    const FloatParseFunc uvFunc = _calcUVParseFunc();
+    const FloatParseFunc stFunc = _calcSTParseFunc();
+    const FloatParseFunc normalFunc = _calcNormalParseFunc();
 
-    GLsizei j;
-    GLsizei i = 0;
-    for(j = first; j < max; ++i, ++j, ++vertex) {
+    const PolyBuildFunc buildFunc = _calcBuildFunc(mode);
+    const IndexParseFunc indexFunc = _calcParseIndexFunc(type);
+
+    const GLsizei type_byte_size = byte_size(type);
+
+    ClipVertex* previous = NULL;
+    ClipVertex* firstV = vertex;
+    ClipVertex* next = NULL;
+
+    GLsizei i;
+
+    for(i = first; i < max; ++i, ++vertex) {
         vertex->flags = PVR_CMD_VERTEX;
 
-        GLuint idx = j;
-        if(indices) {
-            _parseIndex(&idx, &indices[byte_size(type) * j], type);
-        }
+        const GLuint idx = (indices) ?
+            indexFunc(&indices[type_byte_size * i]) : i;
 
-        _parseFloats(vertex->xyz, vptr + (idx * vstride), VERTEX_POINTER.size, VERTEX_POINTER.type);
+        const GLubyte* vin = pointers->vptr + (idx * pointers->vstride);
+        const GLubyte* din = pointers->cptr + (idx * pointers->cstride);
+        const GLubyte* uin = pointers->uvptr + (idx * pointers->uvstride);
+        const GLubyte* sin = pointers->stptr + (idx * pointers->ststride);
+        const GLubyte* nin = pointers->nptr + (idx * pointers->nstride);
 
-        if(ENABLED_VERTEX_ATTRIBUTES & DIFFUSE_ENABLED_FLAG) {
-            _parseColour(vertex->diffuse, cptr + (idx * cstride), DIFFUSE_POINTER.size, DIFFUSE_POINTER.type);
-        } else {
-            /* Default to white if colours are disabled */
-            vertex->diffuse[0] = vertex->diffuse[1] = vertex->diffuse[2] = vertex->diffuse[3] = 1.0f;
-        }
+        vertexFunc(vertex->xyz, vin);
+        diffuseFunc(vertex->diffuse, din);
+        uvFunc(vertex->uv, uin);
+        stFunc(vertex->st, sin);
+        normalFunc(vertex->nxyz, nin);
+    }
 
-        if(ENABLED_VERTEX_ATTRIBUTES & UV_ENABLED_FLAG) {
-            _parseFloats(vertex->uv, uvptr + (idx * uvstride), UV_POINTER.size, UV_POINTER.type);
-        } else {
-            vertex->uv[0] = vertex->uv[1] = 0.0f;
-        }
+    vertex = firstV;
 
-        if(ENABLED_VERTEX_ATTRIBUTES & ST_ENABLED_FLAG) {
-            _parseFloats(vertex->st, stptr + (idx * ststride), ST_POINTER.size, ST_POINTER.type);
-        } else {
-            vertex->st[0] = vertex->st[1] = 0.0f;
-        }
-
-        if(ENABLED_VERTEX_ATTRIBUTES & NORMAL_ENABLED_FLAG) {
-            _parseFloats(vertex->nxyz, nptr + (idx * nstride), NORMAL_POINTER.size, NORMAL_POINTER.type);
-        } else {
-            vertex->nxyz[0] = 0.0f;
-            vertex->nxyz[1] = 0.0f;
-            vertex->nxyz[2] = -1.0f;
-        }
-
-        switch(mode) {
-        case GL_TRIANGLES: {
-            if(((i + 1) % 3) == 0) {
-                vertex->flags = PVR_CMD_VERTEX_EOL;
-            }
-        } break;
-        case GL_QUADS: {
-            if(((i + 1) % 4) == 0) {
-                ClipVertex* previous = vertex - 1;
-                previous->flags = PVR_CMD_VERTEX_EOL;
-                swapVertex(previous, vertex);
-            }
-        } break;
-        case GL_POLYGON:
-        case GL_TRIANGLE_FAN: {
-            ClipVertex* previous = vertex - 1;
-            if(i == 2) {
-                swapVertex(previous, vertex);
-                vertex->flags = PVR_CMD_VERTEX_EOL;
-            } else if(i > 2) {
-                ClipVertex* first = (ClipVertex*) output->data;
-                ClipVertex* previous = vertex - 1;
-                ClipVertex* next = vertex + 1;
-
-                *next = *first;
-
-                swapVertex(next, vertex);
-
-                vertex = next + 1;
-                *vertex = *previous;
-
-                vertex->flags = PVR_CMD_VERTEX_EOL;
-            }
-        } break;
-        case GL_TRIANGLE_STRIP:
-        default: {
-            if(j == (max - 1)) {
-                /* If the mode was triangle strip, then the last vertex is the last vertex */
-                vertex->flags = PVR_CMD_VERTEX_EOL;
-            }
-        }
-
-        }
+    for(i = 0; i < count; ++i, ++vertex) {
+        next = (i < count - 1) ? vertex + 1 : NULL;
+        previous = (i > 0) ? vertex - 1 : NULL;
+        buildFunc(firstV, previous, vertex, next, i);
     }
 }
 
@@ -334,7 +537,7 @@ static void clip(AlignedVector* vertices) {
     }
 
     /* Make sure we allocate roughly enough space */
-    aligned_vector_reserve(CLIP_BUFFER, vertices->size);
+    aligned_vector_reserve(CLIP_BUFFER, vertices->size * 1.5);
 
     /* Start from empty */
     aligned_vector_resize(CLIP_BUFFER, 0);
@@ -537,29 +740,38 @@ static void submitVertices(GLenum mode, GLsizei first, GLsizei count, GLenum typ
         aligned_vector_resize(buffer, 0);
     }
 
-    GLubyte vstride = (VERTEX_POINTER.stride) ? VERTEX_POINTER.stride : VERTEX_POINTER.size * byte_size(VERTEX_POINTER.type);
+    const GLuint vstride = (VERTEX_POINTER.stride) ? VERTEX_POINTER.stride : VERTEX_POINTER.size * byte_size(VERTEX_POINTER.type);
     const GLubyte* vptr = VERTEX_POINTER.ptr;
 
-    GLubyte cstride = (DIFFUSE_POINTER.stride) ? DIFFUSE_POINTER.stride : DIFFUSE_POINTER.size * byte_size(DIFFUSE_POINTER.type);
+    const GLuint cstride = (DIFFUSE_POINTER.stride) ? DIFFUSE_POINTER.stride : DIFFUSE_POINTER.size * byte_size(DIFFUSE_POINTER.type);
     const GLubyte* cptr = DIFFUSE_POINTER.ptr;
 
-    GLubyte uvstride = (UV_POINTER.stride) ? UV_POINTER.stride : UV_POINTER.size * byte_size(UV_POINTER.type);
+    const GLuint uvstride = (UV_POINTER.stride) ? UV_POINTER.stride : UV_POINTER.size * byte_size(UV_POINTER.type);
     const GLubyte* uvptr = UV_POINTER.ptr;
 
-    GLubyte ststride = (ST_POINTER.stride) ? ST_POINTER.stride : ST_POINTER.size * byte_size(ST_POINTER.type);
+    const GLuint ststride = (ST_POINTER.stride) ? ST_POINTER.stride : ST_POINTER.size * byte_size(ST_POINTER.type);
     const GLubyte* stptr = ST_POINTER.ptr;
 
-    GLubyte nstride = (NORMAL_POINTER.stride) ? NORMAL_POINTER.stride : NORMAL_POINTER.size * byte_size(NORMAL_POINTER.type);
+    const GLuint nstride = (NORMAL_POINTER.stride) ? NORMAL_POINTER.stride : NORMAL_POINTER.size * byte_size(NORMAL_POINTER.type);
     const GLubyte* nptr = NORMAL_POINTER.ptr;
 
-    generate(
-        buffer, mode, first, count, (GLubyte*) indices, type,
-        vptr, vstride, cptr, cstride,
-        uvptr, uvstride, stptr, ststride,
-        nptr, nstride
-    );
+    GenerateParams params = {
+        .vptr = vptr,
+        .vstride = vstride,
+        .cptr = cptr,
+        .cstride = cstride,
+        .uvptr = uvptr,
+        .uvstride = uvstride,
+        .stptr = stptr,
+        .ststride = ststride,
+        .nptr = nptr,
+        .nstride = nstride
+    };
+
+    generate(buffer, mode, first, count, (GLubyte*) indices, type, &params);
 
     light(buffer);
+
     transform(buffer);
 
     if(isClippingEnabled()) {
@@ -567,6 +779,7 @@ static void submitVertices(GLenum mode, GLsizei first, GLsizei count, GLenum typ
     }
 
     divide(buffer);
+
     push(buffer, activePolyList(), 0);
 
     /*
