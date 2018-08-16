@@ -248,6 +248,8 @@ void APIENTRY glGenerateMipmapEXT(GLenum target) {
             }
         }
 
+        tex->mipmap |= (1 << i);
+
         prevWidth = thisWidth;
         prevHeight = thisHeight;
     }
