@@ -1,5 +1,4 @@
-#ifndef GLKOS_H
-#define GLKOS_H
+#pragma once
 
 #include "gl.h"
 
@@ -40,4 +39,3 @@ GLAPI void APIENTRY glKosSwapBuffers();
 
 __END_DECLS
 
-#endif // GLKOS_H

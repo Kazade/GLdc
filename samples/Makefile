@@ -19,3 +19,4 @@ all:
 	$(KOS_MAKE) -C zclip_trianglestrip all
 	$(KOS_MAKE) -C terrain all
 	$(KOS_MAKE) -C quadmark all
+	$(KOS_MAKE) -C multitexture_arrays all
