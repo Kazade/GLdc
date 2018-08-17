@@ -368,7 +368,7 @@ static inline FloatParseFunc _calcNormalParseFunc() {
 }
 
 
-static void _buildTriangle(ClipVertex* first, ClipVertex* previous, ClipVertex* vertex, ClipVertex* next, const GLsizei i) {
+static inline void _buildTriangle(ClipVertex* first, ClipVertex* previous, ClipVertex* vertex, ClipVertex* next, const GLsizei i) {
     if(((i + 1) % 3) == 0) {
         vertex->flags = PVR_CMD_VERTEX_EOL;
     }
@@ -378,7 +378,7 @@ static inline GLsizei fast_mod(const GLsizei input, const GLsizei ceil) {
     return input >= ceil ? input % ceil : input;
 }
 
-static void _buildQuad(ClipVertex* first, ClipVertex* previous, ClipVertex* vertex, ClipVertex* next, const GLsizei i) {
+static inline void _buildQuad(ClipVertex* first, ClipVertex* previous, ClipVertex* vertex, ClipVertex* next, const GLsizei i) {
     if((i + 1) % 4 == 0) {
         previous->flags = PVR_CMD_VERTEX_EOL;
         swapVertex(previous, vertex);
@@ -443,8 +443,23 @@ typedef struct {
 } GenerateParams;
 
 static void generate(AlignedVector* output, const GLenum mode, const GLsizei first, const GLsizei count,
-        const GLubyte* indices, const GLenum type, const GenerateParams* pointers) {
+        const GLubyte* indices, const GLenum type) {
     /* Read from the client buffers and generate an array of ClipVertices */
+
+    const GLuint vstride = (VERTEX_POINTER.stride) ? VERTEX_POINTER.stride : VERTEX_POINTER.size * byte_size(VERTEX_POINTER.type);
+    const GLubyte* vptr = VERTEX_POINTER.ptr;
+
+    const GLuint cstride = (DIFFUSE_POINTER.stride) ? DIFFUSE_POINTER.stride : DIFFUSE_POINTER.size * byte_size(DIFFUSE_POINTER.type);
+    const GLubyte* cptr = DIFFUSE_POINTER.ptr;
+
+    const GLuint uvstride = (UV_POINTER.stride) ? UV_POINTER.stride : UV_POINTER.size * byte_size(UV_POINTER.type);
+    const GLubyte* uvptr = UV_POINTER.ptr;
+
+    const GLuint ststride = (ST_POINTER.stride) ? ST_POINTER.stride : ST_POINTER.size * byte_size(ST_POINTER.type);
+    const GLubyte* stptr = ST_POINTER.ptr;
+
+    const GLuint nstride = (NORMAL_POINTER.stride) ? NORMAL_POINTER.stride : NORMAL_POINTER.size * byte_size(NORMAL_POINTER.type);
+    const GLubyte* nptr = NORMAL_POINTER.ptr;
 
     const GLsizei max = first + count;
     const GLsizei spaceNeeded = (mode == GL_POLYGON || mode == GL_TRIANGLE_FAN) ? ((count - 2) * 3) : count;
@@ -475,11 +490,11 @@ static void generate(AlignedVector* output, const GLenum mode, const GLsizei fir
         const GLuint idx = (indices) ?
             indexFunc(&indices[type_byte_size * i]) : i;
 
-        const GLubyte* vin = pointers->vptr + (idx * pointers->vstride);
-        const GLubyte* din = pointers->cptr + (idx * pointers->cstride);
-        const GLubyte* uin = pointers->uvptr + (idx * pointers->uvstride);
-        const GLubyte* sin = pointers->stptr + (idx * pointers->ststride);
-        const GLubyte* nin = pointers->nptr + (idx * pointers->nstride);
+        const GLubyte* vin = vptr + (idx * vstride);
+        const GLubyte* din = cptr + (idx * cstride);
+        const GLubyte* uin = uvptr + (idx * uvstride);
+        const GLubyte* sin = stptr + (idx * ststride);
+        const GLubyte* nin = nptr + (idx * nstride);
 
         vertexFunc(vertex->xyz, vin);
         diffuseFunc(vertex->diffuse, din);
@@ -740,35 +755,7 @@ static void submitVertices(GLenum mode, GLsizei first, GLsizei count, GLenum typ
         aligned_vector_resize(buffer, 0);
     }
 
-    const GLuint vstride = (VERTEX_POINTER.stride) ? VERTEX_POINTER.stride : VERTEX_POINTER.size * byte_size(VERTEX_POINTER.type);
-    const GLubyte* vptr = VERTEX_POINTER.ptr;
-
-    const GLuint cstride = (DIFFUSE_POINTER.stride) ? DIFFUSE_POINTER.stride : DIFFUSE_POINTER.size * byte_size(DIFFUSE_POINTER.type);
-    const GLubyte* cptr = DIFFUSE_POINTER.ptr;
-
-    const GLuint uvstride = (UV_POINTER.stride) ? UV_POINTER.stride : UV_POINTER.size * byte_size(UV_POINTER.type);
-    const GLubyte* uvptr = UV_POINTER.ptr;
-
-    const GLuint ststride = (ST_POINTER.stride) ? ST_POINTER.stride : ST_POINTER.size * byte_size(ST_POINTER.type);
-    const GLubyte* stptr = ST_POINTER.ptr;
-
-    const GLuint nstride = (NORMAL_POINTER.stride) ? NORMAL_POINTER.stride : NORMAL_POINTER.size * byte_size(NORMAL_POINTER.type);
-    const GLubyte* nptr = NORMAL_POINTER.ptr;
-
-    GenerateParams params = {
-        .vptr = vptr,
-        .vstride = vstride,
-        .cptr = cptr,
-        .cstride = cstride,
-        .uvptr = uvptr,
-        .uvstride = uvstride,
-        .stptr = stptr,
-        .ststride = ststride,
-        .nptr = nptr,
-        .nstride = nstride
-    };
-
-    generate(buffer, mode, first, count, (GLubyte*) indices, type, &params);
+    generate(buffer, mode, first, count, (GLubyte*) indices, type);
 
     light(buffer);
 
