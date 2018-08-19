@@ -87,6 +87,8 @@ void APIENTRY glKosInit() {
 }
 
 void APIENTRY glKosSwapBuffers() {
+    static int frame_count = 0;
+
     TRACE();
 
     pvr_wait_ready();
@@ -108,4 +110,9 @@ void APIENTRY glKosSwapBuffers() {
     aligned_vector_clear(&OP_LIST.vector);
     aligned_vector_clear(&PT_LIST.vector);
     aligned_vector_clear(&TR_LIST.vector);
+
+    if(frame_count++ > 100) {
+        profiler_print_stats();
+        frame_count = 0;
+    }
 }

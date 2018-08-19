@@ -18,23 +18,16 @@ typedef enum {
 } ClipResult;
 
 
-/* Note: This structure is the almost the same format as pvr_vertex_t aside from the offet
- * (oargb) which is replaced by the floating point w value. This is so that we can
- * simply zero it and memcpy the lot into the output. This struct is 96 bytes to keep
- * 32 byte alignment */
 typedef struct {
     uint32_t flags;
     float xyz[3];
     float uv[2];
-    uint32_t argb;
 
     float nxyz[3]; /* Normal */
     float w;
-    float xyzES[3]; /* Coordinate in eye space */
-    float nES[3]; /* Normal in eye space */
 
     float diffuse[4]; /* Colour in floating point */
-    float st[2]; /* 8-bytes makes this 96 bytes in total */
+    float st[2];
 } ClipVertex;
 
 void clipLineToNearZ(const ClipVertex* v1, const ClipVertex* v2, ClipVertex* vout, float* t);

@@ -13,3 +13,6 @@ void profiler_checkpoint(const char* name);
 void profiler_pop();
 
 void profiler_print_stats();
+
+void profiler_enable();
+void profiler_disable();

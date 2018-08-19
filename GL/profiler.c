@@ -24,7 +24,19 @@ typedef struct {
 
 static RootProfiler* root = NULL;
 
+static char PROFILER_ENABLED = 0;
+
+void profiler_enable() {
+    PROFILER_ENABLED = 1;
+}
+
+void profiler_disable() {
+    PROFILER_ENABLED = 0;
+}
+
 static ProfilerResult* profiler_get_or_create_result(const char* name) {
+    if(!PROFILER_ENABLED) return NULL;
+
     uint16_t i = 0;
     for(; i < root->results.size; ++i) {
         ProfilerResult* result = aligned_vector_at(&root->results, i);
@@ -64,6 +76,8 @@ static void profiler_generate_path(const char* suffix, char* path) {
 
 
 Profiler* profiler_push(const char* name) {
+    if(!PROFILER_ENABLED) return NULL;
+
     if(!root) {
         root = (RootProfiler*) malloc(sizeof(RootProfiler));
         aligned_vector_init(
@@ -89,6 +103,8 @@ Profiler* profiler_push(const char* name) {
 }
 
 void profiler_checkpoint(const char* name) {
+    if(!PROFILER_ENABLED) return;
+
     Profiler* prof = aligned_vector_back(&root->stack);
 
     char path[MAX_PATH];
@@ -106,10 +122,14 @@ void profiler_checkpoint(const char* name) {
 }
 
 void profiler_pop() {
+    if(!PROFILER_ENABLED) return;
+
     aligned_vector_resize(&root->stack, root->stack.size - 1);
 }
 
 void profiler_print_stats() {
+    if(!PROFILER_ENABLED) return;
+
     fprintf(stderr, "%-60s%-20s%-20s%-20s\n", "Path", "Average", "Total", "Calls");
 
     uint16_t i = 0;

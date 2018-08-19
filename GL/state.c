@@ -510,6 +510,9 @@ void APIENTRY glGetIntegerv(GLenum pname, GLint *params) {
         case GL_NUM_COMPRESSED_TEXTURE_FORMATS_ARB:
             *params = NUM_COMPRESSED_FORMATS;
         break;
+        case GL_ACTIVE_TEXTURE:
+            *params = GL_TEXTURE0 + _glGetActiveTexture();
+        break;
         case GL_COMPRESSED_TEXTURE_FORMATS_ARB: {
             GLuint i = 0;
             for(; i < NUM_COMPRESSED_FORMATS; ++i) {

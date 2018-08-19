@@ -429,37 +429,15 @@ static inline PolyBuildFunc _calcBuildFunc(const GLenum type) {
     return &_buildStrip;
 }
 
-typedef struct {
-    const GLubyte* vptr;
-    const GLuint vstride;
-    const GLubyte* cptr;
-    const GLuint cstride;
-    const GLubyte* uvptr;
-    const GLuint uvstride;
-    const GLubyte* stptr;
-    const GLuint ststride;
-    const GLubyte* nptr;
-    const GLuint nstride;
-} GenerateParams;
-
 static void generate(AlignedVector* output, const GLenum mode, const GLsizei first, const GLsizei count,
-        const GLubyte* indices, const GLenum type) {
+        const GLubyte* indices, const GLenum type, const GLboolean doTexture, const GLboolean doMultitexture, const GLboolean doLighting) {
     /* Read from the client buffers and generate an array of ClipVertices */
 
     const GLuint vstride = (VERTEX_POINTER.stride) ? VERTEX_POINTER.stride : VERTEX_POINTER.size * byte_size(VERTEX_POINTER.type);
-    const GLubyte* vptr = VERTEX_POINTER.ptr;
-
     const GLuint cstride = (DIFFUSE_POINTER.stride) ? DIFFUSE_POINTER.stride : DIFFUSE_POINTER.size * byte_size(DIFFUSE_POINTER.type);
-    const GLubyte* cptr = DIFFUSE_POINTER.ptr;
-
     const GLuint uvstride = (UV_POINTER.stride) ? UV_POINTER.stride : UV_POINTER.size * byte_size(UV_POINTER.type);
-    const GLubyte* uvptr = UV_POINTER.ptr;
-
     const GLuint ststride = (ST_POINTER.stride) ? ST_POINTER.stride : ST_POINTER.size * byte_size(ST_POINTER.type);
-    const GLubyte* stptr = ST_POINTER.ptr;
-
     const GLuint nstride = (NORMAL_POINTER.stride) ? NORMAL_POINTER.stride : NORMAL_POINTER.size * byte_size(NORMAL_POINTER.type);
-    const GLubyte* nptr = NORMAL_POINTER.ptr;
 
     const GLsizei max = first + count;
     const GLsizei spaceNeeded = (mode == GL_POLYGON || mode == GL_TRIANGLE_FAN) ? ((count - 2) * 3) : count;
@@ -482,33 +460,108 @@ static void generate(AlignedVector* output, const GLenum mode, const GLsizei fir
     ClipVertex* firstV = vertex;
     ClipVertex* next = NULL;
 
-    GLsizei i;
+    ClipVertex* target = NULL;
 
-    for(i = first; i < max; ++i, ++vertex) {
-        vertex->flags = PVR_CMD_VERTEX;
+    GLsizei i, j = 0;
+    GLuint idx;
 
-        const GLuint idx = (indices) ?
-            indexFunc(&indices[type_byte_size * i]) : i;
+    if(!indices) {
+        GLubyte* vptr = VERTEX_POINTER.ptr + (first * vstride);
+        GLubyte* cptr = DIFFUSE_POINTER.ptr + (first * cstride);
+        GLubyte* uvptr = UV_POINTER.ptr + (first * uvstride);
+        GLubyte* stptr = ST_POINTER.ptr + (first * ststride);
+        GLubyte* nptr = NORMAL_POINTER.ptr + (first * nstride);
 
-        const GLubyte* vin = vptr + (idx * vstride);
-        const GLubyte* din = cptr + (idx * cstride);
-        const GLubyte* uin = uvptr + (idx * uvstride);
-        const GLubyte* sin = stptr + (idx * ststride);
-        const GLubyte* nin = nptr + (idx * nstride);
+        for(j = 0; j < count; ++j, ++vertex) {
+            if(mode == GL_QUADS) {
+                /* Performance optimisation to prevent copying to a temporary */
+                GLsizei mod = (j + 1) % 4;
+                if(mod == 0) {
+                    target = vertex - 1;
+                    target->flags = PVR_CMD_VERTEX;
+                } else if(mod == 3) {
+                    target = vertex + 1;
+                    target->flags = PVR_CMD_VERTEX_EOL;
+                } else {
+                    target = vertex;
+                    target->flags = PVR_CMD_VERTEX;
+                }
+            } else {
+                target = vertex;
+                target->flags = PVR_CMD_VERTEX;
+            }
 
-        vertexFunc(vertex->xyz, vin);
-        diffuseFunc(vertex->diffuse, din);
-        uvFunc(vertex->uv, uin);
-        stFunc(vertex->st, sin);
-        normalFunc(vertex->nxyz, nin);
-    }
+            vertexFunc(target->xyz, vptr);
+            diffuseFunc(target->diffuse, cptr);
+            vptr += vstride;
+            cptr += cstride;
 
-    vertex = firstV;
+            if(doTexture) {
+                uvFunc(target->uv, uvptr);
+                uvptr += uvstride;
+            }
 
-    for(i = 0; i < count; ++i, ++vertex) {
-        next = (i < count - 1) ? vertex + 1 : NULL;
-        previous = (i > 0) ? vertex - 1 : NULL;
-        buildFunc(firstV, previous, vertex, next, i);
+            if(doMultitexture) {
+                stFunc(target->st, stptr);
+                stptr += ststride;
+            }
+
+            if(doLighting) {
+                normalFunc(target->nxyz, nptr);
+                nptr += nstride;
+            }
+
+            if(mode != GL_QUADS) {
+                next = (j < count - 1) ? vertex + 1 : NULL;
+                previous = (j > 0) ? vertex - 1 : NULL;
+                buildFunc(firstV, previous, vertex, next, j);
+            }
+        }
+
+    } else {
+        for(i = first; i < max; ++i, ++j, ++vertex) {
+            if(mode == GL_QUADS) {
+                /* Performance optimisation to prevent copying to a temporary */
+                GLsizei mod = (j + 1) % 4;
+                if(mod == 0) {
+                    target = vertex - 1;
+                    target->flags = PVR_CMD_VERTEX;
+                } else if(mod == 3) {
+                    target = vertex + 1;
+                    target->flags = PVR_CMD_VERTEX_EOL;
+                } else {
+                    target = vertex;
+                    target->flags = PVR_CMD_VERTEX;
+                }
+            } else {
+                target = vertex;
+                target->flags = PVR_CMD_VERTEX;
+            }
+
+            idx = (indices) ?
+                indexFunc(&indices[type_byte_size * i]) : i;
+
+            vertexFunc(target->xyz, VERTEX_POINTER.ptr + (idx * vstride));
+            diffuseFunc(target->diffuse, DIFFUSE_POINTER.ptr + (idx * cstride));
+
+            if(doTexture) {
+                uvFunc(target->uv, UV_POINTER.ptr + (idx * uvstride));
+            }
+
+            if(doMultitexture) {
+                stFunc(target->st, ST_POINTER.ptr + (idx * ststride));
+            }
+
+            if(doLighting) {
+                normalFunc(target->nxyz, NORMAL_POINTER.ptr + (idx * nstride));
+            }
+
+            if(mode != GL_QUADS) {
+                next = (j < count - 1) ? vertex + 1 : NULL;
+                previous = (j > 0) ? vertex - 1 : NULL;
+                buildFunc(firstV, previous, vertex, next, j);
+            }
+        }
     }
 }
 
@@ -519,8 +572,8 @@ static void transform(AlignedVector* vertices) {
 
     _applyRenderMatrix(); /* Apply the Render Matrix Stack */
 
-    GLsizei i;
-    for(i = 0; i < vertices->size; ++i, ++vertex) {
+    GLsizei i = vertices->size;
+    while(i--) {
         register float __x __asm__("fr12") = (vertex->xyz[0]);
         register float __y __asm__("fr13") = (vertex->xyz[1]);
         register float __z __asm__("fr14") = (vertex->xyz[2]);
@@ -537,6 +590,8 @@ static void transform(AlignedVector* vertices) {
         vertex->xyz[1] = __y;
         vertex->xyz[2] = __z;
         vertex->w = __w;
+
+        ++vertex;
     }
 }
 
@@ -565,7 +620,7 @@ static void clip(AlignedVector* vertices) {
     memcpy(vertices->data, CLIP_BUFFER->data, CLIP_BUFFER->size * CLIP_BUFFER->element_size);
 }
 
-static void mat_transform3(const float* xyz, const float* xyzOut, const uint32_t count, const uint32_t stride) {
+static void mat_transform3(const float* xyz, const float* xyzOut, const uint32_t count, const uint32_t inStride, const uint32_t outStride) {
     uint8_t* dataIn = (uint8_t*) xyz;
     uint8_t* dataOut = (uint8_t*) xyzOut;
     uint32_t i = count;
@@ -576,12 +631,12 @@ static void mat_transform3(const float* xyz, const float* xyzOut, const uint32_t
 
         mat_trans_single3_nodiv_nomod(in[0], in[1], in[2], out[0], out[1], out[2]);
 
-        dataIn += stride;
-        dataOut += stride;
+        dataIn += inStride;
+        dataOut += outStride;
     }
 }
 
-static void mat_transform_normal3(const float* xyz, const float* xyzOut, const uint32_t count, const uint32_t stride) {
+static void mat_transform_normal3(const float* xyz, const float* xyzOut, const uint32_t count, const uint32_t inStride, const uint32_t outStride) {
     uint8_t* dataIn = (uint8_t*) xyz;
     uint8_t* dataOut = (uint8_t*) xyzOut;
     uint32_t i = count;
@@ -592,8 +647,8 @@ static void mat_transform_normal3(const float* xyz, const float* xyzOut, const u
 
         mat_trans_normal3_nomod(in[0], in[1], in[2], out[0], out[1], out[2]);
 
-        dataIn += stride;
-        dataOut += stride;
+        dataIn += inStride;
+        dataOut += outStride;
     }
 }
 
@@ -602,27 +657,46 @@ static void light(AlignedVector* vertices) {
         return;
     }
 
+    typedef struct {
+        float xyz[3];
+        float n[3];
+    } EyeSpaceData;
+
+    static AlignedVector* eye_space_data = NULL;
+
+    if(!eye_space_data) {
+        eye_space_data = (AlignedVector*) malloc(sizeof(AlignedVector));
+        aligned_vector_init(eye_space_data, sizeof(EyeSpaceData));
+    }
+
+    aligned_vector_resize(eye_space_data, vertices->size);
+
     /* Perform lighting calculations and manipulate the colour */
     ClipVertex* vertex = (ClipVertex*) vertices->data;
+    EyeSpaceData* eye_space = (EyeSpaceData*) eye_space_data->data;
 
     _matrixLoadModelView();
-    mat_transform3(vertex->xyz, vertex->xyzES, vertices->size, sizeof(ClipVertex));
+    mat_transform3(vertex->xyz, eye_space->xyz, vertices->size, sizeof(ClipVertex), sizeof(EyeSpaceData));
 
     _matrixLoadNormal();
-    mat_transform_normal3(vertex->nxyz, vertex->nES, vertices->size, sizeof(ClipVertex));
+    mat_transform_normal3(vertex->nxyz, eye_space->n, vertices->size, sizeof(ClipVertex), sizeof(EyeSpaceData));
 
     GLsizei i;
-    for(i = 0; i < vertices->size; ++i, ++vertex) {
+    EyeSpaceData* ES = aligned_vector_at(eye_space_data, 0);
+
+    for(i = 0; i < vertices->size; ++i, ++vertex, ++ES) {
         /* We ignore diffuse colour when lighting is enabled. If GL_COLOR_MATERIAL is enabled
          * then the lighting calculation should possibly take it into account */
-        memset(vertex->diffuse, 0, sizeof(float) * 4);
+        vertex->diffuse[0] = 0.0f;
+        vertex->diffuse[1] = 0.0f;
+        vertex->diffuse[2] = 0.0f;
+        vertex->diffuse[3] = 0.0f;
 
         GLfloat to_add [] = {0.0f, 0.0f, 0.0f, 0.0f};
-
         GLubyte j;
         for(j = 0; j < MAX_LIGHTS; ++j) {
             if(isLightEnabled(j)) {
-                calculateLightingContribution(j, vertex->xyzES, vertex->nES, to_add);
+                calculateLightingContribution(j, ES->xyz, ES->n, to_add);
 
                 vertex->diffuse[0] += to_add[0];
                 vertex->diffuse[1] += to_add[1];
@@ -637,11 +711,12 @@ static void divide(AlignedVector* vertices) {
     /* Perform perspective divide on each vertex */
     ClipVertex* vertex = (ClipVertex*) vertices->data;
 
-    GLsizei i;
-    for(i = 0; i < vertices->size; ++i, ++vertex) {
+    GLsizei i = vertices->size;
+    while(i--) {
         vertex->xyz[2] = 1.0f / vertex->w;
         vertex->xyz[0] *= vertex->xyz[2];
         vertex->xyz[1] *= vertex->xyz[2];
+        ++vertex;
     }
 }
 
@@ -717,11 +792,11 @@ static void push(const AlignedVector* vertices, PolyList* activePolyList, GLshor
         aligned_vector_extend(&activePolyList->vector, 1);
     }
 
-    GLsizei i;
+    GLsizei i = vertices->size;
     ClipVertex* vin = aligned_vector_at(vertices, 0);
+    pvr_vertex_t* vout = (pvr_vertex_t*) dst;
 
-    for(i = 0; i < vertices->size; ++i, dst++) {
-        pvr_vertex_t* vout = (pvr_vertex_t*) dst;
+    while(i--) {
         vout->flags = vin->flags;
         vout->x = vin->xyz[0];
         vout->y = vin->xyz[1];
@@ -732,6 +807,7 @@ static void push(const AlignedVector* vertices, PolyList* activePolyList, GLshor
         vout->oargb = 0;
 
         vin++;
+        vout++;
     }
 }
 
@@ -742,6 +818,20 @@ static void submitVertices(GLenum mode, GLsizei first, GLsizei count, GLenum typ
     if(!(ENABLED_VERTEX_ATTRIBUTES & VERTEX_ENABLED_FLAG)) {
         return;
     }
+
+    GLboolean doMultitexture, doTexture, doLighting;
+    GLint activeTexture;
+    glGetIntegerv(GL_ACTIVE_TEXTURE_ARB, &activeTexture);
+
+    glActiveTextureARB(GL_TEXTURE0);
+    glGetBooleanv(GL_TEXTURE_2D, &doTexture);
+
+    glActiveTextureARB(GL_TEXTURE1);
+    glGetBooleanv(GL_TEXTURE_2D, &doMultitexture);
+
+    doLighting = isLightingEnabled();
+
+    profiler_push(__func__);
 
     /* Initialize the buffer on first call */
     if(!buffer) {
@@ -755,20 +845,33 @@ static void submitVertices(GLenum mode, GLsizei first, GLsizei count, GLenum typ
         aligned_vector_resize(buffer, 0);
     }
 
-    generate(buffer, mode, first, count, (GLubyte*) indices, type);
+    profiler_checkpoint("allocate");
+
+    generate(buffer, mode, first, count, (GLubyte*) indices, type, doTexture, doMultitexture, doLighting);
+
+    profiler_checkpoint("generate");
 
     light(buffer);
 
+    profiler_checkpoint("light");
+
     transform(buffer);
+
+    profiler_checkpoint("transform");
 
     if(isClippingEnabled()) {
         clip(buffer);
     }
 
+    profiler_checkpoint("clip");
+
     divide(buffer);
+
+    profiler_checkpoint("divide");
 
     push(buffer, activePolyList(), 0);
 
+    profiler_checkpoint("push");
     /*
        Now, if multitexturing is enabled, we want to send exactly the same vertices again, except:
        - We want to enable blending, and send them to the TR list
@@ -777,11 +880,9 @@ static void submitVertices(GLenum mode, GLsizei first, GLsizei count, GLenum typ
        - We want to set the uv coordinates to the passed st ones
     */
 
-    GLboolean doMultitexture;
-    glGetBooleanv(GL_TEXTURE_2D, &doMultitexture);
-
     if(!doMultitexture) {
         /* Multitexture actively disabled */
+        profiler_pop();
         return;
     }
 
@@ -789,16 +890,18 @@ static void submitVertices(GLenum mode, GLsizei first, GLsizei count, GLenum typ
 
     if(!texture1 || ((ENABLED_VERTEX_ATTRIBUTES & ST_ENABLED_FLAG) != ST_ENABLED_FLAG)) {
         /* Multitexture implicitly disabled */
+        profiler_pop();
         return;
     }
 
     ClipVertex* vertex = (ClipVertex*) aligned_vector_at(buffer, 0);
 
     /* Copy ST coordinates to UV ones */
-    GLsizei i = 0;
-    for(; i < buffer->size; ++i, ++vertex) {
+    GLsizei i = buffer->size;
+    while(i--) {
         vertex->uv[0] = vertex->st[0];
-        vertex->uv[1] = vertex->st[1];
+        vertex->uv[1] = vertex->st[1];        
+        ++vertex;
     }
 
     /* Store state, as we're about to mess around with it */
