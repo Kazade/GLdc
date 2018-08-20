@@ -75,6 +75,7 @@ static inline GLuint byte_size(GLenum type) {
 }
 
 typedef void (*FloatParseFunc)(GLfloat* out, const GLubyte* in);
+typedef void (*ByteParseFunc)(GLubyte* out, const GLubyte* in);
 typedef void (*PolyBuildFunc)(ClipVertex* first, ClipVertex* previous, ClipVertex* vertex, ClipVertex* next, const GLsizei i);
 
 static inline void _parseVec3FromShort3(GLfloat* out, const GLubyte* in) {
@@ -134,12 +135,27 @@ static inline void _parseVec4FromFloat4(GLfloat* out, const GLubyte* in) {
     out[3] = ptr[3];
 }
 
-static inline void _parseColourFromUByte4(GLfloat* out, const GLubyte* in) {
-    const float ONE_OVER_255 = 1.0f / 255.0f;
-    out[0] = ((GLfloat) in[0]) * ONE_OVER_255;
-    out[1] = ((GLfloat) in[1]) * ONE_OVER_255;
-    out[2] = ((GLfloat) in[2]) * ONE_OVER_255;
-    out[3] = ((GLfloat) in[3]) * ONE_OVER_255;
+static inline void _parseColourFromUByte4(GLubyte* out, const GLubyte* in) {
+    out[R8IDX] = in[0];
+    out[G8IDX] = in[1];
+    out[B8IDX] = in[2];
+    out[A8IDX] = in[3];
+}
+
+static inline void _parseColourFromFloat4(GLubyte* out, const GLubyte* in) {
+    GLfloat* fin = (GLfloat*) in;
+
+    out[R8IDX] = (GLubyte) (fin[0] * 255.0f);
+    out[G8IDX] = (GLubyte) (fin[1] * 255.0f);
+    out[B8IDX] = (GLubyte) (fin[2] * 255.0f);
+    out[A8IDX] = (GLubyte) (fin[3] * 255.0f);
+}
+
+static inline void _parseColourFromFloat3(GLubyte* out, const GLubyte* in) {
+    out[A8IDX] = 255;
+    out[R8IDX] = (GLubyte) ((GLfloat) in[0]) * 255.0f;
+    out[G8IDX] = (GLubyte) ((GLfloat) in[1]) * 255.0f;
+    out[B8IDX] = (GLubyte) ((GLfloat) in[2]) * 255.0f;
 }
 
 static inline void _constVec2Zero(GLfloat* out, const GLubyte* in) {
@@ -159,6 +175,14 @@ static inline void _constVec4One(GLfloat* out, const GLubyte* in) {
     out[2] = 1.0f;
     out[3] = 1.0f;
 }
+
+static inline void _constColourOne(GLubyte* out, const GLubyte* in) {
+    out[0] = 255;
+    out[1] = 255;
+    out[2] = 255;
+    out[3] = 255;
+}
+
 
 typedef GLuint (*IndexParseFunc)(const GLubyte* in);
 
@@ -270,9 +294,9 @@ static inline FloatParseFunc _calcVertexParseFunc() {
     return NULL;
 }
 
-static inline FloatParseFunc _calcDiffuseParseFunc() {
+static inline ByteParseFunc _calcDiffuseParseFunc() {
     if((ENABLED_VERTEX_ATTRIBUTES & DIFFUSE_ENABLED_FLAG) != DIFFUSE_ENABLED_FLAG) {
-        return &_constVec4One;
+        return &_constColourOne;
     }
 
     switch(DIFFUSE_POINTER.type) {
@@ -282,23 +306,18 @@ static inline FloatParseFunc _calcDiffuseParseFunc() {
             return &_parseColourFromUByte4;
         }
     } break;
-    case GL_INT: {
-        if(DIFFUSE_POINTER.size == 3) {
-            return &_parseVec3FromInt3;
-        }
-    } break;
     case GL_FLOAT: {
         if(DIFFUSE_POINTER.size == 3) {
-            return &_parseVec4FromFloat3;
+            return &_parseColourFromFloat3;
         } else if(DIFFUSE_POINTER.size == 4) {
-            return &_parseVec4FromFloat4;
+            return &_parseColourFromFloat4;
         }
     } break;
     default:
         break;
     }
 
-    return &_constVec4One;
+    return &_constColourOne;
 }
 
 static inline FloatParseFunc _calcUVParseFunc() {
@@ -446,7 +465,7 @@ static void generate(AlignedVector* output, const GLenum mode, const GLsizei fir
     ClipVertex* vertex = aligned_vector_resize(output, spaceNeeded);
 
     const FloatParseFunc vertexFunc = _calcVertexParseFunc();
-    const FloatParseFunc diffuseFunc = _calcDiffuseParseFunc();
+    const ByteParseFunc diffuseFunc = _calcDiffuseParseFunc();
     const FloatParseFunc uvFunc = _calcUVParseFunc();
     const FloatParseFunc stFunc = _calcSTParseFunc();
     const FloatParseFunc normalFunc = _calcNormalParseFunc();
@@ -492,7 +511,7 @@ static void generate(AlignedVector* output, const GLenum mode, const GLsizei fir
             }
 
             vertexFunc(target->xyz, vptr);
-            diffuseFunc(target->diffuse, cptr);
+            diffuseFunc(target->bgra, cptr);
             vptr += vstride;
             cptr += cstride;
 
@@ -542,7 +561,7 @@ static void generate(AlignedVector* output, const GLenum mode, const GLsizei fir
                 indexFunc(&indices[type_byte_size * i]) : i;
 
             vertexFunc(target->xyz, VERTEX_POINTER.ptr + (idx * vstride));
-            diffuseFunc(target->diffuse, DIFFUSE_POINTER.ptr + (idx * cstride));
+            diffuseFunc(target->bgra, DIFFUSE_POINTER.ptr + (idx * cstride));
 
             if(doTexture) {
                 uvFunc(target->uv, UV_POINTER.ptr + (idx * uvstride));
@@ -687,23 +706,25 @@ static void light(AlignedVector* vertices) {
     for(i = 0; i < vertices->size; ++i, ++vertex, ++ES) {
         /* We ignore diffuse colour when lighting is enabled. If GL_COLOR_MATERIAL is enabled
          * then the lighting calculation should possibly take it into account */
-        vertex->diffuse[0] = 0.0f;
-        vertex->diffuse[1] = 0.0f;
-        vertex->diffuse[2] = 0.0f;
-        vertex->diffuse[3] = 0.0f;
 
+        GLfloat total [] = {0.0f, 0.0f, 0.0f, 0.0f};
         GLfloat to_add [] = {0.0f, 0.0f, 0.0f, 0.0f};
         GLubyte j;
         for(j = 0; j < MAX_LIGHTS; ++j) {
             if(isLightEnabled(j)) {
                 calculateLightingContribution(j, ES->xyz, ES->n, to_add);
 
-                vertex->diffuse[0] += to_add[0];
-                vertex->diffuse[1] += to_add[1];
-                vertex->diffuse[2] += to_add[2];
-                vertex->diffuse[3] += to_add[3];
+                total[0] += to_add[0];
+                total[1] += to_add[1];
+                total[2] += to_add[2];
+                total[3] += to_add[3];
             }
         }
+
+        vertex->bgra[A8IDX] = (GLubyte) (255.0f * total[3]);
+        vertex->bgra[R8IDX] = (GLubyte) (255.0f * total[0]);
+        vertex->bgra[G8IDX] = (GLubyte) (255.0f * total[1]);
+        vertex->bgra[B8IDX] = (GLubyte) (255.0f * total[2]);
     }
 }
 
@@ -803,7 +824,7 @@ static void push(const AlignedVector* vertices, PolyList* activePolyList, GLshor
         vout->z = vin->xyz[2];
         vout->u = vin->uv[0];
         vout->v = vin->uv[1];
-        vout->argb = PVR_PACK_COLOR(vin->diffuse[3], vin->diffuse[0], vin->diffuse[1], vin->diffuse[2]);
+        vout->argb = *((uint32_t*) vin->bgra);
         vout->oargb = 0;
 
         vin++;

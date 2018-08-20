@@ -62,6 +62,13 @@ static inline void interpolateVec4(const float* v1, const float* v2, const float
     interpolateFloat(v1[3], v2[3], t, &out[3]);
 }
 
+static inline void interpolateColour(const uint8_t* v1, const uint8_t* v2, const float t, uint8_t* out) {
+    out[0] = v1[0] + (uint32_t) (((float) (v2[0] - v1[0])) * t);
+    out[1] = v1[1] + (uint32_t) (((float) (v2[1] - v1[1])) * t);
+    out[2] = v1[2] + (uint32_t) (((float) (v2[2] - v1[2])) * t);
+    out[3] = v1[3] + (uint32_t) (((float) (v2[3] - v1[3])) * t);
+}
+
 const uint32_t VERTEX_CMD_EOL = 0xf0000000;
 const uint32_t VERTEX_CMD = 0xe0000000;
 
@@ -145,8 +152,8 @@ void clipTriangleStrip(AlignedVector* vertices, AlignedVector* outBuffer) {
             interpolateVec2(v1->st, v2->st, t1, output[1].st);
             interpolateVec2(v1->st, v3->st, t2, output[2].st);
 
-            interpolateVec4(v1->diffuse, v2->diffuse, t1, output[1].diffuse);
-            interpolateVec4(v1->diffuse, v3->diffuse, t2, output[2].diffuse);
+            interpolateColour(v1->bgra, v2->bgra, t1, output[1].bgra);
+            interpolateColour(v1->bgra, v3->bgra, t2, output[2].bgra);
 
             output[0].flags = VERTEX_CMD;
             output[1].flags = VERTEX_CMD;
@@ -179,8 +186,8 @@ void clipTriangleStrip(AlignedVector* vertices, AlignedVector* outBuffer) {
             interpolateVec2(v2->st, v1->st, t1, output[0].st);
             interpolateVec2(v2->st, v3->st, t2, output[2].st);
 
-            interpolateVec4(v2->diffuse, v1->diffuse, t1, output[0].diffuse);
-            interpolateVec4(v2->diffuse, v3->diffuse, t2, output[2].diffuse);
+            interpolateColour(v2->bgra, v1->bgra, t1, output[0].bgra);
+            interpolateColour(v2->bgra, v3->bgra, t2, output[2].bgra);
 
             output[0].flags = VERTEX_CMD;
             output[1].flags = VERTEX_CMD;
@@ -213,8 +220,8 @@ void clipTriangleStrip(AlignedVector* vertices, AlignedVector* outBuffer) {
             interpolateVec2(v3->st, v1->st, t1, output[0].st);
             interpolateVec2(v3->st, v2->st, t2, output[1].st);
 
-            interpolateVec4(v3->diffuse, v1->diffuse, t1, output[0].diffuse);
-            interpolateVec4(v3->diffuse, v2->diffuse, t2, output[1].diffuse);
+            interpolateColour(v3->bgra, v1->bgra, t1, output[0].bgra);
+            interpolateColour(v3->bgra, v2->bgra, t2, output[1].bgra);
 
             output[0].flags = VERTEX_CMD;
             output[1].flags = VERTEX_CMD;
@@ -248,8 +255,8 @@ void clipTriangleStrip(AlignedVector* vertices, AlignedVector* outBuffer) {
             interpolateVec2(v2->st, v3->st, t1, output[2].st);
             interpolateVec2(v1->st, v3->st, t2, output[3].st);
 
-            interpolateVec4(v2->diffuse, v3->diffuse, t1, output[2].diffuse);
-            interpolateVec4(v1->diffuse, v3->diffuse, t2, output[3].diffuse);
+            interpolateColour(v2->bgra, v3->bgra, t1, output[2].bgra);
+            interpolateColour(v1->bgra, v3->bgra, t2, output[3].bgra);
 
             output[0].flags = VERTEX_CMD;
             output[1].flags = VERTEX_CMD;
@@ -283,8 +290,8 @@ void clipTriangleStrip(AlignedVector* vertices, AlignedVector* outBuffer) {
             interpolateVec2(v1->st, v2->st, t1, output[0].st);
             interpolateVec2(v1->st, v3->st, t2, output[2].st);
 
-            interpolateVec4(v1->diffuse, v2->diffuse, t1, output[0].diffuse);
-            interpolateVec4(v1->diffuse, v3->diffuse, t2, output[2].diffuse);
+            interpolateColour(v1->bgra, v2->bgra, t1, output[0].bgra);
+            interpolateColour(v1->bgra, v3->bgra, t2, output[2].bgra);
 
             output[0].flags = VERTEX_CMD;
             output[1].flags = VERTEX_CMD;
@@ -318,8 +325,8 @@ void clipTriangleStrip(AlignedVector* vertices, AlignedVector* outBuffer) {
             interpolateVec2(v1->st, v2->st, t1, output[1].st);
             interpolateVec2(v3->st, v2->st, t2, output[3].st);
 
-            interpolateVec4(v1->diffuse, v2->diffuse, t1, output[1].diffuse);
-            interpolateVec4(v3->diffuse, v2->diffuse, t2, output[3].diffuse);
+            interpolateColour(v1->bgra, v2->bgra, t1, output[1].bgra);
+            interpolateColour(v3->bgra, v2->bgra, t2, output[3].bgra);
 
             output[0].flags = VERTEX_CMD;
             output[1].flags = VERTEX_CMD;

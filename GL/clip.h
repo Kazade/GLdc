@@ -18,15 +18,20 @@ typedef enum {
 } ClipResult;
 
 
+#define A8IDX 3
+#define R8IDX 2
+#define G8IDX 1
+#define B8IDX 0
+
+
 typedef struct {
     uint32_t flags;
     float xyz[3];
     float uv[2];
+    uint8_t bgra[4];
 
     float nxyz[3]; /* Normal */
     float w;
-
-    float diffuse[4]; /* Colour in floating point */
     float st[2];
 } ClipVertex;
 
