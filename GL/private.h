@@ -11,9 +11,12 @@
 
 #define MAX_TEXTURE_SIZE 1024
 
+#define CLIP_VERTEX_INT_PADDING 6
+
 typedef struct {
-    unsigned int cmd[8];
-} PVRCommand;
+    pvr_poly_hdr_t hdr;
+    unsigned int padding[CLIP_VERTEX_INT_PADDING];
+} PVRHeader;
 
 typedef struct {
     unsigned int flags;      /* Constant PVR_CMD_USERCLIP */
@@ -22,6 +25,9 @@ typedef struct {
              sy,         /* Start y */
              ex,         /* End x */
              ey;         /* End y */
+
+    /* Padding to match clip vertex */
+    unsigned int padding[CLIP_VERTEX_INT_PADDING];
 } PVRTileClipCommand; /* Tile Clip command for the pvr */
 
 typedef struct {

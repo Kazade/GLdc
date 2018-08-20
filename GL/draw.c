@@ -741,22 +741,14 @@ static void divide(AlignedVector* vertices) {
     }
 }
 
-typedef struct {
-    unsigned int list_type;
-    pvr_poly_hdr_t hdr;
-} ListToHeader;
-
-
-#define MAX_LISTS 5
-
 static void push(const AlignedVector* vertices, PolyList* activePolyList, GLshort textureUnit) {
     /* Copy the vertices to the active poly list */
 
     // Make room for the element + the header
-    PVRCommand* dst = (PVRCommand*) aligned_vector_extend(&activePolyList->vector, vertices->size);
+    ClipVertex* dst = (ClipVertex*) aligned_vector_extend(&activePolyList->vector, vertices->size + 1);
 
     // Store a pointer to the header
-    pvr_poly_hdr_t* hdr = (pvr_poly_hdr_t*) dst;
+    PVRHeader* header = (PVRHeader*) dst;
 
     // Compile
     pvr_poly_cxt_t cxt = *getPVRContext();
@@ -764,32 +756,22 @@ static void push(const AlignedVector* vertices, PolyList* activePolyList, GLshor
 
     _glUpdatePVRTextureContext(&cxt, textureUnit);
 
-    pvr_poly_compile(hdr, &cxt);
+    pvr_poly_compile(&header->hdr, &cxt);
 
     // Point dest at the first new vertex to populate, if we're not sending a header
     // we won't increment and instead overwrite the header we just created with the
     // first vertex
     dst++;
 
-    // Add one more to the list
-    aligned_vector_extend(&activePolyList->vector, 1);
-
-    GLsizei i = vertices->size;
     ClipVertex* vin = aligned_vector_at(vertices, 0);
-    pvr_vertex_t* vout = (pvr_vertex_t*) dst;
+    ClipVertex* vout = dst;
 
+    GLuint i = vertices->size;
     while(i--) {
-        vout->flags = vin->flags;
-        vout->x = vin->xyz[0];
-        vout->y = vin->xyz[1];
-        vout->z = vin->xyz[2];
-        vout->u = vin->uv[0];
-        vout->v = vin->uv[1];
-        vout->argb = *((uint32_t*) vin->bgra);
-        vout->oargb = 0;
-
-        vin++;
-        vout++;
+        vin->oargb = 0;
+        *vout = *vin;
+        ++vout;
+        ++vin;
     }
 }
 

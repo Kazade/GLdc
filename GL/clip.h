@@ -25,11 +25,15 @@ typedef enum {
 
 
 typedef struct {
+    /* Same 32 byte layout as pvr_vertex_t */
     uint32_t flags;
     float xyz[3];
     float uv[2];
     uint8_t bgra[4];
+    uint32_t oargb;
 
+    /* Important, we have 24 bytes here. That means when submitting to the SQs we need to
+     * increment the pointer by 6 */
     float nxyz[3]; /* Normal */
     float w;
     float st[2];
