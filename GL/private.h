@@ -43,6 +43,8 @@ typedef struct {
 
     GLenum minFilter;
     GLenum magFilter;
+
+    GLboolean isCompressed;
 } TextureObject;
 
 typedef struct {

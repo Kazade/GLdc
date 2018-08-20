@@ -330,14 +330,15 @@ void APIENTRY glCompressedTexImage2DARB(GLenum target,
     TextureObject* active = TEXTURE_UNITS[ACTIVE_TEXTURE];
 
     /* Set the required mipmap count */
-    active->mipmapCount = _glGetMipmapLevelCount(active);
-    active->mipmap = (mipmapped) ? ~0 : (1 << level);  /* Set only a single bit if this wasn't mipmapped otherwise set all */
     active->width   = width;
     active->height  = height;
     active->color   = _determinePVRFormat(
         internalFormat,
         internalFormat  /* Doesn't matter (see determinePVRFormat) */
     );
+    active->mipmapCount = _glGetMipmapLevelCount(active);
+    active->mipmap = (mipmapped) ? ~0 : (1 << level);  /* Set only a single bit if this wasn't mipmapped otherwise set all */
+    active->isCompressed = GL_TRUE;
 
     /* Odds are slim new data is same size as old, so free always */
     if(active->data)
@@ -644,6 +645,7 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
 
         GLuint size = _glGetMipmapDataSize(active);
         active->data = pvr_mem_malloc(size);
+        active->isCompressed = GL_FALSE;
     }
 
     /* Mark this level as set in the mipmap bitmask */

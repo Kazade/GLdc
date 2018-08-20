@@ -146,6 +146,12 @@ void _glUpdatePVRTextureContext(pvr_poly_cxt_t* context, GLshort textureUnit) {
         break;
     }
 
+    /* FIXME: If you disable mipmaps on a compressed mipmapped texture
+     * you get corruption and I don't know why, so we force mipmapping for now */
+    if(tx1->isCompressed && _glIsMipmapComplete(tx1)) {
+        enableMipmaps = GL_TRUE;
+    }
+
     if(enableMipmaps) {
         if(tx1->minFilter == GL_LINEAR_MIPMAP_NEAREST) {
             filter = PVR_FILTER_TRILINEAR1;
