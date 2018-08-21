@@ -164,6 +164,9 @@ void APIENTRY glEnd() {
     glColorPointer(4, GL_FLOAT, 0, COLOURS.data);
     glNormalPointer(GL_FLOAT, 0, NORMALS.data);
 
+    GLint activeTexture;
+    glGetIntegerv(GL_CLIENT_ACTIVE_TEXTURE, &activeTexture);
+
     glClientActiveTextureARB(GL_TEXTURE0);
     glEnableClientState(GL_TEXTURE_COORD_ARRAY);
     glTexCoordPointer(2, GL_FLOAT, 0, UV_COORDS.data);
@@ -173,6 +176,8 @@ void APIENTRY glEnd() {
     glTexCoordPointer(2, GL_FLOAT, 0, ST_COORDS.data);
 
     glDrawArrays(ACTIVE_POLYGON_MODE, 0, VERTICES.size / 3);
+
+    glClientActiveTextureARB((GLuint) activeTexture);
 
     aligned_vector_clear(&VERTICES);
     aligned_vector_clear(&COLOURS);

@@ -103,6 +103,7 @@ TextureObject* getTexture0();
 TextureObject* getTexture1();
 TextureObject* getBoundTexture();
 GLubyte _glGetActiveTexture();
+GLuint _glGetActiveClientTexture();
 
 GLboolean isBlendingEnabled();
 GLboolean _glIsMipmapComplete(const TextureObject* obj);

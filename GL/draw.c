@@ -961,6 +961,10 @@ void APIENTRY glDisableClientState(GLenum cap) {
     }
 }
 
+GLuint _glGetActiveClientTexture() {
+    return ACTIVE_CLIENT_TEXTURE;
+}
+
 void APIENTRY glClientActiveTextureARB(GLenum texture) {
     TRACE();
 
