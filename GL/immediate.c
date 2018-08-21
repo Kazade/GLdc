@@ -161,7 +161,11 @@ void APIENTRY glEnd() {
     glGetBooleanv(GL_COLOR_ARRAY, &colorArrayEnabled);
     glGetBooleanv(GL_NORMAL_ARRAY, &normalArrayEnabled);
 
-    /* FIXME: Push pointer state */
+    AttribPointer vptr = *_glGetVertexAttribPointer();
+    AttribPointer dptr = *_glGetDiffuseAttribPointer();
+    AttribPointer nptr = *_glGetNormalAttribPointer();
+    AttribPointer uvptr = *_glGetUVAttribPointer();
+    AttribPointer stptr = *_glGetSTAttribPointer();
 
     glEnableClientState(GL_VERTEX_ARRAY);
     glEnableClientState(GL_COLOR_ARRAY);
@@ -192,6 +196,12 @@ void APIENTRY glEnd() {
     aligned_vector_clear(&ST_COORDS);
     aligned_vector_clear(&NORMALS);
 
+    *_glGetVertexAttribPointer() = vptr;
+    *_glGetDiffuseAttribPointer() = dptr;
+    *_glGetNormalAttribPointer() = nptr;
+    *_glGetUVAttribPointer() = uvptr;
+    *_glGetSTAttribPointer() = stptr;
+
     if(!vertexArrayEnabled) {
         glDisableClientState(GL_VERTEX_ARRAY);
     }
@@ -216,8 +226,6 @@ void APIENTRY glEnd() {
 
     glClientActiveTextureARB((GLuint) activeTexture);
 
-
-    /* FIXME: Pop pointers */
 }
 
 void APIENTRY glRectf(GLfloat x1, GLfloat y1, GLfloat x2, GLfloat y2) {

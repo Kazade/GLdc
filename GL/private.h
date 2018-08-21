@@ -105,7 +105,19 @@ GLubyte _glKosInitTextures();
 
 void _glUpdatePVRTextureContext(pvr_poly_cxt_t* context, GLshort textureUnit);
 
+typedef struct {
+    const void* ptr;
+    GLenum type;
+    GLsizei stride;
+    GLint size;
+} AttribPointer;
+
 GLuint _glGetEnabledAttributes();
+AttribPointer* _glGetVertexAttribPointer();
+AttribPointer* _glGetDiffuseAttribPointer();
+AttribPointer* _glGetNormalAttribPointer();
+AttribPointer* _glGetUVAttribPointer();
+AttribPointer* _glGetSTAttribPointer();
 
 TextureObject* getTexture0();
 TextureObject* getTexture1();

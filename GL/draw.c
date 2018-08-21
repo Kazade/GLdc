@@ -8,13 +8,6 @@
 #include "private.h"
 #include "profiler.h"
 
-typedef struct {
-    const void* ptr;
-    GLenum type;
-    GLsizei stride;
-    GLint size;
-} AttribPointer;
-
 
 static AttribPointer VERTEX_POINTER;
 static AttribPointer UV_POINTER;
@@ -74,6 +67,26 @@ typedef void (*PolyBuildFunc)(ClipVertex* first, ClipVertex* previous, ClipVerte
 
 GLuint _glGetEnabledAttributes() {
     return ENABLED_VERTEX_ATTRIBUTES;
+}
+
+AttribPointer* _glGetVertexAttribPointer() {
+    return &VERTEX_POINTER;
+}
+
+AttribPointer* _glGetDiffuseAttribPointer() {
+    return &DIFFUSE_POINTER;
+}
+
+AttribPointer* _glGetNormalAttribPointer() {
+    return &NORMAL_POINTER;
+}
+
+AttribPointer* _glGetUVAttribPointer() {
+    return &UV_POINTER;
+}
+
+AttribPointer* _glGetSTAttribPointer() {
+    return &ST_POINTER;
 }
 
 static inline void _parseVec3FromShort3(GLfloat* out, const GLubyte* in) {
