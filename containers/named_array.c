@@ -26,7 +26,7 @@ void named_array_init(NamedArray* array, unsigned int element_size, unsigned int
     array->elements = (unsigned char*) malloc(element_size * max_elements);
     array->used_markers = (unsigned char*) malloc(array->marker_count);
 #endif
-    memset(array->used_markers, 0, sizeof(array->marker_count));
+    memset(array->used_markers, 0, sizeof(unsigned char) * array->marker_count);
 }
 
 char named_array_used(NamedArray* array, unsigned int id) {
