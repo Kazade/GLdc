@@ -483,10 +483,29 @@ static GLenum COMPRESSED_FORMATS [] = {
 static GLint NUM_COMPRESSED_FORMATS = sizeof(COMPRESSED_FORMATS) / sizeof(GLenum);
 
 void APIENTRY glGetBooleanv(GLenum pname, GLboolean* params) {
+    GLuint enabledAttrs = _glGetEnabledAttributes();
+    GLuint activeClientTexture = _glGetActiveClientTexture();
+
     switch(pname) {
     case GL_TEXTURE_2D:
         *params = TEXTURES_ENABLED[_glGetActiveTexture()];
     break;
+    case GL_VERTEX_ARRAY:
+        *params = (enabledAttrs & VERTEX_ENABLED_FLAG) == VERTEX_ENABLED_FLAG;
+    break;
+    case GL_COLOR_ARRAY:
+        *params = (enabledAttrs & DIFFUSE_ENABLED_FLAG) == DIFFUSE_ENABLED_FLAG;
+    break;
+    case GL_NORMAL_ARRAY:
+        *params = (enabledAttrs & NORMAL_ENABLED_FLAG) == NORMAL_ENABLED_FLAG;
+    break;
+    case GL_TEXTURE_COORD_ARRAY: {
+        if(activeClientTexture == 0) {
+            *params = (enabledAttrs & UV_ENABLED_FLAG) == UV_ENABLED_FLAG;
+        } else {
+            *params = (enabledAttrs & ST_ENABLED_FLAG) == ST_ENABLED_FLAG;
+        }
+    } break;
     default:
         _glKosThrowError(GL_INVALID_ENUM, __func__);
         _glKosPrintError();

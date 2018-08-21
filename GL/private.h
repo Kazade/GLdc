@@ -9,6 +9,12 @@
 #define TRACE_ENABLED 0
 #define TRACE() if(TRACE_ENABLED) {fprintf(stderr, "%s\n", __func__);}
 
+#define VERTEX_ENABLED_FLAG     (1 << 0)
+#define UV_ENABLED_FLAG         (1 << 1)
+#define ST_ENABLED_FLAG         (1 << 2)
+#define DIFFUSE_ENABLED_FLAG    (1 << 3)
+#define NORMAL_ENABLED_FLAG     (1 << 4)
+
 #define MAX_TEXTURE_SIZE 1024
 
 #define CLIP_VERTEX_INT_PADDING 6
@@ -98,6 +104,8 @@ pvr_poly_cxt_t* getPVRContext();
 GLubyte _glKosInitTextures();
 
 void _glUpdatePVRTextureContext(pvr_poly_cxt_t* context, GLshort textureUnit);
+
+GLuint _glGetEnabledAttributes();
 
 TextureObject* getTexture0();
 TextureObject* getTexture1();

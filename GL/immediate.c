@@ -154,6 +154,13 @@ void APIENTRY glNormal3fv(const GLfloat* v) {
 void APIENTRY glEnd() {
     IMMEDIATE_MODE_ACTIVE = GL_FALSE;
 
+    GLboolean vertexArrayEnabled, colorArrayEnabled, normalArrayEnabled;
+    GLboolean texArray0Enabled, texArray1Enabled;
+
+    glGetBooleanv(GL_VERTEX_ARRAY, &vertexArrayEnabled);
+    glGetBooleanv(GL_COLOR_ARRAY, &colorArrayEnabled);
+    glGetBooleanv(GL_NORMAL_ARRAY, &normalArrayEnabled);
+
     /* FIXME: Push pointer state */
 
     glEnableClientState(GL_VERTEX_ARRAY);
@@ -168,22 +175,47 @@ void APIENTRY glEnd() {
     glGetIntegerv(GL_CLIENT_ACTIVE_TEXTURE, &activeTexture);
 
     glClientActiveTextureARB(GL_TEXTURE0);
+    glGetBooleanv(GL_TEXTURE_COORD_ARRAY, &texArray0Enabled);
     glEnableClientState(GL_TEXTURE_COORD_ARRAY);
     glTexCoordPointer(2, GL_FLOAT, 0, UV_COORDS.data);
 
     glClientActiveTextureARB(GL_TEXTURE1);
+    glGetBooleanv(GL_TEXTURE_COORD_ARRAY, &texArray1Enabled);
     glEnableClientState(GL_TEXTURE_COORD_ARRAY);
     glTexCoordPointer(2, GL_FLOAT, 0, ST_COORDS.data);
 
     glDrawArrays(ACTIVE_POLYGON_MODE, 0, VERTICES.size / 3);
-
-    glClientActiveTextureARB((GLuint) activeTexture);
 
     aligned_vector_clear(&VERTICES);
     aligned_vector_clear(&COLOURS);
     aligned_vector_clear(&UV_COORDS);
     aligned_vector_clear(&ST_COORDS);
     aligned_vector_clear(&NORMALS);
+
+    if(!vertexArrayEnabled) {
+        glDisableClientState(GL_VERTEX_ARRAY);
+    }
+
+    if(!colorArrayEnabled) {
+        glDisableClientState(GL_COLOR_ARRAY);
+    }
+
+    if(!normalArrayEnabled) {
+        glDisableClientState(GL_NORMAL_ARRAY);
+    }
+
+    if(!texArray0Enabled) {
+        glClientActiveTextureARB(GL_TEXTURE0);
+        glDisableClientState(GL_TEXTURE_COORD_ARRAY);
+    }
+
+    if(!texArray1Enabled) {
+        glClientActiveTextureARB(GL_TEXTURE1);
+        glDisableClientState(GL_TEXTURE_COORD_ARRAY);
+    }
+
+    glClientActiveTextureARB((GLuint) activeTexture);
+
 
     /* FIXME: Pop pointers */
 }

@@ -22,12 +22,6 @@ static AttribPointer ST_POINTER;
 static AttribPointer NORMAL_POINTER;
 static AttribPointer DIFFUSE_POINTER;
 
-#define VERTEX_ENABLED_FLAG     (1 << 0)
-#define UV_ENABLED_FLAG         (1 << 1)
-#define ST_ENABLED_FLAG         (1 << 2)
-#define DIFFUSE_ENABLED_FLAG    (1 << 3)
-#define NORMAL_ENABLED_FLAG     (1 << 4)
-
 static GLuint ENABLED_VERTEX_ATTRIBUTES = 0;
 static GLubyte ACTIVE_CLIENT_TEXTURE = 0;
 
@@ -77,6 +71,10 @@ static inline GLuint byte_size(GLenum type) {
 typedef void (*FloatParseFunc)(GLfloat* out, const GLubyte* in);
 typedef void (*ByteParseFunc)(GLubyte* out, const GLubyte* in);
 typedef void (*PolyBuildFunc)(ClipVertex* first, ClipVertex* previous, ClipVertex* vertex, ClipVertex* next, const GLsizei i);
+
+GLuint _glGetEnabledAttributes() {
+    return ENABLED_VERTEX_ATTRIBUTES;
+}
 
 static inline void _parseVec3FromShort3(GLfloat* out, const GLubyte* in) {
     GLshort* ptr = (GLshort*) in;
