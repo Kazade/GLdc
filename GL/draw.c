@@ -448,7 +448,7 @@ static inline PolyBuildFunc _calcBuildFunc(const GLenum type) {
     return &_buildStrip;
 }
 
-static void generate(AlignedVector* output, const GLenum mode, const GLsizei first, const GLsizei count,
+static void generate(ClipVertex* output, const GLenum mode, const GLsizei first, const GLsizei count,
         const GLubyte* indices, const GLenum type, const GLboolean doTexture, const GLboolean doMultitexture, const GLboolean doLighting) {
     /* Read from the client buffers and generate an array of ClipVertices */
 
@@ -459,10 +459,8 @@ static void generate(AlignedVector* output, const GLenum mode, const GLsizei fir
     const GLuint nstride = (NORMAL_POINTER.stride) ? NORMAL_POINTER.stride : NORMAL_POINTER.size * byte_size(NORMAL_POINTER.type);
 
     const GLsizei max = first + count;
-    const GLsizei spaceNeeded = (mode == GL_POLYGON || mode == GL_TRIANGLE_FAN) ? ((count - 2) * 3) : count;
 
-    /* Make sure we have room for the output */
-    ClipVertex* vertex = aligned_vector_resize(output, spaceNeeded);
+    ClipVertex* vertex = output;
 
     const FloatParseFunc vertexFunc = _calcVertexParseFunc();
     const ByteParseFunc diffuseFunc = _calcDiffuseParseFunc();
@@ -584,14 +582,14 @@ static void generate(AlignedVector* output, const GLenum mode, const GLsizei fir
     }
 }
 
-static void transform(AlignedVector* vertices) {
+static void transform(ClipVertex* output, const GLsizei count) {
     /* Perform modelview transform, storing W */
 
-    ClipVertex* vertex = (ClipVertex*) vertices->data;
+    ClipVertex* vertex = output;
 
     _applyRenderMatrix(); /* Apply the Render Matrix Stack */
 
-    GLsizei i = vertices->size;
+    GLsizei i = count;
     while(i--) {
         register float __x __asm__("fr12") = (vertex->xyz[0]);
         register float __y __asm__("fr13") = (vertex->xyz[1]);
@@ -614,7 +612,7 @@ static void transform(AlignedVector* vertices) {
     }
 }
 
-static void clip(AlignedVector* vertices) {
+static GLsizei clip(AlignedVector* polylist, ClipVertex* output, const GLsizei count) {
     /* Perform clipping, generating new vertices as necessary */
 
     static AlignedVector* CLIP_BUFFER = NULL;
@@ -626,17 +624,33 @@ static void clip(AlignedVector* vertices) {
     }
 
     /* Make sure we allocate roughly enough space */
-    aligned_vector_reserve(CLIP_BUFFER, vertices->size * 1.5);
+    aligned_vector_reserve(CLIP_BUFFER, count * 1.5);
 
     /* Start from empty */
     aligned_vector_resize(CLIP_BUFFER, 0);
 
     /* Now perform clipping! */
-    clipTriangleStrip(vertices, CLIP_BUFFER);
+    clipTriangleStrip(output, count, CLIP_BUFFER);
+
+    /* Calculate the new required size for the poly list. This is the original size
+     * plus the difference in size between the original vertex count and the clip buffer
+     * count */
+    GLsizei newSize = polylist->size + (CLIP_BUFFER->size - count);
 
     /* Copy the clip buffer over the vertices */
-    aligned_vector_resize(vertices, CLIP_BUFFER->size);
-    memcpy(vertices->data, CLIP_BUFFER->data, CLIP_BUFFER->size * CLIP_BUFFER->element_size);
+    aligned_vector_resize(polylist, newSize);
+
+    GLsizei i = CLIP_BUFFER->size;
+    ClipVertex* dst = output;
+    ClipVertex* src = (ClipVertex*) CLIP_BUFFER->data;
+    while(i--) {
+        *dst = *src;
+        ++dst;
+        ++src;
+    }
+
+    /* Return the new vertex count */
+    return CLIP_BUFFER->size;
 }
 
 static void mat_transform3(const float* xyz, const float* xyzOut, const uint32_t count, const uint32_t inStride, const uint32_t outStride) {
@@ -671,7 +685,7 @@ static void mat_transform_normal3(const float* xyz, const float* xyzOut, const u
     }
 }
 
-static void light(AlignedVector* vertices) {
+static void light(ClipVertex* output, const GLsizei count) {
     if(!isLightingEnabled()) {
         return;
     }
@@ -688,22 +702,22 @@ static void light(AlignedVector* vertices) {
         aligned_vector_init(eye_space_data, sizeof(EyeSpaceData));
     }
 
-    aligned_vector_resize(eye_space_data, vertices->size);
+    aligned_vector_resize(eye_space_data, count);
 
     /* Perform lighting calculations and manipulate the colour */
-    ClipVertex* vertex = (ClipVertex*) vertices->data;
+    ClipVertex* vertex = output;
     EyeSpaceData* eye_space = (EyeSpaceData*) eye_space_data->data;
 
     _matrixLoadModelView();
-    mat_transform3(vertex->xyz, eye_space->xyz, vertices->size, sizeof(ClipVertex), sizeof(EyeSpaceData));
+    mat_transform3(vertex->xyz, eye_space->xyz, count, sizeof(ClipVertex), sizeof(EyeSpaceData));
 
     _matrixLoadNormal();
-    mat_transform_normal3(vertex->nxyz, eye_space->n, vertices->size, sizeof(ClipVertex), sizeof(EyeSpaceData));
+    mat_transform_normal3(vertex->nxyz, eye_space->n, count, sizeof(ClipVertex), sizeof(EyeSpaceData));
 
     GLsizei i;
     EyeSpaceData* ES = aligned_vector_at(eye_space_data, 0);
 
-    for(i = 0; i < vertices->size; ++i, ++vertex, ++ES) {
+    for(i = 0; i < count; ++i, ++vertex, ++ES) {
         /* We ignore diffuse colour when lighting is enabled. If GL_COLOR_MATERIAL is enabled
          * then the lighting calculation should possibly take it into account */
 
@@ -728,11 +742,11 @@ static void light(AlignedVector* vertices) {
     }
 }
 
-static void divide(AlignedVector* vertices) {
+static void divide(ClipVertex* output, const GLsizei count) {
     /* Perform perspective divide on each vertex */
-    ClipVertex* vertex = (ClipVertex*) vertices->data;
+    ClipVertex* vertex = output;
 
-    GLsizei i = vertices->size;
+    GLsizei i = count;
     while(i--) {
         vertex->xyz[2] = 1.0f / vertex->w;
         vertex->xyz[0] *= vertex->xyz[2];
@@ -741,16 +755,8 @@ static void divide(AlignedVector* vertices) {
     }
 }
 
-static void push(const AlignedVector* vertices, PolyList* activePolyList, GLshort textureUnit) {
-    /* Copy the vertices to the active poly list */
-
-    // Make room for the element + the header
-    ClipVertex* dst = (ClipVertex*) aligned_vector_extend(&activePolyList->vector, vertices->size + 1);
-
-    // Store a pointer to the header
-    PVRHeader* header = (PVRHeader*) dst;
-
-    // Compile
+static void push(PVRHeader* header, ClipVertex* output, const GLsizei count, PolyList* activePolyList, GLshort textureUnit) {
+    // Compile the header
     pvr_poly_cxt_t cxt = *getPVRContext();
     cxt.list_type = activePolyList->list_type;
 
@@ -758,26 +764,16 @@ static void push(const AlignedVector* vertices, PolyList* activePolyList, GLshor
 
     pvr_poly_compile(&header->hdr, &cxt);
 
-    // Point dest at the first new vertex to populate, if we're not sending a header
-    // we won't increment and instead overwrite the header we just created with the
-    // first vertex
-    dst++;
+    /* Post-process the vertex list */
+    ClipVertex* vout = output;
 
-    ClipVertex* vin = aligned_vector_at(vertices, 0);
-    ClipVertex* vout = dst;
-
-    GLuint i = vertices->size;
+    GLuint i = count;
     while(i--) {
-        vin->oargb = 0;
-        *vout = *vin;
-        ++vout;
-        ++vin;
+        vout->oargb = 0;
     }
 }
 
 static void submitVertices(GLenum mode, GLsizei first, GLsizei count, GLenum type, const GLvoid* indices) {
-    static AlignedVector* buffer = NULL;
-
     /* Do nothing if vertices aren't enabled */
     if(!(ENABLED_VERTEX_ATTRIBUTES & VERTEX_ENABLED_FLAG)) {
         return;
@@ -797,43 +793,41 @@ static void submitVertices(GLenum mode, GLsizei first, GLsizei count, GLenum typ
 
     profiler_push(__func__);
 
-    /* Initialize the buffer on first call */
-    if(!buffer) {
-        buffer = (AlignedVector*) malloc(sizeof(AlignedVector));
-        aligned_vector_init(buffer, sizeof(ClipVertex));
 
-        /* Reserve 64k up-front */
-        aligned_vector_reserve(buffer, 64 * 1024);
-    } else {
-        /* Else, resize to zero (this will retain the allocated memory) */
-        aligned_vector_resize(buffer, 0);
-    }
+    PolyList* activeList = activePolyList();
+
+    /* Make room in the list buffer */
+    GLsizei spaceNeeded = (mode == GL_POLYGON || mode == GL_TRIANGLE_FAN) ? ((count - 2) * 3) : count;
+    ClipVertex* start = aligned_vector_extend(&activeList->vector, spaceNeeded + 1);
+
+    /* Store a pointer to the header for later */
+    PVRHeader* header = (PVRHeader*) start++;
 
     profiler_checkpoint("allocate");
 
-    generate(buffer, mode, first, count, (GLubyte*) indices, type, doTexture, doMultitexture, doLighting);
+    generate(start, mode, first, count, (GLubyte*) indices, type, doTexture, doMultitexture, doLighting);
 
     profiler_checkpoint("generate");
 
-    light(buffer);
+    light(start, spaceNeeded);
 
     profiler_checkpoint("light");
 
-    transform(buffer);
+    transform(start, spaceNeeded);
 
     profiler_checkpoint("transform");
 
     if(isClippingEnabled()) {
-        clip(buffer);
+        spaceNeeded = clip(&activeList->vector, start, spaceNeeded);
     }
 
     profiler_checkpoint("clip");
 
-    divide(buffer);
+    divide(start, spaceNeeded);
 
     profiler_checkpoint("divide");
 
-    push(buffer, activePolyList(), 0);
+    push(header, start, spaceNeeded, activePolyList(), 0);
 
     profiler_checkpoint("push");
     /*
@@ -858,10 +852,18 @@ static void submitVertices(GLenum mode, GLsizei first, GLsizei count, GLenum typ
         return;
     }
 
-    ClipVertex* vertex = (ClipVertex*) aligned_vector_at(buffer, 0);
+    /* Push back a copy of the list to the transparent poly list, including the header
+        (hence the - 1)
+    */
+    ClipVertex* vertex = aligned_vector_push_back(
+        &transparentPolyList()->vector, start - 1, spaceNeeded + 1
+    );
+
+    PVRHeader* mtHeader = (PVRHeader*) vertex++;
+    ClipVertex* mtStart = vertex;
 
     /* Copy ST coordinates to UV ones */
-    GLsizei i = buffer->size;
+    GLsizei i = spaceNeeded;
     while(i--) {
         vertex->uv[0] = vertex->st[0];
         vertex->uv[1] = vertex->st[1];        
@@ -882,7 +884,7 @@ static void submitVertices(GLenum mode, GLsizei first, GLsizei count, GLenum typ
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
     /* Send the buffer again to the transparent list */
-    push(buffer, transparentPolyList(), 1);
+    push(mtHeader, mtStart, spaceNeeded, transparentPolyList(), 1);
 
     /* Reset state */
     glDepthFunc(depthFunc);

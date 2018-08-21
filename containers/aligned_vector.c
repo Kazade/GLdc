@@ -38,7 +38,7 @@ void aligned_vector_reserve(AlignedVector* vector, unsigned int element_count) {
     vector->capacity = element_count;
 }
 
-void aligned_vector_push_back(AlignedVector* vector, const void* objs, unsigned int count) {
+void* aligned_vector_push_back(AlignedVector* vector, const void* objs, unsigned int count) {
     /* Resize enough room */
 
     unsigned int initial_size = vector->size;
@@ -48,6 +48,8 @@ void aligned_vector_push_back(AlignedVector* vector, const void* objs, unsigned 
 
     /* Copy the objects in */
     memcpy(dest, objs, vector->element_size * count);
+
+    return dest;
 }
 
 void* aligned_vector_resize(AlignedVector* vector, const unsigned int element_count) {

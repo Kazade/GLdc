@@ -72,8 +72,8 @@ static inline void interpolateColour(const uint8_t* v1, const uint8_t* v2, const
 const uint32_t VERTEX_CMD_EOL = 0xf0000000;
 const uint32_t VERTEX_CMD = 0xe0000000;
 
-void clipTriangleStrip(AlignedVector* vertices, AlignedVector* outBuffer) __attribute__((optimize("fast-math")));
-void clipTriangleStrip(AlignedVector* vertices, AlignedVector* outBuffer) {
+void clipTriangleStrip(const ClipVertex* vertices, const unsigned int count, AlignedVector* outBuffer) __attribute__((optimize("fast-math")));
+void clipTriangleStrip(const ClipVertex* vertices, const unsigned int count, AlignedVector* outBuffer) {
 
     /* Clipping triangle strips is *hard* this is the algorithm we follow:
      *
@@ -90,9 +90,9 @@ void clipTriangleStrip(AlignedVector* vertices, AlignedVector* outBuffer) {
     uint32_t i;
     uint32_t stripCount = 2; /* The number of vertices in the source strip so far */
 
-    ClipVertex* thisVertex = aligned_vector_at(vertices, 1);
+    ClipVertex* thisVertex = vertices + 1;
 
-    for(i = 2; i < vertices->size; ++i) {
+    for(i = 2; i < count; ++i) {
         ++thisVertex;
 
         if(stripCount < 2) {

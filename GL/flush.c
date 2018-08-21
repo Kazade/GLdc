@@ -92,6 +92,8 @@ void APIENTRY glKosSwapBuffers() {
 
     TRACE();
 
+    profiler_push(__func__);
+
     pvr_wait_ready();
 
     pvr_scene_begin();
@@ -111,6 +113,9 @@ void APIENTRY glKosSwapBuffers() {
     aligned_vector_clear(&OP_LIST.vector);
     aligned_vector_clear(&PT_LIST.vector);
     aligned_vector_clear(&TR_LIST.vector);
+
+    profiler_checkpoint("scene");
+    profiler_pop();
 
     if(frame_count++ > 100) {
         profiler_print_stats();
