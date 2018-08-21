@@ -791,6 +791,8 @@ static void submitVertices(GLenum mode, GLsizei first, GLsizei count, GLenum typ
 
     doLighting = isLightingEnabled();
 
+    glActiveTextureARB(activeTexture);
+
     profiler_push(__func__);
 
 
