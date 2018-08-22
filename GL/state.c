@@ -25,6 +25,7 @@ pvr_poly_cxt_t* getPVRContext() {
 static GLenum CULL_FACE = GL_BACK;
 static GLenum FRONT_FACE = GL_CCW;
 static GLboolean CULLING_ENABLED = GL_FALSE;
+static GLboolean COLOR_MATERIAL_ENABLED = GL_FALSE;
 
 static int _calc_pvr_face_culling() {
     if(!CULLING_ENABLED) {
@@ -114,6 +115,25 @@ static void _updatePVRBlend(pvr_poly_cxt_t* context) {
         context->blend.src_enable = PVR_BLEND_DISABLE;
         context->blend.dst_enable = PVR_BLEND_DISABLE;
     }
+}
+
+GLboolean _glCheckValidEnum(GLint param, GLenum* values, const char* func) {
+    GLubyte found = 0;
+    while(*values != 0) {
+        if(*values == param) {
+            found++;
+            break;
+        }
+        values++;
+    }
+
+    if(!found) {
+        _glKosThrowError(GL_INVALID_ENUM, func);
+        _glKosPrintError();
+        return GL_TRUE;
+    }
+
+    return GL_FALSE;
 }
 
 static GLboolean TEXTURES_ENABLED [] = {GL_FALSE, GL_FALSE};
@@ -207,6 +227,10 @@ GLboolean isLightEnabled(unsigned char light) {
     return LIGHT_ENABLED[light & 0xF];
 }
 
+GLboolean _glIsColorMaterialEnabled() {
+    return COLOR_MATERIAL_ENABLED;
+}
+
 static GLfloat CLEAR_COLOUR[3];
 
 void initContext() {
@@ -264,6 +288,9 @@ GLAPI void APIENTRY glEnable(GLenum cap) {
         case GL_FOG:
             GL_CONTEXT.gen.fog_type = PVR_FOG_TABLE;
         break;
+        case GL_COLOR_MATERIAL:
+            COLOR_MATERIAL_ENABLED = GL_TRUE;
+        break;
         case GL_LIGHT0:
         case GL_LIGHT1:
         case GL_LIGHT2:
@@ -307,6 +334,9 @@ GLAPI void APIENTRY glDisable(GLenum cap) {
         } break;
         case GL_FOG:
             GL_CONTEXT.gen.fog_type = PVR_FOG_DISABLE;
+        break;
+        case GL_COLOR_MATERIAL:
+            COLOR_MATERIAL_ENABLED = GL_FALSE;
         break;
         case GL_LIGHT0:
         case GL_LIGHT1:
@@ -418,6 +448,7 @@ void glColorMask(GLboolean red, GLboolean green, GLboolean blue, GLboolean alpha
 void glPixelStorei(GLenum pname, GLint param) {
     ;
 }
+
 
 /* Setup the hardware user clip rectangle.
 

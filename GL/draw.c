@@ -737,7 +737,7 @@ static void light(ClipVertex* output, const GLsizei count) {
         GLubyte j;
         for(j = 0; j < MAX_LIGHTS; ++j) {
             if(isLightEnabled(j)) {
-                calculateLightingContribution(j, ES->xyz, ES->n, to_add);
+                _glCalculateLightingContribution(j, ES->xyz, ES->n, vertex->bgra, to_add);
 
                 total[0] += to_add[0];
                 total[1] += to_add[1];

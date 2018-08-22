@@ -8,6 +8,7 @@ static GLfloat SCENE_AMBIENT [] = {0.2, 0.2, 0.2, 1.0};
 static GLboolean VIEWER_IN_EYE_COORDINATES = GL_TRUE;
 static GLenum COLOR_CONTROL = GL_SINGLE_COLOR;
 static GLboolean TWO_SIDED_LIGHTING = GL_FALSE;
+static GLenum COLOR_MATERIAL_MODE = GL_AMBIENT_AND_DIFFUSE;
 
 static LightSource LIGHTS[MAX_LIGHTS];
 static Material MATERIAL;
@@ -210,6 +211,34 @@ void APIENTRY glMaterialfv(GLenum face, GLenum pname, const GLfloat *params) {
     }
 }
 
+void glColorMaterial(GLenum face, GLenum mode) {
+    if(face != GL_FRONT_AND_BACK) {
+        _glKosThrowError(GL_INVALID_ENUM, __func__);
+        _glKosPrintError();
+        return;
+    }
+
+    GLenum validModes[] = {GL_AMBIENT, GL_DIFFUSE, GL_AMBIENT_AND_DIFFUSE, GL_EMISSION, GL_SPECULAR, 0};
+
+    if(_glCheckValidEnum(mode, validModes, __func__) != 0) {
+        return;
+    }
+
+    COLOR_MATERIAL_MODE = mode;
+}
+
+static inline GLboolean isDiffuseColorMaterial() {
+    return (COLOR_MATERIAL_MODE == GL_DIFFUSE || COLOR_MATERIAL_MODE == GL_AMBIENT_AND_DIFFUSE);
+}
+
+static inline GLboolean isAmbientColorMaterial() {
+    return (COLOR_MATERIAL_MODE == GL_AMBIENT || COLOR_MATERIAL_MODE == GL_AMBIENT_AND_DIFFUSE);
+}
+
+static inline GLboolean isSpecularColorMaterial() {
+    return (COLOR_MATERIAL_MODE == GL_SPECULAR);
+}
+
 inline void initVec3(struct vec3f* v, const GLfloat* src) {
     memcpy(v, src, sizeof(GLfloat) * 3);
 }
@@ -240,8 +269,8 @@ static float FPOW(float b, float p) {
     return FEXP(FLOG(b) * p);
 }
 
-void calculateLightingContribution(const GLint light, const GLfloat* pos, const GLfloat* normal, GLfloat* colour) __attribute__((optimize("fast-math")));
-void calculateLightingContribution(const GLint light, const GLfloat* pos, const GLfloat* normal, GLfloat* colour) {
+void _glCalculateLightingContribution(const GLint light, const GLfloat* pos, const GLfloat* normal, uint8_t* bgra, GLfloat* colour) __attribute__((optimize("fast-math")));
+void _glCalculateLightingContribution(const GLint light, const GLfloat* pos, const GLfloat* normal, uint8_t* bgra, GLfloat* colour) {
     LightSource* l = &LIGHTS[light];
 
     struct vec3f L = {
@@ -290,15 +319,38 @@ void calculateLightingContribution(const GLint light, const GLfloat* pos, const 
     GLfloat VdotR = VdotN - NdotL;
     GLfloat specularPower = FPOW(VdotR > 0 ? VdotR : 0, MATERIAL.exponent);
 
-    colour[0] = l->ambient[0] * MATERIAL.ambient[0];
-    colour[1] = l->ambient[1] * MATERIAL.ambient[1];
-    colour[2] = l->ambient[2] * MATERIAL.ambient[2];
-    colour[3] = MATERIAL.diffuse[3];
+    GLboolean colorMaterial = _glIsColorMaterialEnabled();
+
+    GLfloat mD [] = {
+        (colorMaterial && isDiffuseColorMaterial()) ? ((GLfloat)bgra[R8IDX]) / 255.0f : MATERIAL.diffuse[0],
+        (colorMaterial && isDiffuseColorMaterial()) ? ((GLfloat)bgra[G8IDX]) / 255.0f : MATERIAL.diffuse[1],
+        (colorMaterial && isDiffuseColorMaterial()) ? ((GLfloat)bgra[B8IDX]) / 255.0f : MATERIAL.diffuse[2],
+        (colorMaterial && isDiffuseColorMaterial()) ? ((GLfloat)bgra[A8IDX]) / 255.0f : MATERIAL.diffuse[3]
+    };
+
+    GLfloat mA [] = {
+        (colorMaterial && isAmbientColorMaterial()) ? ((GLfloat)bgra[R8IDX]) / 255.0f : MATERIAL.ambient[0],
+        (colorMaterial && isAmbientColorMaterial()) ? ((GLfloat)bgra[G8IDX]) / 255.0f : MATERIAL.ambient[1],
+        (colorMaterial && isAmbientColorMaterial()) ? ((GLfloat)bgra[B8IDX]) / 255.0f : MATERIAL.ambient[2],
+        (colorMaterial && isAmbientColorMaterial()) ? ((GLfloat)bgra[A8IDX]) / 255.0f : MATERIAL.ambient[3]
+    };
+
+    GLfloat mS [] = {
+        (colorMaterial && isSpecularColorMaterial()) ? ((GLfloat)bgra[R8IDX]) / 255.0f : MATERIAL.specular[0],
+        (colorMaterial && isSpecularColorMaterial()) ? ((GLfloat)bgra[G8IDX]) / 255.0f : MATERIAL.specular[1],
+        (colorMaterial && isSpecularColorMaterial()) ? ((GLfloat)bgra[B8IDX]) / 255.0f : MATERIAL.specular[2],
+        (colorMaterial && isSpecularColorMaterial()) ? ((GLfloat)bgra[A8IDX]) / 255.0f : MATERIAL.specular[3]
+    };
+
+    colour[0] = l->ambient[0] * mA[0];
+    colour[1] = l->ambient[1] * mA[1];
+    colour[2] = l->ambient[2] * mA[2];
+    colour[3] = mD[3];
 
     if(NdotL >= 0) {
-        colour[0] += (l->diffuse[0] * MATERIAL.diffuse[0] * NdotL + l->specular[0] * MATERIAL.specular[0] * specularPower);
-        colour[1] += (l->diffuse[1] * MATERIAL.diffuse[1] * NdotL + l->specular[1] * MATERIAL.specular[1] * specularPower);
-        colour[2] += (l->diffuse[2] * MATERIAL.diffuse[2] * NdotL + l->specular[2] * MATERIAL.specular[2] * specularPower);
+        colour[0] += (l->diffuse[0] * mD[0] * NdotL + l->specular[0] * mS[0] * specularPower);
+        colour[1] += (l->diffuse[1] * mD[1] * NdotL + l->specular[1] * mS[1] * specularPower);
+        colour[2] += (l->diffuse[2] * mD[2] * NdotL + l->specular[2] * mS[2] * specularPower);
     }
 
     if(!l->is_directional) {

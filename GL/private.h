@@ -112,6 +112,8 @@ typedef struct {
     GLint size;
 } AttribPointer;
 
+GLboolean _glCheckValidEnum(GLint param, GLenum* values, const char* func);
+
 GLuint _glGetEnabledAttributes();
 AttribPointer* _glGetVertexAttribPointer();
 AttribPointer* _glGetDiffuseAttribPointer();
@@ -132,7 +134,8 @@ GLuint _glGetMipmapLevelCount(TextureObject* obj);
 
 GLboolean isLightingEnabled();
 GLboolean isLightEnabled(GLubyte light);
-void calculateLightingContribution(const GLint light, const GLfloat* pos, const GLfloat* normal, GLfloat* colour);
+GLboolean _glIsColorMaterialEnabled();
+void _glCalculateLightingContribution(const GLint light, const GLfloat* pos, const GLfloat* normal, uint8_t* bgra, GLfloat* colour);
 
 unsigned char isClippingEnabled();
 void enableClipping(unsigned char v);

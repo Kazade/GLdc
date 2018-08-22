@@ -108,26 +108,6 @@ TextureObject* getBoundTexture() {
     return TEXTURE_UNITS[ACTIVE_TEXTURE];
 }
 
-GLubyte check_valid_enum(GLint param, GLenum* values, const char* func) {
-    GLubyte found = 0;
-    while(*values != 0) {
-        if(*values == param) {
-            found++;
-            break;
-        }
-        values++;
-    }
-
-    if(!found) {
-        _glKosThrowError(GL_INVALID_ENUM, func);
-        _glKosPrintError();
-        return 1;
-    }
-
-    return 0;
-}
-
-
 void APIENTRY glActiveTextureARB(GLenum texture) {
     TRACE();
 
@@ -195,7 +175,7 @@ void APIENTRY glBindTexture(GLenum  target, GLuint texture) {
 
     GLenum target_values [] = {GL_TEXTURE_2D, 0};
 
-    if(check_valid_enum(target, target_values, __func__) != 0) {
+    if(_glCheckValidEnum(target, target_values, __func__) != 0) {
         return;
     }
 
@@ -215,9 +195,9 @@ void APIENTRY glTexEnvi(GLenum target, GLenum pname, GLint param) {
 
     GLubyte failures = 0;
 
-    failures += check_valid_enum(target, target_values, __func__);
-    failures += check_valid_enum(pname, pname_values, __func__);
-    failures += check_valid_enum(param, param_values, __func__);
+    failures += _glCheckValidEnum(target, target_values, __func__);
+    failures += _glCheckValidEnum(pname, pname_values, __func__);
+    failures += _glCheckValidEnum(param, param_values, __func__);
 
     TextureObject* active = TEXTURE_UNITS[ACTIVE_TEXTURE];
 
