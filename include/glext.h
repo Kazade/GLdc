@@ -47,6 +47,8 @@ __BEGIN_DECLS
 #define GL_CLIENT_ACTIVE_TEXTURE_ARB      0x84E1
 #define GL_MAX_TEXTURE_UNITS_ARB          0x84E2
 
+#define GL_CLAMP_TO_EDGE                  0x812F
+
 #define GL_TRANSPOSE_MODELVIEW_MATRIX_ARB 0x84E3
 #define GL_TRANSPOSE_PROJECTION_MATRIX_ARB 0x84E4
 #define GL_TRANSPOSE_TEXTURE_MATRIX_ARB   0x84E5
@@ -117,6 +119,12 @@ __BEGIN_DECLS
 #define GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER_EXT        0x8CDB
 #define GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER_EXT        0x8CDC
 #define GL_FRAMEBUFFER_UNSUPPORTED_EXT                   0x8CDD
+#define GL_INVALID_FRAMEBUFFER_OPERATION_EXT             0x0506
+
+/* Multitexture extensions */
+GLAPI void APIENTRY glActiveTextureARB(GLenum texture);
+GLAPI void APIENTRY glClientActiveTextureARB(GLenum texture);
+GLAPI void APIENTRY glMultiTexCoord2fARB(GLenum target, GLfloat s, GLfloat t);
 
 GLAPI void APIENTRY glGenFramebuffersEXT(GLsizei n, GLuint* framebuffers);
 GLAPI void APIENTRY glDeleteFramebuffersEXT(GLsizei n, const GLuint* framebuffers);
@@ -143,6 +151,17 @@ GLAPI void APIENTRY glCompressedTexImage2DARB(GLenum target,
         GLint border,
         GLsizei imageSize,
         const GLvoid *data);
+
+
+/* Core aliases */
+#define GL_INVALID_FRAMEBUFFER_OPERATION GL_INVALID_FRAMEBUFFER_OPERATION_EXT
+
+#define glActiveTexture glActiveTextureARB
+#define glClientActiveTexture glClientActiveTextureARB
+#define glMultiTexCoord2f glMultiTexCoord2fARB
+
+#define glGenerateMipmap glGenerateMipmapEXT
+#define glCompressedTexImage2D glCompressedTexImage2DARB
 
 __END_DECLS
 
