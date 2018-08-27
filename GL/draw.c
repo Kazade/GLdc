@@ -2,6 +2,7 @@
 #include <stdint.h>
 #include <string.h>
 #include <stdlib.h>
+#include <math.h>
 
 #include "../include/gl.h"
 #include "../include/glext.h"
@@ -746,10 +747,10 @@ static void light(ClipVertex* output, const GLsizei count) {
             }
         }
 
-        vertex->bgra[A8IDX] = (GLubyte) (255.0f * total[3]);
-        vertex->bgra[R8IDX] = (GLubyte) (255.0f * total[0]);
-        vertex->bgra[G8IDX] = (GLubyte) (255.0f * total[1]);
-        vertex->bgra[B8IDX] = (GLubyte) (255.0f * total[2]);
+        vertex->bgra[A8IDX] = (GLubyte) (255.0f * fminf(total[3], 1.0f));
+        vertex->bgra[R8IDX] = (GLubyte) (255.0f * fminf(total[0], 1.0f));
+        vertex->bgra[G8IDX] = (GLubyte) (255.0f * fminf(total[1], 1.0f));
+        vertex->bgra[B8IDX] = (GLubyte) (255.0f * fminf(total[2], 1.0f));
     }
 }
 
