@@ -151,6 +151,7 @@ void InitGL(int Width, int Height)	        // We call this right after our OpenG
     glEnable(GL_LIGHTING);
     glDisable(GL_LIGHT0);
     glEnable(GL_LIGHT1);
+    glEnable(GL_LIGHT2);
 
     GLfloat l1_pos[] = {5.0, 0.0, 1.0, 1.0};
     GLfloat l1_diff[] = {1.0, 0.0, 0.0, 1.0};
@@ -160,8 +161,19 @@ void InitGL(int Width, int Height)	        // We call this right after our OpenG
     glLightfv(GL_LIGHT1, GL_DIFFUSE,  l1_diff);
     glLightfv(GL_LIGHT1, GL_POSITION, l1_pos);
     glLightf(GL_LIGHT1, GL_CONSTANT_ATTENUATION, 1.0f);
-    glLightf(GL_LIGHT1, GL_LINEAR_ATTENUATION, 0.0001);
-    glLightf(GL_LIGHT1, GL_QUADRATIC_ATTENUATION, 0.00001);
+    glLightf(GL_LIGHT1, GL_LINEAR_ATTENUATION, 0.0003);
+    glLightf(GL_LIGHT1, GL_QUADRATIC_ATTENUATION, 0.000007);
+
+    GLfloat l2_pos[] = {5.0, 0.0, 1.0, 1.0};
+    GLfloat l2_diff[] = {0.0, 0.0, 1.0, 1.0};
+    GLfloat l2_amb[] = {0.5, 0.5, 0.5, 1.0};
+
+    //glLightfv(GL_LIGHT1, GL_AMBIENT,  l1_amb);
+    glLightfv(GL_LIGHT2, GL_DIFFUSE,  l2_diff);
+    glLightfv(GL_LIGHT2, GL_POSITION, l2_pos);
+    glLightf(GL_LIGHT2, GL_CONSTANT_ATTENUATION, 1.0f);
+    glLightf(GL_LIGHT2, GL_LINEAR_ATTENUATION, 0.0003);
+    glLightf(GL_LIGHT2, GL_QUADRATIC_ATTENUATION, 0.000007);
 }
 
 /* The function called when our window is resized (which shouldn't happen, because we're fullscreen) */
@@ -258,18 +270,28 @@ void DrawGLScene()
 {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);		// Clear The Screen And The Depth Buffer
     glLoadIdentity();				// Reset The View
+<<<<<<< HEAD
+    //glTranslatef(-5.0f, -5.0f, -10.0f);
+    glTranslatef(-100.0f, 0.0f, -400.0f);
+=======
 
     glTranslatef(-50.0f, 0.0f, -100.0f);
 
     GLfloat l1_pos[] = {50 + sin(delta) * 100.0f, 6.0, 5.0, 1.0};
     delta += 0.03;
+>>>>>>> 6942e597f4f2f8983d463b6358a069e2d0bfcb82
 
+    GLfloat l1_pos[] = {100 + sin(delta) * 200.0f, 25.0, 1.0, 1.0};
     glLightfv(GL_LIGHT1, GL_POSITION, l1_pos);
-    //glLightfv(GL_LIGHT1, GL_SPOT_EXPONENT, 3);
     DrawTexturedQuad(texture[0], l1_pos[0], l1_pos[1], l1_pos[2]);
 
+    GLfloat l2_pos[] = {100, 50 + sin(delta/2) * -150.0f, 1.0, 1.0};
+    glLightfv(GL_LIGHT1, GL_POSITION, l2_pos);
+    DrawTexturedQuad(texture[0], l2_pos[0], l2_pos[1], l2_pos[2]);
+
+    delta+= 0.03;
     for (int i = 0; i < 5; i++)
-      DrawTexturedQuad(texture[0], i * 20, 0.0f, 0.0f); // Draw the textured quad.
+      DrawTexturedQuad(texture[0], i * 50, 0.0f, 0.0f); // Draw the textured quad.
     // swap buffers to display, since we're double buffered.
     glKosSwapBuffers();
 
