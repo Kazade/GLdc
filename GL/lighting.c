@@ -279,11 +279,7 @@ void _glCalculateLightingContribution(const GLint light, const GLfloat* pos, con
         l->position[2]
     };
 
-    if(l->is_directional) {
-        L.x *= -1.0f;
-        L.y *= -1.0f;
-        L.z *= -1.0f;
-    } else {
+    if(!l->is_directional) {
         L.x -= pos[0];
         L.y -= pos[1];
         L.z -= pos[2];
