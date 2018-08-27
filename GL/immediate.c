@@ -8,6 +8,8 @@
  */
 
 #include "../include/gl.h"
+#include "../include/glext.h"
+
 #include "private.h"
 
 static GLboolean IMMEDIATE_MODE_ACTIVE = GL_FALSE;
