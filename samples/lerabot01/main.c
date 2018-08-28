@@ -162,6 +162,19 @@ void InitGL(int Width, int Height)	        // We call this right after our OpenG
     glLightf(GL_LIGHT1, GL_CONSTANT_ATTENUATION, 1.0f);
     glLightf(GL_LIGHT1, GL_LINEAR_ATTENUATION, 0.0001);
     glLightf(GL_LIGHT1, GL_QUADRATIC_ATTENUATION, 0.00001);
+
+    GLfloat l2_pos[] = {0.0, 15.0, 1.0, 1.0};
+    GLfloat l2_dir[] = {0.0, -1.0, 0.0};
+    GLfloat l2_diff[] = {0.5, 0.5, 0.0, 1.0};
+    GLfloat l2_amb[] = {0.5, 0.5, 0.5, 1.0};
+
+    glEnable(GL_LIGHT2);
+    glLightfv(GL_LIGHT2, GL_DIFFUSE, l2_diff);
+    glLightfv(GL_LIGHT2, GL_POSITION, l2_pos);
+    glLightfv(GL_LIGHT2, GL_SPOT_DIRECTION, l2_dir);
+    glLightf(GL_LIGHT2, GL_CONSTANT_ATTENUATION, 1.0f);
+    glLightf(GL_LIGHT2, GL_LINEAR_ATTENUATION, 0.0001);
+    glLightf(GL_LIGHT2, GL_QUADRATIC_ATTENUATION, 0.00001);
 }
 
 /* The function called when our window is resized (which shouldn't happen, because we're fullscreen) */

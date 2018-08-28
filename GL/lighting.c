@@ -125,13 +125,18 @@ void APIENTRY glLightfv(GLenum light, GLenum pname, const GLfloat *params) {
             }
         }
         break;
+        case GL_SPOT_DIRECTION: {
+            LIGHTS[idx].spot_direction[0] = params[0];
+            LIGHTS[idx].spot_direction[1] = params[1];
+            LIGHTS[idx].spot_direction[2] = params[2];
+        } break;
         case GL_CONSTANT_ATTENUATION:
         case GL_LINEAR_ATTENUATION:
         case GL_QUADRATIC_ATTENUATION:
         case GL_SPOT_CUTOFF:
-        case GL_SPOT_DIRECTION:
         case GL_SPOT_EXPONENT:
             glLightf(light, pname, *params);
+        break;
     default:
         _glKosThrowError(GL_INVALID_ENUM, __func__);
         _glKosPrintError();
@@ -156,7 +161,11 @@ void APIENTRY glLightf(GLenum light, GLenum pname, GLfloat param) {
             LIGHTS[idx].quadratic_attenuation = param;
         break;
         case GL_SPOT_EXPONENT:
+            LIGHTS[idx].spot_exponent = param;
+        break;
         case GL_SPOT_CUTOFF:
+            LIGHTS[idx].spot_cutoff = param;
+        break;
     default:
         _glKosThrowError(GL_INVALID_ENUM, __func__);
         _glKosPrintError();
