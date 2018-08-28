@@ -72,6 +72,10 @@ static inline void interpolateColour(const uint8_t* v1, const uint8_t* v2, const
 const uint32_t VERTEX_CMD_EOL = 0xf0000000;
 const uint32_t VERTEX_CMD = 0xe0000000;
 
+void clipTriangleStrip2(const ClipVertex* vertices, const unsigned int count, AlignedVector* outBuffer) {
+
+}
+
 void clipTriangleStrip(const ClipVertex* vertices, const unsigned int count, AlignedVector* outBuffer) __attribute__((optimize("fast-math")));
 void clipTriangleStrip(const ClipVertex* vertices, const unsigned int count, AlignedVector* outBuffer) {
 

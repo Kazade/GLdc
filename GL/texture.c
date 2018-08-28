@@ -412,9 +412,15 @@ static GLuint _determinePVRFormat(GLint internalFormat, GLenum type) {
         /* OK so if we have something that requires alpha, we return 4444 unless
          * the type was already 1555 (1-bit alpha) in which case we return that
          */
-            return (type == GL_UNSIGNED_SHORT_1_5_5_5_REV) ?
-                PVR_TXRFMT_ARGB1555 | PVR_TXRFMT_NONTWIDDLED :
-                PVR_TXRFMT_ARGB4444 | PVR_TXRFMT_NONTWIDDLED;
+            if(type == GL_UNSIGNED_SHORT_1_5_5_5_REV) {
+                return PVR_TXRFMT_ARGB1555 | PVR_TXRFMT_NONTWIDDLED;
+            } else if(type == GL_UNSIGNED_SHORT_1_5_5_5_REV_TWID_KOS) {
+                return PVR_TXRFMT_ARGB1555 | PVR_TXRFMT_TWIDDLED;
+            } else if(type == GL_UNSIGNED_SHORT_4_4_4_4_REV_TWID_KOS) {
+                return PVR_TXRFMT_ARGB4444 | PVR_TXRFMT_TWIDDLED;
+            } else {
+                return PVR_TXRFMT_ARGB4444 | PVR_TXRFMT_NONTWIDDLED;
+            }
         case GL_RED:
         case GL_RGB:
             /* No alpha? Return RGB565 which is the best we can do without using palettes */
