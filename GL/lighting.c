@@ -113,13 +113,16 @@ void APIENTRY glLightfv(GLenum light, GLenum pname, const GLfloat *params) {
             memcpy(LIGHTS[idx].position, params, sizeof(GLfloat) * 4);
 
             LIGHTS[idx].is_directional = (params[3] == 0.0f) ? GL_TRUE : GL_FALSE;
-
-            mat_trans_single4(
-                LIGHTS[idx].position[0],
-                LIGHTS[idx].position[1],
-                LIGHTS[idx].position[2],
-                LIGHTS[idx].position[3]
-            );
+            if(LIGHTS[idx].is_directional) {
+                //FIXME: Do we need to rotate directional lights?
+            } else {
+                mat_trans_single4(
+                    LIGHTS[idx].position[0],
+                    LIGHTS[idx].position[1],
+                    LIGHTS[idx].position[2],
+                    LIGHTS[idx].position[3]
+                );
+            }
         }
         break;
         case GL_CONSTANT_ATTENUATION:
