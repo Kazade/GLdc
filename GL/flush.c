@@ -87,6 +87,8 @@ void APIENTRY glKosInit() {
     aligned_vector_init(&TR_LIST.vector, sizeof(ClipVertex));
 }
 
+#define QACRTA ((((unsigned int)0x10000000)>>26)<<2)&0x1c
+
 void APIENTRY glKosSwapBuffers() {
     static int frame_count = 0;
 
@@ -97,6 +99,9 @@ void APIENTRY glKosSwapBuffers() {
     pvr_wait_ready();
 
     pvr_scene_begin();
+        QACR0 = QACRTA;
+        QACR1 = QACRTA;
+
         pvr_list_begin(PVR_LIST_OP_POLY);
         pvr_list_submit(OP_LIST.vector.data, OP_LIST.vector.size);
         pvr_list_finish();
