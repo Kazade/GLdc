@@ -626,6 +626,9 @@ static void transform(ClipVertex* output, const GLsizei count) {
 
 static GLsizei clip(AlignedVector* polylist, ClipVertex* output, const GLsizei count) {
     /* Perform clipping, generating new vertices as necessary */
+    clipTriangleStrip2(polylist, (output - (ClipVertex*) polylist->data) - 1);
+    return polylist->size;
+
 
     static AlignedVector* CLIP_BUFFER = NULL;
 
@@ -833,6 +836,18 @@ static void submitVertices(GLenum mode, GLsizei first, GLsizei count, GLenum typ
 
     if(isClippingEnabled()) {
         spaceNeeded = clip(&activeList->vector, start, spaceNeeded);
+
+        /*
+        fprintf(stderr, "--------\n");
+        uint32_t i = 0;
+        for(i = 0; i < activeList->vector.size; ++i) {
+            ClipVertex* v = aligned_vector_at(&activeList->vector, i);
+            if(v->flags == 0xe0000000 || v->flags == 0xf0000000) {
+                fprintf(stderr, "(%f, %f, %f) -> %x\n", v->xyz[0], v->xyz[1], v->xyz[2], v->flags);
+            } else {
+                fprintf(stderr, "%x\n", *((uint32_t*)v));
+            }
+        } */
     }
 
     profiler_checkpoint("clip");
@@ -880,7 +895,7 @@ static void submitVertices(GLenum mode, GLsizei first, GLsizei count, GLenum typ
     GLsizei i = spaceNeeded;
     while(i--) {
         vertex->uv[0] = vertex->st[0];
-        vertex->uv[1] = vertex->st[1];        
+        vertex->uv[1] = vertex->st[1];
         ++vertex;
     }
 

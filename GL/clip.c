@@ -72,8 +72,172 @@ static inline void interpolateColour(const uint8_t* v1, const uint8_t* v2, const
 const uint32_t VERTEX_CMD_EOL = 0xf0000000;
 const uint32_t VERTEX_CMD = 0xe0000000;
 
-void clipTriangleStrip2(const ClipVertex* vertices, const unsigned int count, AlignedVector* outBuffer) {
+void clipTriangleStrip2(AlignedVector* vertices, uint32_t offset) {
+    /* Room for clipping 16 triangles */
+    typedef struct {
+        ClipVertex vertex[3];
+        uint8_t visible;
+    } Triangle;
 
+    static Triangle TO_CLIP[256];
+    static uint8_t CLIP_COUNT = 0;
+
+    CLIP_COUNT = 0;
+
+    uint32_t i = 0;
+    /* Skip the header */
+    ClipVertex* header = (ClipVertex*) aligned_vector_at(vertices, offset);
+    ClipVertex* vertex = header + 1;
+
+    uint32_t count = vertices->size - offset;
+
+    int32_t triangle = 0;
+
+    /* Start at 3 due to the header */
+    for(i = 3; i < count; ++i, ++triangle) {
+        vertex = aligned_vector_at(vertices, offset + i);
+
+        uint8_t even = (triangle % 2) == 0;
+        ClipVertex* v1 = (even) ? vertex - 2 : vertex - 1;
+        ClipVertex* v2 = (even) ? vertex - 1 : vertex - 2;
+        ClipVertex* v3 = vertex;
+
+        uint8_t visible = ((v1->w > 0) ? 4 : 0) | ((v2->w > 0) ? 2 : 0) | ((v3->w > 0) ? 1 : 0);
+
+        switch(visible) {
+            case 0b111:
+                /* All visible? Do nothing */
+                continue;
+            break;
+            case 0b000:
+                /*
+                    It is not possible that this is any trangle except the first
+                    in a strip. That's because:
+                    - It's either the first triangle submitted
+                    - A previous triangle must have been clipped and the strip
+                      restarted behind the plane
+
+                    So, we effectively reboot the strip. We mark the first vertex
+                    as the end (so it's ignored) then mark the next two as the
+                    start of a new strip. Then if the next triangle crosses
+                    back into view, we clip correctly. This will potentially
+                    result in a bunch of pointlessly submitted vertices.
+
+                    FIXME: Skip submitting those verts
+                */
+
+                /* Even though this is always the first in the strip, it can also
+                 * be the last */
+                if(v3->flags == VERTEX_CMD_EOL) {
+                    /* Wipe out the triangle */
+                    *v1 = *v2 = *v3 = *header;
+                    // fprintf(stderr, "A\n");
+                } else {
+                    *v1 = *header;
+                    ClipVertex tmp = *v2;
+                    *v2 = *v3;
+                    *v3 = tmp;
+
+                    triangle = -1;
+                    v2->flags = VERTEX_CMD;
+                    v3->flags = VERTEX_CMD;
+                    // fprintf(stderr, "B\n");
+                }
+            break;
+            case 0b100:
+            case 0b010:
+            case 0b001:
+            case 0b101:
+            case 0b011:
+            case 0b110:
+                /* Store the triangle for clipping */
+                TO_CLIP[CLIP_COUNT].vertex[0] = *v1;
+                TO_CLIP[CLIP_COUNT].vertex[1] = *v2;
+                TO_CLIP[CLIP_COUNT].vertex[2] = *v3;
+                TO_CLIP[CLIP_COUNT].visible = visible;
+                ++CLIP_COUNT;
+
+                /*
+                    OK so here's the clever bit. If any triangle except
+                    the first or last needs clipping, then the next one does aswell
+                    (you can't draw a plane through a single triangle in the middle of a
+                    strip, only 2+). This means we can clip in pairs which frees up two
+                    vertices in the middle of the strip, which is exactly the space
+                    we need to restart the triangle strip after the next triangle
+                */
+                if(v3->flags == VERTEX_CMD_EOL) {
+                    /* Last triangle in strip so end a vertex early */
+                    if(triangle == 0) {
+                        // Wipe out the triangle completely
+                        *v1 = *v2 = *header;
+                    } else {
+                        // End the strip
+                        (vertex - 1)->flags = VERTEX_CMD_EOL;
+                    }
+
+                    /* Reapply the header so a subsequent strip works */
+                    *vertex = *header;
+                    // fprintf(stderr, "C\n");
+                } else if(triangle == 0) {
+                    /* First triangle in strip, remove first vertex and swap latter two
+                       to restart the strip */
+                    ClipVertex tmp = *v2;
+                    *v2 = *v3;
+                    *v3 = tmp;
+
+                    /* We simulate removing the vertex by duplicating the header in v1 */
+                    *v1 = *header;
+                    v2->flags = VERTEX_CMD;
+                    v3->flags = VERTEX_CMD;
+
+                    triangle = -1;
+                    // fprintf(stderr, "D\n");
+                } else {
+                    ClipVertex* v4 = vertex + 1;
+
+                    TO_CLIP[CLIP_COUNT].vertex[0] = *v3;
+                    TO_CLIP[CLIP_COUNT].vertex[1] = *v2;
+                    TO_CLIP[CLIP_COUNT].vertex[2] = *v4;
+
+                    visible = ((v3->w > 0) ? 4 : 0) | ((v2->w > 0) ? 2 : 0) | ((v4->w > 0) ? 1 : 0);
+
+                    TO_CLIP[CLIP_COUNT].visible = visible;
+                    ++CLIP_COUNT;
+
+                    /* Restart strip */
+                    triangle = -1;
+
+                    /* Mark the second vertex as the end of the strip */
+                    (vertex - 1)->flags = VERTEX_CMD_EOL;
+
+                    if(v4->flags == VERTEX_CMD_EOL) {
+                        *vertex = *header;
+                        *v4 = *header;
+                        // fprintf(stderr, "E\n");
+
+                    } else {
+                        /* Swap the next vertices to start a new strip */
+                        ClipVertex tmp = *vertex;
+                        *vertex = *v4;
+                        *v4 = tmp;
+
+                        vertex->flags = VERTEX_CMD;
+                        v4->flags = VERTEX_CMD;
+                        // fprintf(stderr, "F\n");
+                    }
+
+                    i += 1;
+                }
+            break;
+            default:
+                break;
+        }
+    }
+
+    /* Now, clip all the triangles and append them to the output */
+    for(i = 0; i < CLIP_COUNT; ++i) {
+
+    }
 }
 
 void clipTriangleStrip(const ClipVertex* vertices, const unsigned int count, AlignedVector* outBuffer) __attribute__((optimize("fast-math")));
