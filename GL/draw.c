@@ -624,45 +624,10 @@ static void transform(ClipVertex* output, const GLsizei count) {
     }
 }
 
-static GLsizei clip(AlignedVector* polylist, ClipVertex* output, const GLsizei count) {
+static GLsizei clip(AlignedVector* polylist, uint32_t offset, const GLsizei count) {
     /* Perform clipping, generating new vertices as necessary */
-
-    static AlignedVector* CLIP_BUFFER = NULL;
-
-    /* First entry into this, allocate the clip buffer */
-    if(!CLIP_BUFFER) {
-        CLIP_BUFFER = (AlignedVector*) malloc(sizeof(AlignedVector));
-        aligned_vector_init(CLIP_BUFFER, sizeof(ClipVertex));
-    }
-
-    /* Make sure we allocate roughly enough space */
-    aligned_vector_reserve(CLIP_BUFFER, count * 1.5);
-
-    /* Start from empty */
-    aligned_vector_resize(CLIP_BUFFER, 0);
-
-    /* Now perform clipping! */
-    clipTriangleStrip(output, count, CLIP_BUFFER);
-
-    /* Calculate the new required size for the poly list. This is the original size
-     * plus the difference in size between the original vertex count and the clip buffer
-     * count */
-    GLsizei newSize = polylist->size + (CLIP_BUFFER->size - count);
-
-    /* Copy the clip buffer over the vertices */
-    aligned_vector_resize(polylist, newSize);
-
-    GLsizei i = CLIP_BUFFER->size;
-    ClipVertex* dst = output;
-    ClipVertex* src = (ClipVertex*) CLIP_BUFFER->data;
-    while(i--) {
-        *dst = *src;
-        ++dst;
-        ++src;
-    }
-
-    /* Return the new vertex count */
-    return CLIP_BUFFER->size;
+    clipTriangleStrip2(polylist, offset);
+    return polylist->size;
 }
 
 static void mat_transform3(const float* xyz, const float* xyzOut, const uint32_t count, const uint32_t inStride, const uint32_t outStride) {
@@ -832,7 +797,35 @@ static void submitVertices(GLenum mode, GLsizei first, GLsizei count, GLenum typ
     profiler_checkpoint("transform");
 
     if(isClippingEnabled()) {
-        spaceNeeded = clip(&activeList->vector, start, spaceNeeded);
+
+        uint32_t offset = ((start - 1) - (ClipVertex*) activeList->vector.data);
+
+        /* Uncomment when debugging clipping
+        uint32_t i = 0;
+        fprintf(stderr, "=========\n");
+
+        for(i = offset; i < activeList->vector.size; ++i) {
+            ClipVertex* v = aligned_vector_at(&activeList->vector, i);
+            if(v->flags == 0xe0000000 || v->flags == 0xf0000000) {
+                fprintf(stderr, "(%f, %f, %f) -> %x\n", v->xyz[0], v->xyz[1], v->xyz[2], v->flags);
+            } else {
+                fprintf(stderr, "%x\n", *((uint32_t*)v));
+            }
+        } */
+
+        spaceNeeded = clip(&activeList->vector, offset, spaceNeeded);
+
+        /* Uncomment when debugging clipping
+        fprintf(stderr, "--------\n");
+        for(i = offset; i < activeList->vector.size; ++i) {
+            ClipVertex* v = aligned_vector_at(&activeList->vector, i);
+            if(v->flags == 0xe0000000 || v->flags == 0xf0000000) {
+                fprintf(stderr, "(%f, %f, %f) -> %x\n", v->xyz[0], v->xyz[1], v->xyz[2], v->flags);
+            } else {
+                fprintf(stderr, "%x\n", *((uint32_t*)v));
+            }
+        }
+        */
     }
 
     profiler_checkpoint("clip");
@@ -880,7 +873,7 @@ static void submitVertices(GLenum mode, GLsizei first, GLsizei count, GLenum typ
     GLsizei i = spaceNeeded;
     while(i--) {
         vertex->uv[0] = vertex->st[0];
-        vertex->uv[1] = vertex->st[1];        
+        vertex->uv[1] = vertex->st[1];
         ++vertex;
     }
 
