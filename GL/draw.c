@@ -780,10 +780,11 @@ static void submitVertices(GLenum mode, GLsizei first, GLsizei count, GLenum typ
     /* Make room in the list buffer */
     GLsizei spaceNeeded = (mode == GL_POLYGON || mode == GL_TRIANGLE_FAN) ? ((count - 2) * 3) : count;
     ClipVertex* start = aligned_vector_extend(&activeList->vector, spaceNeeded + 1);
-    uint32_t startOffset = start - (ClipVertex*) activeList->vector.data;
 
     /* Store a pointer to the header for later */
     PVRHeader* header = (PVRHeader*) start++;
+
+    uint32_t startOffset = start - (ClipVertex*) activeList->vector.data;
 
     profiler_checkpoint("allocate");
 
