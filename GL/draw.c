@@ -750,6 +750,8 @@ static void push(PVRHeader* header, ClipVertex* output, const GLsizei count, Pol
     }
 }
 
+#define DEBUG_CLIPPING 0
+
 static void submitVertices(GLenum mode, GLsizei first, GLsizei count, GLenum type, const GLvoid* indices) {
     /* Do nothing if vertices aren't enabled */
     if(!(ENABLED_VERTEX_ATTRIBUTES & VERTEX_ENABLED_FLAG)) {
@@ -800,7 +802,7 @@ static void submitVertices(GLenum mode, GLsizei first, GLsizei count, GLenum typ
 
         uint32_t offset = ((start - 1) - (ClipVertex*) activeList->vector.data);
 
-        /* Uncomment when debugging clipping
+#if DEBUG_CLIPPING
         uint32_t i = 0;
         fprintf(stderr, "=========\n");
 
@@ -811,11 +813,12 @@ static void submitVertices(GLenum mode, GLsizei first, GLsizei count, GLenum typ
             } else {
                 fprintf(stderr, "%x\n", *((uint32_t*)v));
             }
-        } */
+        }
+#endif
 
         spaceNeeded = clip(&activeList->vector, offset, spaceNeeded);
 
-        /* Uncomment when debugging clipping
+#if DEBUG_CLIPPING
         fprintf(stderr, "--------\n");
         for(i = offset; i < activeList->vector.size; ++i) {
             ClipVertex* v = aligned_vector_at(&activeList->vector, i);
