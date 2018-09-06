@@ -72,6 +72,76 @@ static inline void interpolateColour(const uint8_t* v1, const uint8_t* v2, const
 const uint32_t VERTEX_CMD_EOL = 0xf0000000;
 const uint32_t VERTEX_CMD = 0xe0000000;
 
+void clipTriangle(const ClipVertex* vertices, const uint8_t visible, AlignedVector* output) {
+    uint8_t i, c = 0;
+
+
+    uint8_t lastVisible = 255;
+    ClipVertex* last = NULL;
+
+    for(i = 0; i < 4; ++i) {
+        uint8_t thisIndex = (i == 3) ? 0 : i;
+
+        ClipVertex next;
+        next.flags = VERTEX_CMD;
+
+        uint8_t thisVisible = (visible & (1 << (2 - thisIndex))) > 0;
+        if(i > 0) {
+            uint8_t lastIndex = (i == 3) ? 2 : thisIndex - 1;
+
+            if(lastVisible < 255 && lastVisible != thisVisible) {
+                const ClipVertex* v1 = &vertices[lastIndex];
+                const ClipVertex* v2 = &vertices[thisIndex];
+                float t;
+
+                clipLineToNearZ(v1, v2, &next, &t);
+                interpolateFloat(v1->w, v2->w, t, &next.w);
+                interpolateVec3(v1->nxyz, v2->nxyz, t, next.nxyz);
+                interpolateVec2(v1->uv, v2->uv, t, next.uv);
+                interpolateVec2(v1->st, v2->st, t, next.st);
+                interpolateColour(v1->bgra, v2->bgra, t, next.bgra);
+
+                last = aligned_vector_push_back(output, &next, 1);
+                last->flags = VERTEX_CMD;
+                ++c;
+            }
+        }
+
+        if(thisVisible && i != 3) {
+            last = aligned_vector_push_back(output, &vertices[thisIndex], 1);
+            last->flags = VERTEX_CMD;
+            ++c;
+        }
+
+        lastVisible = thisVisible;
+    }
+
+    if(last) {
+        if(c == 4) {
+            /* Convert to two triangles */
+            ClipVertex newVerts[3];
+            newVerts[0] = *(last - 3);
+            newVerts[1] = *(last - 1);
+            newVerts[2] = *(last);
+
+            (last - 1)->flags = VERTEX_CMD_EOL;
+            newVerts[0].flags = VERTEX_CMD;
+            newVerts[1].flags = VERTEX_CMD;
+            newVerts[2].flags = VERTEX_CMD_EOL;
+
+            aligned_vector_resize(output, output->size - 1);
+            aligned_vector_push_back(output, newVerts, 3);
+        } else {
+            last->flags = VERTEX_CMD_EOL;
+        }
+
+    }
+}
+
+static inline void markDead(ClipVertex* vert) {
+    vert->flags = VERTEX_CMD_EOL;
+}
+
 void clipTriangleStrip2(AlignedVector* vertices, uint32_t offset) {
     /* Room for clipping 16 triangles */
     typedef struct {
@@ -130,10 +200,11 @@ void clipTriangleStrip2(AlignedVector* vertices, uint32_t offset) {
                  * be the last */
                 if(v3->flags == VERTEX_CMD_EOL) {
                     /* Wipe out the triangle */
-                    *v1 = *v2 = *v3 = *header;
-                    // fprintf(stderr, "A\n");
+                    markDead(v1);
+                    markDead(v2);
+                    markDead(v3);
                 } else {
-                    *v1 = *header;
+                    markDead(v1);
                     ClipVertex tmp = *v2;
                     *v2 = *v3;
                     *v3 = tmp;
@@ -141,7 +212,6 @@ void clipTriangleStrip2(AlignedVector* vertices, uint32_t offset) {
                     triangle = -1;
                     v2->flags = VERTEX_CMD;
                     v3->flags = VERTEX_CMD;
-                    // fprintf(stderr, "B\n");
                 }
             break;
             case 0b100:
@@ -169,15 +239,14 @@ void clipTriangleStrip2(AlignedVector* vertices, uint32_t offset) {
                     /* Last triangle in strip so end a vertex early */
                     if(triangle == 0) {
                         // Wipe out the triangle completely
-                        *v1 = *v2 = *header;
+                        markDead(vertex - 2);
+                        markDead(vertex - 1);
                     } else {
                         // End the strip
                         (vertex - 1)->flags = VERTEX_CMD_EOL;
                     }
 
-                    /* Reapply the header so a subsequent strip works */
-                    *vertex = *header;
-                    // fprintf(stderr, "C\n");
+                    markDead(vertex);
                 } else if(triangle == 0) {
                     /* First triangle in strip, remove first vertex and swap latter two
                        to restart the strip */
@@ -185,13 +254,12 @@ void clipTriangleStrip2(AlignedVector* vertices, uint32_t offset) {
                     *v2 = *v3;
                     *v3 = tmp;
 
-                    /* We simulate removing the vertex by duplicating the header in v1 */
-                    *v1 = *header;
-                    v2->flags = VERTEX_CMD;
-                    v3->flags = VERTEX_CMD;
+                    markDead(vertex - 2);
+
+                    (vertex - 1)->flags = VERTEX_CMD;
+                    vertex->flags = VERTEX_CMD;
 
                     triangle = -1;
-                    // fprintf(stderr, "D\n");
                 } else {
                     ClipVertex* v4 = vertex + 1;
 
@@ -211,10 +279,8 @@ void clipTriangleStrip2(AlignedVector* vertices, uint32_t offset) {
                     (vertex - 1)->flags = VERTEX_CMD_EOL;
 
                     if(v4->flags == VERTEX_CMD_EOL) {
-                        *vertex = *header;
-                        *v4 = *header;
-                        // fprintf(stderr, "E\n");
-
+                        markDead(vertex);
+                        markDead(v4);
                     } else {
                         /* Swap the next vertices to start a new strip */
                         ClipVertex tmp = *vertex;
@@ -223,7 +289,6 @@ void clipTriangleStrip2(AlignedVector* vertices, uint32_t offset) {
 
                         vertex->flags = VERTEX_CMD;
                         v4->flags = VERTEX_CMD;
-                        // fprintf(stderr, "F\n");
                     }
 
                     i += 1;
@@ -236,7 +301,7 @@ void clipTriangleStrip2(AlignedVector* vertices, uint32_t offset) {
 
     /* Now, clip all the triangles and append them to the output */
     for(i = 0; i < CLIP_COUNT; ++i) {
-
+        clipTriangle(TO_CLIP[i].vertex, TO_CLIP[i].visible, vertices);
     }
 }
 
