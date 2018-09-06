@@ -780,6 +780,7 @@ static void submitVertices(GLenum mode, GLsizei first, GLsizei count, GLenum typ
     /* Make room in the list buffer */
     GLsizei spaceNeeded = (mode == GL_POLYGON || mode == GL_TRIANGLE_FAN) ? ((count - 2) * 3) : count;
     ClipVertex* start = aligned_vector_extend(&activeList->vector, spaceNeeded + 1);
+    uint32_t startOffset = start - (ClipVertex*) activeList->vector.data;
 
     /* Store a pointer to the header for later */
     PVRHeader* header = (PVRHeader*) start++;
@@ -828,10 +829,14 @@ static void submitVertices(GLenum mode, GLsizei first, GLsizei count, GLenum typ
                 fprintf(stderr, "%x\n", *((uint32_t*)v));
             }
         }
-        */
+#endif
+
     }
 
     profiler_checkpoint("clip");
+
+    /* Clipping may have realloc'd so reset the start pointer */
+    start = ((ClipVertex*) activeList->vector.data) + startOffset;
 
     divide(start, spaceNeeded);
 
