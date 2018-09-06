@@ -627,7 +627,9 @@ static void transform(ClipVertex* output, const GLsizei count) {
 static GLsizei clip(AlignedVector* polylist, uint32_t offset, const GLsizei count) {
     /* Perform clipping, generating new vertices as necessary */
     clipTriangleStrip2(polylist, offset);
-    return polylist->size;
+
+    /* List size, minus the original offset (which includes the header), minus the header */
+    return polylist->size - offset - 1;
 }
 
 static void mat_transform3(const float* xyz, const float* xyzOut, const uint32_t count, const uint32_t inStride, const uint32_t outStride) {
