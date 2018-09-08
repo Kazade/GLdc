@@ -72,13 +72,16 @@ static inline void interpolateColour(const uint8_t* v1, const uint8_t* v2, const
 const uint32_t VERTEX_CMD_EOL = 0xf0000000;
 const uint32_t VERTEX_CMD = 0xe0000000;
 
-void clipTriangle(const ClipVertex* vertices, const uint8_t visible, AlignedVector* output) __attribute__((optimize("fast-math")));
-void clipTriangle(const ClipVertex* vertices, const uint8_t visible, AlignedVector* output) {
+void clipTriangle(const ClipVertex* vertices, const uint8_t visible, AlignedVector* output, const uint8_t flatShade) __attribute__((optimize("fast-math")));
+void clipTriangle(const ClipVertex* vertices, const uint8_t visible, AlignedVector* output, const uint8_t flatShade) {
     uint8_t i, c = 0;
 
 
     uint8_t lastVisible = 255;
     ClipVertex* last = NULL;
+
+    /* Used when flat shading is enabled */
+    uint32_t finalColour = *((uint32_t*) vertices[2].bgra);
 
     for(i = 0; i < 4; ++i) {
         uint8_t thisIndex = (i == 3) ? 0 : i;
@@ -100,7 +103,12 @@ void clipTriangle(const ClipVertex* vertices, const uint8_t visible, AlignedVect
                 interpolateVec3(v1->nxyz, v2->nxyz, t, next.nxyz);
                 interpolateVec2(v1->uv, v2->uv, t, next.uv);
                 interpolateVec2(v1->st, v2->st, t, next.st);
-                interpolateColour(v1->bgra, v2->bgra, t, next.bgra);
+
+                if(flatShade) {
+                    *((uint32_t*) next.bgra) = finalColour;
+                } else {
+                    interpolateColour(v1->bgra, v2->bgra, t, next.bgra);
+                }
 
                 last = aligned_vector_push_back(output, &next, 1);
                 last->flags = VERTEX_CMD;
@@ -143,7 +151,7 @@ static inline void markDead(ClipVertex* vert) {
     vert->flags = VERTEX_CMD_EOL;
 }
 
-void clipTriangleStrip2(AlignedVector* vertices, uint32_t offset) {
+void clipTriangleStrip2(AlignedVector* vertices, uint32_t offset, uint8_t fladeShade) {
     /* Room for clipping 16 triangles */
     typedef struct {
         ClipVertex vertex[3];
@@ -240,28 +248,24 @@ void clipTriangleStrip2(AlignedVector* vertices, uint32_t offset) {
                     /* Last triangle in strip so end a vertex early */
                     if(triangle == 0) {
                         // Wipe out the triangle completely
-                        markDead(vertex - 2);
-                        markDead(vertex - 1);
+                        markDead(v1);
+                        markDead(v2);
                     } else {
                         // End the strip
                         (vertex - 1)->flags = VERTEX_CMD_EOL;
                     }
 
                     markDead(vertex);
+
                 } else if(triangle == 0) {
-                    /* First triangle in strip, remove first vertex and swap latter two
-                       to restart the strip */
-                    ClipVertex tmp = *v2;
-                    *v2 = *v3;
-                    *v3 = tmp;
+                    /* First triangle in strip, remove first vertex */
+                    markDead(v1);
 
-                    markDead(vertex - 2);
-
-                    (vertex - 1)->flags = VERTEX_CMD;
-                    vertex->flags = VERTEX_CMD;
+                    v2->flags = VERTEX_CMD;
+                    v3->flags = VERTEX_CMD;
 
                     triangle = -1;
-                } else {
+                } else {                    
                     ClipVertex* v4 = vertex + 1;
 
                     TO_CLIP[CLIP_COUNT].vertex[0] = *v3;
@@ -302,6 +306,6 @@ void clipTriangleStrip2(AlignedVector* vertices, uint32_t offset) {
 
     /* Now, clip all the triangles and append them to the output */
     for(i = 0; i < CLIP_COUNT; ++i) {
-        clipTriangle(TO_CLIP[i].vertex, TO_CLIP[i].visible, vertices);
+        clipTriangle(TO_CLIP[i].vertex, TO_CLIP[i].visible, vertices, fladeShade);
     }
 }

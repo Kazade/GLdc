@@ -40,8 +40,7 @@ typedef struct {
 } ClipVertex;
 
 void clipLineToNearZ(const ClipVertex* v1, const ClipVertex* v2, ClipVertex* vout, float* t);
-void clipTriangleStrip(const ClipVertex* vertices, const unsigned int count, AlignedVector* outBuffer);
-void clipTriangleStrip2(AlignedVector* vertices, uint32_t offset);
+void clipTriangleStrip2(AlignedVector* vertices, uint32_t offset, uint8_t fladeShade);
 
 #ifdef __cplusplus
 }

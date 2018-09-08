@@ -626,7 +626,7 @@ static void transform(ClipVertex* output, const GLsizei count) {
 
 static GLsizei clip(AlignedVector* polylist, uint32_t offset, const GLsizei count) {
     /* Perform clipping, generating new vertices as necessary */
-    clipTriangleStrip2(polylist, offset);
+    clipTriangleStrip2(polylist, offset, _glGetShadeModel() == GL_FLAT);
 
     /* List size, minus the original offset (which includes the header), minus the header */
     return polylist->size - offset - 1;

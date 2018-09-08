@@ -413,6 +413,10 @@ GLAPI void APIENTRY glCullFace(GLenum mode) {
     GL_CONTEXT.gen.culling = _calc_pvr_face_culling();
 }
 
+GLenum _glGetShadeModel() {
+    return (GL_CONTEXT.gen.shading == PVR_SHADE_FLAT) ? GL_FLAT : GL_SMOOTH;
+}
+
 /* Shading - Flat or Goraud */
 GLAPI void APIENTRY glShadeModel(GLenum mode) {
     GL_CONTEXT.gen.shading = (mode == GL_SMOOTH) ? PVR_SHADE_GOURAUD : PVR_SHADE_FLAT;

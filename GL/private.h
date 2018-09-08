@@ -120,6 +120,7 @@ AttribPointer* _glGetDiffuseAttribPointer();
 AttribPointer* _glGetNormalAttribPointer();
 AttribPointer* _glGetUVAttribPointer();
 AttribPointer* _glGetSTAttribPointer();
+GLenum _glGetShadeModel();
 
 TextureObject* getTexture0();
 TextureObject* getTexture1();
