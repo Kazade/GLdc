@@ -182,7 +182,7 @@ void clipTriangleStrip2(AlignedVector* vertices, uint32_t offset, uint8_t fladeS
         ClipVertex* v3 = vertex;
 
         /* Skip ahead if we don't have a complete triangle yet */
-        if(v1->flags == VERTEX_CMD_EOL || v2->flags == VERTEX_CMD_EOL) {
+        if(v1->flags != VERTEX_CMD || v2->flags != VERTEX_CMD) {
             triangle = -1;
             continue;
         }
