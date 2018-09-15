@@ -590,6 +590,7 @@ GLAPI void APIENTRY glLightModeliv(GLenum pname, const GLint *params);
 GLAPI void APIENTRY glMateriali(GLenum face, GLenum pname, const GLint param);
 GLAPI void APIENTRY glMaterialf(GLenum face, GLenum pname, const GLfloat param);
 GLAPI void APIENTRY glMaterialfv(GLenum face, GLenum pname, const GLfloat *params);
+GLAPI void APIENTRY glColorMaterial(GLenum face, GLenum mode);
 
 /* glGet Functions */
 GLAPI void APIENTRY glGetBooleanv(GLenum pname, GLboolean* params);

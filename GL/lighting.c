@@ -223,7 +223,7 @@ void APIENTRY glMaterialfv(GLenum face, GLenum pname, const GLfloat *params) {
     }
 }
 
-void glColorMaterial(GLenum face, GLenum mode) {
+void APIENTRY glColorMaterial(GLenum face, GLenum mode) {
     if(face != GL_FRONT_AND_BACK) {
         _glKosThrowError(GL_INVALID_ENUM, __func__);
         _glKosPrintError();
