@@ -181,6 +181,12 @@ void clipTriangleStrip2(AlignedVector* vertices, uint32_t offset, uint8_t fladeS
         ClipVertex* v2 = (even) ? vertex - 1 : vertex - 2;
         ClipVertex* v3 = vertex;
 
+        /* Skip ahead if we don't have a complete triangle yet */
+        if(v1->flags == VERTEX_CMD_EOL || v2->flags == VERTEX_CMD_EOL) {
+            triangle = -1;
+            continue;
+        }
+
         uint8_t visible = ((v1->w > 0) ? 4 : 0) | ((v2->w > 0) ? 2 : 0) | ((v3->w > 0) ? 1 : 0);
 
         switch(visible) {
@@ -258,7 +264,6 @@ void clipTriangleStrip2(AlignedVector* vertices, uint32_t offset, uint8_t fladeS
                     markDead(vertex);
 
                     triangle = -1;
-
                 } else if(triangle == 0) {
                     /* First triangle in strip, remove first vertex */
                     markDead(v1);
