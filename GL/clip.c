@@ -257,6 +257,8 @@ void clipTriangleStrip2(AlignedVector* vertices, uint32_t offset, uint8_t fladeS
 
                     markDead(vertex);
 
+                    triangle = -1;
+
                 } else if(triangle == 0) {
                     /* First triangle in strip, remove first vertex */
                     markDead(v1);
