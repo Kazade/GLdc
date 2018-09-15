@@ -71,8 +71,8 @@ void APIENTRY glKosInit() {
 
     initMatrices();
     initAttributePointers();
-    initContext();
-    initLights();
+    _glInitContext();
+    _glInitLights();
     initImmediateMode();
     initFramebuffers();
 

@@ -86,8 +86,8 @@ PolyList *activePolyList();
 PolyList *transparentPolyList();
 
 void initAttributePointers();
-void initContext();
-void initLights();
+void _glInitContext();
+void _glInitLights();
 void initImmediateMode();
 void initMatrices();
 void initFramebuffers();

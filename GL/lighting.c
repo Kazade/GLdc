@@ -13,7 +13,7 @@ static GLenum COLOR_MATERIAL_MODE = GL_AMBIENT_AND_DIFFUSE;
 static LightSource LIGHTS[MAX_LIGHTS];
 static Material MATERIAL;
 
-void initLights() {
+void _glInitLights() {
     static GLfloat ONE [] = {1.0f, 1.0f, 1.0f, 1.0f};
     static GLfloat ZERO [] = {0.0f, 0.0f, 0.0f, 1.0f};
     static GLfloat PARTIAL [] = {0.2f, 0.2f, 0.2f, 1.0f};

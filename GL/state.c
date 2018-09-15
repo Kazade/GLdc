@@ -233,7 +233,7 @@ GLboolean _glIsColorMaterialEnabled() {
 
 static GLfloat CLEAR_COLOUR[3];
 
-void initContext() {
+void _glInitContext() {
     memset(&GL_CONTEXT, 0, sizeof(pvr_poly_cxt_t));
 
     GL_CONTEXT.list_type = PVR_LIST_OP_POLY;
