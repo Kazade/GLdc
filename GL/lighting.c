@@ -251,7 +251,7 @@ static inline GLboolean isSpecularColorMaterial() {
     return (COLOR_MATERIAL_MODE == GL_SPECULAR);
 }
 
-inline void initVec3(struct vec3f* v, const GLfloat* src) {
+static inline void initVec3(struct vec3f* v, const GLfloat* src) {
     memcpy(v, src, sizeof(GLfloat) * 3);
 }
 
@@ -259,7 +259,7 @@ inline void initVec3(struct vec3f* v, const GLfloat* src) {
 #define EXP_A 184
 #define EXP_C 16249
 
-static float FEXP(float y) {
+static inline float FEXP(float y) {
     union {
         float d;
         struct {
@@ -271,13 +271,13 @@ static float FEXP(float y) {
     return eco.d;
 }
 
-static float FLOG(float y) {
+static inline float FLOG(float y) {
     int *nTemp = (int *)&y;
     y = (*nTemp) >> 16;
     return (y - EXP_C) / EXP_A;
 }
 
-static float FPOW(float b, float p) {
+static inline float FPOW(float b, float p) {
     return FEXP(FLOG(b) * p);
 }
 
