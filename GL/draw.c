@@ -786,6 +786,9 @@ static void submitVertices(GLenum mode, GLsizei first, GLsizei count, GLenum typ
     /* Store a pointer to the header for later */
     PVRHeader* header = (PVRHeader*) start++;
 
+    /* We store an offset to the first ClipVertex because clipping may generate more
+     * vertices, which may cause a realloc and thus invalidate start and header
+     * we use this startOffset to reset those pointers after clipping */
     uint32_t startOffset = start - (ClipVertex*) activeList->vector.data;
 
     profiler_checkpoint("allocate");
@@ -822,6 +825,10 @@ static void submitVertices(GLenum mode, GLsizei first, GLsizei count, GLenum typ
 
         spaceNeeded = clip(&activeList->vector, offset, spaceNeeded);
 
+        /* Clipping may have realloc'd so reset the start pointer */
+        start = ((ClipVertex*) activeList->vector.data) + startOffset;
+        header = start - 1;  /* Update the header pointer */
+
 #if DEBUG_CLIPPING
         fprintf(stderr, "--------\n");
         for(i = offset; i < activeList->vector.size; ++i) {
@@ -837,9 +844,6 @@ static void submitVertices(GLenum mode, GLsizei first, GLsizei count, GLenum typ
     }
 
     profiler_checkpoint("clip");
-
-    /* Clipping may have realloc'd so reset the start pointer */
-    start = ((ClipVertex*) activeList->vector.data) + startOffset;
 
     divide(start, spaceNeeded);
 
