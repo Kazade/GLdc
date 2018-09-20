@@ -832,18 +832,22 @@ GLAPI void APIENTRY glColorTableEXT(GLenum target, GLenum internalFormat, GLsize
 }
 
 GLAPI void APIENTRY glColorSubTableEXT(GLenum target, GLsizei start, GLsizei count, GLenum format, GLenum type, const GLvoid *data) {
-
+    _glKosThrowError(GL_INVALID_OPERATION, __func__);
+    _glKosPrintError();
 }
 
 GLAPI void APIENTRY glGetColorTableEXT(GLenum target, GLenum format, GLenum type, GLvoid *data) {
-
+    _glKosThrowError(GL_INVALID_OPERATION, __func__);
+    _glKosPrintError();
 }
 
 GLAPI void APIENTRY glGetColorTableParameterivEXT(GLenum target, GLenum pname, GLint *params) {
-
+    _glKosThrowError(GL_INVALID_OPERATION, __func__);
+    _glKosPrintError();
 }
 
 GLAPI void APIENTRY glGetColorTableParameterfvEXT(GLenum target, GLenum pname, GLfloat *params) {
-
+    _glKosThrowError(GL_INVALID_OPERATION, __func__);
+    _glKosPrintError();
 }
 
