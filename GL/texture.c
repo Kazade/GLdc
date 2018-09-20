@@ -835,6 +835,13 @@ GLAPI void APIENTRY glColorTableEXT(GLenum target, GLenum internalFormat, GLsize
         return;
     }
 
+    /* Only allow up to 256 colours in a palette */
+    if(width > 256) {
+        _glKosThrowError(GL_INVALID_VALUE, __func__);
+        _glKosPrintError();
+        return;
+    }
+
     GLuint sourceStride = _determineStride(format, type);
 
     TextureConversionFunc convert = _determineConversion(
