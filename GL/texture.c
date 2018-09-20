@@ -2,6 +2,7 @@
 
 #include <stddef.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 #include "../include/glext.h"
 #include "../include/glkos.h"
@@ -141,6 +142,7 @@ void APIENTRY glGenTextures(GLsizei n, GLuint *textures) {
         txr->mipmapCount = 0;
         txr->minFilter = GL_NEAREST;
         txr->magFilter = GL_NEAREST;
+        txr->palette = NULL;
 
         *textures = id;
 
@@ -769,3 +771,79 @@ void APIENTRY glTexParameteri(GLenum target, GLenum pname, GLint param) {
         }
     }
 }
+
+GLAPI void APIENTRY glColorTableEXT(GLenum target, GLenum internalFormat, GLsizei width, GLenum format, GLenum type, const GLvoid *data) {
+    GLenum validTargets[] = {GL_TEXTURE_2D, 0};
+    GLenum validInternalFormats[] = {GL_RGB8, GL_RGBA8, 0};
+    GLenum validFormats[] = {GL_RGB, GL_RGBA, 0};
+    GLenum validTypes[] = {GL_UNSIGNED_BYTE, GL_BYTE, GL_UNSIGNED_SHORT, GL_SHORT, 0};
+
+    if(_glCheckValidEnum(target, validTargets, __func__) != 0) {
+        return;
+    }
+
+    if(_glCheckValidEnum(internalFormat, validInternalFormats, __func__) != 0) {
+        return;
+    }
+
+    if(_glCheckValidEnum(format, validFormats, __func__) != 0) {
+        return;
+    }
+
+    if(_glCheckValidEnum(type, validTypes, __func__) != 0) {
+        return;
+    }
+
+    GLuint sourceStride = _determineStride(format, type);
+
+    TextureConversionFunc convert = _determineConversion(
+        GL_RGBA8,  /* We always store palettes in this format */
+        format,
+        type
+    );
+
+    if(!convert) {
+        _glKosThrowError(GL_INVALID_OPERATION, __func__);
+        _glKosPrintError();
+        return;
+    }
+
+    TextureObject* active = getBoundTexture();
+    if(active->palette) {
+        free(active->palette->data);
+        active->palette->data = NULL;
+    } else {
+        active->palette = (TexturePalette*) malloc(sizeof(TexturePalette));
+    }
+
+    active->palette->data = (GLubyte*) malloc(width * 4);
+
+    GLubyte* src = (GLubyte*) data;
+    GLubyte* dst = (GLubyte*) active->palette->data;
+
+    /* Transform and copy the source palette to the texture */
+    GLushort i = 0;
+    for(; i < width; ++i) {
+        convert(src, (GLushort*) dst);
+
+        src += sourceStride;
+        dst += 4;
+    }
+}
+
+GLAPI void APIENTRY glColorSubTableEXT(GLenum target, GLsizei start, GLsizei count, GLenum format, GLenum type, const GLvoid *data) {
+
+}
+
+GLAPI void APIENTRY glGetColorTableEXT(GLenum target, GLenum format, GLenum type, GLvoid *data) {
+
+}
+
+GLAPI void APIENTRY glGetColorTableParameterivEXT(GLenum target, GLenum pname, GLint *params) {
+
+}
+
+GLAPI void APIENTRY glGetColorTableParameterfvEXT(GLenum target, GLenum pname, GLfloat *params) {
+
+}
+

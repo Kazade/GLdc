@@ -827,7 +827,7 @@ static void submitVertices(GLenum mode, GLsizei first, GLsizei count, GLenum typ
 
         /* Clipping may have realloc'd so reset the start pointer */
         start = ((ClipVertex*) activeList->vector.data) + startOffset;
-        header = start - 1;  /* Update the header pointer */
+        header = (PVRHeader*) (start - 1);  /* Update the header pointer */
 
 #if DEBUG_CLIPPING
         fprintf(stderr, "--------\n");

@@ -349,6 +349,20 @@ __BEGIN_DECLS
 #define GL_LUMINANCE_ALPHA                0x190A
 #define GL_BGRA                           0x80E1
 
+#define GL_RGB4                           0x804F
+#define GL_RGB5                           0x8050
+#define GL_RGB8                           0x8051
+#define GL_RGB10                          0x8052
+#define GL_RGB12                          0x8053
+#define GL_RGB16                          0x8054
+#define GL_RGBA2                          0x8055
+#define GL_RGBA4                          0x8056
+#define GL_RGB5_A1                        0x8057
+#define GL_RGBA8                          0x8058
+#define GL_RGB10_A2                       0x8059
+#define GL_RGBA12                         0x805A
+#define GL_RGBA16                         0x805B
+
 #define GLbyte   char
 #define GLshort  short
 #define GLint    int
