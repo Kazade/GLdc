@@ -464,6 +464,15 @@ static void _rgba8888_to_argb4444(const GLubyte* source, GLushort* dest) {
     *dest = (source[3] & 0xF0) << 8 | (source[0] & 0xF0) << 4 | (source[1] & 0xF0) | (source[2] & 0xF0) >> 4;
 }
 
+static void _rgba8888_to_rgba8888(const GLubyte* source, GLushort* dest) {
+    /* Noop */
+    GLubyte* dst = (GLubyte*) dest;
+    dst[0] = source[0];
+    dst[1] = source[1];
+    dst[2] = source[2];
+    dst[3] = source[3];
+}
+
 static void _rgb888_to_rgb565(const GLubyte* source, GLushort* dest) {
     *dest = ((source[0] & 0b11111000) << 8) | ((source[1] & 0b11111100) << 3) | (source[2] >> 3);
 }
@@ -479,6 +488,16 @@ static void _r8_to_rgb565(const GLubyte* source, GLushort* dest) {
 static void _rgba4444_to_argb4444(const GLubyte* source, GLushort* dest) {
     GLushort* src = (GLushort*) source;
     *dest = ((*src & 0x000F) << 12) | *src >> 4;
+}
+
+static void _rgba4444_to_rgba8888(const GLubyte* source, GLushort* dest) {
+    GLushort src = *((GLushort*) source);
+    GLubyte* dst = (GLubyte*) dest;
+
+    dst[0] = (src & 0xF000) * 2;
+    dst[1] = (src & 0x0F00) * 2;
+    dst[2] = (src & 0x00F0) * 2;
+    dst[3] = (src & 0x000F) * 2;
 }
 
 static TextureConversionFunc _determineConversion(GLint internalFormat, GLenum format, GLenum type) {
@@ -512,6 +531,15 @@ static TextureConversionFunc _determineConversion(GLint internalFormat, GLenum f
             return _rgba8888_to_argb4444;
         } else if(type == GL_UNSIGNED_SHORT_4_4_4_4 && format == GL_RGBA) {
             return _rgba4444_to_argb4444;
+        }
+    } break;
+    case GL_RGBA8: {
+        if(type == GL_UNSIGNED_BYTE && format == GL_RGBA) {
+            return _rgba8888_to_rgba8888;
+        } else if (type == GL_BYTE && format == GL_RGBA) {
+            return _rgba8888_to_rgba8888;
+        } else if(type == GL_UNSIGNED_SHORT_4_4_4_4 && format == GL_RGBA) {
+            return _rgba4444_to_rgba8888;
         }
     } break;
     default:
