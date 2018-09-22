@@ -65,6 +65,7 @@ typedef struct {
     GLenum magFilter;
 
     GLboolean isCompressed;
+    GLboolean isPaletted;
 
     TexturePalette* palette;
 } TextureObject;

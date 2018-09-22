@@ -143,6 +143,8 @@ void APIENTRY glGenTextures(GLsizei n, GLuint *textures) {
         txr->minFilter = GL_NEAREST;
         txr->magFilter = GL_NEAREST;
         txr->palette = NULL;
+        txr->isCompressed = GL_FALSE;
+        txr->isPaletted = GL_FALSE;
 
         *textures = id;
 
@@ -166,6 +168,16 @@ void APIENTRY glDeleteTextures(GLsizei n, GLuint *textures) {
         if(txr->data) {
             pvr_mem_free(txr->data);
             txr->data = NULL;
+        }
+
+        if(txr->palette && txr->palette->data) {
+            free(txr->palette->data);
+            txr->palette->data = NULL;
+        }
+
+        if(txr->palette) {
+            free(txr->palette);
+            txr->palette = NULL;
         }
 
         named_array_release(&TEXTURE_OBJECTS, *textures++);
@@ -247,13 +259,13 @@ void APIENTRY glCompressedTexImage2DARB(GLenum target,
     GLint w = width;
     if(w < 8 || (w & -w) != w) {
         /* Width is not a power of two. Must be!*/
-        _glKosThrowError(GL_INVALID_VALUE, "glTexImage2D");
+        _glKosThrowError(GL_INVALID_VALUE, __func__);
     }
 
     GLint h = height;
     if(h < 8 || (h & -h) != h) {
         /* Height is not a power of two. Must be!*/
-        _glKosThrowError(GL_INVALID_VALUE, "glTexImage2D");
+        _glKosThrowError(GL_INVALID_VALUE, __func__);
     }
 
     if(level || border) {
@@ -334,6 +346,8 @@ void APIENTRY glCompressedTexImage2DARB(GLenum target,
 
 static GLint _cleanInternalFormat(GLint internalFormat) {
     switch (internalFormat) {
+    case GL_COLOR_INDEX8_EXT:
+        return GL_COLOR_INDEX8_EXT;
     case GL_ALPHA:
 /*    case GL_ALPHA4:
     case GL_ALPHA8:
@@ -365,24 +379,24 @@ static GLint _cleanInternalFormat(GLint internalFormat) {
     case 3:
        return GL_RGB;
     case GL_RGB:
-/*    case GL_R3_G3_B2:
+    /* case GL_R3_G3_B2: */
     case GL_RGB4:
     case GL_RGB5:
     case GL_RGB8:
     case GL_RGB10:
     case GL_RGB12:
-    case GL_RGB16: */
+    case GL_RGB16:
        return GL_RGB;
     case 4:
        return GL_RGBA;
     case GL_RGBA:
-/*    case GL_RGBA2:
+    case GL_RGBA2:
     case GL_RGBA4:
     case GL_RGB5_A1:
     case GL_RGBA8:
     case GL_RGB10_A2:
     case GL_RGBA12:
-    case GL_RGBA16: */
+    case GL_RGBA16:
         return GL_RGBA;
 
     /* Support ARB_texture_rg */
@@ -452,19 +466,21 @@ static GLuint _determinePVRFormat(GLint internalFormat, GLenum type) {
         case GL_COMPRESSED_ARGB_1555_VQ_TWID_KOS:
         case GL_COMPRESSED_ARGB_1555_VQ_MIPMAP_TWID_KOS:
             return PVR_TXRFMT_ARGB1555 | PVR_TXRFMT_TWIDDLED | PVR_TXRFMT_VQ_ENABLE;
+        case GL_COLOR_INDEX8_EXT:
+            return PVR_TXRFMT_PAL8BPP;
         default:
             return 0;
     }
 }
 
 
-typedef void (*TextureConversionFunc)(const GLubyte*, GLushort*);
+typedef void (*TextureConversionFunc)(const GLubyte*, GLubyte*);
 
-static void _rgba8888_to_argb4444(const GLubyte* source, GLushort* dest) {
-    *dest = (source[3] & 0xF0) << 8 | (source[0] & 0xF0) << 4 | (source[1] & 0xF0) | (source[2] & 0xF0) >> 4;
+static inline void _rgba8888_to_argb4444(const GLubyte* source, GLubyte* dest) {
+    *((GLushort*) dest) = (source[3] & 0xF0) << 8 | (source[0] & 0xF0) << 4 | (source[1] & 0xF0) | (source[2] & 0xF0) >> 4;
 }
 
-static void _rgba8888_to_rgba8888(const GLubyte* source, GLushort* dest) {
+static inline void _rgba8888_to_rgba8888(const GLubyte* source, GLubyte* dest) {
     /* Noop */
     GLubyte* dst = (GLubyte*) dest;
     dst[0] = source[0];
@@ -473,7 +489,7 @@ static void _rgba8888_to_rgba8888(const GLubyte* source, GLushort* dest) {
     dst[3] = source[3];
 }
 
-static void _rgb888_to_rgba8888(const GLubyte* source, GLushort* dest) {
+static inline void _rgb888_to_rgba8888(const GLubyte* source, GLubyte* dest) {
     /* Noop */
     GLubyte* dst = (GLubyte*) dest;
     dst[0] = source[0];
@@ -482,31 +498,37 @@ static void _rgb888_to_rgba8888(const GLubyte* source, GLushort* dest) {
     dst[3] = 255;
 }
 
-static void _rgb888_to_rgb565(const GLubyte* source, GLushort* dest) {
-    *dest = ((source[0] & 0b11111000) << 8) | ((source[1] & 0b11111100) << 3) | (source[2] >> 3);
+static inline void _rgb888_to_rgb565(const GLubyte* source, GLubyte* dest) {
+    *((GLushort*) dest) = ((source[0] & 0b11111000) << 8) | ((source[1] & 0b11111100) << 3) | (source[2] >> 3);
 }
 
-static void _rgba8888_to_a000(const GLubyte* source, GLushort* dest) {
-    *dest = ((source[3] & 0b11111000) << 8);
+static inline void _rgba8888_to_a000(const GLubyte* source, GLubyte* dest) {
+    *((GLushort*) dest) = ((source[3] & 0b11111000) << 8);
 }
 
-static void _r8_to_rgb565(const GLubyte* source, GLushort* dest) {
-    *dest = (source[0] & 0b11111000) << 8;
+static inline void _r8_to_rgb565(const GLubyte* source, GLubyte* dest) {
+    *((GLushort*) dest) = (source[0] & 0b11111000) << 8;
 }
 
-static void _rgba4444_to_argb4444(const GLubyte* source, GLushort* dest) {
+static inline void _rgba4444_to_argb4444(const GLubyte* source, GLubyte* dest) {
     GLushort* src = (GLushort*) source;
-    *dest = ((*src & 0x000F) << 12) | *src >> 4;
+    *((GLushort*) dest) = ((*src & 0x000F) << 12) | *src >> 4;
 }
 
-static void _rgba4444_to_rgba8888(const GLubyte* source, GLushort* dest) {
+static inline void _rgba4444_to_rgba8888(const GLubyte* source, GLubyte* dest) {
     GLushort src = *((GLushort*) source);
     GLubyte* dst = (GLubyte*) dest;
 
-    dst[0] = (src & 0xF000) * 2;
-    dst[1] = (src & 0x0F00) * 2;
-    dst[2] = (src & 0x00F0) * 2;
-    dst[3] = (src & 0x000F) * 2;
+    dst[0] = ((src & 0xF000) >> 12) * 2;
+    dst[1] = ((src & 0x0F00) >> 8) * 2;
+    dst[2] = ((src & 0x00F0) >> 4) * 2;
+    dst[3] = ((src & 0x000F)) * 2;
+}
+
+static inline void _i8_to_i8(const GLubyte* source, GLubyte* dest) {
+    /* For indexes */
+    GLubyte* dst = (GLubyte*) dest;
+    *dst = *source;
 }
 
 static TextureConversionFunc _determineConversion(GLint internalFormat, GLenum format, GLenum type) {
@@ -555,6 +577,17 @@ static TextureConversionFunc _determineConversion(GLint internalFormat, GLenum f
             return _rgba4444_to_rgba8888;
         }
     } break;
+    case GL_COLOR_INDEX8_EXT:
+        if(format == GL_COLOR_INDEX) {
+            switch(type) {
+                case GL_BYTE:
+                case GL_UNSIGNED_BYTE:
+                    return _i8_to_i8;
+                default:
+                    break;
+            }
+        }
+    break;
     default:
         fprintf(stderr, "Unsupported conversion: %x -> %x, %x\n", internalFormat, format, type);
         break;
@@ -568,6 +601,7 @@ static GLboolean _isSupportedFormat(GLenum format) {
     case GL_RGB:
     case GL_RGBA:
     case GL_BGRA:
+    case GL_COLOR_INDEX:
         return GL_TRUE;
     default:
         return GL_FALSE;
@@ -661,7 +695,12 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
         }
     }
 
-    GLuint bytes = (width * height * sizeof(GLushort));
+    /* All colour formats are represented as shorts internally. Paletted textures
+     * are represented by byte indexes (which look up into a color table)
+     */
+    GLboolean isPaletted = (internalFormat == GL_COLOR_INDEX8_EXT) ? GL_TRUE : GL_FALSE;
+    GLint destStride = isPaletted ? 1 : 2;
+    GLuint bytes = (width * height * destStride);
 
     if(!active->data) {
         /* need texture memory */
@@ -670,11 +709,12 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
         active->color   = pvr_format;
         /* Set the required mipmap count */
         active->mipmapCount = _glGetMipmapLevelCount(active);
-        active->dataStride = sizeof(GLshort);
+        active->dataStride = destStride;
 
         GLuint size = _glGetMipmapDataSize(active);
         active->data = pvr_mem_malloc(size);
         active->isCompressed = GL_FALSE;
+        active->isPaletted = isPaletted;
     }
 
     /* Mark this level as set in the mipmap bitmask */
@@ -722,7 +762,7 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
             return;
         }
 
-        GLushort* dest = (GLushort*) targetData;
+        GLubyte* dest = (GLubyte*) targetData;
         const GLubyte* source = data;
 
         GLint stride = _determineStride(format, type);
@@ -734,10 +774,10 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
 
         /* Perform the conversion */
         GLuint i;
-        for(i = 0; i < bytes; i += 2) {
+        for(i = 0; i < bytes; i += destStride) {
             convert(source, dest);
 
-            dest++;
+            dest += destStride;
             source += stride;
         }
     }
@@ -865,6 +905,8 @@ GLAPI void APIENTRY glColorTableEXT(GLenum target, GLenum internalFormat, GLsize
     }
 
     active->palette->data = (GLubyte*) malloc(width * 4);
+    active->palette->format = format;
+    active->palette->width = width;
 
     GLubyte* src = (GLubyte*) data;
     GLubyte* dst = (GLubyte*) active->palette->data;
@@ -872,7 +914,7 @@ GLAPI void APIENTRY glColorTableEXT(GLenum target, GLenum internalFormat, GLsize
     /* Transform and copy the source palette to the texture */
     GLushort i = 0;
     for(; i < width; ++i) {
-        convert(src, (GLushort*) dst);
+        convert(src, dst);
 
         src += sourceStride;
         dst += 4;
