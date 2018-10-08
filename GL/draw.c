@@ -460,6 +460,178 @@ static inline PolyBuildFunc _calcBuildFunc(const GLenum type) {
     return &_buildStrip;
 }
 
+static inline void genArraysCommon(
+    ClipVertex* output,
+    GLsizei count,
+    const GLubyte* vptr, GLuint vstride,
+    const GLubyte* cptr, GLuint cstride,
+    const GLubyte* uvptr, GLuint uvstride,
+    const GLubyte* stptr, GLuint ststride,
+    const GLubyte* nptr, GLuint nstride,
+    GLboolean doTexture, GLboolean doMultitexture, GLboolean doLighting
+) {
+    const FloatParseFunc vertexFunc = _calcVertexParseFunc();
+    const ByteParseFunc diffuseFunc = _calcDiffuseParseFunc();
+    const FloatParseFunc uvFunc = _calcUVParseFunc();
+    const FloatParseFunc stFunc = _calcSTParseFunc();
+    const FloatParseFunc normalFunc = _calcNormalParseFunc();
+
+    GLsizei i = count;
+
+    ClipVertex* vertex = output;
+
+    while(i--) {
+        vertex->flags = PVR_CMD_VERTEX;
+        vertexFunc(vertex->xyz, vptr);
+        vptr += vstride;
+        vertex++;
+    }
+
+    i = count;
+    vertex = output;
+    while(i--) {
+        diffuseFunc(vertex->bgra, cptr);
+        cptr += cstride;
+        vertex++;
+    }
+
+    if(doTexture) {
+        i = count;
+        vertex = output;
+        while(i--) {
+            uvFunc(vertex->uv, uvptr);
+            uvptr += uvstride;
+            vertex++;
+        }
+    }
+
+    if(doMultitexture) {
+        i = count;
+        vertex = output;
+        while(i--) {
+            stFunc(vertex->st, stptr);
+            stptr += ststride;
+            ++vertex;
+        }
+    }
+
+    if(doLighting) {
+        i = count;
+        vertex = output;
+        while(i--) {
+            normalFunc(vertex->nxyz, nptr);
+            nptr += nstride;
+            ++vertex;
+        }
+    }
+}
+
+
+static inline void genArraysTriangles(
+    ClipVertex* output,
+    GLsizei count,
+    const GLubyte* vptr, GLuint vstride,
+    const GLubyte* cptr, GLuint cstride,
+    const GLubyte* uvptr, GLuint uvstride,
+    const GLubyte* stptr, GLuint ststride,
+    const GLubyte* nptr, GLuint nstride,
+    GLboolean doTexture, GLboolean doMultitexture, GLboolean doLighting) {
+
+    genArraysCommon(
+        output, count,
+        vptr, vstride, cptr, cstride, uvptr, uvstride, stptr, ststride, nptr, nstride,
+        doTexture, doMultitexture, doLighting
+    );
+
+    GLsizei i = count;
+    ClipVertex* vertex = output;
+    for(i = 2; i < count; i += 3) {
+        vertex[i].flags = PVR_CMD_VERTEX_EOL;
+    }
+}
+
+static void genArraysQuads(
+    ClipVertex* output,
+    GLsizei count,
+    const GLubyte* vptr, GLuint vstride,
+    const GLubyte* cptr, GLuint cstride,
+    const GLubyte* uvptr, GLuint uvstride,
+    const GLubyte* stptr, GLuint ststride,
+    const GLubyte* nptr, GLuint nstride,
+    GLboolean doTexture, GLboolean doMultitexture, GLboolean doLighting) {
+
+    genArraysCommon(
+        output, count,
+        vptr, vstride, cptr, cstride, uvptr, uvstride, stptr, ststride, nptr, nstride,
+        doTexture, doMultitexture, doLighting
+    );
+
+    GLsizei i = count;
+    ClipVertex* vertex = output;
+
+    for(i = 3; i < count; i += 4) {
+        swapVertex(&vertex[i], &vertex[i - 1]);
+        vertex[i].flags = PVR_CMD_VERTEX_EOL;
+    }
+}
+
+static void genArraysTriangleStrip(
+    ClipVertex* output,
+    GLsizei count,
+    const GLubyte* vptr, GLuint vstride,
+    const GLubyte* cptr, GLuint cstride,
+    const GLubyte* uvptr, GLuint uvstride,
+    const GLubyte* stptr, GLuint ststride,
+    const GLubyte* nptr, GLuint nstride,
+    GLboolean doTexture, GLboolean doMultitexture, GLboolean doLighting) {
+
+    genArraysCommon(
+        output, count,
+        vptr, vstride, cptr, cstride, uvptr, uvstride, stptr, ststride, nptr, nstride,
+        doTexture, doMultitexture, doLighting
+    );
+
+    output[count - 1].flags = PVR_CMD_VERTEX_EOL;
+}
+
+static void genArraysTriangleFan(
+    ClipVertex* output,
+    GLsizei count,
+    const GLubyte* vptr, GLuint vstride,
+    const GLubyte* cptr, GLuint cstride,
+    const GLubyte* uvptr, GLuint uvstride,
+    const GLubyte* stptr, GLuint ststride,
+    const GLubyte* nptr, GLuint nstride,
+    GLboolean doTexture, GLboolean doMultitexture, GLboolean doLighting) {
+
+    genArraysCommon(
+        output, count,
+        vptr, vstride, cptr, cstride, uvptr, uvstride, stptr, ststride, nptr, nstride,
+        doTexture, doMultitexture, doLighting
+    );
+
+    swapVertex(&output[1], &output[2]);
+    output[2].flags = PVR_CMD_VERTEX_EOL;
+
+    GLsizei i = 3;
+    ClipVertex* first = &output[0];
+
+    for(; i < count - 1; ++i) {
+        ClipVertex* next = &output[i + 1];
+        ClipVertex* previous = &output[i - 1];
+        ClipVertex* vertex = &output[i];
+
+        *next = *first;
+
+        swapVertex(next, vertex);
+
+        vertex = next + 1;
+        *vertex = *previous;
+
+        vertex->flags = PVR_CMD_VERTEX_EOL;
+    }
+}
+
 static void generate(ClipVertex* output, const GLenum mode, const GLsizei first, const GLsizei count,
         const GLubyte* indices, const GLenum type, const GLboolean doTexture, const GLboolean doMultitexture, const GLboolean doLighting) {
     /* Read from the client buffers and generate an array of ClipVertices */
@@ -469,6 +641,65 @@ static void generate(ClipVertex* output, const GLenum mode, const GLsizei first,
     const GLuint uvstride = (UV_POINTER.stride) ? UV_POINTER.stride : UV_POINTER.size * byte_size(UV_POINTER.type);
     const GLuint ststride = (ST_POINTER.stride) ? ST_POINTER.stride : ST_POINTER.size * byte_size(ST_POINTER.type);
     const GLuint nstride = (NORMAL_POINTER.stride) ? NORMAL_POINTER.stride : NORMAL_POINTER.size * byte_size(NORMAL_POINTER.type);
+
+    if(!indices) {
+        const GLubyte* vptr = VERTEX_POINTER.ptr + (first * vstride);
+        const GLubyte* cptr = DIFFUSE_POINTER.ptr + (first * cstride);
+        const GLubyte* uvptr = UV_POINTER.ptr + (first * uvstride);
+        const GLubyte* stptr = ST_POINTER.ptr + (first * ststride);
+        const GLubyte* nptr = NORMAL_POINTER.ptr + (first * nstride);
+
+        // Drawing arrays
+        switch(mode) {
+        case GL_TRIANGLES:
+            genArraysTriangles(
+                output,
+                count,
+                vptr, vstride,
+                cptr, cstride,
+                uvptr, uvstride,
+                stptr, ststride,
+                nptr, nstride,
+                doTexture, doMultitexture, doLighting
+            );
+        case GL_QUADS:
+            genArraysQuads(
+                output,
+                count,
+                vptr, vstride,
+                cptr, cstride,
+                uvptr, uvstride,
+                stptr, ststride,
+                nptr, nstride,
+                doTexture, doMultitexture, doLighting
+            );
+        case GL_TRIANGLE_FAN:
+            genArraysTriangleFan(
+                output,
+                count,
+                vptr, vstride,
+                cptr, cstride,
+                uvptr, uvstride,
+                stptr, ststride,
+                nptr, nstride,
+                doTexture, doMultitexture, doLighting
+            );
+        case GL_TRIANGLE_STRIP:
+        default:
+            genArraysTriangleStrip(
+                output,
+                count,
+                vptr, vstride,
+                cptr, cstride,
+                uvptr, uvstride,
+                stptr, ststride,
+                nptr, nstride,
+                doTexture, doMultitexture, doLighting
+            );
+        }
+        return;
+    }
+
 
     const GLsizei max = first + count;
 
@@ -494,102 +725,47 @@ static void generate(ClipVertex* output, const GLenum mode, const GLsizei first,
     GLsizei i, j = 0;
     GLuint idx;
 
-    if(!indices) {
-        GLubyte* vptr = VERTEX_POINTER.ptr + (first * vstride);
-        GLubyte* cptr = DIFFUSE_POINTER.ptr + (first * cstride);
-        GLubyte* uvptr = UV_POINTER.ptr + (first * uvstride);
-        GLubyte* stptr = ST_POINTER.ptr + (first * ststride);
-        GLubyte* nptr = NORMAL_POINTER.ptr + (first * nstride);
-
-        for(j = 0; j < count; ++j, ++vertex) {
-            if(mode == GL_QUADS) {
-                /* Performance optimisation to prevent copying to a temporary */
-                GLsizei mod = (j + 1) % 4;
-                if(mod == 0) {
-                    target = vertex - 1;
-                    target->flags = PVR_CMD_VERTEX;
-                } else if(mod == 3) {
-                    target = vertex + 1;
-                    target->flags = PVR_CMD_VERTEX_EOL;
-                } else {
-                    target = vertex;
-                    target->flags = PVR_CMD_VERTEX;
-                }
+    for(i = first; i < max; ++i, ++j, ++vertex) {
+        if(mode == GL_QUADS) {
+            /* Performance optimisation to prevent copying to a temporary */
+            GLsizei mod = (j + 1) % 4;
+            if(mod == 0) {
+                target = vertex - 1;
+                target->flags = PVR_CMD_VERTEX;
+            } else if(mod == 3) {
+                target = vertex + 1;
+                target->flags = PVR_CMD_VERTEX_EOL;
             } else {
                 target = vertex;
                 target->flags = PVR_CMD_VERTEX;
             }
-
-            vertexFunc(target->xyz, vptr);
-            diffuseFunc(target->bgra, cptr);
-            vptr += vstride;
-            cptr += cstride;
-
-            if(doTexture) {
-                uvFunc(target->uv, uvptr);
-                uvptr += uvstride;
-            }
-
-            if(doMultitexture) {
-                stFunc(target->st, stptr);
-                stptr += ststride;
-            }
-
-            if(doLighting) {
-                normalFunc(target->nxyz, nptr);
-                nptr += nstride;
-            }
-
-            if(mode != GL_QUADS) {
-                next = (j < count - 1) ? vertex + 1 : NULL;
-                previous = (j > 0) ? vertex - 1 : NULL;
-                buildFunc(firstV, previous, vertex, next, j);
-            }
+        } else {
+            target = vertex;
+            target->flags = PVR_CMD_VERTEX;
         }
 
-    } else {
-        for(i = first; i < max; ++i, ++j, ++vertex) {
-            if(mode == GL_QUADS) {
-                /* Performance optimisation to prevent copying to a temporary */
-                GLsizei mod = (j + 1) % 4;
-                if(mod == 0) {
-                    target = vertex - 1;
-                    target->flags = PVR_CMD_VERTEX;
-                } else if(mod == 3) {
-                    target = vertex + 1;
-                    target->flags = PVR_CMD_VERTEX_EOL;
-                } else {
-                    target = vertex;
-                    target->flags = PVR_CMD_VERTEX;
-                }
-            } else {
-                target = vertex;
-                target->flags = PVR_CMD_VERTEX;
-            }
+        idx = (indices) ?
+            indexFunc(&indices[type_byte_size * i]) : i;
 
-            idx = (indices) ?
-                indexFunc(&indices[type_byte_size * i]) : i;
+        vertexFunc(target->xyz, VERTEX_POINTER.ptr + (idx * vstride));
+        diffuseFunc(target->bgra, DIFFUSE_POINTER.ptr + (idx * cstride));
 
-            vertexFunc(target->xyz, VERTEX_POINTER.ptr + (idx * vstride));
-            diffuseFunc(target->bgra, DIFFUSE_POINTER.ptr + (idx * cstride));
+        if(doTexture) {
+            uvFunc(target->uv, UV_POINTER.ptr + (idx * uvstride));
+        }
 
-            if(doTexture) {
-                uvFunc(target->uv, UV_POINTER.ptr + (idx * uvstride));
-            }
+        if(doMultitexture) {
+            stFunc(target->st, ST_POINTER.ptr + (idx * ststride));
+        }
 
-            if(doMultitexture) {
-                stFunc(target->st, ST_POINTER.ptr + (idx * ststride));
-            }
+        if(doLighting) {
+            normalFunc(target->nxyz, NORMAL_POINTER.ptr + (idx * nstride));
+        }
 
-            if(doLighting) {
-                normalFunc(target->nxyz, NORMAL_POINTER.ptr + (idx * nstride));
-            }
-
-            if(mode != GL_QUADS) {
-                next = (j < count - 1) ? vertex + 1 : NULL;
-                previous = (j > 0) ? vertex - 1 : NULL;
-                buildFunc(firstV, previous, vertex, next, j);
-            }
+        if(mode != GL_QUADS) {
+            next = (j < count - 1) ? vertex + 1 : NULL;
+            previous = (j > 0) ? vertex - 1 : NULL;
+            buildFunc(firstV, previous, vertex, next, j);
         }
     }
 }
@@ -827,7 +1003,7 @@ static void submitVertices(GLenum mode, GLsizei first, GLsizei count, GLenum typ
 
         /* Clipping may have realloc'd so reset the start pointer */
         start = ((ClipVertex*) activeList->vector.data) + startOffset;
-        header = start - 1;  /* Update the header pointer */
+        header = (PVRHeader*) (start - 1);  /* Update the header pointer */
 
 #if DEBUG_CLIPPING
         fprintf(stderr, "--------\n");
