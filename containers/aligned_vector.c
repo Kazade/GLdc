@@ -3,8 +3,12 @@
 #include <math.h>
 
 #ifndef __APPLE__
-#include <malloc.h>
+#if defined(__WIN32__)
+/* Linux + Kos define this, OSX does not, so just use malloc there */
+#define memalign(x, size) malloc((size))
 #else
+#include <malloc.h>
+#endif 
 /* Linux + Kos define this, OSX does not, so just use malloc there */
 #define memalign(x, size) malloc((size))
 #endif
