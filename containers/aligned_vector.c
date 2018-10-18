@@ -2,15 +2,13 @@
 #include <string.h>
 #include <math.h>
 
-#ifndef __APPLE__
-#if defined(__WIN32__)
+#if defined(__APPLE__) || defined(__WIN32__)
 /* Linux + Kos define this, OSX does not, so just use malloc there */
-#define memalign(x, size) malloc((size))
+static inline void* memalign(size_t alignment, size_t size) {
+    return malloc(size);
+}
 #else
-#include <malloc.h>
-#endif 
-/* Linux + Kos define this, OSX does not, so just use malloc there */
-#define memalign(x, size) malloc((size))
+    #include <malloc.h>
 #endif
 
 #include "aligned_vector.h"
