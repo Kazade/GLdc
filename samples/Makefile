@@ -9,6 +9,7 @@ export OBJEXTRA := $(LIB_DIR)/libGLdc.a
 all:
 	$(KOS_MAKE) -C nehe02 all
 	$(KOS_MAKE) -C nehe02va all
+	$(KOS_MAKE) -C nehe02de all
 	$(KOS_MAKE) -C nehe03 all
 	$(KOS_MAKE) -C nehe06 all
 	$(KOS_MAKE) -C nehe06_vq all
@@ -19,5 +20,6 @@ all:
 	$(KOS_MAKE) -C zclip_trianglestrip all
 	$(KOS_MAKE) -C terrain all
 	$(KOS_MAKE) -C quadmark all
+	$(KOS_MAKE) -C trimark all
 	$(KOS_MAKE) -C multitexture_arrays all
 	$(KOS_MAKE) -C paletted all

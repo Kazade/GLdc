@@ -1,6 +1,8 @@
 
 # GLdc
 
+**Development of GLdc has moved to [Gitlab](https://gitlab.com/simulant/GLdc)**
+
 This is a partial implementation of OpenGL 1.2 for the SEGA Dreamcast for use
 with the KallistiOS SDK.
 
