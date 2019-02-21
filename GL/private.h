@@ -139,6 +139,9 @@ TextureObject* getBoundTexture();
 GLubyte _glGetActiveTexture();
 GLuint _glGetActiveClientTexture();
 
+GLboolean _glIsSharedTexturePaletteEnabled();
+void _glApplyColorTable();
+
 GLboolean isBlendingEnabled();
 GLboolean _glIsMipmapComplete(const TextureObject* obj);
 GLubyte* _glGetMipmapLocation(TextureObject* obj, GLuint level);
