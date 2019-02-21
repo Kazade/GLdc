@@ -20,3 +20,4 @@ all:
 	$(KOS_MAKE) -C terrain all
 	$(KOS_MAKE) -C quadmark all
 	$(KOS_MAKE) -C multitexture_arrays all
+	$(KOS_MAKE) -C paletted all

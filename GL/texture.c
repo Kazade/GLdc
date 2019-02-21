@@ -3,6 +3,7 @@
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <assert.h>
 
 #include "../include/glext.h"
 #include "../include/glkos.h"
@@ -17,6 +18,28 @@ static NamedArray TEXTURE_OBJECTS;
 static GLubyte ACTIVE_TEXTURE = 0;
 
 static GLuint _determinePVRFormat(GLint internalFormat, GLenum type);
+
+#define PACK_ARGB8888(a,r,g,b) ( ((a & 0xFF) << 24) | ((r & 0xFF) << 16) | ((g & 0xFF) << 8) | (b & 0xFF) )
+
+static void _glApplyColorTable() {
+    TextureObject* active = getBoundTexture();
+
+    if(!active) {
+        return;  //? Unload the palette? Make White?
+    }
+
+    if(!active->palette || !active->palette->data) {
+        return;
+    }
+
+    pvr_set_pal_format(PVR_PAL_ARGB8888);
+
+    GLushort i = 0;
+    for(; i < active->palette->width; ++i) {
+        GLubyte* entry = &active->palette->data[i * 4];
+        pvr_set_pal_entry(i, PACK_ARGB8888(entry[3], entry[1], entry[2], entry[0]));
+    }
+}
 
 GLubyte _glGetActiveTexture() {
     return ACTIVE_TEXTURE;
@@ -195,6 +218,9 @@ void APIENTRY glBindTexture(GLenum  target, GLuint texture) {
 
     if(texture) {
         TEXTURE_UNITS[ACTIVE_TEXTURE] = (TextureObject*) named_array_get(&TEXTURE_OBJECTS, texture);
+
+        // If this is a paletted texture, we need to reapply the color table
+        _glApplyColorTable();
     } else {
         TEXTURE_UNITS[ACTIVE_TEXTURE] = NULL;
     }
@@ -633,18 +659,24 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
         _glKosThrowError(GL_INVALID_ENUM, "glTexImage2D");
     }
 
-    if(!_isSupportedFormat(format)) {
-        _glKosThrowError(GL_INVALID_ENUM, "glTexImage2D");
-    }
+    if(format != GL_COLOR_INDEX) {
+        if(!_isSupportedFormat(format)) {
+            _glKosThrowError(GL_INVALID_ENUM, "glTexImage2D");
+        }
 
-    /* Abuse determineStride to see if type is valid */
-    if(_determineStride(GL_RGBA, type) == -1) {
-        _glKosThrowError(GL_INVALID_ENUM, "glTexImage2D");
-    }
+        /* Abuse determineStride to see if type is valid */
+        if(_determineStride(GL_RGBA, type) == -1) {
+            _glKosThrowError(GL_INVALID_ENUM, "glTexImage2D");
+        }
 
-    internalFormat = _cleanInternalFormat(internalFormat);
-    if(internalFormat == -1) {
-        _glKosThrowError(GL_INVALID_VALUE, "glTexImage2D");
+        internalFormat = _cleanInternalFormat(internalFormat);
+        if(internalFormat == -1) {
+            _glKosThrowError(GL_INVALID_VALUE, "glTexImage2D");
+        }
+    } else {
+        if(internalFormat != GL_COLOR_INDEX8_EXT) {
+            _glKosThrowError(GL_INVALID_ENUM, __func__);
+        }
     }
 
     GLint w = width;
@@ -669,6 +701,13 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
 
     if(!TEXTURE_UNITS[ACTIVE_TEXTURE]) {
         _glKosThrowError(GL_INVALID_OPERATION, "glTexImage2D");
+    }
+
+    GLboolean isPaletted = (internalFormat == GL_COLOR_INDEX8_EXT) ? GL_TRUE : GL_FALSE;
+
+    if(isPaletted && level > 0) {
+        /* Paletted textures can't have mipmaps */
+        _glKosThrowError(GL_INVALID_OPERATION, __func__);
     }
 
     if(_glKosHasError()) {
@@ -698,11 +737,15 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
     /* All colour formats are represented as shorts internally. Paletted textures
      * are represented by byte indexes (which look up into a color table)
      */
-    GLboolean isPaletted = (internalFormat == GL_COLOR_INDEX8_EXT) ? GL_TRUE : GL_FALSE;
     GLint destStride = isPaletted ? 1 : 2;
     GLuint bytes = (width * height * destStride);
 
     if(!active->data) {
+        assert(active);
+        assert(width);
+        assert(height);
+        assert(destStride);
+
         /* need texture memory */
         active->width   = width;
         active->height  = height;
@@ -712,7 +755,11 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
         active->dataStride = destStride;
 
         GLuint size = _glGetMipmapDataSize(active);
+        assert(size);
+
         active->data = pvr_mem_malloc(size);
+        assert(active->data);
+
         active->isCompressed = GL_FALSE;
         active->isPaletted = isPaletted;
     }
@@ -727,7 +774,10 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
      * These are the only formats where the source format passed in matches the pvr format.
      * Note the REV formats + GL_BGRA will reverse to ARGB which is what the PVR supports
      */
-    if(format == GL_BGRA && type == GL_UNSIGNED_SHORT_4_4_4_4_REV && internalFormat == GL_RGBA) {
+    if(format == GL_COLOR_INDEX) {
+        /* Don't convert color indexes */
+        needsConversion = GL_FALSE;
+    } else if(format == GL_BGRA && type == GL_UNSIGNED_SHORT_4_4_4_4_REV && internalFormat == GL_RGBA) {
         needsConversion = GL_FALSE;
     } else if(format == GL_BGRA && type == GL_UNSIGNED_SHORT_1_5_5_5_REV && internalFormat == GL_RGBA) {
         needsConversion = GL_FALSE;
@@ -742,6 +792,7 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
     }
 
     GLubyte* targetData = _glGetMipmapLocation(active, level);
+    assert(targetData);
 
     if(!data) {
         /* No data? Do nothing! */
@@ -876,7 +927,7 @@ GLAPI void APIENTRY glColorTableEXT(GLenum target, GLenum internalFormat, GLsize
     }
 
     /* Only allow up to 256 colours in a palette */
-    if(width > 256) {
+    if(width > 256 || width == 0) {
         _glKosThrowError(GL_INVALID_VALUE, __func__);
         _glKosPrintError();
         return;
@@ -919,6 +970,9 @@ GLAPI void APIENTRY glColorTableEXT(GLenum target, GLenum internalFormat, GLsize
         src += sourceStride;
         dst += 4;
     }
+
+    /* Apply the palette immediately, we'll also do this when binding the texture */
+    _glApplyColorTable();
 }
 
 GLAPI void APIENTRY glColorSubTableEXT(GLenum target, GLsizei start, GLsizei count, GLenum format, GLenum type, const GLvoid *data) {
