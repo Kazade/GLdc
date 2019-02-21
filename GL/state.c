@@ -27,6 +27,13 @@ static GLenum FRONT_FACE = GL_CCW;
 static GLboolean CULLING_ENABLED = GL_FALSE;
 static GLboolean COLOR_MATERIAL_ENABLED = GL_FALSE;
 
+/* Is the shared texture palette enabled? */
+static GLboolean SHARED_PALETTE_ENABLED = GL_FALSE;
+
+GLboolean _glIsSharedTexturePaletteEnabled() {
+    return SHARED_PALETTE_ENABLED;
+}
+
 static int _calc_pvr_face_culling() {
     if(!CULLING_ENABLED) {
         return PVR_CULLING_NONE;
@@ -214,6 +221,9 @@ void _glUpdatePVRTextureContext(pvr_poly_cxt_t* context, GLshort textureUnit) {
     } else {
         context->txr.enable = PVR_TEXTURE_DISABLE;
     }
+
+    /* Apply the texture palette if necessary */
+    _glApplyColorTable();
 }
 
 static GLboolean LIGHTING_ENABLED = GL_FALSE;
@@ -291,6 +301,9 @@ GLAPI void APIENTRY glEnable(GLenum cap) {
         case GL_COLOR_MATERIAL:
             COLOR_MATERIAL_ENABLED = GL_TRUE;
         break;
+        case GL_SHARED_TEXTURE_PALETTE_EXT:
+            SHARED_PALETTE_ENABLED = GL_TRUE;
+        break;
         case GL_LIGHT0:
         case GL_LIGHT1:
         case GL_LIGHT2:
@@ -337,6 +350,9 @@ GLAPI void APIENTRY glDisable(GLenum cap) {
         break;
         case GL_COLOR_MATERIAL:
             COLOR_MATERIAL_ENABLED = GL_FALSE;
+        break;
+        case GL_SHARED_TEXTURE_PALETTE_EXT:
+            SHARED_PALETTE_ENABLED = GL_FALSE;
         break;
         case GL_LIGHT0:
         case GL_LIGHT1:
@@ -601,7 +617,7 @@ const GLbyte *glGetString(GLenum name) {
             return "GLdc 1.x";
 
         case GL_EXTENSIONS:
-            return "GL_ARB_framebuffer_object, GL_ARB_multitexture, GL_ARB_texture_rg, GL_EXT_paletted_texture";
+            return "GL_ARB_framebuffer_object, GL_ARB_multitexture, GL_ARB_texture_rg, GL_EXT_paletted_texture, GL_EXT_shared_texture_palette";
     }
 
     return "GL_KOS_ERROR: ENUM Unsupported\n";

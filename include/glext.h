@@ -153,6 +153,8 @@ GLAPI GLboolean APIENTRY glIsFramebufferEXT(GLuint framebuffer);
 
 #define GL_TEXTURE_INDEX_SIZE_EXT          0x80ED
 
+#define GL_SHARED_TEXTURE_PALETTE_EXT      0x81FB
+
 GLAPI void APIENTRY glColorTableEXT(GLenum target, GLenum internalFormat, GLsizei width, GLenum format, GLenum type, const GLvoid *data);
 GLAPI void APIENTRY glColorSubTableEXT(GLenum target, GLsizei start, GLsizei count, GLenum format, GLenum type, const GLvoid *data);
 GLAPI void APIENTRY glGetColorTableEXT(GLenum target, GLenum format, GLenum type, GLvoid *data);
