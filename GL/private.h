@@ -42,6 +42,14 @@ typedef struct {
 } PolyList;
 
 typedef struct {
+    /* Palette data is always stored in RAM as RGBA8888 and packed as ARGB8888
+     * when uploaded to the PVR */
+    GLubyte*    data;
+    GLushort     width;
+    GLenum      format;
+} TexturePalette;
+
+typedef struct {
     GLushort width;
     GLushort height;
     GLuint   color; /* This is the PVR texture format */
@@ -57,6 +65,9 @@ typedef struct {
     GLenum magFilter;
 
     GLboolean isCompressed;
+    GLboolean isPaletted;
+
+    TexturePalette* palette;
 } TextureObject;
 
 typedef struct {

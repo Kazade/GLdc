@@ -601,7 +601,7 @@ const GLbyte *glGetString(GLenum name) {
             return "GLdc 1.x";
 
         case GL_EXTENSIONS:
-            return "GL_ARB_framebuffer_object, GL_ARB_multitexture, GL_ARB_texture_rg";
+            return "GL_ARB_framebuffer_object, GL_ARB_multitexture, GL_ARB_texture_rg, GL_EXT_paletted_texture";
     }
 
     return "GL_KOS_ERROR: ENUM Unsupported\n";

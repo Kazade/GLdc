@@ -134,6 +134,31 @@ GLAPI void APIENTRY glGenerateMipmapEXT(GLenum target);
 GLAPI GLenum APIENTRY glCheckFramebufferStatusEXT(GLenum target);
 GLAPI GLboolean APIENTRY glIsFramebufferEXT(GLuint framebuffer);
 
+/* ext_paletted_texture */
+#define GL_COLOR_INDEX1_EXT                0x80E2
+#define GL_COLOR_INDEX2_EXT                0x80E3
+#define GL_COLOR_INDEX4_EXT                0x80E4
+#define GL_COLOR_INDEX8_EXT                0x80E5
+#define GL_COLOR_INDEX12_EXT               0x80E6
+#define GL_COLOR_INDEX16_EXT               0x80E7
+
+#define GL_COLOR_TABLE_FORMAT_EXT          0x80D8
+#define GL_COLOR_TABLE_WIDTH_EXT           0x80D9
+#define GL_COLOR_TABLE_RED_SIZE_EXT        0x80DA
+#define GL_COLOR_TABLE_GREEN_SIZE_EXT      0x80DB
+#define GL_COLOR_TABLE_BLUE_SIZE_EXT       0x80DC
+#define GL_COLOR_TABLE_ALPHA_SIZE_EXT      0x80DD
+#define GL_COLOR_TABLE_LUMINANCE_SIZE_EXT  0x80DE
+#define GL_COLOR_TABLE_INTENSITY_SIZE_EXT  0x80DF
+
+#define GL_TEXTURE_INDEX_SIZE_EXT          0x80ED
+
+GLAPI void APIENTRY glColorTableEXT(GLenum target, GLenum internalFormat, GLsizei width, GLenum format, GLenum type, const GLvoid *data);
+GLAPI void APIENTRY glColorSubTableEXT(GLenum target, GLsizei start, GLsizei count, GLenum format, GLenum type, const GLvoid *data);
+GLAPI void APIENTRY glGetColorTableEXT(GLenum target, GLenum format, GLenum type, GLvoid *data);
+GLAPI void APIENTRY glGetColorTableParameterivEXT(GLenum target, GLenum pname, GLint *params);
+GLAPI void APIENTRY glGetColorTableParameterfvEXT(GLenum target, GLenum pname, GLfloat *params);
+
 /* Loads VQ compressed texture from SH4 RAM into PVR VRAM */
 /* internalformat must be one of the following constants:
     GL_UNSIGNED_SHORT_5_6_5_VQ
