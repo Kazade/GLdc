@@ -349,7 +349,7 @@ __BEGIN_DECLS
 #define GL_LUMINANCE                      0x1909
 #define GL_LUMINANCE_ALPHA                0x190A
 #define GL_BGRA                           0x80E1
-
+#define GL_INTENSITY                      0x8049
 #define GL_RGB4                           0x804F
 #define GL_RGB5                           0x8050
 #define GL_RGB8                           0x8051
