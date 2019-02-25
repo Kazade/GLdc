@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <assert.h>
 
+#include "config.h"
 #include "../include/glext.h"
 #include "../include/glkos.h"
 
@@ -133,7 +134,7 @@ static GLuint _glGetMipmapDataSize(TextureObject* obj) {
 }
 
 GLubyte _glKosInitTextures() {
-    named_array_init(&TEXTURE_OBJECTS, sizeof(TextureObject), 256);
+    named_array_init(&TEXTURE_OBJECTS, sizeof(TextureObject), MAX_TEXTURE_COUNT);
 
     SHARED_PALETTE = (TexturePalette*) malloc(sizeof(TexturePalette));
     return 1;
