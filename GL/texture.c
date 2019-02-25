@@ -921,7 +921,7 @@ void APIENTRY glTexParameteri(GLenum target, GLenum pname, GLint param) {
 }
 
 GLAPI void APIENTRY glColorTableEXT(GLenum target, GLenum internalFormat, GLsizei width, GLenum format, GLenum type, const GLvoid *data) {
-    GLenum validTargets[] = {GL_TEXTURE_2D, 0};
+    GLenum validTargets[] = {GL_TEXTURE_2D, GL_SHARED_TEXTURE_PALETTE_EXT, 0};
     GLenum validInternalFormats[] = {GL_RGB8, GL_RGBA8, 0};
     GLenum validFormats[] = {GL_RGB, GL_RGBA, 0};
     GLenum validTypes[] = {GL_UNSIGNED_BYTE, GL_BYTE, GL_UNSIGNED_SHORT, GL_SHORT, 0};
