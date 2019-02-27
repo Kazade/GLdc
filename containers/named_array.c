@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <math.h>
 #include <string.h>
+#include <assert.h>
 
 #ifndef __APPLE__
 #include <malloc.h>
@@ -55,6 +56,23 @@ void* named_array_alloc(NamedArray* array, unsigned int* new_id) {
     }
 
     return NULL;
+}
+
+void* named_array_reserve(NamedArray* array, unsigned int id) {
+    if(!named_array_used(array, id)) {
+        unsigned int j = id % 8;
+        unsigned int i = (id - j) / 8;
+
+        assert(!named_array_used(array, id));
+        array->used_markers[i] |= (unsigned char) 1 << j;
+        assert(named_array_used(array, id));
+
+        unsigned char* ptr = &array->elements[(id - 1) * array->element_size];
+        memset(ptr, 0, array->element_size);
+        return ptr;
+    }
+
+    return named_array_get(array, id);
 }
 
 void named_array_release(NamedArray* array, unsigned int new_id) {
