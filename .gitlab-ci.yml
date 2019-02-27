@@ -1,0 +1,10 @@
+stages:
+  - build
+
+build:sh4-gcc:
+  stage: build
+  image: kazade/dreamcast-sdk
+  script:
+    - source /etc/bash.bashrc
+    - make clean
+    - make samples
