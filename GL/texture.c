@@ -532,6 +532,10 @@ static inline void _rgba8888_to_rgba8888(const GLubyte* source, GLubyte* dest) {
     dst[3] = source[3];
 }
 
+static inline void _rgba8888_to_rgb565(const GLubyte* source, GLubyte* dest) {
+    *((GLushort*) dest) = ((source[0] & 0b11111000) << 8) | ((source[1] & 0b11111100) << 3) | (source[2] >> 3);
+}
+
 static inline void _rgb888_to_rgba8888(const GLubyte* source, GLubyte* dest) {
     /* Noop */
     GLubyte* dst = (GLubyte*) dest;
@@ -592,6 +596,8 @@ static TextureConversionFunc _determineConversion(GLint internalFormat, GLenum f
     case GL_RGB: {
         if(type == GL_UNSIGNED_BYTE && format == GL_RGB) {
             return _rgb888_to_rgb565;
+        } else if(type == GL_UNSIGNED_BYTE && format == GL_RGBA) {
+            return _rgba8888_to_rgb565;
         } else if(type == GL_BYTE && format == GL_RGB) {
             return _rgb888_to_rgb565;
         } else if(type == GL_UNSIGNED_BYTE && format == GL_RED) {
