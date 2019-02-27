@@ -15,7 +15,10 @@ typedef struct {
 
 void named_array_init(NamedArray* array, unsigned int element_size, unsigned int max_elements);
 char named_array_used(NamedArray* array, unsigned int id);
+
 void* named_array_alloc(NamedArray* array, unsigned int* new_id);
+void* named_array_reserve(NamedArray* array, unsigned int id);
+
 void named_array_release(NamedArray* array, unsigned int new_id);
 void* named_array_get(NamedArray* array, unsigned int id);
 void named_array_cleanup(NamedArray* array);

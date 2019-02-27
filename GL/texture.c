@@ -170,24 +170,28 @@ GLboolean APIENTRY glIsTexture(GLuint texture) {
     return (named_array_used(&TEXTURE_OBJECTS, texture)) ? GL_TRUE : GL_FALSE;
 }
 
+static void _glInitializeTextureObject(TextureObject* txr, unsigned int id) {
+    txr->index = id;
+    txr->width = txr->height = 0;
+    txr->mipmap = 0;
+    txr->uv_clamp = 0;
+    txr->env = PVR_TXRENV_MODULATEALPHA;
+    txr->data = NULL;
+    txr->mipmapCount = 0;
+    txr->minFilter = GL_NEAREST;
+    txr->magFilter = GL_NEAREST;
+    txr->palette = NULL;
+    txr->isCompressed = GL_FALSE;
+    txr->isPaletted = GL_FALSE;
+}
+
 void APIENTRY glGenTextures(GLsizei n, GLuint *textures) {
     TRACE();
 
     while(n--) {
         GLuint id = 0;
         TextureObject* txr = (TextureObject*) named_array_alloc(&TEXTURE_OBJECTS, &id);
-        txr->index = id;
-        txr->width = txr->height = 0;
-        txr->mipmap = 0;
-        txr->uv_clamp = 0;
-        txr->env = PVR_TXRENV_MODULATEALPHA;
-        txr->data = NULL;
-        txr->mipmapCount = 0;
-        txr->minFilter = GL_NEAREST;
-        txr->magFilter = GL_NEAREST;
-        txr->palette = NULL;
-        txr->isCompressed = GL_FALSE;
-        txr->isPaletted = GL_FALSE;
+        _glInitializeTextureObject(txr, id);
 
         *textures = id;
 
@@ -234,6 +238,13 @@ void APIENTRY glBindTexture(GLenum  target, GLuint texture) {
 
     if(_glCheckValidEnum(target, target_values, __func__) != 0) {
         return;
+    }
+
+    /* If this didn't come from glGenTextures, then we should initialize the
+     * texture the first time it's bound */
+    if(!named_array_used(&TEXTURE_OBJECTS, texture)) {
+        TextureObject* txr = named_array_reserve(&TEXTURE_OBJECTS, texture);
+        _glInitializeTextureObject(txr, texture);
     }
 
     if(texture) {
