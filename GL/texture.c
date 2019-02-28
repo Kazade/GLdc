@@ -136,6 +136,9 @@ static GLuint _glGetMipmapDataSize(TextureObject* obj) {
 GLubyte _glKosInitTextures() {
     named_array_init(&TEXTURE_OBJECTS, sizeof(TextureObject), MAX_TEXTURE_COUNT);
 
+    // Reserve zero so that it is never given to anyone as an ID!
+    named_array_reserve(&TEXTURE_OBJECTS, 0);
+
     SHARED_PALETTE = (TexturePalette*) malloc(sizeof(TexturePalette));
     return 1;
 }
@@ -191,6 +194,9 @@ void APIENTRY glGenTextures(GLsizei n, GLuint *textures) {
     while(n--) {
         GLuint id = 0;
         TextureObject* txr = (TextureObject*) named_array_alloc(&TEXTURE_OBJECTS, &id);
+
+        assert(id);  // Generated IDs must never be zero
+
         _glInitializeTextureObject(txr, id);
 
         *textures = id;
