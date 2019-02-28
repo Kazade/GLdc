@@ -563,6 +563,18 @@ void APIENTRY glGetBooleanv(GLenum pname, GLboolean* params) {
     }
 }
 
+void APIENTRY glGetFloatv(GLenum pname, GLfloat* params) {
+    switch(pname) {
+        case GL_PROJECTION_MATRIX:
+            memcpy(params, _glGetProjectionMatrix(), sizeof(float) * 16);
+        break;
+        default:
+            _glKosThrowError(GL_INVALID_ENUM, "glGetIntegerv");
+            _glKosPrintError();
+            break;
+    }
+}
+
 void APIENTRY glGetIntegerv(GLenum pname, GLint *params) {
     switch(pname) {
         case GL_MAX_LIGHTS:

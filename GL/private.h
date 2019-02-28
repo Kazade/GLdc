@@ -108,6 +108,8 @@ void _matrixLoadModelView();
 void _matrixLoadTexture();
 void _applyRenderMatrix();
 
+matrix_t* _glGetProjectionMatrix();
+
 void wipeTextureOnFramebuffers(GLuint texture);
 GLubyte checkImmediateModeInactive(const char* func);
 

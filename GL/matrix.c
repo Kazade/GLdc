@@ -33,6 +33,10 @@ static const matrix_t IDENTITY = {
 
 void APIENTRY glDepthRange(GLclampf n, GLclampf f);
 
+matrix_t* _glGetProjectionMatrix() {
+    return (matrix_t*) stack_top(&MATRIX_STACKS[1]);
+}
+
 void initMatrices() {
     init_stack(&MATRIX_STACKS[0], sizeof(matrix_t), 32);
     init_stack(&MATRIX_STACKS[1], sizeof(matrix_t), 32);
