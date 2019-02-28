@@ -240,14 +240,14 @@ void APIENTRY glBindTexture(GLenum  target, GLuint texture) {
         return;
     }
 
-    /* If this didn't come from glGenTextures, then we should initialize the
-     * texture the first time it's bound */
-    if(!named_array_used(&TEXTURE_OBJECTS, texture)) {
-        TextureObject* txr = named_array_reserve(&TEXTURE_OBJECTS, texture);
-        _glInitializeTextureObject(txr, texture);
-    }
-
     if(texture) {
+        /* If this didn't come from glGenTextures, then we should initialize the
+         * texture the first time it's bound */
+        if(!named_array_used(&TEXTURE_OBJECTS, texture)) {
+            TextureObject* txr = named_array_reserve(&TEXTURE_OBJECTS, texture);
+            _glInitializeTextureObject(txr, texture);
+        }
+
         TEXTURE_UNITS[ACTIVE_TEXTURE] = (TextureObject*) named_array_get(&TEXTURE_OBJECTS, texture);
     } else {
         TEXTURE_UNITS[ACTIVE_TEXTURE] = NULL;
