@@ -60,7 +60,7 @@ void* named_array_alloc(NamedArray* array, unsigned int* new_id) {
 
 void* named_array_reserve(NamedArray* array, unsigned int id) {
     if(!named_array_used(array, id)) {
-        unsigned int j = id % 8;
+        unsigned int j = (id % 8) - 1;
         unsigned int i = (id - j) / 8;
 
         assert(!named_array_used(array, id));
