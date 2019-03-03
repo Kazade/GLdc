@@ -221,9 +221,6 @@ void _glUpdatePVRTextureContext(pvr_poly_cxt_t* context, GLshort textureUnit) {
     } else {
         context->txr.enable = PVR_TEXTURE_DISABLE;
     }
-
-    /* Apply the texture palette if necessary */
-    _glApplyColorTable();
 }
 
 static GLboolean LIGHTING_ENABLED = GL_FALSE;
@@ -301,8 +298,12 @@ GLAPI void APIENTRY glEnable(GLenum cap) {
         case GL_COLOR_MATERIAL:
             COLOR_MATERIAL_ENABLED = GL_TRUE;
         break;
-        case GL_SHARED_TEXTURE_PALETTE_EXT:
+        case GL_SHARED_TEXTURE_PALETTE_EXT: {
             SHARED_PALETTE_ENABLED = GL_TRUE;
+
+            /* Apply the texture palette if necessary */
+            _glApplyColorTable();
+        }
         break;
         case GL_LIGHT0:
         case GL_LIGHT1:
@@ -351,8 +352,12 @@ GLAPI void APIENTRY glDisable(GLenum cap) {
         case GL_COLOR_MATERIAL:
             COLOR_MATERIAL_ENABLED = GL_FALSE;
         break;
-        case GL_SHARED_TEXTURE_PALETTE_EXT:
+        case GL_SHARED_TEXTURE_PALETTE_EXT: {
             SHARED_PALETTE_ENABLED = GL_FALSE;
+
+            /* Restore whatever palette may exist on a bound texture */
+            _glApplyColorTable();
+        }
         break;
         case GL_LIGHT0:
         case GL_LIGHT1:

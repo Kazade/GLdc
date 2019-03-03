@@ -255,6 +255,9 @@ void APIENTRY glBindTexture(GLenum  target, GLuint texture) {
         }
 
         TEXTURE_UNITS[ACTIVE_TEXTURE] = (TextureObject*) named_array_get(&TEXTURE_OBJECTS, texture);
+
+        /* Apply the texture palette if necessary */
+        _glApplyColorTable();
     } else {
         TEXTURE_UNITS[ACTIVE_TEXTURE] = NULL;
     }
@@ -1028,6 +1031,9 @@ GLAPI void APIENTRY glColorTableEXT(GLenum target, GLenum internalFormat, GLsize
         src += sourceStride;
         dst += 4;
     }
+
+    /* Apply the texture palette if necessary */
+    _glApplyColorTable();
 }
 
 GLAPI void APIENTRY glColorSubTableEXT(GLenum target, GLsizei start, GLsizei count, GLenum format, GLenum type, const GLvoid *data) {
