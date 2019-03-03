@@ -32,6 +32,8 @@ __BEGIN_DECLS
 
 #define GL_NEARZ_CLIPPING_KOS                       0xEEFA
 
+#define GL_UNSIGNED_BYTE_TWID_KOS                   0xEEFB
+
 
 GLAPI void APIENTRY glKosSwapBuffers();
 

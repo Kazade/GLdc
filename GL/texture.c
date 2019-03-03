@@ -527,7 +527,11 @@ static GLuint _determinePVRFormat(GLint internalFormat, GLenum type) {
         case GL_COMPRESSED_ARGB_1555_VQ_MIPMAP_TWID_KOS:
             return PVR_TXRFMT_ARGB1555 | PVR_TXRFMT_TWIDDLED | PVR_TXRFMT_VQ_ENABLE;
         case GL_COLOR_INDEX8_EXT:
-            return PVR_TXRFMT_PAL8BPP;
+            if(type == GL_UNSIGNED_BYTE_TWID_KOS) {
+                return PVR_TXRFMT_PAL8BPP | PVR_TXRFMT_TWIDDLED;
+            } else {
+                return PVR_TXRFMT_PAL8BPP | PVR_TXRFMT_NONTWIDDLED;
+            }
         default:
             return 0;
     }
