@@ -29,7 +29,6 @@ void _glApplyColorTable() {
      * FIXME:
      *
      * - Different palette formats (GL_RGB -> PVR_PAL_RGB565)
-     * - Store the active palette, don't resubmit eah time
      */
 
     static TexturePalette* last_bound = NULL;
@@ -776,6 +775,8 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
 
     TextureObject* active = TEXTURE_UNITS[ACTIVE_TEXTURE];
 
+    assert(active);
+
     if(active->data) {
         /* pre-existing texture - check if changed */
         if(active->width != width ||
@@ -854,6 +855,10 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
         /* No data? Do nothing! */
         return;
     } else if(!needsConversion) {
+        assert(targetData);
+        assert(data);
+        assert(bytes);
+
         /* No conversion? Just copy the data, and the pvr_format is correct */
         sq_cpy(targetData, data, bytes);
         return;
@@ -872,7 +877,11 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
         GLubyte* dest = (GLubyte*) targetData;
         const GLubyte* source = data;
 
+        assert(dest);
+        assert(source);
+
         GLint stride = _determineStride(format, type);
+        assert(stride > -1);
 
         if(stride == -1) {
             _glKosThrowError(GL_INVALID_OPERATION, __func__);
