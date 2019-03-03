@@ -1002,7 +1002,9 @@ GLAPI void APIENTRY glColorTableEXT(GLenum target, GLenum internalFormat, GLsize
         return;
     }
 
-    GLuint sourceStride = _determineStride(format, type);
+    GLint sourceStride = _determineStride(format, type);
+
+    assert(sourceStride > -1);
 
     TextureConversionFunc convert = _determineConversion(
         GL_RGBA8,  /* We always store palettes in this format */
@@ -1029,6 +1031,8 @@ GLAPI void APIENTRY glColorTableEXT(GLenum target, GLenum internalFormat, GLsize
         palette = active->palette;
     }
 
+    assert(palette);
+
     if(target) {
         pvr_mem_free(palette->data);
         palette->data = NULL;
@@ -1040,6 +1044,9 @@ GLAPI void APIENTRY glColorTableEXT(GLenum target, GLenum internalFormat, GLsize
 
     GLubyte* src = (GLubyte*) data;
     GLubyte* dst = (GLubyte*) palette->data;
+
+    assert(src);
+    assert(dst);
 
     /* Transform and copy the source palette to the texture */
     GLushort i = 0;
