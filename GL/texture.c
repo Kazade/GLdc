@@ -24,15 +24,14 @@ static GLuint _determinePVRFormat(GLint internalFormat, GLenum type);
 
 #define PACK_ARGB8888(a,r,g,b) ( ((a & 0xFF) << 24) | ((r & 0xFF) << 16) | ((g & 0xFF) << 8) | (b & 0xFF) )
 
+static TexturePalette* last_bound_palette = NULL;
+
 void _glApplyColorTable() {
     /*
      * FIXME:
      *
      * - Different palette formats (GL_RGB -> PVR_PAL_RGB565)
      */
-
-    static TexturePalette* last_bound = NULL;
-
     TexturePalette* src = NULL;
 
     if(_glIsSharedTexturePaletteEnabled()) {
@@ -52,11 +51,11 @@ void _glApplyColorTable() {
     }
 
     /* Don't reapply the palette if it was the last one we applied */
-    if(src == last_bound) {
+    if(src == last_bound_palette) {
         return;
     }
 
-    last_bound = src;
+    last_bound_palette = src;
 
     pvr_set_pal_format(PVR_PAL_ARGB8888);
 
@@ -1057,7 +1056,9 @@ GLAPI void APIENTRY glColorTableEXT(GLenum target, GLenum internalFormat, GLsize
         dst += 4;
     }
 
-    /* Apply the texture palette if necessary */
+
+    /* Colour table might have changed the active palette, so wipe last_bound_palette before reapplying */
+    last_bound_palette = NULL;
     _glApplyColorTable();
 }
 
