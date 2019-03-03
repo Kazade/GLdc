@@ -14,11 +14,11 @@
 
 static unsigned char ZCLIP_ENABLED = 1;
 
-unsigned char isClippingEnabled() {
+unsigned char _glIsClippingEnabled() {
     return ZCLIP_ENABLED;
 }
 
-void enableClipping(unsigned char v) {
+void _glEnableClipping(unsigned char v) {
     ZCLIP_ENABLED = v;
 }
 

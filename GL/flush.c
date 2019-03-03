@@ -53,7 +53,7 @@ static void _glInitPVR() {
 
 
 PolyList* _glActivePolyList() {
-    if(isBlendingEnabled()) {
+    if(_glIsBlendingEnabled()) {
         return &TR_LIST;
     } else {
         return &OP_LIST;

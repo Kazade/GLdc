@@ -110,10 +110,10 @@ void _glApplyRenderMatrix();
 
 matrix_t* _glGetProjectionMatrix();
 
-void wipeTextureOnFramebuffers(GLuint texture);
-GLubyte checkImmediateModeInactive(const char* func);
+void _glWipeTextureOnFramebuffers(GLuint texture);
+GLubyte _glCheckImmediateModeInactive(const char* func);
 
-pvr_poly_cxt_t* getPVRContext();
+pvr_poly_cxt_t* _glGetPVRContext();
 GLubyte _glInitTextures();
 
 void _glUpdatePVRTextureContext(pvr_poly_cxt_t* context, GLshort textureUnit);
@@ -135,27 +135,27 @@ AttribPointer* _glGetUVAttribPointer();
 AttribPointer* _glGetSTAttribPointer();
 GLenum _glGetShadeModel();
 
-TextureObject* getTexture0();
-TextureObject* getTexture1();
-TextureObject* getBoundTexture();
+TextureObject* _glGetTexture0();
+TextureObject* _glGetTexture1();
+TextureObject* _glGetBoundTexture();
 GLubyte _glGetActiveTexture();
 GLuint _glGetActiveClientTexture();
 
 GLboolean _glIsSharedTexturePaletteEnabled();
 void _glApplyColorTable();
 
-GLboolean isBlendingEnabled();
+GLboolean _glIsBlendingEnabled();
 GLboolean _glIsMipmapComplete(const TextureObject* obj);
 GLubyte* _glGetMipmapLocation(TextureObject* obj, GLuint level);
 GLuint _glGetMipmapLevelCount(TextureObject* obj);
 
-GLboolean isLightingEnabled();
-GLboolean isLightEnabled(GLubyte light);
+GLboolean _glIsLightingEnabled();
+GLboolean _glIsLightEnabled(GLubyte light);
 GLboolean _glIsColorMaterialEnabled();
 void _glCalculateLightingContribution(const GLint light, const GLfloat* pos, const GLfloat* normal, uint8_t* bgra, GLfloat* colour);
 
-unsigned char isClippingEnabled();
-void enableClipping(unsigned char v);
+unsigned char _glIsClippingEnabled();
+void _glEnableClipping(unsigned char v);
 
 void _glKosThrowError(GLenum error, const char *function);
 void _glKosPrintError();

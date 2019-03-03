@@ -36,7 +36,7 @@ void _glInitImmediateMode() {
     aligned_vector_init(&NORMALS, sizeof(GLfloat));
 }
 
-GLubyte checkImmediateModeInactive(const char* func) {
+GLubyte _glCheckImmediateModeInactive(const char* func) {
     /* Returns 1 on error */
     if(IMMEDIATE_MODE_ACTIVE) {
         _glKosThrowError(GL_INVALID_OPERATION, func);

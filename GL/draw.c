@@ -999,7 +999,7 @@ static void mat_transform_normal3(const float* xyz, const float* xyzOut, const u
 }
 
 static void light(ClipVertex* output, const GLsizei count) {
-    if(!isLightingEnabled()) {
+    if(!_glIsLightingEnabled()) {
         return;
     }
 
@@ -1038,7 +1038,7 @@ static void light(ClipVertex* output, const GLsizei count) {
         GLfloat to_add [] = {0.0f, 0.0f, 0.0f, 0.0f};
         GLubyte j;
         for(j = 0; j < MAX_LIGHTS; ++j) {
-            if(isLightEnabled(j)) {
+            if(_glIsLightEnabled(j)) {
                 _glCalculateLightingContribution(j, ES->xyz, ES->n, vertex->bgra, to_add);
 
                 total[0] += to_add[0];
@@ -1070,7 +1070,7 @@ static void divide(ClipVertex* output, const GLsizei count) {
 
 static void push(PVRHeader* header, ClipVertex* output, const GLsizei count, PolyList* activePolyList, GLshort textureUnit) {
     // Compile the header
-    pvr_poly_cxt_t cxt = *getPVRContext();
+    pvr_poly_cxt_t cxt = *_glGetPVRContext();
     cxt.list_type = activePolyList->list_type;
 
     _glUpdatePVRTextureContext(&cxt, textureUnit);
@@ -1104,7 +1104,7 @@ static void submitVertices(GLenum mode, GLsizei first, GLsizei count, GLenum typ
     glActiveTextureARB(GL_TEXTURE1);
     glGetBooleanv(GL_TEXTURE_2D, &doMultitexture);
 
-    doLighting = isLightingEnabled();
+    doLighting = _glIsLightingEnabled();
 
     glActiveTextureARB(activeTexture);
 
@@ -1139,7 +1139,7 @@ static void submitVertices(GLenum mode, GLsizei first, GLsizei count, GLenum typ
 
     profiler_checkpoint("transform");
 
-    if(isClippingEnabled()) {
+    if(_glIsClippingEnabled()) {
 
         uint32_t offset = ((start - 1) - (ClipVertex*) activeList->vector.data);
 
@@ -1200,7 +1200,7 @@ static void submitVertices(GLenum mode, GLsizei first, GLsizei count, GLenum typ
         return;
     }
 
-    TextureObject* texture1 = getTexture1();
+    TextureObject* texture1 = _glGetTexture1();
 
     if(!texture1 || ((ENABLED_VERTEX_ATTRIBUTES & ST_ENABLED_FLAG) != ST_ENABLED_FLAG)) {
         /* Multitexture implicitly disabled */
@@ -1252,7 +1252,7 @@ static void submitVertices(GLenum mode, GLsizei first, GLsizei count, GLenum typ
 void APIENTRY glDrawElements(GLenum mode, GLsizei count, GLenum type, const GLvoid* indices) {
     TRACE();
 
-    if(checkImmediateModeInactive(__func__)) {
+    if(_glCheckImmediateModeInactive(__func__)) {
         return;
     }
 
@@ -1262,7 +1262,7 @@ void APIENTRY glDrawElements(GLenum mode, GLsizei count, GLenum type, const GLvo
 void APIENTRY glDrawArrays(GLenum mode, GLint first, GLsizei count) {
     TRACE();
 
-    if(checkImmediateModeInactive(__func__)) {
+    if(_glCheckImmediateModeInactive(__func__)) {
         return;
     }
 

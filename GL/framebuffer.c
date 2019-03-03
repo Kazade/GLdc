@@ -20,7 +20,7 @@ void _glInitFramebuffers() {
     named_array_init(&FRAMEBUFFERS, sizeof(FrameBuffer), 32);
 }
 
-void wipeTextureOnFramebuffers(GLuint texture) {
+void _glWipeTextureOnFramebuffers(GLuint texture) {
     /* Spec says we don't update inactive framebuffers, they'll presumably just cause
      * a GL_INVALID_OPERATION if we try to render to them */
     if(ACTIVE_FRAMEBUFFER && ACTIVE_FRAMEBUFFER->texture_id == texture) {
@@ -201,7 +201,7 @@ void APIENTRY glGenerateMipmapEXT(GLenum target) {
         return;
     }
 
-    TextureObject* tex = getBoundTexture();
+    TextureObject* tex = _glGetBoundTexture();
 
     if(!tex || !tex->data || !tex->mipmapCount) {
         _glKosThrowError(GL_INVALID_OPERATION, __func__);

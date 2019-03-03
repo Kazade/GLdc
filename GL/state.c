@@ -14,7 +14,7 @@
 
 static pvr_poly_cxt_t GL_CONTEXT;
 
-pvr_poly_cxt_t* getPVRContext() {
+pvr_poly_cxt_t* _glGetPVRContext() {
     return &GL_CONTEXT;
 }
 
@@ -80,7 +80,7 @@ static GLenum BLEND_SFACTOR = GL_ONE;
 static GLenum BLEND_DFACTOR = GL_ZERO;
 static GLboolean BLEND_ENABLED = GL_FALSE;
 
-GLboolean isBlendingEnabled() {
+GLboolean _glIsBlendingEnabled() {
     return BLEND_ENABLED;
 }
 
@@ -146,7 +146,7 @@ GLboolean _glCheckValidEnum(GLint param, GLenum* values, const char* func) {
 static GLboolean TEXTURES_ENABLED [] = {GL_FALSE, GL_FALSE};
 
 void _glUpdatePVRTextureContext(pvr_poly_cxt_t* context, GLshort textureUnit) {
-    const TextureObject *tx1 = (textureUnit == 0) ? getTexture0() : getTexture1();
+    const TextureObject *tx1 = (textureUnit == 0) ? _glGetTexture0() : _glGetTexture1();
 
     if(!TEXTURES_ENABLED[textureUnit] || !tx1) {
         context->txr.enable = PVR_TEXTURE_DISABLE;
@@ -226,11 +226,11 @@ void _glUpdatePVRTextureContext(pvr_poly_cxt_t* context, GLshort textureUnit) {
 static GLboolean LIGHTING_ENABLED = GL_FALSE;
 static GLboolean LIGHT_ENABLED[MAX_LIGHTS];
 
-GLboolean isLightingEnabled() {
+GLboolean _glIsLightingEnabled() {
     return LIGHTING_ENABLED;
 }
 
-GLboolean isLightEnabled(unsigned char light) {
+GLboolean _glIsLightEnabled(unsigned char light) {
     return LIGHT_ENABLED[light & 0xF];
 }
 
@@ -316,7 +316,7 @@ GLAPI void APIENTRY glEnable(GLenum cap) {
             LIGHT_ENABLED[cap & 0xF] = GL_TRUE;
         break;
         case GL_NEARZ_CLIPPING_KOS:
-            enableClipping(GL_TRUE);
+            _glEnableClipping(GL_TRUE);
         break;
     default:
         break;
@@ -370,7 +370,7 @@ GLAPI void APIENTRY glDisable(GLenum cap) {
             LIGHT_ENABLED[cap & 0xF] = GL_FALSE;
         break;
         case GL_NEARZ_CLIPPING_KOS:
-            enableClipping(GL_FALSE);
+            _glEnableClipping(GL_FALSE);
         break;
     default:
         break;
@@ -586,7 +586,7 @@ void APIENTRY glGetIntegerv(GLenum pname, GLint *params) {
             *params = MAX_LIGHTS;
         break;
         case GL_TEXTURE_BINDING_2D:
-            *params = getBoundTexture()->index;
+            *params = _glGetBoundTexture()->index;
         break;
         case GL_DEPTH_FUNC:
             *params = DEPTH_FUNC;
