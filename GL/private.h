@@ -93,20 +93,20 @@ typedef struct {
 } LightSource;
 
 
-PolyList *activePolyList();
-PolyList *transparentPolyList();
+PolyList *_glActivePolyList();
+PolyList *_glTransparentPolyList();
 
-void initAttributePointers();
+void _glInitAttributePointers();
 void _glInitContext();
 void _glInitLights();
-void initImmediateMode();
-void initMatrices();
-void initFramebuffers();
+void _glInitImmediateMode();
+void _glInitMatrices();
+void _glInitFramebuffers();
 
-void _matrixLoadNormal();
-void _matrixLoadModelView();
-void _matrixLoadTexture();
-void _applyRenderMatrix();
+void _glMatrixLoadNormal();
+void _glMatrixLoadModelView();
+void _glMatrixLoadTexture();
+void _glApplyRenderMatrix();
 
 matrix_t* _glGetProjectionMatrix();
 
@@ -114,7 +114,7 @@ void wipeTextureOnFramebuffers(GLuint texture);
 GLubyte checkImmediateModeInactive(const char* func);
 
 pvr_poly_cxt_t* getPVRContext();
-GLubyte _glKosInitTextures();
+GLubyte _glInitTextures();
 
 void _glUpdatePVRTextureContext(pvr_poly_cxt_t* context, GLshort textureUnit);
 

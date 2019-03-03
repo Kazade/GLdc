@@ -28,7 +28,7 @@ static GLfloat UV_COORD[2] = {0.0f, 0.0f};
 static GLfloat ST_COORD[2] = {0.0f, 0.0f};
 
 
-void initImmediateMode() {
+void _glInitImmediateMode() {
     aligned_vector_init(&VERTICES, sizeof(GLfloat));
     aligned_vector_init(&COLOURS, sizeof(GLfloat));
     aligned_vector_init(&UV_COORDS, sizeof(GLfloat));

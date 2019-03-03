@@ -16,7 +16,7 @@ static FrameBuffer* ACTIVE_FRAMEBUFFER = NULL;
 static NamedArray FRAMEBUFFERS;
 
 
-void initFramebuffers() {
+void _glInitFramebuffers() {
     named_array_init(&FRAMEBUFFERS, sizeof(FrameBuffer), 32);
 }
 

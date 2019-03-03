@@ -109,7 +109,7 @@ void APIENTRY glLightfv(GLenum light, GLenum pname, const GLfloat *params) {
             memcpy(LIGHTS[idx].specular, params, sizeof(GLfloat) * 4);
         break;
         case GL_POSITION: {
-            _matrixLoadModelView();
+            _glMatrixLoadModelView();
             memcpy(LIGHTS[idx].position, params, sizeof(GLfloat) * 4);
 
             LIGHTS[idx].is_directional = (params[3] == 0.0f) ? GL_TRUE : GL_FALSE;

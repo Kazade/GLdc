@@ -490,7 +490,7 @@ void glPixelStorei(GLenum pname, GLint param) {
 */
 void APIENTRY glScissor(GLint x, GLint y, GLsizei width, GLsizei height) {
     /*!!! FIXME: Shouldn't this be added to *all* lists? */
-    PVRTileClipCommand *c = aligned_vector_extend(&activePolyList()->vector, 1);
+    PVRTileClipCommand *c = aligned_vector_extend(&_glActivePolyList()->vector, 1);
 
     GLint miny, maxx, maxy;
     GLsizei gl_scissor_width = CLAMP(width, 0, vid_mode->width);

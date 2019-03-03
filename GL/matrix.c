@@ -37,7 +37,7 @@ matrix_t* _glGetProjectionMatrix() {
     return (matrix_t*) stack_top(&MATRIX_STACKS[1]);
 }
 
-void initMatrices() {
+void _glInitMatrices() {
     init_stack(&MATRIX_STACKS[0], sizeof(matrix_t), 32);
     init_stack(&MATRIX_STACKS[1], sizeof(matrix_t), 32);
     init_stack(&MATRIX_STACKS[2], sizeof(matrix_t), 32);
@@ -385,20 +385,20 @@ void gluLookAt(GLfloat eyex, GLfloat eyey, GLfloat eyez, GLfloat centerx,
     glhLookAtf2(eye, point, up);
 }
 
-void _applyRenderMatrix() {
+void _glApplyRenderMatrix() {
     mat_load(&SCREENVIEW_MATRIX);
     mat_apply(stack_top(MATRIX_STACKS + (GL_PROJECTION & 0xF)));
     mat_apply(stack_top(MATRIX_STACKS + (GL_MODELVIEW & 0xF)));
 }
 
-void _matrixLoadTexture() {
+void _glMatrixLoadTexture() {
     mat_load(stack_top(MATRIX_STACKS + (GL_TEXTURE & 0xF)));
 }
 
-void _matrixLoadModelView() {
+void _glMatrixLoadModelView() {
     mat_load(stack_top(MATRIX_STACKS + (GL_MODELVIEW & 0xF)));
 }
 
-void _matrixLoadNormal() {
+void _glMatrixLoadNormal() {
     mat_load(&NORMAL_MATRIX);
 }

@@ -38,7 +38,7 @@ static void pvr_list_submit(void *src, int n) {
     d[0] = d[8] = 0;
 }
 
-static void _initPVR() {
+static void _glInitPVR() {
     pvr_init_params_t params = {
         /* Enable opaque and translucent polygons with size 32 and 32 */
         { PVR_BINSIZE_32, PVR_BINSIZE_0, PVR_BINSIZE_32, PVR_BINSIZE_0, PVR_BINSIZE_32 },
@@ -52,7 +52,7 @@ static void _initPVR() {
 }
 
 
-PolyList* activePolyList() {
+PolyList* _glActivePolyList() {
     if(isBlendingEnabled()) {
         return &TR_LIST;
     } else {
@@ -60,23 +60,23 @@ PolyList* activePolyList() {
     }
 }
 
-PolyList *transparentPolyList() {
+PolyList *_glTransparentPolyList() {
     return &TR_LIST;
 }
 
 void APIENTRY glKosInit() {
     TRACE();
 
-    _initPVR();
+    _glInitPVR();
 
-    initMatrices();
-    initAttributePointers();
+    _glInitMatrices();
+    _glInitAttributePointers();
     _glInitContext();
     _glInitLights();
-    initImmediateMode();
-    initFramebuffers();
+    _glInitImmediateMode();
+    _glInitFramebuffers();
 
-    _glKosInitTextures();
+    _glInitTextures();
 
     OP_LIST.list_type = PVR_LIST_OP_POLY;
     PT_LIST.list_type = PVR_LIST_PT_POLY;

@@ -142,7 +142,7 @@ static GLuint _glGetMipmapDataSize(TextureObject* obj) {
     return size;
 }
 
-GLubyte _glKosInitTextures() {
+GLubyte _glInitTextures() {
     named_array_init(&TEXTURE_OBJECTS, sizeof(TextureObject), MAX_TEXTURE_COUNT);
 
     // Reserve zero so that it is never given to anyone as an ID!
