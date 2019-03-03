@@ -55,7 +55,7 @@ void _glApplyColorTable() {
     GLushort i = 0;
     for(; i < src->width; ++i) {
         GLubyte* entry = &src->data[i * 4];
-        pvr_set_pal_entry(i, PACK_ARGB8888(entry[3], entry[1], entry[2], entry[0]));
+        pvr_set_pal_entry(i, PACK_ARGB8888(entry[3], entry[0], entry[1], entry[2]));
     }
 }
 
