@@ -32,6 +32,8 @@ void _glApplyColorTable() {
      * - Store the active palette, don't resubmit eah time
      */
 
+    static TexturePalette* last_bound = NULL;
+
     TexturePalette* src = NULL;
 
     if(_glIsSharedTexturePaletteEnabled()) {
@@ -49,6 +51,13 @@ void _glApplyColorTable() {
 
         src = active->palette;
     }
+
+    /* Don't reapply the palette if it was the last one we applied */
+    if(src == last_bound) {
+        return;
+    }
+
+    last_bound = src;
 
     pvr_set_pal_format(PVR_PAL_ARGB8888);
 
