@@ -154,6 +154,9 @@ GLubyte _glInitTextures() {
     named_array_reserve(&TEXTURE_OBJECTS, 0);
 
     SHARED_PALETTE = (TexturePalette*) malloc(sizeof(TexturePalette));
+    SHARED_PALETTE->data = NULL;
+    SHARED_PALETTE->format = 0;
+    SHARED_PALETTE->width = 0;
     return 1;
 }
 
