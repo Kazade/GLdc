@@ -460,6 +460,8 @@ static inline PolyBuildFunc _calcBuildFunc(const GLenum type) {
     return &_buildStrip;
 }
 
+static inline void nullFloatParseFunc(GLfloat* out, const GLubyte* in) {}
+
 static inline void genElementsCommon(
     ClipVertex* output,
     const GLubyte* iptr, GLuint istride, GLenum type,
@@ -473,9 +475,9 @@ static inline void genElementsCommon(
 ) {
     const FloatParseFunc vertexFunc = _calcVertexParseFunc();
     const ByteParseFunc diffuseFunc = _calcDiffuseParseFunc();
-    const FloatParseFunc uvFunc = _calcUVParseFunc();
-    const FloatParseFunc stFunc = _calcSTParseFunc();
-    const FloatParseFunc normalFunc = _calcNormalParseFunc();
+    const FloatParseFunc uvFunc = (doTexture) ? _calcUVParseFunc() : &nullFloatParseFunc;
+    const FloatParseFunc stFunc = (doMultitexture) ? _calcSTParseFunc() : &nullFloatParseFunc;
+    const FloatParseFunc normalFunc = (doLighting) ? _calcNormalParseFunc() : &nullFloatParseFunc;
 
     const IndexParseFunc indexFunc = _calcParseIndexFunc(type);
 
@@ -487,40 +489,10 @@ static inline void genElementsCommon(
         GLuint j = indexFunc(idx);
         vertex->flags = PVR_CMD_VERTEX;
         vertexFunc(vertex->xyz, vptr + (j * vstride));
-    }
-
-    idx = iptr;
-    vertex = output;
-    for(i = 0; i < count; ++i, idx += istride, ++vertex) {
-        GLuint j = indexFunc(idx);
         diffuseFunc(vertex->bgra, cptr + (j * cstride));
-    }
-
-    if(doTexture) {
-        idx = iptr;
-        vertex = output;
-        for(i = 0; i < count; ++i, idx += istride, ++vertex) {
-            GLuint j = indexFunc(idx);
-            uvFunc(vertex->uv, uvptr + (j * uvstride));
-        }
-    }
-
-    if(doMultitexture) {
-        idx = iptr;
-        vertex = output;
-        for(i = 0; i < count; ++i, idx += istride, ++vertex) {
-            GLuint j = indexFunc(idx);
-            stFunc(vertex->st, stptr + (j * ststride));
-        }
-    }
-
-    if(doLighting) {
-        idx = iptr;
-        vertex = output;
-        for(i = 0; i < count; ++i, idx += istride, ++vertex) {
-            GLuint j = indexFunc(idx);
-            normalFunc(vertex->nxyz, nptr + (j * nstride));
-        }
+        uvFunc(vertex->uv, uvptr + (j * uvstride));
+        stFunc(vertex->st, stptr + (j * ststride));
+        normalFunc(vertex->nxyz, nptr + (j * nstride));
     }
 }
 

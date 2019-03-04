@@ -81,10 +81,6 @@ void named_array_release(NamedArray* array, unsigned int new_id) {
 }
 
 void* named_array_get(NamedArray* array, unsigned int id) {
-    if(id == 0) {
-        return NULL;
-    }
-
     if(!named_array_used(array, id)) {
         return NULL;
     }
