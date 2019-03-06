@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+#include <assert.h>
 
 #if defined(__APPLE__) || defined(__WIN32__)
 /* Linux + Kos define this, OSX does not, so just use malloc there */
@@ -64,9 +65,7 @@ void* aligned_vector_resize(AlignedVector* vector, const unsigned int element_co
     }
 
     if(vector->capacity < element_count) {
-        /* Reserve more than we need so that a subsequent push_back doesn't trigger yet another
-         * resize */
-        aligned_vector_reserve(vector, (int) ceil(((float)element_count) * 1.5f));
+        aligned_vector_reserve(vector, element_count);
     }
 
     vector->size = element_count;
@@ -79,6 +78,7 @@ void* aligned_vector_resize(AlignedVector* vector, const unsigned int element_co
 }
 
 void* aligned_vector_at(const AlignedVector* vector, const unsigned int index) {
+    assert(index < vector->size);
     return &vector->data[index * vector->element_size];
 }
 

@@ -1,5 +1,6 @@
 #include <float.h>
 #include <stdio.h>
+#include <assert.h>
 
 #ifdef _arch_dreamcast
 #include <dc/pvr.h>
@@ -165,6 +166,8 @@ void clipTriangleStrip2(AlignedVector* vertices, uint32_t offset, uint8_t fladeS
 
     uint32_t i = 0;
     /* Skip the header */
+
+    assert(offset < vertices->size);
     ClipVertex* header = (ClipVertex*) aligned_vector_at(vertices, offset);
     ClipVertex* vertex = header + 1;
 
@@ -174,6 +177,8 @@ void clipTriangleStrip2(AlignedVector* vertices, uint32_t offset, uint8_t fladeS
 
     /* Start at 3 due to the header */
     for(i = 3; i < count; ++i, ++triangle) {
+        assert(offset + i < vertices->size);
+
         vertex = aligned_vector_at(vertices, offset + i);
 
         uint8_t even = (triangle % 2) == 0;
