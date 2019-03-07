@@ -756,6 +756,8 @@ static void genArraysTriangleStrip(
     output[count - 1].flags = PVR_CMD_VERTEX_EOL;
 }
 
+#define MAX_POLYGON_SIZE 10
+
 static void genArraysTriangleFan(
     ClipVertex* output,
     GLsizei count,
@@ -772,25 +774,23 @@ static void genArraysTriangleFan(
         doTexture, doMultitexture, doLighting
     );
 
+    assert(count < MAX_POLYGON_SIZE);
+    static ClipVertex buffer[MAX_POLYGON_SIZE];
+
+    memcpy(buffer, output, sizeof(ClipVertex) * count);
+
+    // First 3 vertices are in the right place, just end early
     swapVertex(&output[1], &output[2]);
     output[2].flags = PVR_CMD_VERTEX_EOL;
 
-    GLsizei i = 3;
+    GLsizei i = 3, target = 3;
     ClipVertex* first = &output[0];
 
-    for(; i < count - 1; ++i) {
-        ClipVertex* next = &output[i + 1];
-        ClipVertex* previous = &output[i - 1];
-        ClipVertex* vertex = &output[i];
-
-        *next = *first;
-
-        swapVertex(next, vertex);
-
-        vertex = next + 1;
-        *vertex = *previous;
-
-        vertex->flags = PVR_CMD_VERTEX_EOL;
+    for(; i < count; ++i) {
+        output[target++] = *first;
+        output[target++] = buffer[i];
+        output[target] = buffer[i - 1];
+        output[target++].flags = PVR_CMD_VERTEX_EOL;
     }
 }
 
@@ -838,6 +838,7 @@ static void generate(ClipVertex* output, const GLenum mode, const GLsizei first,
                 doTexture, doMultitexture, doLighting
             );
             break;
+        case GL_POLYGON:
         case GL_TRIANGLE_FAN:
             genArraysTriangleFan(
                 output,
@@ -887,7 +888,7 @@ static void generate(ClipVertex* output, const GLenum mode, const GLsizei first,
             nptr, nstride,
             doTexture, doMultitexture, doLighting
         );
-    } else if(mode == GL_TRIANGLE_FAN) {
+    } else if(mode == GL_TRIANGLE_FAN || mode == GL_POLYGON) {
         genElementsTriangleFan(
             output,
             count,
