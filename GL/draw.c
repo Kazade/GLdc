@@ -3,6 +3,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <math.h>
+#include <assert.h>
 
 #include "../include/gl.h"
 #include "../include/glext.h"
@@ -481,6 +482,13 @@ static inline void genElementsCommon(
 
     const IndexParseFunc indexFunc = _calcParseIndexFunc(type);
 
+    assert(vertexFunc);
+    assert(diffuseFunc);
+    assert(uvFunc);
+    assert(stFunc);
+    assert(normalFunc);
+    assert(indexFunc);
+
     GLsizei i = 0;
     const GLubyte* idx = iptr;
     ClipVertex* vertex = output;
@@ -621,6 +629,12 @@ static inline void genArraysCommon(
     const FloatParseFunc uvFunc = _calcUVParseFunc();
     const FloatParseFunc stFunc = _calcSTParseFunc();
     const FloatParseFunc normalFunc = _calcNormalParseFunc();
+
+    assert(vertexFunc);
+    assert(diffuseFunc);
+    assert(uvFunc);
+    assert(stFunc);
+    assert(normalFunc);
 
     GLsizei i = count;
 

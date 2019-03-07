@@ -23,4 +23,5 @@ all:
 	$(KOS_MAKE) -C trimark all
 	$(KOS_MAKE) -C multitexture_arrays all
 	$(KOS_MAKE) -C paletted all
+	$(KOS_MAKE) -C paletted_pcx all
 	$(KOS_MAKE) -C depth_funcs all

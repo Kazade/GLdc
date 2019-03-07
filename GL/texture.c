@@ -547,11 +547,7 @@ static GLuint _determinePVRFormat(GLint internalFormat, GLenum type) {
         case GL_COMPRESSED_ARGB_1555_VQ_MIPMAP_TWID_KOS:
             return PVR_TXRFMT_ARGB1555 | PVR_TXRFMT_TWIDDLED | PVR_TXRFMT_VQ_ENABLE;
         case GL_COLOR_INDEX8_EXT:
-            if(type == GL_UNSIGNED_BYTE_TWID_KOS) {
-                return PVR_TXRFMT_PAL8BPP | PVR_TXRFMT_TWIDDLED;
-            } else {
-                return PVR_TXRFMT_PAL8BPP | PVR_TXRFMT_NONTWIDDLED;
-            }
+            return PVR_TXRFMT_PAL8BPP | PVR_TXRFMT_TWIDDLED;
         default:
             return 0;
     }
@@ -713,6 +709,20 @@ GLboolean _glIsMipmapComplete(const TextureObject* obj) {
     return GL_TRUE;
 }
 
+
+static inline GLuint morton_1by1(GLuint x) {
+    x &= 0x0000ffff;                  // x = ---- ---- ---- ---- fedc ba98 7654 3210
+    x = (x ^ (x << 8)) & 0x00ff00ff; // x = ---- ---- fedc ba98 ---- ---- 7654 3210
+    x = (x ^ (x << 4)) & 0x0f0f0f0f; // x = ---- fedc ---- ba98 ---- 7654 ---- 3210
+    x = (x ^ (x << 2)) & 0x33333333; // x = --fe --dc --ba --98 --76 --54 --32 --10
+    x = (x ^ (x << 1)) & 0x55555555; // x = -f-e -d-c -b-a -9-8 -7-6 -5-4 -3-2 -1-0
+    return x;
+}
+
+static inline GLuint morton_index(GLuint x, GLuint y) {
+    return (morton_1by1(y) << 1) + morton_1by1(x);
+}
+
 void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
                            GLsizei width, GLsizei height, GLint border,
                            GLenum format, GLenum type, const GLvoid *data) {
@@ -835,6 +845,7 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
 
     /* Let's assume we need to convert */
     GLboolean needsConversion = GL_TRUE;
+    GLboolean needsTwiddling = GL_FALSE;
 
     /*
      * These are the only formats where the source format passed in matches the pvr format.
@@ -843,6 +854,7 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
     if(format == GL_COLOR_INDEX) {
         /* Don't convert color indexes */
         needsConversion = GL_FALSE;
+        needsTwiddling = type == GL_UNSIGNED_BYTE;
     } else if(format == GL_BGRA && type == GL_UNSIGNED_SHORT_4_4_4_4_REV && internalFormat == GL_RGBA) {
         needsConversion = GL_FALSE;
     } else if(format == GL_BGRA && type == GL_UNSIGNED_SHORT_1_5_5_5_REV && internalFormat == GL_RGBA) {
@@ -868,8 +880,23 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
         assert(data);
         assert(bytes);
 
-        /* No conversion? Just copy the data, and the pvr_format is correct */
-        sq_cpy(targetData, data, bytes);
+        if(needsTwiddling) {
+            assert(type == GL_UNSIGNED_BYTE);  // Anything else needs this loop adjusting
+            GLuint x, y;
+            for(y = 0; y < height; ++y) {
+                for(x = 0; x < width; ++x) {
+                    GLuint src = (y * width) + x;
+                    GLuint dest = morton_index(x, y);
+
+                    targetData[dest] = ((GLubyte*) data)[src];
+                }
+            }
+
+        } else {
+            /* No conversion? Just copy the data, and the pvr_format is correct */
+            sq_cpy(targetData, data, bytes);
+        }
+
         return;
     } else {
         TextureConversionFunc convert = _determineConversion(
