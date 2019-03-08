@@ -241,7 +241,7 @@ void APIENTRY glDeleteTextures(GLsizei n, GLuint *textures) {
         }
 
         if(txr->palette && txr->palette->data) {
-            pvr_mem_free(txr->palette->data);
+            free(txr->palette->data);
             txr->palette->data = NULL;
         }
 
@@ -1070,11 +1070,11 @@ GLAPI void APIENTRY glColorTableEXT(GLenum target, GLenum internalFormat, GLsize
     assert(palette);
 
     if(target) {
-        pvr_mem_free(palette->data);
+        free(palette->data);
         palette->data = NULL;
     }
 
-    palette->data = (GLubyte*) pvr_mem_malloc(width * 4);
+    palette->data = (GLubyte*) malloc(width * 4);
     palette->format = format;
     palette->width = width;
 
