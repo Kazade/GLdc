@@ -152,6 +152,15 @@ static inline void markDead(ClipVertex* vert) {
     vert->flags = VERTEX_CMD_EOL;
 }
 
+#define B000 0
+#define B111 7
+#define B100 4
+#define B010 2
+#define B001 1
+#define B101 5
+#define B011 3
+#define B110 6
+
 void clipTriangleStrip2(AlignedVector* vertices, uint32_t offset, uint8_t fladeShade) {
     /* Room for clipping 16 triangles */
     typedef struct {
@@ -195,11 +204,11 @@ void clipTriangleStrip2(AlignedVector* vertices, uint32_t offset, uint8_t fladeS
         uint8_t visible = ((v1->w > 0) ? 4 : 0) | ((v2->w > 0) ? 2 : 0) | ((v3->w > 0) ? 1 : 0);
 
         switch(visible) {
-            case 0b111:
+            case B111:
                 /* All visible? Do nothing */
                 continue;
             break;
-            case 0b000:
+            case B000:
                 /*
                     It is not possible that this is any trangle except the first
                     in a strip. That's because:
@@ -234,12 +243,12 @@ void clipTriangleStrip2(AlignedVector* vertices, uint32_t offset, uint8_t fladeS
                     v3->flags = VERTEX_CMD;
                 }
             break;
-            case 0b100:
-            case 0b010:
-            case 0b001:
-            case 0b101:
-            case 0b011:
-            case 0b110:
+            case B100:
+            case B010:
+            case B001:
+            case B101:
+            case B011:
+            case B110:
                 /* Store the triangle for clipping */
                 TO_CLIP[CLIP_COUNT].vertex[0] = *v1;
                 TO_CLIP[CLIP_COUNT].vertex[1] = *v2;
