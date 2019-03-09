@@ -300,9 +300,6 @@ GLAPI void APIENTRY glEnable(GLenum cap) {
         break;
         case GL_SHARED_TEXTURE_PALETTE_EXT: {
             SHARED_PALETTE_ENABLED = GL_TRUE;
-
-            /* Apply the texture palette if necessary */
-            _glApplyColorTable();
         }
         break;
         case GL_LIGHT0:
@@ -354,9 +351,6 @@ GLAPI void APIENTRY glDisable(GLenum cap) {
         break;
         case GL_SHARED_TEXTURE_PALETTE_EXT: {
             SHARED_PALETTE_ENABLED = GL_FALSE;
-
-            /* Restore whatever palette may exist on a bound texture */
-            _glApplyColorTable();
         }
         break;
         case GL_LIGHT0:

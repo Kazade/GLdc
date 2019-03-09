@@ -20,11 +20,83 @@ static GLubyte ACTIVE_TEXTURE = 0;
 
 static TexturePalette* SHARED_PALETTE = NULL;
 
-static GLuint _determinePVRFormat(GLint internalFormat, GLenum type);
+static GLuint _determinePVRFormat(GLint internalFormat, GLenum type, GLshort bank);
 
 #define PACK_ARGB8888(a,r,g,b) ( ((a & 0xFF) << 24) | ((r & 0xFF) << 16) | ((g & 0xFF) << 8) | (b & 0xFF) )
 
 static TexturePalette* last_bound_palette = NULL;
+
+static GLboolean BANKS_USED[4];  // Each time a 256 colour bank is used, this is set to true
+static GLboolean SUBBANKS_USED[4][16]; // 4 counts of the used 16 colour banks within the 256 ones
+
+
+static TexturePalette* _initTexturePalette() {
+    TexturePalette* palette = (TexturePalette*) malloc(sizeof(TexturePalette));
+    assert(palette);
+
+    palette->data = NULL;
+    palette->format = 0;
+    palette->width = 0;
+    palette->bank = -1;
+    palette->size = 0;
+    return palette;
+}
+
+static GLshort _glGenPaletteSlot(GLushort size) {
+    GLushort i, j;
+
+    assert(size == 16 || size == 256);
+
+    if(size == 16) {
+        for(i = 0; i < 4; ++i) {
+            for(j = 0; j < 16; ++j) {
+                if(!SUBBANKS_USED[i][j]) {
+                    BANKS_USED[i] = GL_TRUE;
+                    SUBBANKS_USED[i][j] = GL_TRUE;
+                    return (i * 16) + j;
+                }
+            }
+        }
+    } else {
+        for(i = 0; i < 4; ++i) {
+            if(!BANKS_USED[i]) {
+                BANKS_USED[i] = GL_TRUE;
+                for(j = 0; j < 16; ++j) {
+                    SUBBANKS_USED[i][j] = GL_TRUE;
+                }
+                return i;
+            }
+        }
+    }
+
+    fprintf(stderr, "GL ERROR: No palette slots remain\n");
+    return -1;
+}
+
+static void _glReleasePaletteSlot(GLshort slot, GLushort size) {
+    GLushort i;
+
+    assert(size == 16 || size == 256);
+    if(size == 16) {
+        GLushort bank = slot / 4;
+        GLushort subbank = slot % 4;
+
+        SUBBANKS_USED[bank][subbank] = GL_FALSE;
+        for(i = 0; i < 16; ++i) {
+            if(SUBBANKS_USED[bank][i]) {
+                return;
+            }
+        }
+
+        BANKS_USED[bank] = GL_FALSE;
+    } else {
+        BANKS_USED[slot] = GL_FALSE;
+        for(i = 0; i < 16; ++i) {
+            SUBBANKS_USED[slot][i] = GL_FALSE;
+        }
+    }
+}
+
 
 void _glApplyColorTable() {
     /*
@@ -153,10 +225,7 @@ GLubyte _glInitTextures() {
     // Reserve zero so that it is never given to anyone as an ID!
     named_array_reserve(&TEXTURE_OBJECTS, 0);
 
-    SHARED_PALETTE = (TexturePalette*) malloc(sizeof(TexturePalette));
-    SHARED_PALETTE->data = NULL;
-    SHARED_PALETTE->format = 0;
-    SHARED_PALETTE->width = 0;
+    SHARED_PALETTE = _initTexturePalette();
     return 1;
 }
 
@@ -272,9 +341,6 @@ void APIENTRY glBindTexture(GLenum  target, GLuint texture) {
         }
 
         TEXTURE_UNITS[ACTIVE_TEXTURE] = (TextureObject*) named_array_get(&TEXTURE_OBJECTS, texture);
-
-        /* Apply the texture palette if necessary */
-        _glApplyColorTable();
     } else {
         TEXTURE_UNITS[ACTIVE_TEXTURE] = NULL;
     }
@@ -408,7 +474,8 @@ void APIENTRY glCompressedTexImage2DARB(GLenum target,
     active->height  = height;
     active->color   = _determinePVRFormat(
         internalFormat,
-        internalFormat  /* Doesn't matter (see determinePVRFormat) */
+        internalFormat , /* Doesn't matter (see determinePVRFormat) */
+        0
     );
     active->mipmapCount = _glGetMipmapLevelCount(active);
     active->mipmap = (mipmapped) ? ~0 : (1 << level);  /* Set only a single bit if this wasn't mipmapped otherwise set all */
@@ -496,7 +563,7 @@ static GLint _cleanInternalFormat(GLint internalFormat) {
     }
 }
 
-static GLuint _determinePVRFormat(GLint internalFormat, GLenum type) {
+static GLuint _determinePVRFormat(GLint internalFormat, GLenum type, GLshort bank) {
     /* Given a cleaned internalFormat, return the Dreamcast format
      * that can hold it
      */
@@ -547,7 +614,7 @@ static GLuint _determinePVRFormat(GLint internalFormat, GLenum type) {
         case GL_COMPRESSED_ARGB_1555_VQ_MIPMAP_TWID_KOS:
             return PVR_TXRFMT_ARGB1555 | PVR_TXRFMT_TWIDDLED | PVR_TXRFMT_VQ_ENABLE;
         case GL_COLOR_INDEX8_EXT:
-            return PVR_TXRFMT_PAL8BPP | PVR_TXRFMT_TWIDDLED;
+            return PVR_TXRFMT_PAL8BPP | PVR_TXRFMT_TWIDDLED | PVR_TXRFMT_8BPP_PAL(bank);
         default:
             return 0;
     }
@@ -790,7 +857,7 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
     }
 
     /* Calculate the format that we need to convert the data to */
-    GLuint pvr_format = _determinePVRFormat(internalFormat, type);
+    GLuint pvr_format = _determinePVRFormat(internalFormat, type, 0);
 
     TextureObject* active = TEXTURE_UNITS[ACTIVE_TEXTURE];
 
@@ -1061,7 +1128,7 @@ GLAPI void APIENTRY glColorTableEXT(GLenum target, GLenum internalFormat, GLsize
     } else {
         TextureObject* active = _glGetBoundTexture();
         if(!active->palette) {
-            active->palette = (TexturePalette*) malloc(sizeof(TexturePalette));
+            active->palette = _initTexturePalette();
         }
 
         palette = active->palette;
@@ -1074,9 +1141,28 @@ GLAPI void APIENTRY glColorTableEXT(GLenum target, GLenum internalFormat, GLsize
         palette->data = NULL;
     }
 
+    if(palette->bank > -1) {
+        _glReleasePaletteSlot(palette->bank, palette->size);
+        palette->bank = -1;
+    }
+
     palette->data = (GLubyte*) malloc(width * 4);
     palette->format = format;
     palette->width = width;
+    palette->size = (width > 16) ? 256 : 16;
+    assert(palette->size == 16 || palette->size == 256);
+
+    palette->bank = _glGenPaletteSlot(palette->size);
+
+    if(palette->bank < 0) {
+        /* We ran out of slots! */
+        _glKosThrowError(GL_INVALID_OPERATION, __func__);
+        _glKosPrintError();
+
+        free(palette->data);
+        palette->format = palette->width = palette->size = 0;
+        return;
+    }
 
     GLubyte* src = (GLubyte*) data;
     GLubyte* dst = (GLubyte*) palette->data;
@@ -1096,7 +1182,6 @@ GLAPI void APIENTRY glColorTableEXT(GLenum target, GLenum internalFormat, GLsize
 
     /* Colour table might have changed the active palette, so wipe last_bound_palette before reapplying */
     last_bound_palette = NULL;
-    _glApplyColorTable();
 }
 
 GLAPI void APIENTRY glColorSubTableEXT(GLenum target, GLsizei start, GLsizei count, GLenum format, GLenum type, const GLvoid *data) {

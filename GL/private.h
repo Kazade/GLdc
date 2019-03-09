@@ -45,8 +45,10 @@ typedef struct {
     /* Palette data is always stored in RAM as RGBA8888 and packed as ARGB8888
      * when uploaded to the PVR */
     GLubyte*    data;
-    GLushort     width;
+    GLushort    width;  /* The user specified width */
+    GLushort     size;   /* The size of the bank (16 or 256) */
     GLenum      format;
+    GLshort      bank;
 } TexturePalette;
 
 typedef struct {
