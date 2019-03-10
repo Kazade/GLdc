@@ -393,6 +393,9 @@ __BEGIN_DECLS
 /* Initialize the GL pipeline. GL will initialize the PVR. */
 GLAPI void APIENTRY glKosInit();
 
+GLAPI void APIENTRY glFlush();
+GLAPI void APIENTRY glFinish();
+
 /* Start Submission of Primitive Data */
 /* Currently Supported Primitive Types:
    -GL_POINTS   ( does NOT work with glDrawArrays )( ZClipping NOT supported )
@@ -413,6 +416,7 @@ GLAPI void APIENTRY glTexCoord2fv(const GLfloat *uv);
 GLAPI void APIENTRY glColor1ui(GLuint argb);
 GLAPI void APIENTRY glColor4ub(GLubyte r, GLubyte  g, GLubyte b, GLubyte a);
 GLAPI void APIENTRY glColor3f(GLfloat r, GLfloat g, GLfloat b);
+GLAPI void APIENTRY glColor3ub(GLubyte r, GLubyte  g, GLubyte b);
 GLAPI void APIENTRY glColor3fv(const GLfloat *rgb);
 GLAPI void APIENTRY glColor4f(GLfloat r, GLfloat g, GLfloat b, GLfloat a);
 GLAPI void APIENTRY glColor4fv(const GLfloat *rgba);
@@ -461,6 +465,8 @@ GLAPI void APIENTRY glDisable(GLenum cap);
 /* Clear Caps */
 GLAPI void APIENTRY glClear(GLuint mode);
 GLAPI void APIENTRY glClearColor(GLfloat r, GLfloat g, GLfloat b, GLfloat a);
+
+GLAPI void APIENTRY glReadBuffer(GLenum mode);
 
 /* Depth Testing */
 GLAPI void APIENTRY glClearDepth(GLfloat depth);
@@ -523,6 +529,13 @@ GLAPI void APIENTRY glBindTexture(GLenum  target, GLuint texture);
 GLAPI void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
                                  GLsizei width, GLsizei height, GLint border,
                                  GLenum format, GLenum type, const GLvoid *data);
+
+GLAPI void APIENTRY glTexSubImage2D(GLenum target, GLint level, GLint xoffset, GLint yoffset, GLsizei width, GLsizei height, GLenum format, GLenum type, const GLvoid *pixels);
+GLAPI void APIENTRY glCopyTexSubImage2D(GLenum target, GLint level, GLint xoffset, GLint yoffset, GLint x, GLint y, GLsizei width, GLsizei height);
+GLAPI void APIENTRY glCopyTexSubImage1D(GLenum target, GLint level, GLint xoffset, GLint x, GLint y, GLsizei width);
+GLAPI void APIENTRY glCopyTexImage2D(GLenum target, GLint level, GLenum internalformat, GLint x, GLint y, GLsizei width, GLsizei height, GLint border);
+GLAPI void APIENTRY glCopyTexImage1D(GLenum target, GLint level, GLenum internalformat, GLint x, GLint y, GLsizei width, GLint border);
+GLAPI void APIENTRY glReadPixels(GLint x, GLint y, GLsizei width, GLsizei height, GLenum format, GLenum type, GLvoid *pixels);
 
 
 /* GL Array API - Only GL_TRIANGLES, GL_TRIANGLE_STRIP, and GL_QUADS are supported */

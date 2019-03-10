@@ -407,6 +407,10 @@ GLAPI void APIENTRY glClearDepth(GLfloat depth) {
 
 }
 
+GLAPI void APIENTRY glReadBuffer(GLenum mode) {
+
+}
+
 GLAPI void APIENTRY glDepthMask(GLboolean flag) {
     GL_CONTEXT.depth.write = (flag == GL_TRUE) ? PVR_DEPTHWRITE_ENABLE : PVR_DEPTHWRITE_DISABLE;
     GL_CONTEXT.depth.comparison = _calc_pvr_depth_test();

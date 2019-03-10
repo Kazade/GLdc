@@ -64,6 +64,15 @@ PolyList *_glTransparentPolyList() {
     return &TR_LIST;
 }
 
+void APIENTRY glFlush() {
+
+}
+
+void APIENTRY glFinish() {
+
+}
+
+
 void APIENTRY glKosInit() {
     TRACE();
 

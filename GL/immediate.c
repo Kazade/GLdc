@@ -83,6 +83,10 @@ void APIENTRY glColor3f(GLfloat r, GLfloat g, GLfloat b) {
     glColor4f(r, g, b, a);
 }
 
+void APIENTRY glColor3ub(GLubyte red, GLubyte green, GLubyte blue) {
+    glColor3f((float) red / 255, (float) green / 255, (float) blue / 255);
+}
+
 void APIENTRY glColor3fv(const GLfloat* v) {
     glColor3f(v[0], v[1], v[2]);
 }
