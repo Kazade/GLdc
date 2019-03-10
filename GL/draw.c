@@ -756,7 +756,7 @@ static void genArraysTriangleStrip(
     output[count - 1].flags = PVR_CMD_VERTEX_EOL;
 }
 
-#define MAX_POLYGON_SIZE 10
+#define MAX_POLYGON_SIZE 32
 
 static void genArraysTriangleFan(
     ClipVertex* output,
