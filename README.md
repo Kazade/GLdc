@@ -26,4 +26,6 @@ Things I'd like to do:
  - Add support for point sprites
  - Optimise, add unit tests for correctness
  
-  
+# Special Thanks!
+
+ - Massive shout out to Hayden Kowalchuk for diagnosing and fixing a large number of bugs while porting GL Quake to the Dreamcast. Absolute hero!  
