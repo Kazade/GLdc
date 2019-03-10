@@ -38,6 +38,32 @@ __BEGIN_DECLS
 GLAPI void APIENTRY glKosSwapBuffers();
 
 
+/*
+ * CUSTOM EXTENSION multiple_shared_palette_KOS
+ *
+ * This extension allows using up to 4 different shared palettes
+ * with ColorTableEXT. The following constants are provided
+ * to use as targets for ColorTableExt:
+ *
+ * - SHARED_TEXTURE_PALETTE_0_KOS
+ * - SHARED_TEXTURE_PALETTE_1_KOS
+ * - SHARED_TEXTURE_PALETTE_2_KOS
+ * - SHARED_TEXTURE_PALETTE_3_KOS
+ *
+ * In this use case SHARED_TEXTURE_PALETTE_0_KOS is interchangable with SHARED_TEXTURE_PALETTE_EXT
+ * (both refer to the first shared palette).
+ *
+ * To select which palette a texture uses, a new pname is accepted by TexParameteri: SHARED_TEXTURE_BANK_KOS
+ * by default textures use shared palette 0.
+*/
+
+#define GL_SHARED_TEXTURE_PALETTE_0_KOS             0xEEFC
+#define GL_SHARED_TEXTURE_PALETTE_1_KOS             0xEEFD
+#define GL_SHARED_TEXTURE_PALETTE_2_KOS             0xEEFE
+#define GL_SHARED_TEXTURE_PALETTE_3_KOS             0xEEFF
+
+/* Pass to glTexParameteri to set the shared bank */
+#define GL_SHARED_TEXTURE_BANK_KOS                  0xEF00
 
 __END_DECLS
 

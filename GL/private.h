@@ -70,6 +70,9 @@ typedef struct {
     GLboolean isPaletted;
 
     TexturePalette* palette;
+
+    /* When using the shared palette, this is the bank (0-3) */
+    GLushort shared_bank;
 } TextureObject;
 
 typedef struct {
@@ -142,9 +145,10 @@ TextureObject* _glGetTexture1();
 TextureObject* _glGetBoundTexture();
 GLubyte _glGetActiveTexture();
 GLuint _glGetActiveClientTexture();
+TexturePalette* _glGetSharedPalette(GLshort bank);
 
 GLboolean _glIsSharedTexturePaletteEnabled();
-void _glApplyColorTable();
+void _glApplyColorTable(TexturePalette *palette);
 
 GLboolean _glIsBlendingEnabled();
 GLboolean _glIsMipmapComplete(const TextureObject* obj);

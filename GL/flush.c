@@ -96,10 +96,6 @@ void APIENTRY glKosSwapBuffers() {
 
     profiler_push(__func__);
 
-    /* We only want to apply the colour table *at most* once per frame
-     * so it's best we do it here */
-    _glApplyColorTable();
-
     pvr_wait_ready();
 
     pvr_scene_begin();
