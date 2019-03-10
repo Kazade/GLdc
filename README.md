@@ -22,7 +22,6 @@ Things I'd like to do:
 
  - Use a clean "gl.h"
  - Define an extension for modifier volumes
- - Support `GL_ALPHA_TEST` using punch-thru polys
  - Add support for point sprites
  - Optimise, add unit tests for correctness
  
