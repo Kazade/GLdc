@@ -41,7 +41,7 @@ static void pvr_list_submit(void *src, int n) {
 static void _glInitPVR() {
     pvr_init_params_t params = {
         /* Enable opaque and translucent polygons with size 32 and 32 */
-        { PVR_BINSIZE_32, PVR_BINSIZE_0, PVR_BINSIZE_32, PVR_BINSIZE_0, PVR_BINSIZE_32 },
+        {PVR_BINSIZE_32, PVR_BINSIZE_0, PVR_BINSIZE_32, PVR_BINSIZE_0, PVR_BINSIZE_32},
         PVR_VERTEX_BUF_SIZE, /* Vertex buffer size */
         0, /* No DMA */
         0, /* No FSAA */

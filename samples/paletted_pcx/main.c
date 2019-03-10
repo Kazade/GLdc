@@ -179,17 +179,16 @@ void LoadGLTextures() {
     // border 0 (normal), rgb color data, unsigned byte data, and finally the data itself.
     glTexImage2D(GL_TEXTURE_2D, 0, GL_COLOR_INDEX8_EXT, image1.width, image1.height, 0, GL_COLOR_INDEX, GL_UNSIGNED_BYTE, image1.data);
 
-
     glBindTexture(GL_TEXTURE_2D, textures[2]);
-    glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 
     char* new_palette = (char*) malloc(image2.palette_width * 4);
     for(i = 0; i < image2.palette_width; ++i) {
         new_palette[(i * 4) + 0] = image2.palette[(i * 3) + 0];
         new_palette[(i * 4) + 1] = image2.palette[(i * 3) + 1];
         new_palette[(i * 4) + 2] = image2.palette[(i * 3) + 2];
-        new_palette[(i * 4) + 3] = 0;
+        new_palette[(i * 4) + 3] = (i == 2) ? 0 : 255;
     }
 
     glColorTableEXT(GL_TEXTURE_2D, GL_RGBA8, image2.palette_width, GL_RGBA, GL_UNSIGNED_BYTE, new_palette);
@@ -204,7 +203,7 @@ void InitGL(int Width, int Height)	        // We call this right after our OpenG
     glEnable(GL_TEXTURE_2D);
     glClearColor(0.0f, 0.0f, 0.0f, 0.0f);		// This Will Clear The Background Color To Black
     glClearDepth(1.0);				// Enables Clearing Of The Depth Buffer
-    glDepthFunc(GL_LESS);				// The Type Of Depth Test To Do
+    glDepthFunc(GL_LEQUAL);				// The Type Of Depth Test To Do
     glEnable(GL_DEPTH_TEST);			// Enables Depth Testing
     glShadeModel(GL_SMOOTH);			// Enables Smooth Color Shading
 
@@ -282,6 +281,8 @@ void DrawGLScene()
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);		// Clear The Screen And The Depth Buffer
     glLoadIdentity();				// Reset The View
 
+    glEnable(GL_SHARED_TEXTURE_PALETTE_EXT);
+
     glTranslatef(-1.5f,0.0f,-8.0f);              // move 5 units into the screen.
 
     glPushMatrix();
@@ -298,6 +299,8 @@ void DrawGLScene()
 
         DrawPolygon();
     glPopMatrix();
+
+    glDisable(GL_SHARED_TEXTURE_PALETTE_EXT);
 
     glBindTexture(GL_TEXTURE_2D, textures[1]);
     glTranslatef(3.0, 0, 0);
