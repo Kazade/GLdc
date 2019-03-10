@@ -30,6 +30,9 @@ static GLboolean COLOR_MATERIAL_ENABLED = GL_FALSE;
 /* Is the shared texture palette enabled? */
 static GLboolean SHARED_PALETTE_ENABLED = GL_FALSE;
 
+static GLboolean ALPHA_TEST_ENABLED = GL_FALSE;
+
+
 GLboolean _glIsSharedTexturePaletteEnabled() {
     return SHARED_PALETTE_ENABLED;
 }
@@ -82,6 +85,10 @@ static GLboolean BLEND_ENABLED = GL_FALSE;
 
 GLboolean _glIsBlendingEnabled() {
     return BLEND_ENABLED;
+}
+
+GLboolean _glIsAlphaTestEnabled() {
+    return ALPHA_TEST_ENABLED;
 }
 
 static int _calcPVRBlendFactor(GLenum factor) {
@@ -311,6 +318,9 @@ GLAPI void APIENTRY glEnable(GLenum cap) {
             SHARED_PALETTE_ENABLED = GL_TRUE;
         }
         break;
+        case GL_ALPHA_TEST: {
+            ALPHA_TEST_ENABLED = GL_TRUE;
+        } break;
         case GL_LIGHT0:
         case GL_LIGHT1:
         case GL_LIGHT2:
@@ -362,6 +372,9 @@ GLAPI void APIENTRY glDisable(GLenum cap) {
             SHARED_PALETTE_ENABLED = GL_FALSE;
         }
         break;
+        case GL_ALPHA_TEST: {
+            ALPHA_TEST_ENABLED = GL_FALSE;
+        } break;
         case GL_LIGHT0:
         case GL_LIGHT1:
         case GL_LIGHT2:
@@ -457,8 +470,20 @@ GLAPI void APIENTRY glBlendFunc(GLenum sfactor, GLenum dfactor) {
     _updatePVRBlend(&GL_CONTEXT);
 }
 
-void glAlphaFunc(GLenum func, GLclampf ref) {
-    ;
+#define PT_ALPHA_REF 0x011c
+
+GLAPI void APIENTRY glAlphaFunc(GLenum func, GLclampf ref) {
+    GLenum validFuncs[] = {
+        GL_GREATER,
+        0
+    };
+
+    if(_glCheckValidEnum(func, validFuncs, __func__) != 0) {
+        return;
+    }
+
+    GLubyte val = (GLubyte)(ref * 255.0f);
+    PVR_SET(PT_ALPHA_REF, val);
 }
 
 void glLineWidth(GLfloat width) {
