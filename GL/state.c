@@ -214,6 +214,15 @@ void _glUpdatePVRTextureContext(pvr_poly_cxt_t* context, GLshort textureUnit) {
         context->txr.height = tx1->height;
         context->txr.base = tx1->data;
         context->txr.format = tx1->color;
+
+        if(tx1->isPaletted) {
+            if(_glIsSharedTexturePaletteEnabled()) {
+                context->txr.format |= PVR_TXRFMT_8BPP_PAL(_glGetSharedPalette(tx1->shared_bank)->bank);
+            } else {
+                context->txr.format |= PVR_TXRFMT_8BPP_PAL((tx1->palette) ? tx1->palette->bank : 0);
+            }
+        }
+
         context->txr.env = tx1->env;
         context->txr.uv_flip = PVR_UVFLIP_NONE;
         context->txr.uv_clamp = tx1->uv_clamp;
@@ -300,9 +309,6 @@ GLAPI void APIENTRY glEnable(GLenum cap) {
         break;
         case GL_SHARED_TEXTURE_PALETTE_EXT: {
             SHARED_PALETTE_ENABLED = GL_TRUE;
-
-            /* Apply the texture palette if necessary */
-            _glApplyColorTable();
         }
         break;
         case GL_LIGHT0:
@@ -354,9 +360,6 @@ GLAPI void APIENTRY glDisable(GLenum cap) {
         break;
         case GL_SHARED_TEXTURE_PALETTE_EXT: {
             SHARED_PALETTE_ENABLED = GL_FALSE;
-
-            /* Restore whatever palette may exist on a bound texture */
-            _glApplyColorTable();
         }
         break;
         case GL_LIGHT0:
@@ -634,7 +637,7 @@ const GLbyte *glGetString(GLenum name) {
             return "GLdc 1.x";
 
         case GL_EXTENSIONS:
-            return "GL_ARB_framebuffer_object, GL_ARB_multitexture, GL_ARB_texture_rg, GL_EXT_paletted_texture, GL_EXT_shared_texture_palette";
+            return "GL_ARB_framebuffer_object, GL_ARB_multitexture, GL_ARB_texture_rg, GL_EXT_paletted_texture, GL_EXT_shared_texture_palette, GL_KOS_multiple_shared_palette";
     }
 
     return "GL_KOS_ERROR: ENUM Unsupported\n";

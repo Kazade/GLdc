@@ -14,8 +14,8 @@ KOS_INIT_ROMDISK(romdisk);
 
 /* floats for x rotation, y rotation, z rotation */
 float xrot, yrot, zrot;
-/* storage for one texture  */
-int texture[1];
+
+int textures[2];
 
 typedef struct {
     unsigned int height;
@@ -131,32 +131,50 @@ int LoadPalettedPCX(const char* filename, Image* image) {
 // Load Bitmaps And Convert To Textures
 void LoadGLTextures() {
     // Load Texture
-    Image *image1;
+    Image image1;
 
-    // allocate space for texture
-    image1 = (Image *) malloc(sizeof(Image));
-    if (image1 == NULL) {
-        printf("Error allocating space for image");
-        exit(0);
-    }
-
-    if (!LoadPalettedPCX("/rd/NeHe.pcx", image1)) {
+    if (!LoadPalettedPCX("/rd/NeHe.pcx", &image1)) {
         exit(1);
     }
 
     glEnable(GL_SHARED_TEXTURE_PALETTE_EXT);
-    glColorTableEXT(GL_SHARED_TEXTURE_PALETTE_EXT, GL_RGBA8, image1->palette_width, GL_RGB, GL_UNSIGNED_BYTE, image1->palette);
+
+    /* First palette */
+    glColorTableEXT(GL_SHARED_TEXTURE_PALETTE_EXT, GL_RGBA8, image1.palette_width, GL_RGB, GL_UNSIGNED_BYTE, image1.palette);
+
+    char* inversed_palette = (char*) malloc(sizeof(char) * image1.palette_width * 3);
+    GLuint i;
+    for(i = 0; i < image1.palette_width; i++) {
+        /* Swap red and green */
+        inversed_palette[i * 3] = image1.palette[(i * 3) + 1];
+        inversed_palette[(i * 3) + 1] = image1.palette[(i * 3)];
+        inversed_palette[(i * 3) + 2] = image1.palette[(i * 3) + 2];
+    }
+
+    glColorTableEXT(GL_SHARED_TEXTURE_PALETTE_1_KOS, GL_RGBA8, image1.palette_width, GL_RGB, GL_UNSIGNED_BYTE, inversed_palette);
 
     // Create Texture
-    glGenTextures(1, &texture[0]);
-    glBindTexture(GL_TEXTURE_2D, texture[0]);   // 2d texture (x and y size)
+    glGenTextures(2, textures);
+    glBindTexture(GL_TEXTURE_2D, textures[0]);   // 2d texture (x and y size)
 
     glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER, GL_LINEAR); // scale linearly when image bigger than texture
     glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER, GL_LINEAR); // scale linearly when image smalled than texture
 
     // 2d texture, level of detail 0 (normal), 3 components (red, green, blue), x size from image, y size from image,
     // border 0 (normal), rgb color data, unsigned byte data, and finally the data itself.
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_COLOR_INDEX8_EXT, image1->width, image1->height, 0, GL_COLOR_INDEX, GL_UNSIGNED_BYTE, image1->data);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_COLOR_INDEX8_EXT, image1.width, image1.height, 0, GL_COLOR_INDEX, GL_UNSIGNED_BYTE, image1.data);
+
+    glBindTexture(GL_TEXTURE_2D, textures[1]);   // 2d texture (x and y size)
+
+    glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER, GL_LINEAR); // scale linearly when image bigger than texture
+    glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER, GL_LINEAR); // scale linearly when image smalled than texture
+
+    /* Texture-specific palette! */
+    glColorTableEXT(GL_TEXTURE_2D, GL_RGBA8, image1.palette_width, GL_RGB, GL_UNSIGNED_BYTE, inversed_palette);
+
+    // 2d texture, level of detail 0 (normal), 3 components (red, green, blue), x size from image, y size from image,
+    // border 0 (normal), rgb color data, unsigned byte data, and finally the data itself.
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_COLOR_INDEX8_EXT, image1.width, image1.height, 0, GL_COLOR_INDEX, GL_UNSIGNED_BYTE, image1.data);
 }
 
 /* A general OpenGL initialization function.  Sets all of the initial parameters. */
@@ -193,21 +211,7 @@ void ReSizeGLScene(int Width, int Height)
     glMatrixMode(GL_MODELVIEW);
 }
 
-
-/* The main drawing function. */
-void DrawGLScene()
-{
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);		// Clear The Screen And The Depth Buffer
-    glLoadIdentity();				// Reset The View
-
-    glTranslatef(0.0f,0.0f,-5.0f);              // move 5 units into the screen.
-
-    glRotatef(xrot,1.0f,0.0f,0.0f);		// Rotate On The X Axis
-    glRotatef(yrot,0.0f,1.0f,0.0f);		// Rotate On The Y Axis
-    glRotatef(zrot,0.0f,0.0f,1.0f);		// Rotate On The Z Axis
-
-    glBindTexture(GL_TEXTURE_2D, texture[0]);   // choose the texture to use.
-
+void DrawPolygon() {
     glBegin(GL_QUADS);		                // begin drawing a cube
 
     // Front Face (note that the texture's corners have to match the quad's corners)
@@ -247,6 +251,37 @@ void DrawGLScene()
     glTexCoord2f(0.0f, 1.0f); glVertex3f(-1.0f,  1.0f, -1.0f);	// Top Left Of The Texture and Quad
 
     glEnd();                                    // done with the polygon.
+}
+
+/* The main drawing function. */
+void DrawGLScene()
+{
+    static GLuint switch_counter = 0;
+    static GLuint current_bank = 0;
+
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);		// Clear The Screen And The Depth Buffer
+    glLoadIdentity();				// Reset The View
+
+    glTranslatef(-1.5f,0.0f,-5.0f);              // move 5 units into the screen.
+
+    glPushMatrix();
+        glRotatef(xrot,1.0f,0.0f,0.0f);		// Rotate On The X Axis
+        glRotatef(yrot,0.0f,1.0f,0.0f);		// Rotate On The Y Axis
+        glRotatef(zrot,0.0f,0.0f,1.0f);		// Rotate On The Z Axis
+        glBindTexture(GL_TEXTURE_2D, textures[0]);   // choose the texture to use.
+
+        if(switch_counter++ > 200) {
+            switch_counter = 0;
+            current_bank = !current_bank;
+            glTexParameteri(GL_TEXTURE_2D, GL_SHARED_TEXTURE_BANK_KOS, current_bank);
+        }
+
+        DrawPolygon();
+    glPopMatrix();
+
+    glBindTexture(GL_TEXTURE_2D, textures[1]);
+    glTranslatef(3.0, 0, 0);
+    DrawPolygon();
 
     xrot+=1.5f;		                // X Axis Rotation
     yrot+=1.5f;		                // Y Axis Rotation
