@@ -822,7 +822,7 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
     }
 
     if(!TEXTURE_UNITS[ACTIVE_TEXTURE]) {
-        _glKosThrowError(GL_INVALID_OPERATION, "glTexImage2D");
+        _glKosThrowError(GL_INVALID_OPERATION, __func__);
     }
 
     GLboolean isPaletted = (internalFormat == GL_COLOR_INDEX8_EXT) ? GL_TRUE : GL_FALSE;

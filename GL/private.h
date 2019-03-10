@@ -152,6 +152,8 @@ GLboolean _glIsSharedTexturePaletteEnabled();
 void _glApplyColorTable(TexturePalette *palette);
 
 GLboolean _glIsBlendingEnabled();
+GLboolean _glIsAlphaTestEnabled();
+
 GLboolean _glIsMipmapComplete(const TextureObject* obj);
 GLubyte* _glGetMipmapLocation(TextureObject* obj, GLuint level);
 GLuint _glGetMipmapLevelCount(TextureObject* obj);
