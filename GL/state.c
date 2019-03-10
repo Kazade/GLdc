@@ -224,7 +224,8 @@ void _glUpdatePVRTextureContext(pvr_poly_cxt_t* context, GLshort textureUnit) {
 
         if(tx1->isPaletted) {
             if(_glIsSharedTexturePaletteEnabled()) {
-                context->txr.format |= PVR_TXRFMT_8BPP_PAL(_glGetSharedPalette(tx1->shared_bank)->bank);
+                TexturePalette* palette = _glGetSharedPalette(tx1->shared_bank);
+                context->txr.format |= PVR_TXRFMT_8BPP_PAL((palette) ? 0 : palette->bank);
             } else {
                 context->txr.format |= PVR_TXRFMT_8BPP_PAL((tx1->palette) ? tx1->palette->bank : 0);
             }
