@@ -420,6 +420,10 @@ GLAPI void APIENTRY glClearDepth(GLfloat depth) {
 
 }
 
+GLAPI void APIENTRY glDrawBuffer(GLenum mode) {
+
+}
+
 GLAPI void APIENTRY glReadBuffer(GLenum mode) {
 
 }

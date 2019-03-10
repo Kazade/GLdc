@@ -467,6 +467,7 @@ GLAPI void APIENTRY glClear(GLuint mode);
 GLAPI void APIENTRY glClearColor(GLfloat r, GLfloat g, GLfloat b, GLfloat a);
 
 GLAPI void APIENTRY glReadBuffer(GLenum mode);
+GLAPI void APIENTRY glDrawBuffer(GLenum mode);
 
 /* Depth Testing */
 GLAPI void APIENTRY glClearDepth(GLfloat depth);
