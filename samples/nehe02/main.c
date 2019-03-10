@@ -41,7 +41,7 @@ void DrawGLScene()
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);		// Clear The Screen And The Depth Buffer
     glLoadIdentity();				// Reset The View
 
-    glTranslatef(-3.0f, 0.0f, -10.0f);		// Move Left 1.5 Units And Into The Screen 6.0
+    glTranslatef(-3.0f, 1.5f, -10.0f);		// Move Left 1.5 Units And Into The Screen 6.0
 
     // draw a triangle
     glBegin(GL_TRIANGLES);				// start drawing a polygon
@@ -73,6 +73,37 @@ void DrawGLScene()
         glVertex3f( 0.75f, 0.75f, 0.0f);
     glEnd();					// done with the polygon
 
+    glTranslatef(-6.0f, -3.0f, 0.0f);
+
+    // draw a triangle
+    glBegin(GL_POLYGON);				// start drawing a polygon
+        glVertex3f( 0.0f, 1.0f, 0.0f);		// Top
+        glVertex3f( 1.0f,-1.0f, 0.0f);		// Bottom Right
+        glVertex3f(-1.0f,-1.0f, 0.0f);		// Bottom Left
+    glEnd();					// we're done with the polygon
+
+    glTranslatef(3.0f, 0.0f, 0.0f);		        // Move Right 3 Units
+
+    // draw a square (quadrilateral)
+    glBegin(GL_POLYGON);				// start drawing a polygon (4 sided)
+        glVertex3f(-1.0f, 1.0f, 0.0f);		// Top Left
+        glVertex3f( 1.0f, 1.0f, 0.0f);		// Top Right
+        glVertex3f( 1.0f,-1.0f, 0.0f);		// Bottom Right
+        glVertex3f(-1.0f,-1.0f, 0.0f);		// Bottom Left
+    glEnd();					// done with the polygon
+
+    glTranslatef(3.0f, 0.0f, 0.0f);
+
+    glBegin(GL_POLYGON);				// start drawing a polygon (4 sided)
+        glVertex3f(-0.0f, 1.0f, 0.0f);		// Top Left
+        glVertex3f(-0.75f, 0.75f, 0.0f);
+        glVertex3f(-1.0f, 0.0f, 0.0f);		// Top Right
+        glVertex3f(-0.75f,-0.75f, 0.0f);		// Bottom Right
+        glVertex3f(-0.0f,-1.0f, 0.0f);		// Bottom Left
+        glVertex3f( 0.75f,-0.75f, 0.0f);		// Bottom Right
+        glVertex3f( 1.0f, 0.0f, 0.0f);		// Top Right
+        glVertex3f( 0.75f, 0.75f, 0.0f);
+    glEnd();					// done with the polygon
     // swap buffers to display, since we're double buffered.
     glKosSwapBuffers();
 }

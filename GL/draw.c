@@ -768,19 +768,24 @@ static void genArraysTriangleFan(
     const GLubyte* nptr, GLuint nstride,
     GLboolean doTexture, GLboolean doMultitexture, GLboolean doLighting) {
 
+    assert(count < MAX_POLYGON_SIZE);
+    static ClipVertex buffer[MAX_POLYGON_SIZE];
+
     genArraysCommon(
         output, count,
         vptr, vstride, cptr, cstride, uvptr, uvstride, stptr, ststride, nptr, nstride,
         doTexture, doMultitexture, doLighting
     );
 
-    assert(count < MAX_POLYGON_SIZE);
-    static ClipVertex buffer[MAX_POLYGON_SIZE];
+    if(count <= 3){
+        swapVertex(&output[1], &output[2]);
+        output[2].flags = PVR_CMD_VERTEX_EOL;
+        return;
+    }
 
     memcpy(buffer, output, sizeof(ClipVertex) * count);
 
     // First 3 vertices are in the right place, just end early
-    swapVertex(&output[1], &output[2]);
     output[2].flags = PVR_CMD_VERTEX_EOL;
 
     GLsizei i = 3, target = 3;
