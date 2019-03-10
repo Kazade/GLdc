@@ -37,6 +37,10 @@ matrix_t* _glGetProjectionMatrix() {
     return (matrix_t*) stack_top(&MATRIX_STACKS[1]);
 }
 
+matrix_t* _glGetModelViewMatrix() {
+    return (matrix_t*) stack_top(&MATRIX_STACKS[0]);
+}
+
 void _glInitMatrices() {
     init_stack(&MATRIX_STACKS[0], sizeof(matrix_t), 32);
     init_stack(&MATRIX_STACKS[1], sizeof(matrix_t), 32);

@@ -580,6 +580,9 @@ void APIENTRY glGetFloatv(GLenum pname, GLfloat* params) {
         case GL_PROJECTION_MATRIX:
             memcpy(params, _glGetProjectionMatrix(), sizeof(float) * 16);
         break;
+        case GL_MODELVIEW_MATRIX:
+            memcpy(params, _glGetModelViewMatrix(), sizeof(float) * 16);
+        break;
         default:
             _glKosThrowError(GL_INVALID_ENUM, "glGetIntegerv");
             _glKosPrintError();

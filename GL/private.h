@@ -114,6 +114,7 @@ void _glMatrixLoadTexture();
 void _glApplyRenderMatrix();
 
 matrix_t* _glGetProjectionMatrix();
+matrix_t* _glGetModelViewMatrix();
 
 void _glWipeTextureOnFramebuffers(GLuint texture);
 GLubyte _glCheckImmediateModeInactive(const char* func);
