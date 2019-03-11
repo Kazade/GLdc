@@ -768,7 +768,7 @@ static inline GLuint morton_1by1(GLuint x) {
 }
 
 static inline GLuint morton_index(GLuint x, GLuint y) {
-    return (morton_1by1(y) << 1) + morton_1by1(x);
+    return (morton_1by1(y) << 1) | morton_1by1(x);
 }
 
 void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
