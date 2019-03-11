@@ -2,6 +2,7 @@
 
 #include <kos.h>
 
+#include "../include/glkos.h"
 #include "../containers/aligned_vector.h"
 #include "private.h"
 #include "profiler.h"
@@ -38,14 +39,14 @@ static void pvr_list_submit(void *src, int n) {
     d[0] = d[8] = 0;
 }
 
-static void _glInitPVR() {
+static void _glInitPVR(GLboolean autosort) {
     pvr_init_params_t params = {
         /* Enable opaque and translucent polygons with size 32 and 32 */
         {PVR_BINSIZE_32, PVR_BINSIZE_0, PVR_BINSIZE_32, PVR_BINSIZE_0, PVR_BINSIZE_32},
         PVR_VERTEX_BUF_SIZE, /* Vertex buffer size */
         0, /* No DMA */
         0, /* No FSAA */
-        1 /* Disable translucent auto-sorting to match traditional GL */
+        (autosort) ? 0 : 1 /* Disable translucent auto-sorting to match traditional GL */
     };
 
     pvr_init(&params);
@@ -75,10 +76,16 @@ void APIENTRY glFinish() {
 }
 
 
-void APIENTRY glKosInit() {
+void APIENTRY glKosInitConfig(GLdcConfig* config) {
+    config->autosort_enabled = GL_FALSE;
+    config->initial_vbuf_capacity = 256;
+    config->internal_palette_format = GL_RGBA4;
+}
+
+void APIENTRY glKosInitEx(GLdcConfig* config) {
     TRACE();
 
-    _glInitPVR();
+    _glInitPVR(config->autosort_enabled);
 
     _glInitMatrices();
     _glInitAttributePointers();
@@ -86,6 +93,8 @@ void APIENTRY glKosInit() {
     _glInitLights();
     _glInitImmediateMode();
     _glInitFramebuffers();
+
+    _glSetInternalPaletteFormat(GL_RGBA4);
 
     _glInitTextures();
 
@@ -96,6 +105,16 @@ void APIENTRY glKosInit() {
     aligned_vector_init(&OP_LIST.vector, sizeof(ClipVertex));
     aligned_vector_init(&PT_LIST.vector, sizeof(ClipVertex));
     aligned_vector_init(&TR_LIST.vector, sizeof(ClipVertex));
+
+    aligned_vector_reserve(&OP_LIST.vector, config->initial_vbuf_capacity);
+    aligned_vector_reserve(&PT_LIST.vector, config->initial_vbuf_capacity);
+    aligned_vector_reserve(&TR_LIST.vector, config->initial_vbuf_capacity);
+}
+
+void APIENTRY glKosInit() {
+    GLdcConfig config;
+    glKosInitConfig(&config);
+    glKosInitEx(&config);
 }
 
 #define QACRTA ((((unsigned int)0x10000000)>>26)<<2)&0x1c

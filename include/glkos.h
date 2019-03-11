@@ -35,8 +35,34 @@ __BEGIN_DECLS
 #define GL_UNSIGNED_BYTE_TWID_KOS                   0xEEFB
 
 
-GLAPI void APIENTRY glKosSwapBuffers();
+/* Initialize the GL pipeline. GL will initialize the PVR. */
+GLAPI void APIENTRY glKosInit();
 
+typedef struct {
+    /* If GL_TRUE, enables pvr autosorting, this *will* break glDepthFunc/glDepthTest */
+    GLboolean autosort_enabled;
+
+    /* The internal format for paletted textures, must be GL_RGBA4 (default) or GL_RGBA8 */
+    GLenum internal_palette_format;
+
+    /* Initial capacity of each of the OP, TR and PT lists in vertices */
+    GLuint initial_vbuf_capacity;
+} GLdcConfig;
+
+
+GLAPI void APIENTRY glKosInitConfig(GLdcConfig* config);
+
+/* Usage:
+ *
+ * GLdcConfig config;
+ * glKosInitConfig(&config);
+ *
+ * config.autosort_enabled = GL_TRUE;
+ *
+ * glKosInitEx(&config);
+ */
+GLAPI void APIENTRY glKosInitEx(GLdcConfig* config);
+GLAPI void APIENTRY glKosSwapBuffers();
 
 /*
  * CUSTOM EXTENSION multiple_shared_palette_KOS

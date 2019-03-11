@@ -329,7 +329,12 @@ void DrawGLScene()
 
 int main(int argc, char **argv)
 {
-    glKosInit();
+    GLdcConfig config;
+    glKosInitConfig(&config);
+
+    config.internal_palette_format = GL_RGBA8;
+
+    glKosInitEx(&config);
 
     InitGL(640, 480);
     ReSizeGLScene(640, 480);

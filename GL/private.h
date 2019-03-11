@@ -147,6 +147,7 @@ TextureObject* _glGetBoundTexture();
 GLubyte _glGetActiveTexture();
 GLuint _glGetActiveClientTexture();
 TexturePalette* _glGetSharedPalette(GLshort bank);
+void _glSetInternalPaletteFormat(GLenum val);
 
 GLboolean _glIsSharedTexturePaletteEnabled();
 void _glApplyColorTable(TexturePalette *palette);

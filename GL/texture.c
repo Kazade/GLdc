@@ -24,9 +24,13 @@ static GLuint _determinePVRFormat(GLint internalFormat, GLenum type);
 
 #define PACK_ARGB8888(a,r,g,b) ( ((a & 0xFF) << 24) | ((r & 0xFF) << 16) | ((g & 0xFF) << 8) | (b & 0xFF) )
 
+
+#define _PACK4(v) ((v * 0xF) / 0xFF)
+#define PACK_ARGB4444(a,r,g,b) (_PACK4(a) << 12) | (_PACK4(r) << 8) | (_PACK4(g) << 4) | (_PACK4(b))
+
 static GLboolean BANKS_USED[4];  // Each time a 256 colour bank is used, this is set to true
 static GLboolean SUBBANKS_USED[4][16]; // 4 counts of the used 16 colour banks within the 256 ones
-
+static GLenum INTERNAL_PALETTE_FORMAT = GL_RGBA4;
 
 static TexturePalette* _initTexturePalette() {
     TexturePalette* palette = (TexturePalette*) malloc(sizeof(TexturePalette));
@@ -100,6 +104,17 @@ TexturePalette* _glGetSharedPalette(GLshort bank) {
     return SHARED_PALETTES[bank];
 }
 
+void _glSetInternalPaletteFormat(GLenum val) {
+    INTERNAL_PALETTE_FORMAT = val;
+
+    if(INTERNAL_PALETTE_FORMAT == GL_RGBA4) {
+        pvr_set_pal_format(PVR_PAL_ARGB4444);
+    } else {
+        assert(INTERNAL_PALETTE_FORMAT == GL_RGBA8);
+        pvr_set_pal_format(PVR_PAL_ARGB8888);
+    }
+}
+
 void _glApplyColorTable(TexturePalette* src) {
     /*
      * FIXME:
@@ -110,13 +125,15 @@ void _glApplyColorTable(TexturePalette* src) {
         return;
     }
 
-    pvr_set_pal_format(PVR_PAL_ARGB8888);
-
     GLushort i;
     GLushort offset = src->size * src->bank;
     for(i = 0; i < src->width; ++i) {
         GLubyte* entry = &src->data[i * 4];
-        pvr_set_pal_entry(offset + i, PACK_ARGB8888(entry[3], entry[0], entry[1], entry[2]));
+        if(INTERNAL_PALETTE_FORMAT == GL_RGBA8) {
+            pvr_set_pal_entry(offset + i, PACK_ARGB8888(entry[3], entry[0], entry[1], entry[2]));
+        } else {
+            pvr_set_pal_entry(offset + i, PACK_ARGB4444(entry[3], entry[0], entry[1], entry[2]));
+        }
     }
 }
 
