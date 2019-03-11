@@ -18,6 +18,9 @@ static NamedArray FRAMEBUFFERS;
 
 void _glInitFramebuffers() {
     named_array_init(&FRAMEBUFFERS, sizeof(FrameBuffer), 32);
+
+    // Reserve zero so that it is never given to anyone as an ID!
+    named_array_reserve(&FRAMEBUFFERS, 0);
 }
 
 void _glWipeTextureOnFramebuffers(GLuint texture) {
