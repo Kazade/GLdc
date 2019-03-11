@@ -671,7 +671,7 @@ const GLbyte *glGetString(GLenum name) {
             return "PowerVR2 CLX2 100mHz";
 
         case GL_VERSION:
-            return "GLdc 1.x";
+            return "1.2 (partial) - GLdc 1.0";
 
         case GL_EXTENSIONS:
             return "GL_ARB_framebuffer_object, GL_ARB_multitexture, GL_ARB_texture_rg, GL_EXT_paletted_texture, GL_EXT_shared_texture_palette, GL_KOS_multiple_shared_palette";
