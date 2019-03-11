@@ -104,9 +104,6 @@ __BEGIN_DECLS
 #define GL_TEXTURE_WRAP_T       0x2803
 #define GL_TEXTURE_MAG_FILTER   0x2800
 #define GL_TEXTURE_MIN_FILTER   0x2801
-#define GL_TEXTURE_FILTER       GL_TEXTURE_MIN_FILTER
-#define GL_FILTER_NONE             0x0
-#define GL_FILTER_BILINEAR         0x1
 #define GL_REPEAT               0x2901
 #define GL_CLAMP                0x2900
 
@@ -382,9 +379,9 @@ __BEGIN_DECLS
 #define GL_TRUE    1
 
 /* Stubs for portability */
-#define GL_ALPHA_TEST 0
-#define GL_STENCIL_TEST 0
-#define GL_UNPACK_ALIGNMENT 0
+#define GL_ALPHA_TEST                     0x0BC0
+#define GL_STENCIL_TEST                   0x0B90
+#define GL_UNPACK_ALIGNMENT               0x0CF5
 
 #define GLAPI extern
 #define APIENTRY
