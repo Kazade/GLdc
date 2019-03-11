@@ -774,19 +774,12 @@ GLboolean _glIsMipmapComplete(const TextureObject* obj) {
     return GL_TRUE;
 }
 
+#define TWIDTAB(x) ( (x&1)|((x&2)<<1)|((x&4)<<2)|((x&8)<<3)|((x&16)<<4)| \
+                     ((x&32)<<5)|((x&64)<<6)|((x&128)<<7)|((x&256)<<8)|((x&512)<<9) )
 
-static inline GLuint morton_1by1(GLuint x) {
-    x &= 0x0000ffff;                  // x = ---- ---- ---- ---- fedc ba98 7654 3210
-    x = (x ^ (x << 8)) & 0x00ff00ff; // x = ---- ---- fedc ba98 ---- ---- 7654 3210
-    x = (x ^ (x << 4)) & 0x0f0f0f0f; // x = ---- fedc ---- ba98 ---- 7654 ---- 3210
-    x = (x ^ (x << 2)) & 0x33333333; // x = --fe --dc --ba --98 --76 --54 --32 --10
-    x = (x ^ (x << 1)) & 0x55555555; // x = -f-e -d-c -b-a -9-8 -7-6 -5-4 -3-2 -1-0
-    return x;
-}
+#define TWIDOUT(x, y) ( TWIDTAB((y)) | (TWIDTAB((x)) << 1) )
+#define MIN(a, b) ( (a)<(b)? (a):(b) )
 
-static inline GLuint morton_index(GLuint x, GLuint y) {
-    return (morton_1by1(y) << 1) | morton_1by1(x);
-}
 
 void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
                            GLsizei width, GLsizei height, GLint border,
@@ -947,16 +940,17 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
 
         if(needsTwiddling) {
             assert(type == GL_UNSIGNED_BYTE);  // Anything else needs this loop adjusting
-            GLuint x, y;
-            for(y = 0; y < height; ++y) {
-                for(x = 0; x < width; ++x) {
-                    GLuint src = (y * width) + x;
-                    GLuint dest = morton_index(x, y);
+            GLuint x, y, min, min2, mask;
 
-                    targetData[dest] = ((GLubyte*) data)[src];
+            min = MIN(w, h);
+            min2 = min * min;
+            mask = min - 1;
+
+            for(y = 0; y < h; y++) {
+                for(x = 0; x < w; x++) {
+                    targetData[TWIDOUT(x & mask, y & mask) + (x / min + y / min) * min2] = ((GLubyte*) data)[y * w + x];
                 }
             }
-
         } else {
             /* No conversion? Just copy the data, and the pvr_format is correct */
             sq_cpy(targetData, data, bytes);
