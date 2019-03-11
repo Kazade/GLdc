@@ -390,9 +390,6 @@ __BEGIN_DECLS
 #define GLAPI extern
 #define APIENTRY
 
-/* Initialize the GL pipeline. GL will initialize the PVR. */
-GLAPI void APIENTRY glKosInit();
-
 GLAPI void APIENTRY glFlush();
 GLAPI void APIENTRY glFinish();
 
