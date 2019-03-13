@@ -92,6 +92,7 @@ void APIENTRY glColor3fv(const GLfloat* v) {
 }
 
 void APIENTRY glVertex3f(GLfloat x, GLfloat y, GLfloat z) {
+    aligned_vector_reserve(&VERTICES, VERTICES.size + 3);
     aligned_vector_push_back(&VERTICES, &x, 1);
     aligned_vector_push_back(&VERTICES, &y, 1);
     aligned_vector_push_back(&VERTICES, &z, 1);

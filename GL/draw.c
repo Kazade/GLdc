@@ -501,13 +501,12 @@ static inline void transformNormalToEyeSpace(GLfloat* normal) {
     mat_trans_normal3(normal[0], normal[1], normal[2]);
 }
 
-static inline void swapVertex(ClipVertex* v1, ClipVertex* v2) {
-    static ClipVertex tmp;
-
-    tmp = *v1;
-    *v1 = *v2;
-    *v2 = tmp;
-}
+#define swapVertex(a, b)   \
+do {                 \
+    ClipVertex temp = *a;    \
+    *a = *b;           \
+    *b = temp;        \
+} while(0)
 
 static inline FloatParseFunc _calcVertexParseFunc() {
     switch(VERTEX_POINTER.type) {
@@ -850,15 +849,17 @@ static inline void genArraysTriangles(ClipVertex* output, GLuint count) {
     }
 }
 
-static void genArraysQuads(ClipVertex* output, GLuint count) {
-    GLsizei i = 3;
+static inline void genArraysQuads(ClipVertex* output, GLuint count) {
+    ClipVertex* previous;
+    ClipVertex* this = output + 3;
 
-    for(; i < count; i += 4) {
-        ClipVertex* this = output + i;
-        ClipVertex* previous = output + (i - 1);
+    const ClipVertex* end = output + count;
 
+    while(this < end) {
+        previous = this - 1;
         swapVertex(previous, this);
         this->flags = PVR_CMD_VERTEX_EOL;
+        this += 4;
     }
 }
 

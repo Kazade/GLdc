@@ -138,6 +138,6 @@ void profiler_print_stats() {
         float ms = ((float) result->total_time_us) / 1000.0f;
         float avg = ms / (float) result->total_calls;
 
-        fprintf(stderr, "%-60s%-20f%-20f%u\n", result->name, avg, ms, result->total_calls);
+        fprintf(stderr, "%-60s%-20f%-20f%" PRIu64 "\n", result->name, (double)avg, (double)ms, result->total_calls);
     }
 }
