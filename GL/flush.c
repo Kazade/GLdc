@@ -78,7 +78,7 @@ void APIENTRY glFinish() {
 
 void APIENTRY glKosInitConfig(GLdcConfig* config) {
     config->autosort_enabled = GL_FALSE;
-    config->initial_vbuf_capacity = 256;
+    config->initial_vbuf_capacity = 1024;
     config->internal_palette_format = GL_RGBA4;
 }
 
