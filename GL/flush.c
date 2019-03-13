@@ -94,7 +94,7 @@ void APIENTRY glKosInitEx(GLdcConfig* config) {
     _glInitImmediateMode();
     _glInitFramebuffers();
 
-    _glSetInternalPaletteFormat(GL_RGBA4);
+    _glSetInternalPaletteFormat(config->internal_palette_format);
 
     _glInitTextures();
 
