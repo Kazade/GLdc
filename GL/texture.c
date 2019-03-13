@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>
+#include <string.h>
 
 #include "config.h"
 #include "../include/glext.h"
@@ -36,11 +37,8 @@ static TexturePalette* _initTexturePalette() {
     TexturePalette* palette = (TexturePalette*) malloc(sizeof(TexturePalette));
     assert(palette);
 
-    palette->data = NULL;
-    palette->format = 0;
-    palette->width = 0;
+    memset(palette, 0x0, sizeof(TexturePalette));
     palette->bank = -1;
-    palette->size = 0;
     return palette;
 }
 
@@ -222,6 +220,8 @@ GLubyte _glInitTextures() {
     SHARED_PALETTES[2] = _initTexturePalette();
     SHARED_PALETTES[3] = _initTexturePalette();
 
+    memset((void*) BANKS_USED, 0x0, sizeof(BANKS_USED));
+    memset((void*) SUBBANKS_USED, 0x0, sizeof(SUBBANKS_USED));
     return 1;
 }
 
