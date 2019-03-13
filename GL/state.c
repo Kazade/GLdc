@@ -110,7 +110,7 @@ static int _calcPVRBlendFactor(GLenum factor) {
     case GL_ONE:
         return PVR_BLEND_ONE;
     default:
-        fprintf(stderr, "Invalid blend mode: %d\n", factor);
+        fprintf(stderr, "Invalid blend mode: %u\n", (unsigned int) factor);
         return PVR_BLEND_ONE;
     }
 }
@@ -131,7 +131,7 @@ static void _updatePVRBlend(pvr_poly_cxt_t* context) {
     }
 }
 
-GLboolean _glCheckValidEnum(GLint param, GLenum* values, const char* func) {
+GLboolean _glCheckValidEnum(GLint param, GLint* values, const char* func) {
     GLubyte found = 0;
     while(*values != 0) {
         if(*values == param) {
@@ -478,7 +478,7 @@ GLAPI void APIENTRY glBlendFunc(GLenum sfactor, GLenum dfactor) {
 #define PT_ALPHA_REF 0x011c
 
 GLAPI void APIENTRY glAlphaFunc(GLenum func, GLclampf ref) {
-    GLenum validFuncs[] = {
+    GLint validFuncs[] = {
         GL_GREATER,
         0
     };
@@ -662,20 +662,20 @@ void APIENTRY glGetIntegerv(GLenum pname, GLint *params) {
     }
 }
 
-const GLbyte *glGetString(GLenum name) {
+const GLubyte *glGetString(GLenum name) {
     switch(name) {
         case GL_VENDOR:
-            return "KallistiOS / Kazade";
+            return (const GLubyte*) "KallistiOS / Kazade";
 
         case GL_RENDERER:
-            return "PowerVR2 CLX2 100mHz";
+            return (const GLubyte*) "PowerVR2 CLX2 100mHz";
 
         case GL_VERSION:
-            return "1.2 (partial) - GLdc 1.0";
+            return (const GLubyte*) "1.2 (partial) - GLdc 1.0";
 
         case GL_EXTENSIONS:
-            return "GL_ARB_framebuffer_object, GL_ARB_multitexture, GL_ARB_texture_rg, GL_EXT_paletted_texture, GL_EXT_shared_texture_palette, GL_KOS_multiple_shared_palette";
+            return (const GLubyte*) "GL_ARB_framebuffer_object, GL_ARB_multitexture, GL_ARB_texture_rg, GL_EXT_paletted_texture, GL_EXT_shared_texture_palette, GL_KOS_multiple_shared_palette";
     }
 
-    return "GL_KOS_ERROR: ENUM Unsupported\n";
+    return (const GLubyte*) "GL_KOS_ERROR: ENUM Unsupported\n";
 }

@@ -230,7 +230,7 @@ void APIENTRY glColorMaterial(GLenum face, GLenum mode) {
         return;
     }
 
-    GLenum validModes[] = {GL_AMBIENT, GL_DIFFUSE, GL_AMBIENT_AND_DIFFUSE, GL_EMISSION, GL_SPECULAR, 0};
+    GLint validModes[] = {GL_AMBIENT, GL_DIFFUSE, GL_AMBIENT_AND_DIFFUSE, GL_EMISSION, GL_SPECULAR, 0};
 
     if(_glCheckValidEnum(mode, validModes, __func__) != 0) {
         return;

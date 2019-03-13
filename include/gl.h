@@ -369,11 +369,11 @@ __BEGIN_DECLS
 #define GLushort unsigned short
 #define GLuint   unsigned int
 #define GLenum   unsigned int
-#define GLsizei  unsigned long
+#define GLsizei  unsigned int
 #define GLfixed  const unsigned int
 #define GLclampf float
 #define GLubyte  unsigned char
-#define GLbitfield unsigned long
+#define GLbitfield unsigned int
 #define GLboolean  unsigned char
 #define GL_FALSE   0
 #define GL_TRUE    1
@@ -619,7 +619,7 @@ GLAPI void APIENTRY glGetBooleanv(GLenum pname, GLboolean* params);
 GLAPI void APIENTRY glGetIntegerv(GLenum pname, GLint *params);
 GLAPI void APIENTRY glGetFloatv(GLenum pname, GLfloat *params);
 GLAPI GLboolean APIENTRY glIsEnabled(GLenum cap);
-GLAPI const GLbyte* APIENTRY glGetString(GLenum name);
+GLAPI const GLubyte* APIENTRY glGetString(GLenum name);
 
 /* Error handling */
 GLAPI GLenum APIENTRY glGetError(void);

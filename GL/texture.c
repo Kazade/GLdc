@@ -325,7 +325,7 @@ void APIENTRY glDeleteTextures(GLsizei n, GLuint *textures) {
 void APIENTRY glBindTexture(GLenum  target, GLuint texture) {
     TRACE();
 
-    GLenum target_values [] = {GL_TEXTURE_2D, 0};
+    GLint target_values [] = {GL_TEXTURE_2D, 0};
 
     if(_glCheckValidEnum(target, target_values, __func__) != 0) {
         return;
@@ -348,9 +348,9 @@ void APIENTRY glBindTexture(GLenum  target, GLuint texture) {
 void APIENTRY glTexEnvi(GLenum target, GLenum pname, GLint param) {
     TRACE();
 
-    GLenum target_values [] = {GL_TEXTURE_ENV, 0};
-    GLenum pname_values [] = {GL_TEXTURE_ENV_MODE, 0};
-    GLenum param_values [] = {GL_MODULATE, GL_DECAL, GL_REPLACE, 0};
+    GLint target_values [] = {GL_TEXTURE_ENV, 0};
+    GLint pname_values [] = {GL_TEXTURE_ENV_MODE, 0};
+    GLint param_values [] = {GL_MODULATE, GL_DECAL, GL_REPLACE, 0};
 
     GLubyte failures = 0;
 
@@ -1074,7 +1074,7 @@ void APIENTRY glTexParameterf(GLenum target, GLenum pname, GLint param) {
 }
 
 GLAPI void APIENTRY glColorTableEXT(GLenum target, GLenum internalFormat, GLsizei width, GLenum format, GLenum type, const GLvoid *data) {
-    GLenum validTargets[] = {
+    GLint validTargets[] = {
         GL_TEXTURE_2D,
         GL_SHARED_TEXTURE_PALETTE_EXT,
         GL_SHARED_TEXTURE_PALETTE_0_KOS,
@@ -1084,9 +1084,9 @@ GLAPI void APIENTRY glColorTableEXT(GLenum target, GLenum internalFormat, GLsize
         0
     };
 
-    GLenum validInternalFormats[] = {GL_RGB8, GL_RGBA8, 0};
-    GLenum validFormats[] = {GL_RGB, GL_RGBA, 0};
-    GLenum validTypes[] = {GL_UNSIGNED_BYTE, GL_BYTE, GL_UNSIGNED_SHORT, GL_SHORT, 0};
+    GLint validInternalFormats[] = {GL_RGB8, GL_RGBA8, 0};
+    GLint validFormats[] = {GL_RGB, GL_RGBA, 0};
+    GLint validTypes[] = {GL_UNSIGNED_BYTE, GL_BYTE, GL_UNSIGNED_SHORT, GL_SHORT, 0};
 
     if(_glCheckValidEnum(target, validTargets, __func__) != 0) {
         return;
