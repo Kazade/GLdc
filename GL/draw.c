@@ -67,6 +67,234 @@ typedef void (*FloatParseFunc)(GLfloat* out, const GLubyte* in);
 typedef void (*ByteParseFunc)(GLubyte* out, const GLubyte* in);
 typedef void (*PolyBuildFunc)(ClipVertex* first, ClipVertex* previous, ClipVertex* vertex, ClipVertex* next, const GLsizei i);
 
+
+static void _readVertexData3f3f(const float* input, GLuint count, GLubyte stride, float* output) {
+    const float* end = (float*) (((GLubyte*) input) + (count * stride));
+
+    while(input < end) {
+        output[0] = input[0];
+        output[1] = input[1];
+        output[2] = input[2];
+
+        input = (float*) (((GLubyte*) input) + stride);
+        output = (float*) (((GLubyte*) output) + sizeof(ClipVertex));
+    }
+}
+
+static void _readVertexData3us3f(const GLushort* input, GLuint count, GLubyte stride, float* output) {
+    const GLushort* end = (GLushort*) ((GLubyte*) input) + (count * stride);
+
+    while(input < end) {
+        output[0] = input[0];
+        output[1] = input[1];
+        output[2] = input[2];
+
+        input = (GLushort*) (((GLubyte*) input) + stride);
+        output = (float*) (((GLubyte*) output) + sizeof(ClipVertex));
+    }
+}
+
+static void _readVertexData3ui3f(const GLuint* input, GLuint count, GLubyte stride, float* output) {
+    const GLuint* end = (GLuint*) ((GLubyte*) input) + (count * stride);
+
+    while(input < end) {
+        output[0] = input[0];
+        output[1] = input[1];
+        output[2] = input[2];
+
+        input = (GLuint*) (((GLubyte*) input) + stride);
+        output = (float*) (((GLubyte*) output) + sizeof(ClipVertex));
+    }
+}
+
+static void _readVertexData3ub3f(const GLubyte* input, GLuint count, GLubyte stride, float* output) {
+    const float ONE_OVER_TWO_FIVE_FIVE = 1.0f / 255.0f;
+    const GLubyte* end = ((GLubyte*) input) + (count * stride);
+
+    while(input < end) {
+        output[0] = input[0] * ONE_OVER_TWO_FIVE_FIVE;
+        output[1] = input[1] * ONE_OVER_TWO_FIVE_FIVE;
+        output[2] = input[2] * ONE_OVER_TWO_FIVE_FIVE;
+
+        input += stride;
+        output = (float*) (((GLubyte*) output) + sizeof(ClipVertex));
+    }
+}
+
+static void _readVertexData2f2f(const float* input, GLuint count, GLubyte stride, float* output) {
+    const float* end = (float*) ((GLubyte*) input) + (count * stride);
+
+    while(input < end) {
+        output[0] = input[0];
+        output[1] = input[1];
+
+        input = (float*) (((GLubyte*) input) + stride);
+        output = (float*) (((GLubyte*) output) + sizeof(ClipVertex));
+    }
+}
+
+static void _readVertexData2f3f(const float* input, GLuint count, GLubyte stride, float* output) {
+    const float* end = (float*) ((GLubyte*) input) + (count * stride);
+
+    while(input < end) {
+        output[0] = input[0];
+        output[1] = input[1];
+        output[2] = 0.0f;
+
+        input = (float*) (((GLubyte*) input) + stride);
+        output = (float*) (((GLubyte*) output) + sizeof(ClipVertex));
+    }
+}
+
+static void _readVertexData2ub3f(const GLubyte* input, GLuint count, GLubyte stride, float* output) {
+    const float ONE_OVER_TWO_FIVE_FIVE = 1.0f / 255.0f;
+    const GLubyte* end = ((GLubyte*) input) + (count * stride);
+
+    while(input < end) {
+        output[0] = input[0] * ONE_OVER_TWO_FIVE_FIVE;
+        output[1] = input[1] * ONE_OVER_TWO_FIVE_FIVE;
+        output[2] = 0.0f;
+
+        input += stride;
+        output = (float*) (((GLubyte*) output) + sizeof(ClipVertex));
+    }
+}
+
+static void _readVertexData2us3f(const GLushort* input, GLuint count, GLubyte stride, float* output) {
+    const GLushort* end = (GLushort*) ((GLubyte*) input) + (count * stride);
+
+    while(input < end) {
+        output[0] = input[0];
+        output[1] = input[1];
+        output[2] = 0.0f;
+
+        input = (GLushort*) (((GLubyte*) input) + stride);
+        output = (float*) (((GLubyte*) output) + sizeof(ClipVertex));
+    }
+}
+
+static void _readVertexData2us2f(const GLushort* input, GLuint count, GLubyte stride, float* output) {
+    const GLushort* end = (GLushort*) ((GLubyte*) input) + (count * stride);
+
+    while(input < end) {
+        output[0] = input[0];
+        output[1] = input[1];
+
+        input = (GLushort*) (((GLubyte*) input) + stride);
+        output = (float*) (((GLubyte*) output) + sizeof(ClipVertex));
+    }
+}
+
+static void _readVertexData2ui2f(const GLuint* input, GLuint count, GLubyte stride, float* output) {
+    const GLuint* end = (GLuint*) ((GLubyte*) input) + (count * stride);
+
+    while(input < end) {
+        output[0] = input[0];
+        output[1] = input[1];
+
+        input = (GLuint*) (((GLubyte*) input) + stride);
+        output = (float*) (((GLubyte*) output) + sizeof(ClipVertex));
+    }
+}
+
+static void _readVertexData2ub2f(const GLubyte* input, GLuint count, GLubyte stride, float* output) {
+    const float ONE_OVER_TWO_FIVE_FIVE = 1.0f / 255.0f;
+    const GLubyte* end = (GLubyte*) ((GLubyte*) input) + (count * stride);
+
+    while(input < end) {
+        output[0] = input[0] * ONE_OVER_TWO_FIVE_FIVE;
+        output[1] = input[1] * ONE_OVER_TWO_FIVE_FIVE;
+
+        input = (((GLubyte*) input) + stride);
+        output = (float*) (((GLubyte*) output) + sizeof(ClipVertex));
+    }
+}
+
+static void _readVertexData2ui3f(const GLuint* input, GLuint count, GLubyte stride, float* output) {
+    const GLuint* end = (GLuint*) ((GLubyte*) input) + (count * stride);
+
+    while(input < end) {
+        output[0] = input[0];
+        output[1] = input[1];
+        output[2] = 0.0f;
+
+        input = (GLuint*) (((GLubyte*) input) + stride);
+        output = (float*) (((GLubyte*) output) + sizeof(ClipVertex));
+    }
+}
+
+static void _readVertexData4ubARGB(const GLubyte* input, GLuint count, GLubyte stride, GLubyte* output) {
+    const GLubyte* end = ((GLubyte*) input) + (count * stride);
+
+    while(input < end) {
+        output[R8IDX] = input[0];
+        output[G8IDX] = input[1];
+        output[B8IDX] = input[2];
+        output[A8IDX] = input[3];
+
+        input = (GLubyte*) (((GLubyte*) input) + stride);
+        output = (GLubyte*) (((GLubyte*) output) + sizeof(ClipVertex));
+    }
+}
+
+static void _readVertexData4fARGB(const float* input, GLuint count, GLubyte stride, GLubyte* output) {
+    const float* end = (float*) ((GLubyte*) input) + (count * stride);
+
+    while(input < end) {
+        output[R8IDX] = (GLubyte) (input[0] * 255.0f);
+        output[G8IDX] = (GLubyte) (input[1] * 255.0f);
+        output[B8IDX] = (GLubyte) (input[2] * 255.0f);
+        output[A8IDX] = (GLubyte) (input[3] * 255.0f);
+
+        input = (float*) (((GLubyte*) input) + stride);
+        output = (GLubyte*) (((GLubyte*) output) + sizeof(ClipVertex));
+    }
+}
+
+static void _readVertexData3fARGB(const float* input, GLuint count, GLubyte stride, GLubyte* output) {
+    const float* end = (float*) ((GLubyte*) input) + (count * stride);
+
+    while(input < end) {
+        output[R8IDX] = (GLubyte) (input[0] * 255.0f);
+        output[G8IDX] = (GLubyte) (input[1] * 255.0f);
+        output[B8IDX] = (GLubyte) (input[2] * 255.0f);
+        output[A8IDX] = 1.0f;
+
+        input = (float*) (((GLubyte*) input) + stride);
+        output = (GLubyte*) (((GLubyte*) output) + sizeof(ClipVertex));
+    }
+}
+
+static void _readVertexData3ubARGB(const GLubyte* input, GLuint count, GLubyte stride, GLubyte* output) {
+    const GLubyte* end = ((GLubyte*) input) + (count * stride);
+
+    while(input < end) {
+        output[R8IDX] = input[0];
+        output[G8IDX] = input[1];
+        output[B8IDX] = input[2];
+        output[A8IDX] = 1.0f;
+
+        input = (((GLubyte*) input) + stride);
+        output = (GLubyte*) (((GLubyte*) output) + sizeof(ClipVertex));
+    }
+}
+
+static void _readVertexData3usARGB(const GLushort* input, GLuint count, GLubyte stride, GLubyte* output) {
+    assert(0 && "Not Implemented");
+}
+
+static void _readVertexData3uiARGB(const GLuint* input, GLuint count, GLubyte stride, GLubyte* output) {
+    assert(0 && "Not Implemented");
+}
+
+static void _readVertexData4usARGB(const GLushort* input, GLuint count, GLubyte stride, GLubyte* output) {
+    assert(0 && "Not Implemented");
+}
+
+static void _readVertexData4uiARGB(const GLuint* input, GLuint count, GLubyte stride, GLubyte* output) {
+    assert(0 && "Not Implemented");
+}
+
 GLuint _glGetEnabledAttributes() {
     return ENABLED_VERTEX_ATTRIBUTES;
 }
@@ -466,7 +694,7 @@ static inline void nullFloatParseFunc(GLfloat* out, const GLubyte* in) {}
 static inline void genElementsCommon(
     ClipVertex* output,
     const GLubyte* iptr, GLuint istride, GLenum type,
-    GLsizei count,
+    GLuint count,
     const GLubyte* vptr, GLuint vstride,
     const GLubyte* cptr, GLuint cstride,
     const GLubyte* uvptr, GLuint uvstride,
@@ -506,7 +734,7 @@ static inline void genElementsCommon(
 
 static inline void genElementsTriangles(
     ClipVertex* output,
-    GLsizei count,
+    GLuint count,
     const GLubyte* iptr, GLuint istride, GLenum type,
     const GLubyte* vptr, GLuint vstride,
     const GLubyte* cptr, GLuint cstride,
@@ -530,7 +758,7 @@ static inline void genElementsTriangles(
 
 static inline void genElementsQuads(
     ClipVertex* output,
-    GLsizei count,
+    GLuint count,
     const GLubyte* iptr, GLuint istride, GLenum type,
     const GLubyte* vptr, GLuint vstride,
     const GLubyte* cptr, GLuint cstride,
@@ -555,7 +783,7 @@ static inline void genElementsQuads(
 
 static inline void genElementsTriangleFan(
     ClipVertex* output,
-    GLsizei count,
+    GLuint count,
     const GLubyte* iptr, GLuint istride, GLenum type,
     const GLubyte* vptr, GLuint vstride,
     const GLubyte* cptr, GLuint cstride,
@@ -595,7 +823,7 @@ static inline void genElementsTriangleFan(
 
 static inline void genElementsTriangleStrip(
     ClipVertex* output,
-    GLsizei count,
+    GLuint count,
     const GLubyte* iptr, GLuint istride, GLenum type,
     const GLubyte* vptr, GLuint vstride,
     const GLubyte* cptr, GLuint cstride,
@@ -614,95 +842,7 @@ static inline void genElementsTriangleStrip(
     output[count - 1].flags = PVR_CMD_VERTEX_EOL;
 }
 
-static inline void genArraysCommon(
-    ClipVertex* output,
-    GLsizei count,
-    const GLubyte* vptr, GLuint vstride,
-    const GLubyte* cptr, GLuint cstride,
-    const GLubyte* uvptr, GLuint uvstride,
-    const GLubyte* stptr, GLuint ststride,
-    const GLubyte* nptr, GLuint nstride,
-    GLboolean doTexture, GLboolean doMultitexture, GLboolean doLighting
-) {
-    const FloatParseFunc vertexFunc = _calcVertexParseFunc();
-    const ByteParseFunc diffuseFunc = _calcDiffuseParseFunc();
-    const FloatParseFunc uvFunc = _calcUVParseFunc();
-    const FloatParseFunc stFunc = _calcSTParseFunc();
-    const FloatParseFunc normalFunc = _calcNormalParseFunc();
-
-    assert(vertexFunc);
-    assert(diffuseFunc);
-    assert(uvFunc);
-    assert(stFunc);
-    assert(normalFunc);
-
-    GLsizei i = count;
-
-    ClipVertex* vertex = output;
-
-    while(i--) {
-        vertex->flags = PVR_CMD_VERTEX;
-        vertexFunc(vertex->xyz, vptr);
-        vptr += vstride;
-        vertex++;
-    }
-
-    i = count;
-    vertex = output;
-    while(i--) {
-        diffuseFunc(vertex->bgra, cptr);
-        cptr += cstride;
-        vertex++;
-    }
-
-    if(doTexture) {
-        i = count;
-        vertex = output;
-        while(i--) {
-            uvFunc(vertex->uv, uvptr);
-            uvptr += uvstride;
-            vertex++;
-        }
-    }
-
-    if(doMultitexture) {
-        i = count;
-        vertex = output;
-        while(i--) {
-            stFunc(vertex->st, stptr);
-            stptr += ststride;
-            ++vertex;
-        }
-    }
-
-    if(doLighting) {
-        i = count;
-        vertex = output;
-        while(i--) {
-            normalFunc(vertex->nxyz, nptr);
-            nptr += nstride;
-            ++vertex;
-        }
-    }
-}
-
-
-static inline void genArraysTriangles(
-    ClipVertex* output,
-    GLsizei count,
-    const GLubyte* vptr, GLuint vstride,
-    const GLubyte* cptr, GLuint cstride,
-    const GLubyte* uvptr, GLuint uvstride,
-    const GLubyte* stptr, GLuint ststride,
-    const GLubyte* nptr, GLuint nstride,
-    GLboolean doTexture, GLboolean doMultitexture, GLboolean doLighting) {
-
-    genArraysCommon(
-        output, count,
-        vptr, vstride, cptr, cstride, uvptr, uvstride, stptr, ststride, nptr, nstride,
-        doTexture, doMultitexture, doLighting
-    );
-
+static inline void genArraysTriangles(ClipVertex* output, GLuint count) {
     GLsizei i = count;
     ClipVertex* vertex = output;
     for(i = 2; i < count; i += 3) {
@@ -710,22 +850,7 @@ static inline void genArraysTriangles(
     }
 }
 
-static void genArraysQuads(
-    ClipVertex* output,
-    GLsizei count,
-    const GLubyte* vptr, GLuint vstride,
-    const GLubyte* cptr, GLuint cstride,
-    const GLubyte* uvptr, GLuint uvstride,
-    const GLubyte* stptr, GLuint ststride,
-    const GLubyte* nptr, GLuint nstride,
-    GLboolean doTexture, GLboolean doMultitexture, GLboolean doLighting) {
-
-    genArraysCommon(
-        output, count,
-        vptr, vstride, cptr, cstride, uvptr, uvstride, stptr, ststride, nptr, nstride,
-        doTexture, doMultitexture, doLighting
-    );
-
+static void genArraysQuads(ClipVertex* output, GLuint count) {
     GLsizei i = 3;
 
     for(; i < count; i += 4) {
@@ -737,45 +862,15 @@ static void genArraysQuads(
     }
 }
 
-static void genArraysTriangleStrip(
-    ClipVertex* output,
-    GLsizei count,
-    const GLubyte* vptr, GLuint vstride,
-    const GLubyte* cptr, GLuint cstride,
-    const GLubyte* uvptr, GLuint uvstride,
-    const GLubyte* stptr, GLuint ststride,
-    const GLubyte* nptr, GLuint nstride,
-    GLboolean doTexture, GLboolean doMultitexture, GLboolean doLighting) {
-
-    genArraysCommon(
-        output, count,
-        vptr, vstride, cptr, cstride, uvptr, uvstride, stptr, ststride, nptr, nstride,
-        doTexture, doMultitexture, doLighting
-    );
-
+static void genArraysTriangleStrip(ClipVertex* output, GLuint count) {
     output[count - 1].flags = PVR_CMD_VERTEX_EOL;
 }
 
 #define MAX_POLYGON_SIZE 32
 
-static void genArraysTriangleFan(
-    ClipVertex* output,
-    GLsizei count,
-    const GLubyte* vptr, GLuint vstride,
-    const GLubyte* cptr, GLuint cstride,
-    const GLubyte* uvptr, GLuint uvstride,
-    const GLubyte* stptr, GLuint ststride,
-    const GLubyte* nptr, GLuint nstride,
-    GLboolean doTexture, GLboolean doMultitexture, GLboolean doLighting) {
-
+static void genArraysTriangleFan(ClipVertex* output, GLuint count) {
     assert(count < MAX_POLYGON_SIZE);
     static ClipVertex buffer[MAX_POLYGON_SIZE];
-
-    genArraysCommon(
-        output, count,
-        vptr, vstride, cptr, cstride, uvptr, uvstride, stptr, ststride, nptr, nstride,
-        doTexture, doMultitexture, doLighting
-    );
 
     if(count <= 3){
         swapVertex(&output[1], &output[2]);
@@ -799,7 +894,192 @@ static void genArraysTriangleFan(
     }
 }
 
-static void generate(ClipVertex* output, const GLenum mode, const GLsizei first, const GLsizei count,
+static inline void _readPositionData(const GLuint first, const GLuint count, ClipVertex* output) {
+    const GLubyte vstride = (VERTEX_POINTER.stride) ? VERTEX_POINTER.stride : VERTEX_POINTER.size * byte_size(VERTEX_POINTER.type);
+    const void* vptr = ((GLubyte*) VERTEX_POINTER.ptr + (first * vstride));
+
+    if(VERTEX_POINTER.size == 3) {
+        switch(VERTEX_POINTER.type) {
+            case GL_FLOAT:
+                _readVertexData3f3f(vptr, count, vstride, output[0].xyz);
+            break;
+            case GL_BYTE:
+            case GL_UNSIGNED_BYTE:
+                _readVertexData3ub3f(vptr, count, vstride, output[0].xyz);
+            break;
+            case GL_SHORT:
+            case GL_UNSIGNED_SHORT:
+                _readVertexData3us3f(vptr, count, vstride, output[0].xyz);
+            break;
+            case GL_INT:
+            case GL_UNSIGNED_INT:
+                _readVertexData3ui3f(vptr, count, vstride, output[0].xyz);
+            break;
+        default:
+            assert(0 && "Not Implemented");
+        }
+    } else if(VERTEX_POINTER.size == 2) {
+        switch(VERTEX_POINTER.type) {
+            case GL_FLOAT:
+                _readVertexData2f3f(vptr, count, vstride, output[0].xyz);
+            break;
+            case GL_BYTE:
+            case GL_UNSIGNED_BYTE:
+                _readVertexData2ub3f(vptr, count, vstride, output[0].xyz);
+            break;
+            case GL_SHORT:
+            case GL_UNSIGNED_SHORT:
+                _readVertexData2us3f(vptr, count, vstride, output[0].xyz);
+            break;
+            case GL_INT:
+            case GL_UNSIGNED_INT:
+                _readVertexData2ui3f(vptr, count, vstride, output[0].xyz);
+            break;
+        default:
+            assert(0 && "Not Implemented");
+        }
+    } else {
+        assert(0 && "Not Implemented");
+    }
+}
+
+static inline void _readUVData(const GLuint first, const GLuint count, ClipVertex* output) {
+    const GLubyte uvstride = (UV_POINTER.stride) ? UV_POINTER.stride : UV_POINTER.size * byte_size(UV_POINTER.type);
+    const void* uvptr = ((GLubyte*) UV_POINTER.ptr + (first * uvstride));
+
+    if(UV_POINTER.size == 2) {
+        switch(UV_POINTER.type) {
+            case GL_FLOAT:
+                _readVertexData2f2f(uvptr, count, uvstride, output[0].uv);
+            break;
+            case GL_BYTE:
+            case GL_UNSIGNED_BYTE:
+                _readVertexData2ub2f(uvptr, count, uvstride, output[0].uv);
+            break;
+            case GL_SHORT:
+            case GL_UNSIGNED_SHORT:
+                _readVertexData2us2f(uvptr, count, uvstride, output[0].uv);
+            break;
+            case GL_INT:
+            case GL_UNSIGNED_INT:
+                _readVertexData2ui2f(uvptr, count, uvstride, output[0].uv);
+            break;
+        default:
+            assert(0 && "Not Implemented");
+        }
+    } else {
+        assert(0 && "Not Implemented");
+    }
+}
+
+static inline void _readSTData(const GLuint first, const GLuint count, ClipVertex* output) {
+    const GLubyte ststride = (ST_POINTER.stride) ? ST_POINTER.stride : ST_POINTER.size * byte_size(ST_POINTER.type);
+    const void* stptr = ((GLubyte*) ST_POINTER.ptr + (first * ststride));
+
+    if(ST_POINTER.size == 2) {
+        switch(ST_POINTER.type) {
+            case GL_FLOAT:
+                _readVertexData2f2f(stptr, count, ststride, output[0].st);
+            break;
+            case GL_BYTE:
+            case GL_UNSIGNED_BYTE:
+                _readVertexData2ub2f(stptr, count, ststride, output[0].st);
+            break;
+            case GL_SHORT:
+            case GL_UNSIGNED_SHORT:
+                _readVertexData2us2f(stptr, count, ststride, output[0].st);
+            break;
+            case GL_INT:
+            case GL_UNSIGNED_INT:
+                _readVertexData2ui2f(stptr, count, ststride, output[0].st);
+            break;
+        default:
+            assert(0 && "Not Implemented");
+        }
+    } else {
+        assert(0 && "Not Implemented");
+    }
+}
+
+static inline void _readNormalData(const GLuint first, const GLuint count, ClipVertex* output) {
+    const GLuint nstride = (NORMAL_POINTER.stride) ? NORMAL_POINTER.stride : NORMAL_POINTER.size * byte_size(NORMAL_POINTER.type);
+    const void* nptr = ((GLubyte*) NORMAL_POINTER.ptr + (first * nstride));
+
+    if(NORMAL_POINTER.size == 3) {
+        switch(NORMAL_POINTER.type) {
+            case GL_FLOAT:
+                _readVertexData3f3f(nptr, count, nstride, output[0].nxyz);
+            break;
+            case GL_BYTE:
+            case GL_UNSIGNED_BYTE:
+                _readVertexData3ub3f(nptr, count, nstride, output[0].nxyz);
+            break;
+            case GL_SHORT:
+            case GL_UNSIGNED_SHORT:
+                _readVertexData3us3f(nptr, count, nstride, output[0].nxyz);
+            break;
+            case GL_INT:
+            case GL_UNSIGNED_INT:
+                _readVertexData3ui3f(nptr, count, nstride, output[0].nxyz);
+            break;
+        default:
+            assert(0 && "Not Implemented");
+        }
+    } else {
+        assert(0 && "Not Implemented");
+    }
+}
+
+static inline void _readDiffuseData(const GLuint first, const GLuint count, ClipVertex* output) {
+    const GLubyte cstride = (DIFFUSE_POINTER.stride) ? DIFFUSE_POINTER.stride : DIFFUSE_POINTER.size * byte_size(DIFFUSE_POINTER.type);
+    const void* cptr = ((GLubyte*) DIFFUSE_POINTER.ptr + (first * cstride));
+
+    if(DIFFUSE_POINTER.size == 3) {
+        switch(DIFFUSE_POINTER.type) {
+            case GL_FLOAT:
+                _readVertexData3fARGB(cptr, count, cstride, output[0].bgra);
+            break;
+            case GL_BYTE:
+            case GL_UNSIGNED_BYTE:
+                _readVertexData3ubARGB(cptr, count, cstride, output[0].bgra);
+            break;
+            case GL_SHORT:
+            case GL_UNSIGNED_SHORT:
+                _readVertexData3usARGB(cptr, count, cstride, output[0].bgra);
+            break;
+            case GL_INT:
+            case GL_UNSIGNED_INT:
+                _readVertexData3uiARGB(cptr, count, cstride, output[0].bgra);
+            break;
+        default:
+            assert(0 && "Not Implemented");
+        }
+    } else if(DIFFUSE_POINTER.size == 4) {
+        switch(DIFFUSE_POINTER.type) {
+            case GL_FLOAT:
+                _readVertexData4fARGB(cptr, count, cstride, output[0].bgra);
+            break;
+            case GL_BYTE:
+            case GL_UNSIGNED_BYTE:
+                _readVertexData4ubARGB(cptr, count, cstride, output[0].bgra);
+            break;
+            case GL_SHORT:
+            case GL_UNSIGNED_SHORT:
+                _readVertexData4usARGB(cptr, count, cstride, output[0].bgra);
+            break;
+            case GL_INT:
+            case GL_UNSIGNED_INT:
+                _readVertexData4uiARGB(cptr, count, cstride, output[0].bgra);
+            break;
+        default:
+            assert(0 && "Not Implemented");
+        }
+    } else {
+        assert(0 && "Not Implemented");
+    }
+}
+
+static void generate(ClipVertex* output, const GLenum mode, const GLsizei first, const GLuint count,
         const GLubyte* indices, const GLenum type, const GLboolean doTexture, const GLboolean doMultitexture, const GLboolean doLighting) {
     /* Read from the client buffers and generate an array of ClipVertices */
 
@@ -817,57 +1097,35 @@ static void generate(ClipVertex* output, const GLenum mode, const GLsizei first,
     const GLsizei istride = byte_size(type);
 
     if(!indices) {
+        _readPositionData(first, count, output);
+        _readDiffuseData(first, count, output);
+        if(doTexture) _readUVData(first, count, output);
+        if(doLighting) _readNormalData(first, count, output);
+        if(doTexture && doMultitexture) _readSTData(first, count, output);
+
+        ClipVertex* it = output;
+        const ClipVertex* end = output + count;
+        while(it < end) {
+            (it++)->flags = PVR_CMD_VERTEX;
+        }
+
         // Drawing arrays
         switch(mode) {
         case GL_TRIANGLES:
-            genArraysTriangles(
-                output,
-                count,
-                vptr, vstride,
-                cptr, cstride,
-                uvptr, uvstride,
-                stptr, ststride,
-                nptr, nstride,
-                doTexture, doMultitexture, doLighting
-            );
+            genArraysTriangles(output, count);
             break;
         case GL_QUADS:
-            genArraysQuads(
-                output,
-                count,
-                vptr, vstride,
-                cptr, cstride,
-                uvptr, uvstride,
-                stptr, ststride,
-                nptr, nstride,
-                doTexture, doMultitexture, doLighting
-            );
+            genArraysQuads(output, count);
             break;
         case GL_POLYGON:
         case GL_TRIANGLE_FAN:
-            genArraysTriangleFan(
-                output,
-                count,
-                vptr, vstride,
-                cptr, cstride,
-                uvptr, uvstride,
-                stptr, ststride,
-                nptr, nstride,
-                doTexture, doMultitexture, doLighting
-            );
+            genArraysTriangleFan(output, count);
             break;
         case GL_TRIANGLE_STRIP:
+            genArraysTriangleStrip(output, count);
+            break;
         default:
-            genArraysTriangleStrip(
-                output,
-                count,
-                vptr, vstride,
-                cptr, cstride,
-                uvptr, uvstride,
-                stptr, ststride,
-                nptr, nstride,
-                doTexture, doMultitexture, doLighting
-            );
+            assert(0 && "Not Implemented");
         }
     } else if(mode == GL_TRIANGLES) {
         genElementsTriangles(
@@ -920,7 +1178,7 @@ static void generate(ClipVertex* output, const GLenum mode, const GLsizei first,
     }
 }
 
-static void transform(ClipVertex* output, const GLsizei count) {
+static void transform(ClipVertex* output, const GLuint count) {
     /* Perform modelview transform, storing W */
 
     ClipVertex* vertex = output;
@@ -950,7 +1208,7 @@ static void transform(ClipVertex* output, const GLsizei count) {
     }
 }
 
-static GLsizei clip(AlignedVector* polylist, uint32_t offset, const GLsizei count) {
+static GLsizei clip(AlignedVector* polylist, uint32_t offset, const GLuint count) {
     /* Perform clipping, generating new vertices as necessary */
     clipTriangleStrip2(polylist, offset, _glGetShadeModel() == GL_FLAT);
 
@@ -990,7 +1248,7 @@ static void mat_transform_normal3(const float* xyz, const float* xyzOut, const u
     }
 }
 
-static void light(ClipVertex* output, const GLsizei count) {
+static void light(ClipVertex* output, const GLuint count) {
     if(!_glIsLightingEnabled()) {
         return;
     }
@@ -1047,7 +1305,7 @@ static void light(ClipVertex* output, const GLsizei count) {
     }
 }
 
-static void divide(ClipVertex* output, const GLsizei count) {
+static void divide(ClipVertex* output, const GLuint count) {
     /* Perform perspective divide on each vertex */
     ClipVertex* vertex = output;
 
@@ -1060,7 +1318,7 @@ static void divide(ClipVertex* output, const GLsizei count) {
     }
 }
 
-static void push(PVRHeader* header, ClipVertex* output, const GLsizei count, PolyList* activePolyList, GLshort textureUnit) {
+static void push(PVRHeader* header, ClipVertex* output, const GLuint count, PolyList* activePolyList, GLshort textureUnit) {
     // Compile the header
     pvr_poly_cxt_t cxt = *_glGetPVRContext();
     cxt.list_type = activePolyList->list_type;
@@ -1080,7 +1338,7 @@ static void push(PVRHeader* header, ClipVertex* output, const GLsizei count, Pol
 
 #define DEBUG_CLIPPING 0
 
-static void submitVertices(GLenum mode, GLsizei first, GLsizei count, GLenum type, const GLvoid* indices) {
+static void submitVertices(GLenum mode, GLsizei first, GLuint count, GLenum type, const GLvoid* indices) {
     /* Do nothing if vertices aren't enabled */
     if(!(ENABLED_VERTEX_ATTRIBUTES & VERTEX_ENABLED_FLAG)) {
         return;
