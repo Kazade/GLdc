@@ -842,10 +842,11 @@ static inline void genElementsTriangleStrip(
 }
 
 static inline void genArraysTriangles(ClipVertex* output, GLuint count) {
-    GLsizei i = count;
-    ClipVertex* vertex = output;
-    for(i = 2; i < count; i += 3) {
-        vertex[i].flags = PVR_CMD_VERTEX_EOL;
+    const ClipVertex* end = output + count;
+    ClipVertex* it = output + 2;
+    while(it < end) {
+        it->flags = PVR_CMD_VERTEX_EOL;
+        it += 3;
     }
 }
 
