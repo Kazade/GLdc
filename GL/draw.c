@@ -888,8 +888,8 @@ static void genArraysTriangleFan(ClipVertex* output, GLuint count) {
 
     for(; i < count; ++i) {
         output[target++] = *first;
-        output[target++] = buffer[i];
-        output[target] = buffer[i - 1];
+        output[target++] = buffer[i - 1];
+        output[target] = buffer[i];
         output[target++].flags = PVR_CMD_VERTEX_EOL;
     }
 }
