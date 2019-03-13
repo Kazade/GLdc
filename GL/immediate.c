@@ -28,12 +28,18 @@ static GLfloat UV_COORD[2] = {0.0f, 0.0f};
 static GLfloat ST_COORD[2] = {0.0f, 0.0f};
 
 
-void _glInitImmediateMode() {
+void _glInitImmediateMode(GLuint initial_size) {
     aligned_vector_init(&VERTICES, sizeof(GLfloat));
     aligned_vector_init(&COLOURS, sizeof(GLfloat));
     aligned_vector_init(&UV_COORDS, sizeof(GLfloat));
     aligned_vector_init(&ST_COORDS, sizeof(GLfloat));
     aligned_vector_init(&NORMALS, sizeof(GLfloat));
+
+    aligned_vector_reserve(&VERTICES, initial_size);
+    aligned_vector_reserve(&COLOURS, initial_size);
+    aligned_vector_reserve(&UV_COORDS, initial_size);
+    aligned_vector_reserve(&ST_COORDS, initial_size);
+    aligned_vector_reserve(&NORMALS, initial_size);
 }
 
 GLubyte _glCheckImmediateModeInactive(const char* func) {

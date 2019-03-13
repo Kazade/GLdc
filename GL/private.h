@@ -104,7 +104,7 @@ PolyList *_glTransparentPolyList();
 void _glInitAttributePointers();
 void _glInitContext();
 void _glInitLights();
-void _glInitImmediateMode();
+void _glInitImmediateMode(GLuint initial_size);
 void _glInitMatrices();
 void _glInitFramebuffers();
 

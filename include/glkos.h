@@ -46,7 +46,10 @@ typedef struct {
     GLenum internal_palette_format;
 
     /* Initial capacity of each of the OP, TR and PT lists in vertices */
-    GLuint initial_vbuf_capacity;
+    GLuint initial_op_capacity;
+    GLuint initial_tr_capacity;
+    GLuint initial_pt_capacity;
+    GLuint initial_immediate_capacity;
 } GLdcConfig;
 
 

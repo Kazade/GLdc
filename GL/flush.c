@@ -78,7 +78,10 @@ void APIENTRY glFinish() {
 
 void APIENTRY glKosInitConfig(GLdcConfig* config) {
     config->autosort_enabled = GL_FALSE;
-    config->initial_vbuf_capacity = 1024;
+    config->initial_op_capacity = 1024;
+    config->initial_pt_capacity = 512;
+    config->initial_tr_capacity = 1024;
+    config->initial_immediate_capacity = 1024;
     config->internal_palette_format = GL_RGBA4;
 }
 
@@ -91,7 +94,7 @@ void APIENTRY glKosInitEx(GLdcConfig* config) {
     _glInitAttributePointers();
     _glInitContext();
     _glInitLights();
-    _glInitImmediateMode();
+    _glInitImmediateMode(config->initial_immediate_capacity);
     _glInitFramebuffers();
 
     _glSetInternalPaletteFormat(config->internal_palette_format);
@@ -106,9 +109,9 @@ void APIENTRY glKosInitEx(GLdcConfig* config) {
     aligned_vector_init(&PT_LIST.vector, sizeof(ClipVertex));
     aligned_vector_init(&TR_LIST.vector, sizeof(ClipVertex));
 
-    aligned_vector_reserve(&OP_LIST.vector, config->initial_vbuf_capacity);
-    aligned_vector_reserve(&PT_LIST.vector, config->initial_vbuf_capacity);
-    aligned_vector_reserve(&TR_LIST.vector, config->initial_vbuf_capacity);
+    aligned_vector_reserve(&OP_LIST.vector, config->initial_op_capacity);
+    aligned_vector_reserve(&PT_LIST.vector, config->initial_pt_capacity);
+    aligned_vector_reserve(&TR_LIST.vector, config->initial_tr_capacity);
 }
 
 void APIENTRY glKosInit() {
