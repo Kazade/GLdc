@@ -20,8 +20,17 @@ void aligned_vector_init(AlignedVector* vector, unsigned int element_size) {
     vector->data = NULL;
 
     /* Reserve some initial capacity */
-    aligned_vector_reserve(vector, ALIGNED_VECTOR_INITIAL_CAPACITY);
+    aligned_vector_reserve(vector, ALIGNED_VECTOR_CHUNK_SIZE);
 }
+
+
+static inline unsigned int round_to_chunk_size(unsigned int val) {
+    const unsigned int n = val;
+    const unsigned int m = ALIGNED_VECTOR_CHUNK_SIZE;
+
+    return ((n + m - 1) / m) * m;
+}
+
 
 void aligned_vector_reserve(AlignedVector* vector, unsigned int element_count) {
     if(element_count <= vector->capacity) {
@@ -29,6 +38,10 @@ void aligned_vector_reserve(AlignedVector* vector, unsigned int element_count) {
     }
 
     unsigned int original_byte_size = vector->size * vector->element_size;
+
+    /* We overallocate so that we don't make small allocations during push backs */
+    element_count = round_to_chunk_size(element_count);
+
     unsigned int new_byte_size = element_count * vector->element_size;
     unsigned char* original_data = vector->data;
     vector->data = (unsigned char*) memalign(0x20, new_byte_size);
