@@ -433,7 +433,7 @@ do {                 \
     *b = temp;        \
 } while(0)
 
-static inline void genArraysTriangles(ClipVertex* output, GLuint count) {
+static inline void genTriangles(ClipVertex* output, GLuint count) {
     const ClipVertex* end = output + count;
     ClipVertex* it = output + 2;
     while(it < end) {
@@ -442,7 +442,7 @@ static inline void genArraysTriangles(ClipVertex* output, GLuint count) {
     }
 }
 
-static inline void genArraysQuads(ClipVertex* output, GLuint count) {
+static inline void genQuads(ClipVertex* output, GLuint count) {
     ClipVertex* previous;
     ClipVertex* this = output + 3;
 
@@ -456,13 +456,13 @@ static inline void genArraysQuads(ClipVertex* output, GLuint count) {
     }
 }
 
-static void genArraysTriangleStrip(ClipVertex* output, GLuint count) {
+static void genTriangleStrip(ClipVertex* output, GLuint count) {
     output[count - 1].flags = PVR_CMD_VERTEX_EOL;
 }
 
 #define MAX_POLYGON_SIZE 32
 
-static void genArraysTriangleFan(ClipVertex* output, GLuint count) {
+static void genTriangleFan(ClipVertex* output, GLuint count) {
     assert(count < MAX_POLYGON_SIZE);
     static ClipVertex buffer[MAX_POLYGON_SIZE];
 
@@ -718,17 +718,17 @@ static void generate(ClipVertex* output, const GLenum mode, const GLsizei first,
         // Drawing arrays
         switch(mode) {
         case GL_TRIANGLES:
-            genArraysTriangles(output, count);
+            genTriangles(output, count);
             break;
         case GL_QUADS:
-            genArraysQuads(output, count);
+            genQuads(output, count);
             break;
         case GL_POLYGON:
         case GL_TRIANGLE_FAN:
-            genArraysTriangleFan(output, count);
+            genTriangleFan(output, count);
             break;
         case GL_TRIANGLE_STRIP:
-            genArraysTriangleStrip(output, count);
+            genTriangleStrip(output, count);
             break;
         default:
             assert(0 && "Not Implemented");
@@ -758,17 +758,17 @@ static void generate(ClipVertex* output, const GLenum mode, const GLsizei first,
         // Drawing arrays
         switch(mode) {
         case GL_TRIANGLES:
-            genArraysTriangles(output, count);
+            genTriangles(output, count);
             break;
         case GL_QUADS:
-            genArraysQuads(output, count);
+            genQuads(output, count);
             break;
         case GL_POLYGON:
         case GL_TRIANGLE_FAN:
-            genArraysTriangleFan(output, count);
+            genTriangleFan(output, count);
             break;
         case GL_TRIANGLE_STRIP:
-            genArraysTriangleStrip(output, count);
+            genTriangleStrip(output, count);
             break;
         default:
             assert(0 && "Not Implemented");
