@@ -279,6 +279,37 @@ static void _readVertexData3ubARGB(const GLubyte* input, GLuint count, GLubyte s
     }
 }
 
+static void _fillWithNegZ(GLuint count, GLfloat* output) {
+    const GLfloat* end = (GLfloat*) ((GLubyte*) output) + (sizeof(ClipVertex) * count);
+    while(output < end) {
+        output[0] = output[1] = 0.0f;
+        output[2] = -1.0f;
+
+        output += sizeof(ClipVertex);
+    }
+}
+
+static void _fillWhiteARGB(GLuint count, GLubyte* output) {
+    const GLubyte* end = output + (sizeof(ClipVertex) * count);
+
+    while(output < end) {
+        output[R8IDX] = 255;
+        output[G8IDX] = 255;
+        output[B8IDX] = 255;
+        output[A8IDX] = 255;
+
+        output += sizeof(ClipVertex);
+    }
+}
+
+static void _fillZero2f(GLuint count, GLfloat* output) {
+    const GLfloat* end = output + (sizeof(ClipVertex) * count);
+    while(output < end) {
+        output[0] = output[1] = 0.0f;
+        output += sizeof(ClipVertex);
+    }
+}
+
 static void _readVertexData3usARGB(const GLushort* input, GLuint count, GLubyte stride, GLubyte* output) {
     assert(0 && "Not Implemented");
 }
@@ -318,112 +349,6 @@ AttribPointer* _glGetUVAttribPointer() {
 AttribPointer* _glGetSTAttribPointer() {
     return &ST_POINTER;
 }
-
-static inline void _parseVec3FromShort3(GLfloat* out, const GLubyte* in) {
-    GLshort* ptr = (GLshort*) in;
-
-    out[0] = (GLfloat) ptr[0];
-    out[1] = (GLfloat) ptr[1];
-    out[2] = (GLfloat) ptr[2];
-}
-
-static inline void _parseVec3FromInt3(GLfloat* out, const GLubyte* in) {
-    GLint* ptr = (GLint*) in;
-
-    out[0] = (GLfloat) ptr[0];
-    out[1] = (GLfloat) ptr[1];
-    out[2] = (GLfloat) ptr[2];
-}
-
-static inline void _parseVec3FromFloat3(GLfloat* out, const GLubyte* in) {
-    GLfloat* ptr = (GLfloat*) in;
-
-    out[0] = ptr[0];
-    out[1] = ptr[1];
-    out[2] = ptr[2];
-}
-
-static inline void _parseVec2FromFloat2(GLfloat* out, const GLubyte* in) {
-    GLfloat* ptr = (GLfloat*) in;
-
-    out[0] = ptr[0];
-    out[1] = ptr[1];
-}
-
-static inline void _parseVec3FromFloat2(GLfloat* out, const GLubyte* in) {
-    GLfloat* ptr = (GLfloat*) in;
-
-    out[0] = ptr[0];
-    out[1] = ptr[1];
-    out[2] = 0.0f;
-}
-
-static inline void _parseVec4FromFloat3(GLfloat* out, const GLubyte* in) {
-    GLfloat* ptr = (GLfloat*) in;
-
-    out[0] = ptr[0];
-    out[1] = ptr[1];
-    out[2] = ptr[2];
-    out[3] = 1.0;
-}
-
-static inline void _parseVec4FromFloat4(GLfloat* out, const GLubyte* in) {
-    GLfloat* ptr = (GLfloat*) in;
-
-    out[0] = ptr[0];
-    out[1] = ptr[1];
-    out[2] = ptr[2];
-    out[3] = ptr[3];
-}
-
-static inline void _parseColourFromUByte4(GLubyte* out, const GLubyte* in) {
-    out[R8IDX] = in[0];
-    out[G8IDX] = in[1];
-    out[B8IDX] = in[2];
-    out[A8IDX] = in[3];
-}
-
-static inline void _parseColourFromFloat4(GLubyte* out, const GLubyte* in) {
-    GLfloat* fin = (GLfloat*) in;
-
-    out[R8IDX] = (GLubyte) (fin[0] * 255.0f);
-    out[G8IDX] = (GLubyte) (fin[1] * 255.0f);
-    out[B8IDX] = (GLubyte) (fin[2] * 255.0f);
-    out[A8IDX] = (GLubyte) (fin[3] * 255.0f);
-}
-
-static inline void _parseColourFromFloat3(GLubyte* out, const GLubyte* in) {
-    out[A8IDX] = 255;
-    out[R8IDX] = (GLubyte) ((GLfloat) in[0]) * 255.0f;
-    out[G8IDX] = (GLubyte) ((GLfloat) in[1]) * 255.0f;
-    out[B8IDX] = (GLubyte) ((GLfloat) in[2]) * 255.0f;
-}
-
-static inline void _constVec2Zero(GLfloat* out, const GLubyte* in) {
-    out[0] = 0.0f;
-    out[1] = 0.0f;
-}
-
-static inline void _constVec3NegZ(GLfloat* out, const GLubyte* in) {
-    out[0] = 0.0f;
-    out[1] = 0.0f;
-    out[2] = -1.0f;
-}
-
-static inline void _constVec4One(GLfloat* out, const GLubyte* in) {
-    out[0] = 1.0f;
-    out[1] = 1.0f;
-    out[2] = 1.0f;
-    out[3] = 1.0f;
-}
-
-static inline void _constColourOne(GLubyte* out, const GLubyte* in) {
-    out[0] = 255;
-    out[1] = 255;
-    out[2] = 255;
-    out[3] = 255;
-}
-
 
 typedef GLuint (*IndexParseFunc)(const GLubyte* in);
 
@@ -507,339 +432,6 @@ do {                 \
     *a = *b;           \
     *b = temp;        \
 } while(0)
-
-static inline FloatParseFunc _calcVertexParseFunc() {
-    switch(VERTEX_POINTER.type) {
-    case GL_SHORT: {
-        if(VERTEX_POINTER.size == 3) {
-            return &_parseVec3FromShort3;
-        }
-    } break;
-    case GL_INT: {
-        if(VERTEX_POINTER.size == 3) {
-            return &_parseVec3FromInt3;
-        }
-    } break;
-    case GL_FLOAT: {
-        if(VERTEX_POINTER.size == 3) {
-            return &_parseVec3FromFloat3;
-        } else if(VERTEX_POINTER.size == 2) {
-            return &_parseVec3FromFloat2;
-        }
-    } break;
-    default:
-        break;
-    }
-
-    return NULL;
-}
-
-static inline ByteParseFunc _calcDiffuseParseFunc() {
-    if((ENABLED_VERTEX_ATTRIBUTES & DIFFUSE_ENABLED_FLAG) != DIFFUSE_ENABLED_FLAG) {
-        return &_constColourOne;
-    }
-
-    switch(DIFFUSE_POINTER.type) {
-    case GL_BYTE:
-    case GL_UNSIGNED_BYTE: {
-        if(DIFFUSE_POINTER.size == 4) {
-            return &_parseColourFromUByte4;
-        }
-    } break;
-    case GL_FLOAT: {
-        if(DIFFUSE_POINTER.size == 3) {
-            return &_parseColourFromFloat3;
-        } else if(DIFFUSE_POINTER.size == 4) {
-            return &_parseColourFromFloat4;
-        }
-    } break;
-    default:
-        break;
-    }
-
-    return &_constColourOne;
-}
-
-static inline FloatParseFunc _calcUVParseFunc() {
-    if((ENABLED_VERTEX_ATTRIBUTES & UV_ENABLED_FLAG) != UV_ENABLED_FLAG) {
-        return &_constVec2Zero;
-    }
-
-    switch(UV_POINTER.type) {
-    case GL_FLOAT: {
-        if(UV_POINTER.size == 2) {
-            return &_parseVec2FromFloat2;
-        }
-    } break;
-    default:
-        break;
-    }
-
-    return &_constVec2Zero;
-}
-
-static inline FloatParseFunc _calcSTParseFunc() {
-    if((ENABLED_VERTEX_ATTRIBUTES & ST_ENABLED_FLAG) != ST_ENABLED_FLAG) {
-        return &_constVec2Zero;
-    }
-
-    switch(ST_POINTER.type) {
-    case GL_FLOAT: {
-        if(ST_POINTER.size == 2) {
-            return &_parseVec2FromFloat2;
-        }
-    } break;
-    default:
-        break;
-    }
-
-    return &_constVec2Zero;
-}
-
-static inline FloatParseFunc _calcNormalParseFunc() {
-    if((ENABLED_VERTEX_ATTRIBUTES & NORMAL_ENABLED_FLAG) != NORMAL_ENABLED_FLAG) {
-        return &_constVec3NegZ;
-    }
-
-    switch(NORMAL_POINTER.type) {
-    case GL_SHORT: {
-        if(NORMAL_POINTER.size == 3) {
-            return &_parseVec3FromShort3;
-        }
-    } break;
-    case GL_INT: {
-        if(NORMAL_POINTER.size == 3) {
-            return &_parseVec3FromInt3;
-        }
-    } break;
-    case GL_FLOAT: {
-        if(NORMAL_POINTER.size == 3) {
-            return &_parseVec3FromFloat3;
-        } else if(NORMAL_POINTER.size == 2) {
-            return &_parseVec3FromFloat2;
-        }
-    } break;
-    default:
-        break;
-    }
-
-    return &_constVec3NegZ;
-}
-
-
-static inline void _buildTriangle(ClipVertex* first, ClipVertex* previous, ClipVertex* vertex, ClipVertex* next, const GLsizei i) {
-    if(((i + 1) % 3) == 0) {
-        vertex->flags = PVR_CMD_VERTEX_EOL;
-    }
-}
-
-static inline GLsizei fast_mod(const GLsizei input, const GLsizei ceil) {
-    return input >= ceil ? input % ceil : input;
-}
-
-static inline void _buildQuad(ClipVertex* first, ClipVertex* previous, ClipVertex* vertex, ClipVertex* next, const GLsizei i) {
-    if((i + 1) % 4 == 0) {
-        previous->flags = PVR_CMD_VERTEX_EOL;
-        swapVertex(previous, vertex);
-    }
-}
-
-static void _buildTriangleFan(ClipVertex* first, ClipVertex* previous, ClipVertex* vertex, ClipVertex* next, const GLsizei i) {
-    if(i == 2) {
-        swapVertex(previous, vertex);
-        vertex->flags = PVR_CMD_VERTEX_EOL;
-    } else if(i > 2) {
-        ClipVertex* next = vertex + 1;
-
-        *next = *first;
-
-        swapVertex(next, vertex);
-
-        vertex = next + 1;
-        *vertex = *previous;
-
-        vertex->flags = PVR_CMD_VERTEX_EOL;
-    }
-}
-
-static void _buildStrip(ClipVertex* first, ClipVertex* previous, ClipVertex* vertex, ClipVertex* next, const GLsizei i) {
-    if(!next) {
-        /* If the mode was triangle strip, then the last vertex is the last vertex */
-        vertex->flags = PVR_CMD_VERTEX_EOL;
-    }
-}
-
-static inline PolyBuildFunc _calcBuildFunc(const GLenum type) {
-    switch(type) {
-    case GL_TRIANGLES:
-        return &_buildTriangle;
-    break;
-    case GL_QUADS:
-        return &_buildQuad;
-    break;
-    case GL_TRIANGLE_FAN:
-    case GL_POLYGON:
-        return &_buildTriangleFan;
-    break;
-    default:
-        break;
-    }
-
-    return &_buildStrip;
-}
-
-static inline void nullFloatParseFunc(GLfloat* out, const GLubyte* in) {}
-
-static inline void genElementsCommon(
-    ClipVertex* output,
-    const GLubyte* iptr, GLuint istride, GLenum type,
-    GLuint count,
-    const GLubyte* vptr, GLuint vstride,
-    const GLubyte* cptr, GLuint cstride,
-    const GLubyte* uvptr, GLuint uvstride,
-    const GLubyte* stptr, GLuint ststride,
-    const GLubyte* nptr, GLuint nstride,
-    GLboolean doTexture, GLboolean doMultitexture, GLboolean doLighting
-) {
-    const FloatParseFunc vertexFunc = _calcVertexParseFunc();
-    const ByteParseFunc diffuseFunc = _calcDiffuseParseFunc();
-    const FloatParseFunc uvFunc = (doTexture) ? _calcUVParseFunc() : &nullFloatParseFunc;
-    const FloatParseFunc stFunc = (doMultitexture) ? _calcSTParseFunc() : &nullFloatParseFunc;
-    const FloatParseFunc normalFunc = (doLighting) ? _calcNormalParseFunc() : &nullFloatParseFunc;
-
-    const IndexParseFunc indexFunc = _calcParseIndexFunc(type);
-
-    assert(vertexFunc);
-    assert(diffuseFunc);
-    assert(uvFunc);
-    assert(stFunc);
-    assert(normalFunc);
-    assert(indexFunc);
-
-    GLsizei i = 0;
-    const GLubyte* idx = iptr;
-    ClipVertex* vertex = output;
-
-    for(; i < count; ++i, idx += istride, ++vertex) {
-        GLuint j = indexFunc(idx);
-        vertex->flags = PVR_CMD_VERTEX;
-        vertexFunc(vertex->xyz, vptr + (j * vstride));
-        diffuseFunc(vertex->bgra, cptr + (j * cstride));
-        uvFunc(vertex->uv, uvptr + (j * uvstride));
-        stFunc(vertex->st, stptr + (j * ststride));
-        normalFunc(vertex->nxyz, nptr + (j * nstride));
-    }
-}
-
-static inline void genElementsTriangles(
-    ClipVertex* output,
-    GLuint count,
-    const GLubyte* iptr, GLuint istride, GLenum type,
-    const GLubyte* vptr, GLuint vstride,
-    const GLubyte* cptr, GLuint cstride,
-    const GLubyte* uvptr, GLuint uvstride,
-    const GLubyte* stptr, GLuint ststride,
-    const GLubyte* nptr, GLuint nstride,
-    GLboolean doTexture, GLboolean doMultitexture, GLboolean doLighting) {
-
-    genElementsCommon(
-        output,
-        iptr, istride, type, count,
-        vptr, vstride, cptr, cstride, uvptr, uvstride, stptr, ststride, nptr, nstride,
-        doTexture, doMultitexture, doLighting
-    );
-
-    GLsizei i = 2;
-    for(; i < count; i += 3) {
-        output[i].flags = PVR_CMD_VERTEX_EOL;
-    }
-}
-
-static inline void genElementsQuads(
-    ClipVertex* output,
-    GLuint count,
-    const GLubyte* iptr, GLuint istride, GLenum type,
-    const GLubyte* vptr, GLuint vstride,
-    const GLubyte* cptr, GLuint cstride,
-    const GLubyte* uvptr, GLuint uvstride,
-    const GLubyte* stptr, GLuint ststride,
-    const GLubyte* nptr, GLuint nstride,
-    GLboolean doTexture, GLboolean doMultitexture, GLboolean doLighting) {
-
-    genElementsCommon(
-        output,
-        iptr, istride, type, count,
-        vptr, vstride, cptr, cstride, uvptr, uvstride, stptr, ststride, nptr, nstride,
-        doTexture, doMultitexture, doLighting
-    );
-
-    GLsizei i = 3;
-    for(; i < count; i += 4) {
-        swapVertex(&output[i], &output[i - 1]);
-        output[i].flags = PVR_CMD_VERTEX_EOL;
-    }
-}
-
-static inline void genElementsTriangleFan(
-    ClipVertex* output,
-    GLuint count,
-    const GLubyte* iptr, GLuint istride, GLenum type,
-    const GLubyte* vptr, GLuint vstride,
-    const GLubyte* cptr, GLuint cstride,
-    const GLubyte* uvptr, GLuint uvstride,
-    const GLubyte* stptr, GLuint ststride,
-    const GLubyte* nptr, GLuint nstride,
-    GLboolean doTexture, GLboolean doMultitexture, GLboolean doLighting) {
-
-    genElementsCommon(
-        output,
-        iptr, istride, type, count,
-        vptr, vstride, cptr, cstride, uvptr, uvstride, stptr, ststride, nptr, nstride,
-        doTexture, doMultitexture, doLighting
-    );
-
-    swapVertex(&output[1], &output[2]);
-    output[2].flags = PVR_CMD_VERTEX_EOL;
-
-    GLsizei i = 3;
-    ClipVertex* first = &output[0];
-
-    for(; i < count - 1; ++i) {
-        ClipVertex* next = &output[i + 1];
-        ClipVertex* previous = &output[i - 1];
-        ClipVertex* vertex = &output[i];
-
-        *next = *first;
-
-        swapVertex(next, vertex);
-
-        vertex = next + 1;
-        *vertex = *previous;
-
-        vertex->flags = PVR_CMD_VERTEX_EOL;
-    }
-}
-
-static inline void genElementsTriangleStrip(
-    ClipVertex* output,
-    GLuint count,
-    const GLubyte* iptr, GLuint istride, GLenum type,
-    const GLubyte* vptr, GLuint vstride,
-    const GLubyte* cptr, GLuint cstride,
-    const GLubyte* uvptr, GLuint uvstride,
-    const GLubyte* stptr, GLuint ststride,
-    const GLubyte* nptr, GLuint nstride,
-    GLboolean doTexture, GLboolean doMultitexture, GLboolean doLighting) {
-
-    genElementsCommon(
-        output,
-        iptr, istride, type, count,
-        vptr, vstride, cptr, cstride, uvptr, uvstride, stptr, ststride, nptr, nstride,
-        doTexture, doMultitexture, doLighting
-    );
-
-    output[count - 1].flags = PVR_CMD_VERTEX_EOL;
-}
 
 static inline void genArraysTriangles(ClipVertex* output, GLuint count) {
     const ClipVertex* end = output + count;
@@ -946,6 +538,11 @@ static inline void _readPositionData(const GLuint first, const GLuint count, Cli
 }
 
 static inline void _readUVData(const GLuint first, const GLuint count, ClipVertex* output) {
+    if((ENABLED_VERTEX_ATTRIBUTES & UV_ENABLED_FLAG) != UV_ENABLED_FLAG) {
+        _fillZero2f(count, output->uv);
+        return;
+    }
+
     const GLubyte uvstride = (UV_POINTER.stride) ? UV_POINTER.stride : UV_POINTER.size * byte_size(UV_POINTER.type);
     const void* uvptr = ((GLubyte*) UV_POINTER.ptr + (first * uvstride));
 
@@ -975,6 +572,11 @@ static inline void _readUVData(const GLuint first, const GLuint count, ClipVerte
 }
 
 static inline void _readSTData(const GLuint first, const GLuint count, ClipVertex* output) {
+    if((ENABLED_VERTEX_ATTRIBUTES & ST_ENABLED_FLAG) != ST_ENABLED_FLAG) {
+        _fillZero2f(count, output->st);
+        return;
+    }
+
     const GLubyte ststride = (ST_POINTER.stride) ? ST_POINTER.stride : ST_POINTER.size * byte_size(ST_POINTER.type);
     const void* stptr = ((GLubyte*) ST_POINTER.ptr + (first * ststride));
 
@@ -1004,6 +606,11 @@ static inline void _readSTData(const GLuint first, const GLuint count, ClipVerte
 }
 
 static inline void _readNormalData(const GLuint first, const GLuint count, ClipVertex* output) {
+    if((ENABLED_VERTEX_ATTRIBUTES & NORMAL_ENABLED_FLAG) != NORMAL_ENABLED_FLAG) {
+        _fillWithNegZ(count, output->nxyz);
+        return;
+    }
+
     const GLuint nstride = (NORMAL_POINTER.stride) ? NORMAL_POINTER.stride : NORMAL_POINTER.size * byte_size(NORMAL_POINTER.type);
     const void* nptr = ((GLubyte*) NORMAL_POINTER.ptr + (first * nstride));
 
@@ -1033,6 +640,12 @@ static inline void _readNormalData(const GLuint first, const GLuint count, ClipV
 }
 
 static inline void _readDiffuseData(const GLuint first, const GLuint count, ClipVertex* output) {
+    if((ENABLED_VERTEX_ATTRIBUTES & DIFFUSE_ENABLED_FLAG) != DIFFUSE_ENABLED_FLAG) {
+        /* Just fill the whole thing white if the attribute is disabled */
+        _fillWhiteARGB(count, output[0].bgra);
+        return;
+    }
+
     const GLubyte cstride = (DIFFUSE_POINTER.stride) ? DIFFUSE_POINTER.stride : DIFFUSE_POINTER.size * byte_size(DIFFUSE_POINTER.type);
     const void* cptr = ((GLubyte*) DIFFUSE_POINTER.ptr + (first * cstride));
 
@@ -1085,18 +698,9 @@ static void generate(ClipVertex* output, const GLenum mode, const GLsizei first,
         const GLubyte* indices, const GLenum type, const GLboolean doTexture, const GLboolean doMultitexture, const GLboolean doLighting) {
     /* Read from the client buffers and generate an array of ClipVertices */
 
-    const GLuint vstride = (VERTEX_POINTER.stride) ? VERTEX_POINTER.stride : VERTEX_POINTER.size * byte_size(VERTEX_POINTER.type);
-    const GLuint cstride = (DIFFUSE_POINTER.stride) ? DIFFUSE_POINTER.stride : DIFFUSE_POINTER.size * byte_size(DIFFUSE_POINTER.type);
-    const GLuint uvstride = (UV_POINTER.stride) ? UV_POINTER.stride : UV_POINTER.size * byte_size(UV_POINTER.type);
-    const GLuint ststride = (ST_POINTER.stride) ? ST_POINTER.stride : ST_POINTER.size * byte_size(ST_POINTER.type);
-    const GLuint nstride = (NORMAL_POINTER.stride) ? NORMAL_POINTER.stride : NORMAL_POINTER.size * byte_size(NORMAL_POINTER.type);
-
-    const GLubyte* vptr = VERTEX_POINTER.ptr + (first * vstride);
-    const GLubyte* cptr = DIFFUSE_POINTER.ptr + (first * cstride);
-    const GLubyte* uvptr = UV_POINTER.ptr + (first * uvstride);
-    const GLubyte* stptr = ST_POINTER.ptr + (first * ststride);
-    const GLubyte* nptr = NORMAL_POINTER.ptr + (first * nstride);
     const GLsizei istride = byte_size(type);
+    ClipVertex* it;
+    const ClipVertex* end;
 
     if(!indices) {
         _readPositionData(first, count, output);
@@ -1105,8 +709,8 @@ static void generate(ClipVertex* output, const GLenum mode, const GLsizei first,
         if(doLighting) _readNormalData(first, count, output);
         if(doTexture && doMultitexture) _readSTData(first, count, output);
 
-        ClipVertex* it = output;
-        const ClipVertex* end = output + count;
+        it = output;
+        end = output + count;
         while(it < end) {
             (it++)->flags = PVR_CMD_VERTEX;
         }
@@ -1129,54 +733,46 @@ static void generate(ClipVertex* output, const GLenum mode, const GLsizei first,
         default:
             assert(0 && "Not Implemented");
         }
-    } else if(mode == GL_TRIANGLES) {
-        genElementsTriangles(
-            output,
-            count,
-            indices, istride, type,
-            vptr, vstride,
-            cptr, cstride,
-            uvptr, uvstride,
-            stptr, ststride,
-            nptr, nstride,
-            doTexture, doMultitexture, doLighting
-        );
-    } else if(mode == GL_QUADS) {
-        genElementsQuads(
-            output,
-            count,
-            indices, istride, type,
-            vptr, vstride,
-            cptr, cstride,
-            uvptr, uvstride,
-            stptr, ststride,
-            nptr, nstride,
-            doTexture, doMultitexture, doLighting
-        );
-    } else if(mode == GL_TRIANGLE_FAN || mode == GL_POLYGON) {
-        genElementsTriangleFan(
-            output,
-            count,
-            indices, istride, type,
-            vptr, vstride,
-            cptr, cstride,
-            uvptr, uvstride,
-            stptr, ststride,
-            nptr, nstride,
-            doTexture, doMultitexture, doLighting
-        );
     } else {
-        genElementsTriangleStrip(
-            output,
-            count,
-            indices, istride, type,
-            vptr, vstride,
-            cptr, cstride,
-            uvptr, uvstride,
-            stptr, ststride,
-            nptr, nstride,
-            doTexture, doMultitexture, doLighting
-        );
+        const IndexParseFunc indexFunc = _calcParseIndexFunc(type);
+        it = output;
+        end = output + count;
+        GLuint j;
+        const GLubyte* idx = indices;
+        while(it < end) {
+            j = indexFunc(idx);
+            _readPositionData(j, 1, it);
+            _readDiffuseData(j, 1, it);
+            if(doTexture) _readUVData(j, 1, it);
+            if(doLighting) _readNormalData(j, 1, it);
+            if(doTexture && doMultitexture) _readSTData(j, 1, it);
+            ++it;
+            idx += istride;
+        }
+
+        it = output;
+        while(it < end) {
+            (it++)->flags = PVR_CMD_VERTEX;
+        }
+
+        // Drawing arrays
+        switch(mode) {
+        case GL_TRIANGLES:
+            genArraysTriangles(output, count);
+            break;
+        case GL_QUADS:
+            genArraysQuads(output, count);
+            break;
+        case GL_POLYGON:
+        case GL_TRIANGLE_FAN:
+            genArraysTriangleFan(output, count);
+            break;
+        case GL_TRIANGLE_STRIP:
+            genArraysTriangleStrip(output, count);
+            break;
+        default:
+            assert(0 && "Not Implemented");
+        }
     }
 }
 
