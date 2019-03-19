@@ -426,11 +426,27 @@ static inline void transformNormalToEyeSpace(GLfloat* normal) {
     mat_trans_normal3(normal[0], normal[1], normal[2]);
 }
 
+#define INT_CAST(a) *((int*)&(a))
+#define XORSWAP_UNSAFE(a, b)	((a)^=(b),(b)^=(a),(a)^=(b))
 #define swapVertex(a, b)   \
 do {                 \
-    ClipVertex temp = *a;    \
-    *a = *b;           \
-    *b = temp;        \
+    XORSWAP_UNSAFE(a->flags, b->flags); \
+    XORSWAP_UNSAFE(INT_CAST(a->xyz[0]), INT_CAST(b->xyz[0])); \
+    XORSWAP_UNSAFE(INT_CAST(a->xyz[1]), INT_CAST(b->xyz[1])); \
+    XORSWAP_UNSAFE(INT_CAST(a->xyz[2]), INT_CAST(b->xyz[2])); \
+    XORSWAP_UNSAFE(INT_CAST(a->uv[0]), INT_CAST(b->uv[0])); \
+    XORSWAP_UNSAFE(INT_CAST(a->uv[1]), INT_CAST(b->uv[1])); \
+    XORSWAP_UNSAFE(a->bgra[0], b->bgra[0]); \
+    XORSWAP_UNSAFE(a->bgra[1], b->bgra[1]); \
+    XORSWAP_UNSAFE(a->bgra[2], b->bgra[2]); \
+    XORSWAP_UNSAFE(a->bgra[3], b->bgra[3]); \
+    XORSWAP_UNSAFE(a->oargb, b->oargb); \
+    XORSWAP_UNSAFE(INT_CAST(a->nxyz[0]), INT_CAST(b->nxyz[0])); \
+    XORSWAP_UNSAFE(INT_CAST(a->nxyz[1]), INT_CAST(b->nxyz[1])); \
+    XORSWAP_UNSAFE(INT_CAST(a->nxyz[2]), INT_CAST(b->nxyz[2])); \
+    XORSWAP_UNSAFE(INT_CAST(a->w), INT_CAST(b->w)); \
+    XORSWAP_UNSAFE(INT_CAST(a->st[0]), INT_CAST(b->st[0])); \
+    XORSWAP_UNSAFE(INT_CAST(a->st[1]), INT_CAST(b->st[1])); \
 } while(0)
 
 static inline void genTriangles(ClipVertex* output, GLuint count) {
