@@ -1,4 +1,3 @@
-
 #include "gl.h"
 #include "glu.h"
 #include "glkos.h"
@@ -16,7 +15,6 @@ float xrot, yrot, zrot;
 /* A general OpenGL initialization function.  Sets all of the initial parameters. */
 void InitGL(int Width, int Height)	        // We call this right after our OpenGL window is created.
 {
-
     glClearColor(0.0f, 0.0f, 0.0f, 0.0f);		// This Will Clear The Background Color To Black
     glClearDepth(1.0);				// Enables Clearing Of The Depth Buffer
     glShadeModel(GL_SMOOTH);			// Enables Smooth Color Shading
@@ -26,20 +24,6 @@ void InitGL(int Width, int Height)	        // We call this right after our OpenG
     gluPerspective(45.0f,(GLfloat)Width/(GLfloat)Height,0.1f,100.0f);	// Calculate The Aspect Ratio Of The Window
     glEnable(GL_TEXTURE_2D);
     glMatrixMode(GL_MODELVIEW);
-
-    /*
-    //FROM REAPERI CYCLE
-    GLfloat modelAmbient[4] = {0.8, 0.8, 0.8, 1.0};
-    GLfloat ambient[4] = {0.2, 0.2, 0.2, 1.0};
-    GLfloat diffuse[4] = {1.0, 1.0, 1.0, 1.0};
-    GLfloat specular[4] = {0.0, 0.0, 0.0, 1.0};
-    glEnable(GL_LIGHTING);
-    glEnable(GL_LIGHT0);
-    glLightfv(GL_LIGHT0, GL_AMBIENT, modelAmbient);
-    glLightfv(GL_LIGHT0, GL_DIFFUSE, diffuse);
-    glLightfv(GL_LIGHT0, GL_SPECULAR, specular);
-    //glDisable(GL_COLOR_MATERIAL);
-    */
 }
 
 /* The function called when our window is resized (which shouldn't happen, because we're fullscreen) */
@@ -77,7 +61,7 @@ void DrawGLScene()
     glLoadIdentity();				// Reset The View
 
 
-    //FIRST DRAW - red quad
+    //First Batch is alpha blending
     glTranslated(-1 ,0, -5);
     for (int i = 0; i < 5; i++) {
       glTranslated(0.5, 0, 0);
@@ -88,48 +72,22 @@ void DrawGLScene()
     }
 
 
+    //Second batch is depth testing
+    //Changing the translate Z value doesn't change anything?
     glLoadIdentity();
     glTranslated(-1 , -1, -5);
     glDepthFunc(GL_LESS);
     glEnable(GL_DEPTH_FUNC);
 
     for (int i = 0; i < 5; i++) {
-      glTranslated(0.5, 0, +0.2);
-
+      glTranslated(0.5, 0, -0.2);
       glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
       glEnable(GL_BLEND);
       draw_textured_quad(&t);
-
       glDisable(GL_BLEND);
     }
-    
+
     glDisable(GL_DEPTH_TEST);
-
-
-    /*
-    glTranslated(0, 0, -10);
-    //DepthTest!
-    glTranslated(0, 0, 0);
-    glDepthFunc(GL_LESS);
-    glEnable(GL_DEPTH_TEST);
-    draw_textured_quad(&t);
-    glDisable(GL_DEPTH_TEST);
-
-    //Hum... wait what?
-    glTranslated(1, 0, -0.5);
-    glDepthFunc(GL_LESS);
-    glEnable(GL_DEPTH_TEST);
-    draw_textured_quad(&t);
-    glDisable(GL_DEPTH_TEST);
-
-
-    //I don,t get anything anymore
-    glTranslated(-1, 0, -0.5);
-    glDepthFunc(GL_LESS);
-    glEnable(GL_DEPTH_TEST);
-    draw_textured_quad(&t);
-    glDisable(GL_DEPTH_TEST);
-    */
 
     // swap buffers to display, since we're double buffered.
     glKosSwapBuffers();
@@ -139,6 +97,8 @@ int main(int argc, char **argv)
 {
     glKosInit();
     InitGL(640, 480);
+
+    //loads a dtex texture. see the /romdisk folder for more files
     dtex_to_gl_texture(&t, "/rd/disk_1555.dtex");
     ReSizeGLScene(640, 480);
     DrawGLScene();

@@ -217,18 +217,6 @@ void draw_textured_quad(texture *tex) {
 			0.0, 0.0, 1.0
 		};
 
-		/*
-		glBindTexture(GL_TEXTURE_2D, tex->id);   // choose the texture to use.
-
-		glBegin(GL_QUADS);		                // begin drawing a cube
-		// Front Face (note that the texture's corners have to match the quad's corners)
-		glTexCoord2f(0.0f, 0.0f); glVertex3f(-1.0f, -1.0f,  0.0f);	// Bottom Left Of The Texture and Quad
-		glTexCoord2f(1.0f, 0.0f); glVertex3f( 1.0f, -1.0f,  0.0f);	// Bottom Right Of The Texture and Quad
-		glTexCoord2f(1.0f, 1.0f); glVertex3f( 1.0f,  1.0f,  0.0f);	// Top Right Of The Texture and Quad
-		glTexCoord2f(0.0f, 1.0f); glVertex3f(-1.0f,  1.0f,  0.0f);	// Top Left Of The Texture and Quad
-		glEnd();
-		*/
-
 		glEnable(GL_TEXTURE_2D);
 		glBindTexture(GL_TEXTURE_2D, tex->id);
 		glEnableClientState(GL_VERTEX_ARRAY);
