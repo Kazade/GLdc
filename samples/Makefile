@@ -25,3 +25,4 @@ all:
 	$(KOS_MAKE) -C paletted all
 	$(KOS_MAKE) -C paletted_pcx all
 	$(KOS_MAKE) -C depth_funcs all
+	$(KOS_MAKE) -C depth_funcs_alpha_testing all
