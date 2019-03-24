@@ -3,6 +3,7 @@
 #include <stdlib.h>
 
 #include "gl.h"
+#include "glext.h"
 #include "glu.h"
 #include "glkos.h"
 
@@ -23,6 +24,7 @@ typedef struct                                      // Create A Structure
 
 TextureImage textures[3];
 TextureImage road;
+TextureImage lightmap;
 
 
 GLboolean LoadTGA(TextureImage *texture, const char *filename)			// Loads A TGA File Into Memory
@@ -123,7 +125,11 @@ void LoadGLTextures() {
     if(!LoadTGA(&road, "/rd/floor.tga")) {
         fprintf(stderr, "Error loading road texture");
     }
-};
+
+    if(!LoadTGA(&lightmap, "/rd/lightmap.tga")) {
+        fprintf(stderr, "Error loading lightmap texture");
+    }
+}
 
 
 /* A general OpenGL initialization function.  Sets all of the initial parameters. */
@@ -170,40 +176,64 @@ void RenderTower(counter) {
 
     float v = 1.0f * (counter + 1);
 
+    glActiveTexture(GL_TEXTURE0);
+    glEnable(GL_TEXTURE_2D);
     glBindTexture(GL_TEXTURE_2D, textures[counter].texID);
+
+    glActiveTexture(GL_TEXTURE1);
+    glEnable(GL_TEXTURE_2D);
+    glBindTexture(GL_TEXTURE_2D, lightmap.texID);
+
     glBegin(GL_QUADS);
-        glTexCoord2f(0, 0);
+        glMultiTexCoord2f(GL_TEXTURE0, 0, 0);
+        glMultiTexCoord2f(GL_TEXTURE1, 0, 0);
         glVertex3f(-width, 0,-width);
-        glTexCoord2f(1, 0);
+        glMultiTexCoord2f(GL_TEXTURE0, 1, 0);
+        glMultiTexCoord2f(GL_TEXTURE1, 1, 0);
         glVertex3f(-width, 0, width);
-        glTexCoord2f(1, v);
+        glMultiTexCoord2f(GL_TEXTURE0, 1, v);
+        glMultiTexCoord2f(GL_TEXTURE1, 1, 1);
         glVertex3f(-width, height, width);
-        glTexCoord2f(0, v);
+        glMultiTexCoord2f(GL_TEXTURE0, 0, v);
+        glMultiTexCoord2f(GL_TEXTURE1, 0, 1);
         glVertex3f(-width, height,-width);
 
-        glTexCoord2f(0, 0);
+        glMultiTexCoord2f(GL_TEXTURE0, 0, 0);
+        glMultiTexCoord2f(GL_TEXTURE1, 0, 0);
         glVertex3f(-width, 0, width);
-        glTexCoord2f(1, 0);
+        glMultiTexCoord2f(GL_TEXTURE0, 1, 0);
+        glMultiTexCoord2f(GL_TEXTURE1, 1, 0);
         glVertex3f( width, 0, width);
-        glTexCoord2f(1, v);
+        glMultiTexCoord2f(GL_TEXTURE0, 1, v);
+        glMultiTexCoord2f(GL_TEXTURE1, 1, 1);
         glVertex3f( width, height, width);
-        glTexCoord2f(0, v);
+        glMultiTexCoord2f(GL_TEXTURE0, 0, v);
+        glMultiTexCoord2f(GL_TEXTURE1, 0, 1);
         glVertex3f(-width, height, width);
 
-        glTexCoord2f(0, 0);
+        glMultiTexCoord2f(GL_TEXTURE0, 0, 0);
+        glMultiTexCoord2f(GL_TEXTURE1, 0, 0);
         glVertex3f(width, 0,width);
-        glTexCoord2f(1, 0);
+        glMultiTexCoord2f(GL_TEXTURE0, 1, 0);
+        glMultiTexCoord2f(GL_TEXTURE1, 1, 0);
         glVertex3f(width, 0,-width);
-        glTexCoord2f(1, v);
+        glMultiTexCoord2f(GL_TEXTURE0, 1, v);
+        glMultiTexCoord2f(GL_TEXTURE1, 1, 1);
         glVertex3f(width, height,-width);
-        glTexCoord2f(0, v);
+        glMultiTexCoord2f(GL_TEXTURE0, 0, v);
+        glMultiTexCoord2f(GL_TEXTURE1, 0, 1);
         glVertex3f(width, height, width);
     glEnd();
 }
 
 
 void RenderFloor() {
+    glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, road.texID);
+
+    glActiveTexture(GL_TEXTURE1);
+    glBindTexture(GL_TEXTURE_2D, 0);
+
     glBegin(GL_QUADS);
         glTexCoord2f(0.0f, 0.0f);
         glVertex3f(-100, 0, 0);

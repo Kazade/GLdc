@@ -1224,7 +1224,9 @@ static void submitVertices(GLenum mode, GLsizei first, GLuint count, GLenum type
 
     glDepthFunc(GL_EQUAL);
     glEnable(GL_BLEND);
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+    /* This is modulation, we need to switch depending on the texture env mode! */
+    glBlendFunc(GL_DST_COLOR, GL_ZERO);
 
     /* Send the buffer again to the transparent list */
     push(mtHeader, mtStart, target->count, _glTransparentPolyList(), 1);
