@@ -1,10 +1,11 @@
 #ifndef PRIVATE_H
 #define PRIVATE_H
 
+#include <stdint.h>
+
 #include "../include/gl.h"
 #include "../containers/aligned_vector.h"
 #include "../containers/named_array.h"
-#include "./clip.h"
 
 #define TRACE_ENABLED 0
 #define TRACE() if(TRACE_ENABLED) {fprintf(stderr, "%s\n", __func__);}
@@ -17,11 +18,8 @@
 
 #define MAX_TEXTURE_SIZE 1024
 
-#define CLIP_VERTEX_INT_PADDING 6
-
 typedef struct {
     pvr_poly_hdr_t hdr;
-    unsigned int padding[CLIP_VERTEX_INT_PADDING];
 } PVRHeader;
 
 typedef struct {
@@ -31,9 +29,6 @@ typedef struct {
              sy,         /* Start y */
              ex,         /* End x */
              ey;         /* End y */
-
-    /* Padding to match clip vertex */
-    unsigned int padding[CLIP_VERTEX_INT_PADDING];
 } PVRTileClipCommand; /* Tile Clip command for the pvr */
 
 typedef struct {
@@ -97,6 +92,62 @@ typedef struct {
     GLboolean is_directional;
 } LightSource;
 
+typedef struct {
+    /* Same 32 byte layout as pvr_vertex_t */
+    uint32_t flags;
+    float xyz[3];
+    float uv[2];
+    uint8_t bgra[4];
+
+    /* In the pvr_vertex_t structure, this next 4 bytes is oargb
+     * but we're not using that for now, so having W here makes the code
+     * simpler */
+    float w;
+} ClipVertex;
+
+/* ClipVertex doesn't have room for these, so we need to parse them
+ * out separately. Potentially 'w' will be housed here if we support oargb */
+typedef struct {
+    float nxyz[3];
+    float st[2];
+} VertexExtra;
+
+/* Generating PVR vertices from the user-submitted data gets complicated, particularly
+ * when a realloc could invalidate pointers. This structure holds all the information
+ * we need on the target vertex array to allow passing around to the various stages (e.g. generate/clip etc.)
+ */
+typedef struct {
+    PolyList* output;
+    uint32_t header_offset; // The offset of the header in the output list
+    uint32_t start_offset; // The offset into the output list
+    uint32_t count; // The number of vertices in this output
+
+    /* Pointer to count * VertexExtra; */
+    AlignedVector* extras;
+} SubmissionTarget;
+
+PVRHeader* _glSubmissionTargetHeader(SubmissionTarget* target);
+ClipVertex* _glSubmissionTargetStart(SubmissionTarget* target);
+ClipVertex* _glSubmissionTargetEnd(SubmissionTarget* target);
+
+typedef enum {
+    CLIP_RESULT_ALL_IN_FRONT,
+    CLIP_RESULT_ALL_BEHIND,
+    CLIP_RESULT_ALL_ON_PLANE,
+    CLIP_RESULT_FRONT_TO_BACK,
+    CLIP_RESULT_BACK_TO_FRONT
+} ClipResult;
+
+
+#define A8IDX 3
+#define R8IDX 2
+#define G8IDX 1
+#define B8IDX 0
+
+struct SubmissionTarget;
+
+void _glClipLineToNearZ(const ClipVertex* v1, const ClipVertex* v2, ClipVertex* vout, float* t);
+void _glClipTriangleStrip(SubmissionTarget* target, uint8_t fladeShade);
 
 PolyList *_glActivePolyList();
 PolyList *_glTransparentPolyList();

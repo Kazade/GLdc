@@ -31,7 +31,6 @@ static void pvr_list_submit(void *src, int n) {
         d[7] = *(s++);
         __asm__("pref @%0" : : "r"(d));
         d += 8;
-        s += CLIP_VERTEX_INT_PADDING;
     }
 
     /* Wait for both store queues to complete */

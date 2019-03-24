@@ -1,6 +1,7 @@
 #include <float.h>
 #include <stdio.h>
 #include <assert.h>
+#include <string.h>
 
 #ifdef _arch_dreamcast
 #include <dc/pvr.h>
@@ -9,7 +10,7 @@
 #endif
 
 #include "profiler.h"
-#include "clip.h"
+#include "private.h"
 #include "../containers/aligned_vector.h"
 
 
@@ -23,8 +24,8 @@ void _glEnableClipping(unsigned char v) {
     ZCLIP_ENABLED = v;
 }
 
-void clipLineToNearZ(const ClipVertex* v1, const ClipVertex* v2, ClipVertex* vout, float* t) __attribute__((optimize("fast-math")));
-void clipLineToNearZ(const ClipVertex* v1, const ClipVertex* v2, ClipVertex* vout, float* t) {
+void _glClipLineToNearZ(const ClipVertex* v1, const ClipVertex* v2, ClipVertex* vout, float* t) __attribute__((optimize("fast-math")));
+void _glClipLineToNearZ(const ClipVertex* v1, const ClipVertex* v2, ClipVertex* vout, float* t) {
     const float NEAR_PLANE = 0.2; // FIXME: this needs to be read from the projection matrix.. somehow
 
     *t = (NEAR_PLANE - v1->w) / (v2->w - v1->w);
@@ -73,13 +74,22 @@ static inline void interpolateColour(const uint8_t* v1, const uint8_t* v2, const
 const uint32_t VERTEX_CMD_EOL = 0xf0000000;
 const uint32_t VERTEX_CMD = 0xe0000000;
 
-void clipTriangle(const ClipVertex* vertices, const uint8_t visible, AlignedVector* output, const uint8_t flatShade) __attribute__((optimize("fast-math")));
-void clipTriangle(const ClipVertex* vertices, const uint8_t visible, AlignedVector* output, const uint8_t flatShade) {
-    uint8_t i, c = 0;
+typedef struct {
+    ClipVertex vertex[3];
+    VertexExtra extra[3];
+    uint8_t visible;
+} Triangle;
 
+void _glClipTriangle(const Triangle* triangle, const uint8_t visible, SubmissionTarget* target, const uint8_t flatShade) __attribute__((optimize("fast-math")));
+void _glClipTriangle(const Triangle* triangle, const uint8_t visible, SubmissionTarget* target, const uint8_t flatShade) {
+    uint8_t i, c = 0;
 
     uint8_t lastVisible = 255;
     ClipVertex* last = NULL;
+    VertexExtra* veLast = NULL;
+
+    const ClipVertex* vertices = triangle->vertex;
+    const VertexExtra* extras = triangle->extra;
 
     /* Used when flat shading is enabled */
     uint32_t finalColour = *((uint32_t*) vertices[2].bgra);
@@ -88,6 +98,8 @@ void clipTriangle(const ClipVertex* vertices, const uint8_t visible, AlignedVect
         uint8_t thisIndex = (i == 3) ? 0 : i;
 
         ClipVertex next;
+        VertexExtra veNext;
+
         next.flags = VERTEX_CMD;
 
         uint8_t thisVisible = (visible & (1 << (2 - thisIndex))) > 0;
@@ -97,13 +109,18 @@ void clipTriangle(const ClipVertex* vertices, const uint8_t visible, AlignedVect
             if(lastVisible < 255 && lastVisible != thisVisible) {
                 const ClipVertex* v1 = &vertices[lastIndex];
                 const ClipVertex* v2 = &vertices[thisIndex];
+
+                const VertexExtra* ve1 = &extras[lastIndex];
+                const VertexExtra* ve2 = &extras[thisIndex];
+
                 float t;
 
-                clipLineToNearZ(v1, v2, &next, &t);
+                _glClipLineToNearZ(v1, v2, &next, &t);
                 interpolateFloat(v1->w, v2->w, t, &next.w);
-                interpolateVec3(v1->nxyz, v2->nxyz, t, next.nxyz);
                 interpolateVec2(v1->uv, v2->uv, t, next.uv);
-                interpolateVec2(v1->st, v2->st, t, next.st);
+
+                interpolateVec3(ve1->nxyz, ve2->nxyz, t, veNext.nxyz);
+                interpolateVec2(ve1->st, ve2->st, t, veNext.st);
 
                 if(flatShade) {
                     *((uint32_t*) next.bgra) = finalColour;
@@ -111,15 +128,22 @@ void clipTriangle(const ClipVertex* vertices, const uint8_t visible, AlignedVect
                     interpolateColour(v1->bgra, v2->bgra, t, next.bgra);
                 }
 
-                last = aligned_vector_push_back(output, &next, 1);
+                /* Push back the new vertices to the end of both the ClipVertex and VertexExtra lists */
+                last = aligned_vector_push_back(&target->output->vector, &next, 1);
                 last->flags = VERTEX_CMD;
+
+                veLast = aligned_vector_push_back(target->extras, &veNext, 1);
+
                 ++c;
             }
         }
 
         if(thisVisible && i != 3) {
-            last = aligned_vector_push_back(output, &vertices[thisIndex], 1);
+            last = aligned_vector_push_back(&target->output->vector, &vertices[thisIndex], 1);
             last->flags = VERTEX_CMD;
+
+            veLast = aligned_vector_push_back(target->extras, &extras[thisIndex], 1);
+
             ++c;
         }
 
@@ -134,13 +158,21 @@ void clipTriangle(const ClipVertex* vertices, const uint8_t visible, AlignedVect
             newVerts[1] = *(last - 1);
             newVerts[2] = *(last);
 
+            VertexExtra newExtras[3];
+            newExtras[0] = *(veLast - 3);
+            newExtras[1] = *(veLast - 1);
+            newExtras[2] = *(veLast);
+
             (last - 1)->flags = VERTEX_CMD_EOL;
             newVerts[0].flags = VERTEX_CMD;
             newVerts[1].flags = VERTEX_CMD;
             newVerts[2].flags = VERTEX_CMD_EOL;
 
-            aligned_vector_resize(output, output->size - 1);
-            aligned_vector_push_back(output, newVerts, 3);
+            aligned_vector_resize(&target->output->vector, target->output->vector.size - 1);
+            aligned_vector_push_back(&target->output->vector, newVerts, 3);
+
+            aligned_vector_resize(target->extras, target->extras->size - 1);
+            aligned_vector_push_back(target->extras, newExtras, 3);
         } else {
             last->flags = VERTEX_CMD_EOL;
         }
@@ -161,39 +193,38 @@ static inline void markDead(ClipVertex* vert) {
 #define B011 3
 #define B110 6
 
-void clipTriangleStrip2(AlignedVector* vertices, uint32_t offset, uint8_t fladeShade) {
-    /* Room for clipping 16 triangles */
-    typedef struct {
-        ClipVertex vertex[3];
-        uint8_t visible;
-    } Triangle;
+#define MAX_CLIP_TRIANGLES 255
 
-    static Triangle TO_CLIP[256];
+void _glClipTriangleStrip(SubmissionTarget* target, uint8_t fladeShade) {
+    static Triangle TO_CLIP[MAX_CLIP_TRIANGLES];
     static uint8_t CLIP_COUNT = 0;
 
     CLIP_COUNT = 0;
 
-    uint32_t i = 0;
-    /* Skip the header */
+    ClipVertex* vertex = _glSubmissionTargetStart(target);
+    const ClipVertex* end = _glSubmissionTargetEnd(target);
+    const ClipVertex* start = vertex;
 
-    assert(offset < vertices->size);
-    ClipVertex* header = (ClipVertex*) aligned_vector_at(vertices, offset);
-    ClipVertex* vertex = header + 1;
+    int32_t triangle = -1;
 
-    uint32_t count = vertices->size - offset;
+    /* Go to the (potential) end of the first triangle */
+    vertex++;
 
-    int32_t triangle = 0;
+    uint32_t vi1, vi2, vi3;
 
-    /* Start at 3 due to the header */
-    for(i = 3; i < count; ++i, ++triangle) {
-        assert(offset + i < vertices->size);
-
-        vertex = aligned_vector_at(vertices, offset + i);
+    while(vertex < end) {
+        vertex++;
+        triangle++;
 
         uint8_t even = (triangle % 2) == 0;
         ClipVertex* v1 = (even) ? vertex - 2 : vertex - 1;
         ClipVertex* v2 = (even) ? vertex - 1 : vertex - 2;
         ClipVertex* v3 = vertex;
+
+        /* Indexes into extras array */
+        vi1 = v1 - start;
+        vi2 = v2 - start;
+        vi3 = v3 - start;
 
         /* Skip ahead if we don't have a complete triangle yet */
         if(v1->flags != VERTEX_CMD || v2->flags != VERTEX_CMD) {
@@ -249,10 +280,17 @@ void clipTriangleStrip2(AlignedVector* vertices, uint32_t offset, uint8_t fladeS
             case B101:
             case B011:
             case B110:
+                assert(CLIP_COUNT < MAX_CLIP_TRIANGLES);
+
                 /* Store the triangle for clipping */
                 TO_CLIP[CLIP_COUNT].vertex[0] = *v1;
                 TO_CLIP[CLIP_COUNT].vertex[1] = *v2;
                 TO_CLIP[CLIP_COUNT].vertex[2] = *v3;
+
+                TO_CLIP[CLIP_COUNT].extra[0] = *(VertexExtra*) aligned_vector_at(target->extras, vi1);
+                TO_CLIP[CLIP_COUNT].extra[1] = *(VertexExtra*) aligned_vector_at(target->extras, vi2);
+                TO_CLIP[CLIP_COUNT].extra[2] = *(VertexExtra*) aligned_vector_at(target->extras, vi3);
+
                 TO_CLIP[CLIP_COUNT].visible = visible;
                 ++CLIP_COUNT;
 
@@ -287,6 +325,15 @@ void clipTriangleStrip2(AlignedVector* vertices, uint32_t offset, uint8_t fladeS
 
                     triangle = -1;
                 } else {                    
+                    /* FIXME: ?
+                     * This situation doesn't actually seem possible, we always clip from one end
+                     * of the triangle strip to the other, so we're never going to hit the plane in the
+                     * middle of the strip (with previous/next unhandled tris).
+                     *
+                     * Uncomment if this actually happens */
+                    assert(0 && "Not Implemented (see comment)");
+
+                    /*
                     ClipVertex* v4 = vertex + 1;
 
                     TO_CLIP[CLIP_COUNT].vertex[0] = *v3;
@@ -298,26 +345,24 @@ void clipTriangleStrip2(AlignedVector* vertices, uint32_t offset, uint8_t fladeS
                     TO_CLIP[CLIP_COUNT].visible = visible;
                     ++CLIP_COUNT;
 
-                    /* Restart strip */
+                    // Restart strip
                     triangle = -1;
 
-                    /* Mark the second vertex as the end of the strip */
+                    // Mark the second vertex as the end of the strip
                     (vertex - 1)->flags = VERTEX_CMD_EOL;
 
                     if(v4->flags == VERTEX_CMD_EOL) {
                         markDead(vertex);
                         markDead(v4);
                     } else {
-                        /* Swap the next vertices to start a new strip */
+                        // Swap the next vertices to start a new strip
                         ClipVertex tmp = *vertex;
                         *vertex = *v4;
                         *v4 = tmp;
 
                         vertex->flags = VERTEX_CMD;
                         v4->flags = VERTEX_CMD;
-                    }
-
-                    i += 1;
+                    } */
                 }
             break;
             default:
@@ -326,7 +371,8 @@ void clipTriangleStrip2(AlignedVector* vertices, uint32_t offset, uint8_t fladeS
     }
 
     /* Now, clip all the triangles and append them to the output */
+    GLushort i;
     for(i = 0; i < CLIP_COUNT; ++i) {
-        clipTriangle(TO_CLIP[i].vertex, TO_CLIP[i].visible, vertices, fladeShade);
+        _glClipTriangle(&TO_CLIP[i], TO_CLIP[i].visible, target, fladeShade);
     }
 }
