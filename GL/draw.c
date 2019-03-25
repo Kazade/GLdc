@@ -850,7 +850,6 @@ static void generate(SubmissionTarget* target, const GLenum mode, const GLsizei 
         case GL_QUADS:
             genQuads(_glSubmissionTargetStart(target), count);
             break;
-        case GL_POLYGON:
         case GL_TRIANGLE_FAN:
             genTriangleFan(_glSubmissionTargetStart(target), count);
             break;
@@ -893,7 +892,6 @@ static void generate(SubmissionTarget* target, const GLenum mode, const GLsizei 
         case GL_QUADS:
             genQuads(it, count);
             break;
-        case GL_POLYGON:
         case GL_TRIANGLE_FAN:
             genTriangleFan(it, count);
             break;
@@ -1107,8 +1105,25 @@ static void submitVertices(GLenum mode, GLsizei first, GLuint count, GLenum type
 
     profiler_push(__func__);
 
+    /* Polygons are treated as triangle fans, the only time this would be a
+     * problem is if we supported glPolygonMode(..., GL_LINE) but we don't.
+     * We optimise the triangle and quad cases.
+     */
+    if(mode == GL_POLYGON) {
+        if(count == 3) {
+            mode = GL_TRIANGLES;
+        } else if(count == 4) {
+            mode = GL_QUADS;
+        } else {
+            mode = GL_TRIANGLE_FAN;
+        }
+    }
+
+    // We don't handle this any further, so just make sure we never pass it down */
+    assert(mode != GL_POLYGON);
+
     target->output = _glActivePolyList();
-    target->count = (mode == GL_POLYGON || mode == GL_TRIANGLE_FAN) ? ((count - 2) * 3) : count;
+    target->count = (mode == GL_TRIANGLE_FAN) ? ((count - 2) * 3) : count;
     target->header_offset = target->output->vector.size;
     target->start_offset = target->header_offset + 1;
 
