@@ -23,14 +23,14 @@ static AlignedVector NORMALS;
 
 
 static GLfloat NORMAL[3] = {0.0f, 0.0f, 1.0f};
-static GLfloat COLOR[4] = {1.0f, 1.0f, 1.0f, 1.0f};
+static GLubyte COLOR[4] = {255, 255, 255, 255};
 static GLfloat UV_COORD[2] = {0.0f, 0.0f};
 static GLfloat ST_COORD[2] = {0.0f, 0.0f};
 
 
 void _glInitImmediateMode(GLuint initial_size) {
     aligned_vector_init(&VERTICES, sizeof(GLfloat));
-    aligned_vector_init(&COLOURS, sizeof(GLfloat));
+    aligned_vector_init(&COLOURS, sizeof(GLubyte));
     aligned_vector_init(&UV_COORDS, sizeof(GLfloat));
     aligned_vector_init(&ST_COORDS, sizeof(GLfloat));
     aligned_vector_init(&NORMALS, sizeof(GLfloat));
@@ -65,19 +65,17 @@ void APIENTRY glBegin(GLenum mode) {
 }
 
 void APIENTRY glColor4f(GLfloat r, GLfloat g, GLfloat b, GLfloat a) {
+    COLOR[0] = (GLubyte)(r * 255);
+    COLOR[1] = (GLubyte)(g * 255);
+    COLOR[2] = (GLubyte)(b * 255);
+    COLOR[3] = (GLubyte)(a * 255);
+}
+
+void APIENTRY glColor4ub(GLubyte r, GLubyte  g, GLubyte b, GLubyte a) {
     COLOR[0] = r;
     COLOR[1] = g;
     COLOR[2] = b;
     COLOR[3] = a;
-}
-
-void APIENTRY glColor4ub(GLubyte r, GLubyte  g, GLubyte b, GLubyte a) {
-    glColor4f(
-        ((GLfloat) r) / 255.0f,
-        ((GLfloat) g) / 255.0f,
-        ((GLfloat) b) / 255.0f,
-        ((GLfloat) a) / 255.0f
-    );
 }
 
 void APIENTRY glColor4fv(const GLfloat* v) {
@@ -90,7 +88,10 @@ void APIENTRY glColor3f(GLfloat r, GLfloat g, GLfloat b) {
 }
 
 void APIENTRY glColor3ub(GLubyte red, GLubyte green, GLubyte blue) {
-    glColor3f((float) red / 255, (float) green / 255, (float) blue / 255);
+    COLOR[0] = red;
+    COLOR[1] = green;
+    COLOR[2] = blue;
+    COLOR[3] = 255;
 }
 
 void APIENTRY glColor3fv(const GLfloat* v) {
@@ -185,7 +186,7 @@ void APIENTRY glEnd() {
     glEnableClientState(GL_NORMAL_ARRAY);
 
     glVertexPointer(3, GL_FLOAT, 0, VERTICES.data);
-    glColorPointer(4, GL_FLOAT, 0, COLOURS.data);
+    glColorPointer(4, GL_UNSIGNED_BYTE, 0, COLOURS.data);
     glNormalPointer(GL_FLOAT, 0, NORMALS.data);
 
     GLint activeTexture;
