@@ -1106,6 +1106,11 @@ static void submitVertices(GLenum mode, GLsizei first, GLuint count, GLenum type
         return;
     }
 
+    /* No vertices? Do nothing */
+    if(!count) {
+        return;
+    }
+
     static SubmissionTarget* target = NULL;
     static AlignedVector extras;
 
