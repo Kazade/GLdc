@@ -249,8 +249,28 @@ void RenderFloor() {
 /* The main drawing function. */
 void DrawGLScene()
 {
+    static float z = 0.0f;
+    static char increasing = 1;
+
+    if(increasing) {
+        z += 10.0f;
+    } else {
+        z -= 10.0f;
+    }
+
+    if(z > 10.0f) {
+        increasing = !increasing;
+        z = 10.0f;
+    }
+
+    if(z < 0.0f) {
+        increasing = !increasing;
+        z = 0.0f;
+    }
+
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);		// Clear The Screen And The Depth Buffer
     glLoadIdentity();				// Reset The View
+    glTranslatef(0, 0, z);
 
     GLubyte i = 0;
 
