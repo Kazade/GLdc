@@ -252,15 +252,17 @@ void DrawGLScene()
     static float z = 0.0f;
     static char increasing = 1;
 
+    const float max = 50.0f;
+
     if(increasing) {
-        z += 10.0f;
+        z += 1.0f;
     } else {
-        z -= 10.0f;
+        z -= 1.0f;
     }
 
-    if(z > 10.0f) {
+    if(z > max) {
         increasing = !increasing;
-        z = 10.0f;
+        z = max;
     }
 
     if(z < 0.0f) {
