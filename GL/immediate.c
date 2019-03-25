@@ -79,12 +79,17 @@ void APIENTRY glColor4ub(GLubyte r, GLubyte  g, GLubyte b, GLubyte a) {
 }
 
 void APIENTRY glColor4fv(const GLfloat* v) {
-    glColor4f(v[0], v[1], v[2], v[3]);
+    COLOR[0] = (GLubyte)(v[0] * 255);
+    COLOR[1] = (GLubyte)(v[1] * 255);
+    COLOR[2] = (GLubyte)(v[2] * 255);
+    COLOR[3] = (GLubyte)(v[3] * 255);
 }
 
 void APIENTRY glColor3f(GLfloat r, GLfloat g, GLfloat b) {
-    static float a = 1.0f;
-    glColor4f(r, g, b, a);
+    COLOR[0] = (GLubyte)(r * 255);
+    COLOR[1] = (GLubyte)(g * 255);
+    COLOR[2] = (GLubyte)(b * 255);
+    COLOR[3] = 255;
 }
 
 void APIENTRY glColor3ub(GLubyte red, GLubyte green, GLubyte blue) {
@@ -95,7 +100,10 @@ void APIENTRY glColor3ub(GLubyte red, GLubyte green, GLubyte blue) {
 }
 
 void APIENTRY glColor3fv(const GLfloat* v) {
-    glColor3f(v[0], v[1], v[2]);
+    COLOR[0] = (GLubyte)(v[0] * 255);
+    COLOR[1] = (GLubyte)(v[1] * 255);
+    COLOR[2] = (GLubyte)(v[2] * 255);
+    COLOR[3] = 255;
 }
 
 void APIENTRY glVertex3f(GLfloat x, GLfloat y, GLfloat z) {
