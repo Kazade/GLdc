@@ -537,10 +537,12 @@ static inline void transformNormalToEyeSpace(GLfloat* normal) {
 }
 
 PVRHeader* _glSubmissionTargetHeader(SubmissionTarget* target) {
+    assert(target->header_offset < target->output->vector.size);
     return aligned_vector_at(&target->output->vector, target->header_offset);
 }
 
 Vertex* _glSubmissionTargetStart(SubmissionTarget* target) {
+    assert(target->start_offset < target->output->vector.size);
     return aligned_vector_at(&target->output->vector, target->start_offset);
 }
 
@@ -686,6 +688,8 @@ static inline void _readUVData(const GLuint first, const GLuint count, Vertex* o
 }
 
 static inline void _readSTData(const GLuint first, const GLuint count, SubmissionTarget* target) {
+    assert(target->extras->size == count);
+
     if((ENABLED_VERTEX_ATTRIBUTES & ST_ENABLED_FLAG) != ST_ENABLED_FLAG) {
         VertexExtra* extra = aligned_vector_at(target->extras, 0);
         _fillZero2fVE(count, extra->st);
@@ -722,6 +726,8 @@ static inline void _readSTData(const GLuint first, const GLuint count, Submissio
 }
 
 static inline void _readNormalData(const GLuint first, const GLuint count, SubmissionTarget* target) {
+    assert(target->extras->size == count);
+
     if((ENABLED_VERTEX_ATTRIBUTES & NORMAL_ENABLED_FLAG) != NORMAL_ENABLED_FLAG) {
         VertexExtra* extra = aligned_vector_at(target->extras, 0);
         _fillWithNegZVE(count, extra->nxyz);
@@ -1172,6 +1178,8 @@ static void submitVertices(GLenum mode, GLsizei first, GLuint count, GLenum type
 #endif
 
         clip(target);
+
+        assert(extras.size == target->count);
 
 #if DEBUG_CLIPPING
         fprintf(stderr, "--------\n");
