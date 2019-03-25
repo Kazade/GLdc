@@ -849,11 +849,18 @@ static void generate(SubmissionTarget* target, const GLenum mode, const GLsizei 
     const Vertex* end;
 
     if(!indices) {
-        _readPositionData(first, count, _glSubmissionTargetStart(target));
+        profiler_push(__func__);
+
+        _readPositionData(first, count, _glSubmissionTargetStart(target));        
+        profiler_checkpoint("positions");
+
         _readDiffuseData(first, count, _glSubmissionTargetStart(target));
+        profiler_checkpoint("diffuse");
+
         if(doTexture) _readUVData(first, count, _glSubmissionTargetStart(target));
         if(doLighting) _readNormalData(first, count, target);
         if(doTexture && doMultitexture) _readSTData(first, count, target);
+        profiler_checkpoint("others");
 
         it = _glSubmissionTargetStart(target);
         end = _glSubmissionTargetEnd(target);
@@ -861,6 +868,8 @@ static void generate(SubmissionTarget* target, const GLenum mode, const GLsizei 
         while(it < end) {
             (it++)->flags = PVR_CMD_VERTEX;
         }
+
+        profiler_checkpoint("flags");
 
         // Drawing arrays
         switch(mode) {
@@ -879,6 +888,9 @@ static void generate(SubmissionTarget* target, const GLenum mode, const GLsizei 
         default:
             assert(0 && "Not Implemented");
         }
+
+        profiler_checkpoint("quads");
+        profiler_pop();
     } else {
         const IndexParseFunc indexFunc = _calcParseIndexFunc(type);
         it = _glSubmissionTargetStart(target);

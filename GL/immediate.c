@@ -9,6 +9,7 @@
 
 #include "../include/gl.h"
 #include "../include/glext.h"
+#include "profiler.h"
 
 #include "private.h"
 
@@ -174,6 +175,8 @@ void APIENTRY glNormal3fv(const GLfloat* v) {
 }
 
 void APIENTRY glEnd() {
+    profiler_push(__func__);
+
     IMMEDIATE_MODE_ACTIVE = GL_FALSE;
 
     GLboolean vertexArrayEnabled, colorArrayEnabled, normalArrayEnabled;
@@ -188,6 +191,8 @@ void APIENTRY glEnd() {
     AttribPointer nptr = *_glGetNormalAttribPointer();
     AttribPointer uvptr = *_glGetUVAttribPointer();
     AttribPointer stptr = *_glGetSTAttribPointer();
+
+    profiler_checkpoint("prep");
 
     glEnableClientState(GL_VERTEX_ARRAY);
     glEnableClientState(GL_COLOR_ARRAY);
@@ -210,13 +215,19 @@ void APIENTRY glEnd() {
     glEnableClientState(GL_TEXTURE_COORD_ARRAY);
     glTexCoordPointer(2, GL_FLOAT, 0, ST_COORDS.data);
 
+    profiler_checkpoint("client_state");
+
     glDrawArrays(ACTIVE_POLYGON_MODE, 0, VERTICES.size / 3);
+
+    profiler_checkpoint("draw_arrays");
 
     aligned_vector_clear(&VERTICES);
     aligned_vector_clear(&COLOURS);
     aligned_vector_clear(&UV_COORDS);
     aligned_vector_clear(&ST_COORDS);
     aligned_vector_clear(&NORMALS);
+
+    profiler_checkpoint("clear");
 
     *_glGetVertexAttribPointer() = vptr;
     *_glGetDiffuseAttribPointer() = dptr;
@@ -248,6 +259,8 @@ void APIENTRY glEnd() {
 
     glClientActiveTextureARB((GLuint) activeTexture);
 
+    profiler_checkpoint("restore");
+    profiler_pop();
 }
 
 void APIENTRY glRectf(GLfloat x1, GLfloat y1, GLfloat x2, GLfloat y2) {
