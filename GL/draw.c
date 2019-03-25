@@ -1232,14 +1232,16 @@ static void submitVertices(GLenum mode, GLsizei first, GLuint count, GLenum type
        - We want to set the uv coordinates to the passed st ones
     */
 
+    if(!doMultitexture) {
+        /* Multitexture actively disabled */
+        profiler_pop();
+        return;
+    }
+
     TextureObject* texture1 = _glGetTexture1();
 
     /* Multitexture implicitly disabled */
     if(!texture1 || ((ENABLED_VERTEX_ATTRIBUTES & ST_ENABLED_FLAG) != ST_ENABLED_FLAG)) {
-        doMultitexture = GL_FALSE;
-    }
-
-    if(!doMultitexture) {
         /* Multitexture actively disabled */
         profiler_pop();
         return;
@@ -1256,8 +1258,10 @@ static void submitVertices(GLenum mode, GLsizei first, GLuint count, GLenum type
     Vertex* mtStart = vertex;
 
     /* Replace the UV coordinates with the ST ones */
-    const VertexExtra* end = aligned_vector_back(target->extras) + 1;
+
     VertexExtra* ve = aligned_vector_at(target->extras, 0);
+    const VertexExtra* end = ve + target->count;
+
     while(ve < end) {
         vertex->uv[0] = ve->st[0];
         vertex->uv[1] = ve->st[1];
