@@ -65,7 +65,7 @@ static inline GLuint byte_size(GLenum type) {
 
 typedef void (*FloatParseFunc)(GLfloat* out, const GLubyte* in);
 typedef void (*ByteParseFunc)(GLubyte* out, const GLubyte* in);
-typedef void (*PolyBuildFunc)(ClipVertex* first, ClipVertex* previous, ClipVertex* vertex, ClipVertex* next, const GLsizei i);
+typedef void (*PolyBuildFunc)(Vertex* first, Vertex* previous, Vertex* vertex, Vertex* next, const GLsizei i);
 
 
 static void _readVertexData3f3f(const float* input, GLuint count, GLubyte stride, float* output) {
@@ -77,7 +77,7 @@ static void _readVertexData3f3f(const float* input, GLuint count, GLubyte stride
         output[2] = input[2];
 
         input = (float*) (((GLubyte*) input) + stride);
-        output = (float*) (((GLubyte*) output) + sizeof(ClipVertex));
+        output = (float*) (((GLubyte*) output) + sizeof(Vertex));
     }
 }
 
@@ -104,7 +104,7 @@ static void _readVertexData3us3f(const GLushort* input, GLuint count, GLubyte st
         output[2] = input[2];
 
         input = (GLushort*) (((GLubyte*) input) + stride);
-        output = (float*) (((GLubyte*) output) + sizeof(ClipVertex));
+        output = (float*) (((GLubyte*) output) + sizeof(Vertex));
     }
 }
 
@@ -130,7 +130,7 @@ static void _readVertexData3ui3f(const GLuint* input, GLuint count, GLubyte stri
         output[2] = input[2];
 
         input = (GLuint*) (((GLubyte*) input) + stride);
-        output = (float*) (((GLubyte*) output) + sizeof(ClipVertex));
+        output = (float*) (((GLubyte*) output) + sizeof(Vertex));
     }
 }
 
@@ -157,7 +157,7 @@ static void _readVertexData3ub3f(const GLubyte* input, GLuint count, GLubyte str
         output[2] = input[2] * ONE_OVER_TWO_FIVE_FIVE;
 
         input += stride;
-        output = (float*) (((GLubyte*) output) + sizeof(ClipVertex));
+        output = (float*) (((GLubyte*) output) + sizeof(Vertex));
     }
 }
 
@@ -183,7 +183,7 @@ static void _readVertexData2f2f(const float* input, GLuint count, GLubyte stride
         output[1] = input[1];
 
         input = (float*) (((GLubyte*) input) + stride);
-        output = (float*) (((GLubyte*) output) + sizeof(ClipVertex));
+        output = (float*) (((GLubyte*) output) + sizeof(Vertex));
     }
 }
 
@@ -208,7 +208,7 @@ static void _readVertexData2f3f(const float* input, GLuint count, GLubyte stride
         output[2] = 0.0f;
 
         input = (float*) (((GLubyte*) input) + stride);
-        output = (float*) (((GLubyte*) output) + sizeof(ClipVertex));
+        output = (float*) (((GLubyte*) output) + sizeof(Vertex));
     }
 }
 
@@ -222,7 +222,7 @@ static void _readVertexData2ub3f(const GLubyte* input, GLuint count, GLubyte str
         output[2] = 0.0f;
 
         input += stride;
-        output = (float*) (((GLubyte*) output) + sizeof(ClipVertex));
+        output = (float*) (((GLubyte*) output) + sizeof(Vertex));
     }
 }
 
@@ -235,7 +235,7 @@ static void _readVertexData2us3f(const GLushort* input, GLuint count, GLubyte st
         output[2] = 0.0f;
 
         input = (GLushort*) (((GLubyte*) input) + stride);
-        output = (float*) (((GLubyte*) output) + sizeof(ClipVertex));
+        output = (float*) (((GLubyte*) output) + sizeof(Vertex));
     }
 }
 
@@ -247,7 +247,7 @@ static void _readVertexData2us2f(const GLushort* input, GLuint count, GLubyte st
         output[1] = input[1];
 
         input = (GLushort*) (((GLubyte*) input) + stride);
-        output = (float*) (((GLubyte*) output) + sizeof(ClipVertex));
+        output = (float*) (((GLubyte*) output) + sizeof(Vertex));
     }
 }
 
@@ -271,7 +271,7 @@ static void _readVertexData2ui2f(const GLuint* input, GLuint count, GLubyte stri
         output[1] = input[1];
 
         input = (GLuint*) (((GLubyte*) input) + stride);
-        output = (float*) (((GLubyte*) output) + sizeof(ClipVertex));
+        output = (float*) (((GLubyte*) output) + sizeof(Vertex));
     }
 }
 
@@ -296,7 +296,7 @@ static void _readVertexData2ub2f(const GLubyte* input, GLuint count, GLubyte str
         output[1] = input[1] * ONE_OVER_TWO_FIVE_FIVE;
 
         input = (((GLubyte*) input) + stride);
-        output = (float*) (((GLubyte*) output) + sizeof(ClipVertex));
+        output = (float*) (((GLubyte*) output) + sizeof(Vertex));
     }
 }
 
@@ -322,7 +322,7 @@ static void _readVertexData2ui3f(const GLuint* input, GLuint count, GLubyte stri
         output[2] = 0.0f;
 
         input = (GLuint*) (((GLubyte*) input) + stride);
-        output = (float*) (((GLubyte*) output) + sizeof(ClipVertex));
+        output = (float*) (((GLubyte*) output) + sizeof(Vertex));
     }
 }
 
@@ -336,7 +336,7 @@ static void _readVertexData4ubARGB(const GLubyte* input, GLuint count, GLubyte s
         output[A8IDX] = input[3];
 
         input = (GLubyte*) (((GLubyte*) input) + stride);
-        output = (GLubyte*) (((GLubyte*) output) + sizeof(ClipVertex));
+        output = (GLubyte*) (((GLubyte*) output) + sizeof(Vertex));
     }
 }
 
@@ -350,7 +350,7 @@ static void _readVertexData4fARGB(const float* input, GLuint count, GLubyte stri
         output[A8IDX] = (GLubyte) (input[3] * 255.0f);
 
         input = (float*) (((GLubyte*) input) + stride);
-        output = (GLubyte*) (((GLubyte*) output) + sizeof(ClipVertex));
+        output = (GLubyte*) (((GLubyte*) output) + sizeof(Vertex));
     }
 }
 
@@ -364,7 +364,7 @@ static void _readVertexData3fARGB(const float* input, GLuint count, GLubyte stri
         output[A8IDX] = 1.0f;
 
         input = (float*) (((GLubyte*) input) + stride);
-        output = (GLubyte*) (((GLubyte*) output) + sizeof(ClipVertex));
+        output = (GLubyte*) (((GLubyte*) output) + sizeof(Vertex));
     }
 }
 
@@ -378,7 +378,7 @@ static void _readVertexData3ubARGB(const GLubyte* input, GLuint count, GLubyte s
         output[A8IDX] = 1.0f;
 
         input = (((GLubyte*) input) + stride);
-        output = (GLubyte*) (((GLubyte*) output) + sizeof(ClipVertex));
+        output = (GLubyte*) (((GLubyte*) output) + sizeof(Vertex));
     }
 }
 
@@ -392,7 +392,7 @@ static void _fillWithNegZVE(GLuint count, GLfloat* output) {
 }
 
 static void _fillWhiteARGB(GLuint count, GLubyte* output) {
-    const GLubyte* end = output + (sizeof(ClipVertex) * count);
+    const GLubyte* end = output + (sizeof(Vertex) * count);
 
     while(output < end) {
         output[R8IDX] = 255;
@@ -400,15 +400,15 @@ static void _fillWhiteARGB(GLuint count, GLubyte* output) {
         output[B8IDX] = 255;
         output[A8IDX] = 255;
 
-        output += sizeof(ClipVertex);
+        output += sizeof(Vertex);
     }
 }
 
 static void _fillZero2f(GLuint count, GLfloat* output) {
-    const GLfloat* end = (GLfloat*) ((GLubyte*) output) + (count * sizeof(ClipVertex));
+    const GLfloat* end = (GLfloat*) ((GLubyte*) output) + (count * sizeof(Vertex));
     while(output < end) {
         output[0] = output[1] = 0.0f;
-        output = (GLfloat*) (((GLubyte*) output) + sizeof(ClipVertex));
+        output = (GLfloat*) (((GLubyte*) output) + sizeof(Vertex));
     }
 }
 
@@ -538,7 +538,7 @@ static inline void transformNormalToEyeSpace(GLfloat* normal) {
 
 #define swapVertex(a, b)   \
 do {                 \
-    ClipVertex temp = *a;    \
+    Vertex temp = *a;    \
     *a = *b;           \
     *b = temp;        \
 } while(0)
@@ -547,28 +547,28 @@ PVRHeader* _glSubmissionTargetHeader(SubmissionTarget* target) {
     return aligned_vector_at(&target->output->vector, target->header_offset);
 }
 
-ClipVertex* _glSubmissionTargetStart(SubmissionTarget* target) {
+Vertex* _glSubmissionTargetStart(SubmissionTarget* target) {
     return aligned_vector_at(&target->output->vector, target->start_offset);
 }
 
-ClipVertex* _glSubmissionTargetEnd(SubmissionTarget* target) {
+Vertex* _glSubmissionTargetEnd(SubmissionTarget* target) {
     return _glSubmissionTargetStart(target) + target->count;
 }
 
-static inline void genTriangles(ClipVertex* output, GLuint count) {
-    const ClipVertex* end = output + count;
-    ClipVertex* it = output + 2;
+static inline void genTriangles(Vertex* output, GLuint count) {
+    const Vertex* end = output + count;
+    Vertex* it = output + 2;
     while(it < end) {
         it->flags = PVR_CMD_VERTEX_EOL;
         it += 3;
     }
 }
 
-static inline void genQuads(ClipVertex* output, GLuint count) {
-    ClipVertex* previous;
-    ClipVertex* this = output + 3;
+static inline void genQuads(Vertex* output, GLuint count) {
+    Vertex* previous;
+    Vertex* this = output + 3;
 
-    const ClipVertex* end = output + count;
+    const Vertex* end = output + count;
 
     while(this < end) {
         previous = this - 1;
@@ -578,15 +578,15 @@ static inline void genQuads(ClipVertex* output, GLuint count) {
     }
 }
 
-static void genTriangleStrip(ClipVertex* output, GLuint count) {
+static void genTriangleStrip(Vertex* output, GLuint count) {
     output[count - 1].flags = PVR_CMD_VERTEX_EOL;
 }
 
 #define MAX_POLYGON_SIZE 32
 
-static void genTriangleFan(ClipVertex* output, GLuint count) {
+static void genTriangleFan(Vertex* output, GLuint count) {
     assert(count < MAX_POLYGON_SIZE);
-    static ClipVertex buffer[MAX_POLYGON_SIZE];
+    static Vertex buffer[MAX_POLYGON_SIZE];
 
     if(count <= 3){
         swapVertex(&output[1], &output[2]);
@@ -594,13 +594,13 @@ static void genTriangleFan(ClipVertex* output, GLuint count) {
         return;
     }
 
-    memcpy(buffer, output, sizeof(ClipVertex) * count);
+    memcpy(buffer, output, sizeof(Vertex) * count);
 
     // First 3 vertices are in the right place, just end early
     output[2].flags = PVR_CMD_VERTEX_EOL;
 
     GLsizei i = 3, target = 3;
-    ClipVertex* first = &output[0];
+    Vertex* first = &output[0];
 
     for(; i < count; ++i) {
         output[target++] = *first;
@@ -610,7 +610,7 @@ static void genTriangleFan(ClipVertex* output, GLuint count) {
     }
 }
 
-static inline void _readPositionData(const GLuint first, const GLuint count, ClipVertex* output) {
+static inline void _readPositionData(const GLuint first, const GLuint count, Vertex* output) {
     const GLubyte vstride = (VERTEX_POINTER.stride) ? VERTEX_POINTER.stride : VERTEX_POINTER.size * byte_size(VERTEX_POINTER.type);
     const void* vptr = ((GLubyte*) VERTEX_POINTER.ptr + (first * vstride));
 
@@ -659,7 +659,7 @@ static inline void _readPositionData(const GLuint first, const GLuint count, Cli
     }
 }
 
-static inline void _readUVData(const GLuint first, const GLuint count, ClipVertex* output) {
+static inline void _readUVData(const GLuint first, const GLuint count, Vertex* output) {
     if((ENABLED_VERTEX_ATTRIBUTES & UV_ENABLED_FLAG) != UV_ENABLED_FLAG) {
         _fillZero2f(count, output->uv);
         return;
@@ -765,7 +765,7 @@ static inline void _readNormalData(const GLuint first, const GLuint count, Submi
     }
 }
 
-static inline void _readDiffuseData(const GLuint first, const GLuint count, ClipVertex* output) {
+static inline void _readDiffuseData(const GLuint first, const GLuint count, Vertex* output) {
     if((ENABLED_VERTEX_ATTRIBUTES & DIFFUSE_ENABLED_FLAG) != DIFFUSE_ENABLED_FLAG) {
         /* Just fill the whole thing white if the attribute is disabled */
         _fillWhiteARGB(count, output[0].bgra);
@@ -825,8 +825,8 @@ static void generate(SubmissionTarget* target, const GLenum mode, const GLsizei 
     /* Read from the client buffers and generate an array of ClipVertices */
 
     const GLsizei istride = byte_size(type);
-    ClipVertex* it;
-    const ClipVertex* end;
+    Vertex* it;
+    const Vertex* end;
 
     if(!indices) {
         _readPositionData(first, count, _glSubmissionTargetStart(target));
@@ -908,8 +908,8 @@ static void generate(SubmissionTarget* target, const GLenum mode, const GLsizei 
 
 static void transform(SubmissionTarget* target) {
     /* Perform modelview transform, storing W */
-    ClipVertex* vertex = _glSubmissionTargetStart(target);
-    const ClipVertex* end = _glSubmissionTargetEnd(target);
+    Vertex* vertex = _glSubmissionTargetStart(target);
+    const Vertex* end = _glSubmissionTargetEnd(target);
 
     _glApplyRenderMatrix(); /* Apply the Render Matrix Stack */
 
@@ -994,12 +994,12 @@ static void light(SubmissionTarget* target) {
     aligned_vector_resize(eye_space_data, target->count);
 
     /* Perform lighting calculations and manipulate the colour */
-    ClipVertex* vertex = _glSubmissionTargetStart(target);
+    Vertex* vertex = _glSubmissionTargetStart(target);
     VertexExtra* extra = aligned_vector_at(target->extras, 0);
     EyeSpaceData* eye_space = (EyeSpaceData*) eye_space_data->data;
 
     _glMatrixLoadModelView();
-    mat_transform3(vertex->xyz, eye_space->xyz, target->count, sizeof(ClipVertex), sizeof(EyeSpaceData));
+    mat_transform3(vertex->xyz, eye_space->xyz, target->count, sizeof(Vertex), sizeof(EyeSpaceData));
 
     _glMatrixLoadNormal();
     mat_transform_normal3(extra->nxyz, eye_space->n, target->count, sizeof(VertexExtra), sizeof(EyeSpaceData));
@@ -1034,8 +1034,8 @@ static void light(SubmissionTarget* target) {
 
 static void divide(SubmissionTarget* target) {
     /* Perform perspective divide on each vertex */
-    ClipVertex* vertex = _glSubmissionTargetStart(target);
-    const ClipVertex* end = _glSubmissionTargetEnd(target);
+    Vertex* vertex = _glSubmissionTargetStart(target);
+    const Vertex* end = _glSubmissionTargetEnd(target);
 
     while(vertex < end) {
         vertex->xyz[2] = 1.0f / vertex->w;
@@ -1045,7 +1045,7 @@ static void divide(SubmissionTarget* target) {
     }
 }
 
-static void push(PVRHeader* header, ClipVertex* output, const GLuint count, PolyList* activePolyList, GLshort textureUnit) {
+static void push(PVRHeader* header, Vertex* output, const GLuint count, PolyList* activePolyList, GLshort textureUnit) {
     // Compile the header
     pvr_poly_cxt_t cxt = *_glGetPVRContext();
     cxt.list_type = activePolyList->list_type;
@@ -1196,12 +1196,12 @@ static void submitVertices(GLenum mode, GLsizei first, GLuint count, GLenum type
     /* Push back a copy of the list to the transparent poly list, including the header
         (hence the + 1)
     */
-    ClipVertex* vertex = aligned_vector_push_back(
-        &_glTransparentPolyList()->vector, (ClipVertex*) _glSubmissionTargetHeader(target), target->count + 1
+    Vertex* vertex = aligned_vector_push_back(
+        &_glTransparentPolyList()->vector, (Vertex*) _glSubmissionTargetHeader(target), target->count + 1
     );
 
     PVRHeader* mtHeader = (PVRHeader*) vertex++;
-    ClipVertex* mtStart = vertex;
+    Vertex* mtStart = vertex;
 
     /* Replace the UV coordinates with the ST ones */
     const VertexExtra* end = aligned_vector_back(target->extras) + 1;

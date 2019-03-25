@@ -24,8 +24,8 @@ void _glEnableClipping(unsigned char v) {
     ZCLIP_ENABLED = v;
 }
 
-void _glClipLineToNearZ(const ClipVertex* v1, const ClipVertex* v2, ClipVertex* vout, float* t) __attribute__((optimize("fast-math")));
-void _glClipLineToNearZ(const ClipVertex* v1, const ClipVertex* v2, ClipVertex* vout, float* t) {
+void _glClipLineToNearZ(const Vertex* v1, const Vertex* v2, Vertex* vout, float* t) __attribute__((optimize("fast-math")));
+void _glClipLineToNearZ(const Vertex* v1, const Vertex* v2, Vertex* vout, float* t) {
     const float NEAR_PLANE = 0.2; // FIXME: this needs to be read from the projection matrix.. somehow
 
     *t = (NEAR_PLANE - v1->w) / (v2->w - v1->w);
@@ -75,7 +75,7 @@ const uint32_t VERTEX_CMD_EOL = 0xf0000000;
 const uint32_t VERTEX_CMD = 0xe0000000;
 
 typedef struct {
-    ClipVertex vertex[3];
+    Vertex vertex[3];
     VertexExtra extra[3];
     uint8_t visible;
 } Triangle;
@@ -85,10 +85,10 @@ void _glClipTriangle(const Triangle* triangle, const uint8_t visible, Submission
     uint8_t i, c = 0;
 
     uint8_t lastVisible = 255;
-    ClipVertex* last = NULL;
+    Vertex* last = NULL;
     VertexExtra* veLast = NULL;
 
-    const ClipVertex* vertices = triangle->vertex;
+    const Vertex* vertices = triangle->vertex;
     const VertexExtra* extras = triangle->extra;
 
     /* Used when flat shading is enabled */
@@ -97,7 +97,7 @@ void _glClipTriangle(const Triangle* triangle, const uint8_t visible, Submission
     for(i = 0; i < 4; ++i) {
         uint8_t thisIndex = (i == 3) ? 0 : i;
 
-        ClipVertex next;
+        Vertex next;
         VertexExtra veNext;
 
         next.flags = VERTEX_CMD;
@@ -107,8 +107,8 @@ void _glClipTriangle(const Triangle* triangle, const uint8_t visible, Submission
             uint8_t lastIndex = (i == 3) ? 2 : thisIndex - 1;
 
             if(lastVisible < 255 && lastVisible != thisVisible) {
-                const ClipVertex* v1 = &vertices[lastIndex];
-                const ClipVertex* v2 = &vertices[thisIndex];
+                const Vertex* v1 = &vertices[lastIndex];
+                const Vertex* v2 = &vertices[thisIndex];
 
                 const VertexExtra* ve1 = &extras[lastIndex];
                 const VertexExtra* ve2 = &extras[thisIndex];
@@ -153,7 +153,7 @@ void _glClipTriangle(const Triangle* triangle, const uint8_t visible, Submission
     if(last) {
         if(c == 4) {
             /* Convert to two triangles */
-            ClipVertex newVerts[3];
+            Vertex newVerts[3];
             newVerts[0] = *(last - 3);
             newVerts[1] = *(last - 1);
             newVerts[2] = *(last);
@@ -180,7 +180,7 @@ void _glClipTriangle(const Triangle* triangle, const uint8_t visible, Submission
     }
 }
 
-static inline void markDead(ClipVertex* vert) {
+static inline void markDead(Vertex* vert) {
     vert->flags = VERTEX_CMD_EOL;
 }
 
@@ -201,9 +201,9 @@ void _glClipTriangleStrip(SubmissionTarget* target, uint8_t fladeShade) {
 
     CLIP_COUNT = 0;
 
-    ClipVertex* vertex = _glSubmissionTargetStart(target);
-    const ClipVertex* end = _glSubmissionTargetEnd(target);
-    const ClipVertex* start = vertex;
+    Vertex* vertex = _glSubmissionTargetStart(target);
+    const Vertex* end = _glSubmissionTargetEnd(target);
+    const Vertex* start = vertex;
 
     int32_t triangle = -1;
 
@@ -217,9 +217,9 @@ void _glClipTriangleStrip(SubmissionTarget* target, uint8_t fladeShade) {
         triangle++;
 
         uint8_t even = (triangle % 2) == 0;
-        ClipVertex* v1 = (even) ? vertex - 2 : vertex - 1;
-        ClipVertex* v2 = (even) ? vertex - 1 : vertex - 2;
-        ClipVertex* v3 = vertex;
+        Vertex* v1 = (even) ? vertex - 2 : vertex - 1;
+        Vertex* v2 = (even) ? vertex - 1 : vertex - 2;
+        Vertex* v3 = vertex;
 
         /* Indexes into extras array */
         vi1 = v1 - start;
@@ -265,7 +265,7 @@ void _glClipTriangleStrip(SubmissionTarget* target, uint8_t fladeShade) {
                     markDead(v3);
                 } else {
                     markDead(v1);
-                    ClipVertex tmp = *v2;
+                    Vertex tmp = *v2;
                     *v2 = *v3;
                     *v3 = tmp;
 

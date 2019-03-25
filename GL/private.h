@@ -103,7 +103,7 @@ typedef struct {
      * but we're not using that for now, so having W here makes the code
      * simpler */
     float w;
-} ClipVertex;
+} Vertex;
 
 /* ClipVertex doesn't have room for these, so we need to parse them
  * out separately. Potentially 'w' will be housed here if we support oargb */
@@ -127,8 +127,8 @@ typedef struct {
 } SubmissionTarget;
 
 PVRHeader* _glSubmissionTargetHeader(SubmissionTarget* target);
-ClipVertex* _glSubmissionTargetStart(SubmissionTarget* target);
-ClipVertex* _glSubmissionTargetEnd(SubmissionTarget* target);
+Vertex* _glSubmissionTargetStart(SubmissionTarget* target);
+Vertex* _glSubmissionTargetEnd(SubmissionTarget* target);
 
 typedef enum {
     CLIP_RESULT_ALL_IN_FRONT,
@@ -146,7 +146,7 @@ typedef enum {
 
 struct SubmissionTarget;
 
-void _glClipLineToNearZ(const ClipVertex* v1, const ClipVertex* v2, ClipVertex* vout, float* t);
+void _glClipLineToNearZ(const Vertex* v1, const Vertex* v2, Vertex* vout, float* t);
 void _glClipTriangleStrip(SubmissionTarget* target, uint8_t fladeShade);
 
 PolyList *_glActivePolyList();
