@@ -287,9 +287,13 @@ void _glClipTriangleStrip(SubmissionTarget* target, uint8_t fladeShade) {
                 TO_CLIP[CLIP_COUNT].vertex[1] = *v2;
                 TO_CLIP[CLIP_COUNT].vertex[2] = *v3;
 
-                TO_CLIP[CLIP_COUNT].extra[0] = *(VertexExtra*) aligned_vector_at(target->extras, vi1);
-                TO_CLIP[CLIP_COUNT].extra[1] = *(VertexExtra*) aligned_vector_at(target->extras, vi2);
-                TO_CLIP[CLIP_COUNT].extra[2] = *(VertexExtra*) aligned_vector_at(target->extras, vi3);
+                VertexExtra* ve1 = (VertexExtra*) aligned_vector_at(target->extras, vi1);
+                VertexExtra* ve2 = (VertexExtra*) aligned_vector_at(target->extras, vi2);
+                VertexExtra* ve3 = (VertexExtra*) aligned_vector_at(target->extras, vi3);
+
+                TO_CLIP[CLIP_COUNT].extra[0] = *ve1;
+                TO_CLIP[CLIP_COUNT].extra[1] = *ve2;
+                TO_CLIP[CLIP_COUNT].extra[2] = *ve3;
 
                 TO_CLIP[CLIP_COUNT].visible = visible;
                 ++CLIP_COUNT;
@@ -325,20 +329,17 @@ void _glClipTriangleStrip(SubmissionTarget* target, uint8_t fladeShade) {
 
                     triangle = -1;
                 } else {                    
-                    /* FIXME: ?
-                     * This situation doesn't actually seem possible, we always clip from one end
-                     * of the triangle strip to the other, so we're never going to hit the plane in the
-                     * middle of the strip (with previous/next unhandled tris).
-                     *
-                     * Uncomment if this actually happens */
-                    assert(0 && "Not Implemented (see comment)");
-
-                    /*
-                    ClipVertex* v4 = vertex + 1;
+                    Vertex* v4 = v3 + 1;
+                    uint32_t vi4 = v4 - start;
 
                     TO_CLIP[CLIP_COUNT].vertex[0] = *v3;
                     TO_CLIP[CLIP_COUNT].vertex[1] = *v2;
                     TO_CLIP[CLIP_COUNT].vertex[2] = *v4;
+
+                    VertexExtra* ve4 = (VertexExtra*) aligned_vector_at(target->extras, vi4);
+                    TO_CLIP[CLIP_COUNT].extra[0] = *(VertexExtra*) aligned_vector_at(target->extras, vi3);
+                    TO_CLIP[CLIP_COUNT].extra[1] = *(VertexExtra*) aligned_vector_at(target->extras, vi2);
+                    TO_CLIP[CLIP_COUNT].extra[2] = *ve4;
 
                     visible = ((v3->w > 0) ? 4 : 0) | ((v2->w > 0) ? 2 : 0) | ((v4->w > 0) ? 1 : 0);
 
@@ -352,17 +353,19 @@ void _glClipTriangleStrip(SubmissionTarget* target, uint8_t fladeShade) {
                     (vertex - 1)->flags = VERTEX_CMD_EOL;
 
                     if(v4->flags == VERTEX_CMD_EOL) {
-                        markDead(vertex);
+                        markDead(v3);
                         markDead(v4);
                     } else {
                         // Swap the next vertices to start a new strip
-                        ClipVertex tmp = *vertex;
-                        *vertex = *v4;
-                        *v4 = tmp;
-
-                        vertex->flags = VERTEX_CMD;
+                        swapVertex(v3, v4);
+                        v3->flags = VERTEX_CMD;
                         v4->flags = VERTEX_CMD;
-                    } */
+
+                        /* Swap the extra data too */
+                        VertexExtra t = *ve4;
+                        *ve3 = *ve4;
+                        *ve4 = t;
+                    }
                 }
             break;
             default:
