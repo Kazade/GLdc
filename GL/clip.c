@@ -221,16 +221,16 @@ void _glClipTriangleStrip(SubmissionTarget* target, uint8_t fladeShade) {
         Vertex* v2 = (even) ? vertex - 1 : vertex - 2;
         Vertex* v3 = vertex;
 
-        /* Indexes into extras array */
-        vi1 = v1 - start;
-        vi2 = v2 - start;
-        vi3 = v3 - start;
-
         /* Skip ahead if we don't have a complete triangle yet */
         if(v1->flags != VERTEX_CMD || v2->flags != VERTEX_CMD) {
             triangle = -1;
             continue;
         }
+
+        /* Indexes into extras array */
+        vi1 = v1 - start;
+        vi2 = v2 - start;
+        vi3 = v3 - start;
 
         uint8_t visible = ((v1->w > 0) ? 4 : 0) | ((v2->w > 0) ? 2 : 0) | ((v3->w > 0) ? 1 : 0);
 
