@@ -536,12 +536,26 @@ static inline void transformNormalToEyeSpace(GLfloat* normal) {
     mat_trans_normal3(normal[0], normal[1], normal[2]);
 }
 
+
+/* FIXME: SH4 has a swap.w instruction, we should leverage it here! */
+#define _XOR_SWAP32(x, y) \
+    *((uint32_t*) &x) = *((uint32_t*) &x) ^ *((uint32_t*) &y); \
+    *((uint32_t*) &y) = *((uint32_t*) &x) ^ *((uint32_t*) &y); \
+    *((uint32_t*) &x) = *((uint32_t*) &x) ^ *((uint32_t*) &y);
+
+
 #define swapVertex(a, b)   \
 do {                 \
-    Vertex temp = *a;    \
-    *a = *b;           \
-    *b = temp;        \
+    _XOR_SWAP32(a->flags, b->flags); \
+    _XOR_SWAP32(a->xyz[0], b->xyz[0]); \
+    _XOR_SWAP32(a->xyz[1], b->xyz[1]); \
+    _XOR_SWAP32(a->xyz[2], b->xyz[2]); \
+    _XOR_SWAP32(a->uv[0], b->uv[0]); \
+    _XOR_SWAP32(a->uv[1], b->uv[1]); \
+    _XOR_SWAP32(a->bgra, b->bgra); \
+    _XOR_SWAP32(a->w, b->w); \
 } while(0)
+
 
 PVRHeader* _glSubmissionTargetHeader(SubmissionTarget* target) {
     return aligned_vector_at(&target->output->vector, target->header_offset);
@@ -565,16 +579,16 @@ static inline void genTriangles(Vertex* output, GLuint count) {
 }
 
 static inline void genQuads(Vertex* output, GLuint count) {
-    Vertex* previous;
-    Vertex* this = output + 3;
-
+    Vertex* this = output + 2;
+    Vertex* next = this + 1;
     const Vertex* end = output + count;
 
     while(this < end) {
-        previous = this - 1;
-        swapVertex(previous, this);
-        this->flags = PVR_CMD_VERTEX_EOL;
+        swapVertex(this, next);
+        next->flags = PVR_CMD_VERTEX_EOL;
+
         this += 4;
+        next += 4;
     }
 }
 
@@ -589,7 +603,6 @@ static void genTriangleFan(Vertex* output, GLuint count) {
     static Vertex buffer[MAX_POLYGON_SIZE];
 
     if(count <= 3){
-        swapVertex(&output[1], &output[2]);
         output[2].flags = PVR_CMD_VERTEX_EOL;
         return;
     }
