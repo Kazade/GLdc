@@ -265,10 +265,7 @@ void _glClipTriangleStrip(SubmissionTarget* target, uint8_t fladeShade) {
                     markDead(v3);
                 } else {
                     markDead(v1);
-                    Vertex tmp = *v2;
-                    *v2 = *v3;
-                    *v3 = tmp;
-
+                    swapVertex(v2, v3);
                     triangle = -1;
                     v2->flags = VERTEX_CMD;
                     v3->flags = VERTEX_CMD;
