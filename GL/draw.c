@@ -538,22 +538,29 @@ static inline void transformNormalToEyeSpace(GLfloat* normal) {
 
 
 /* FIXME: SH4 has a swap.w instruction, we should leverage it here! */
-#define _XOR_SWAP32(x, y) \
+#define _SWAP32(x, y) \
+do { \
+    uint32_t t = *((uint32_t*) &x); \
+    *((uint32_t*) &x) = *((uint32_t*) &y); \
+    *((uint32_t*) &y) = t; \
+} while(0)
+
+/*
     *((uint32_t*) &x) = *((uint32_t*) &x) ^ *((uint32_t*) &y); \
     *((uint32_t*) &y) = *((uint32_t*) &x) ^ *((uint32_t*) &y); \
-    *((uint32_t*) &x) = *((uint32_t*) &x) ^ *((uint32_t*) &y);
+    *((uint32_t*) &x) = *((uint32_t*) &x) ^ *((uint32_t*) &y); */
 
 
 #define swapVertex(a, b)   \
 do {                 \
-    _XOR_SWAP32(a->flags, b->flags); \
-    _XOR_SWAP32(a->xyz[0], b->xyz[0]); \
-    _XOR_SWAP32(a->xyz[1], b->xyz[1]); \
-    _XOR_SWAP32(a->xyz[2], b->xyz[2]); \
-    _XOR_SWAP32(a->uv[0], b->uv[0]); \
-    _XOR_SWAP32(a->uv[1], b->uv[1]); \
-    _XOR_SWAP32(a->bgra, b->bgra); \
-    _XOR_SWAP32(a->w, b->w); \
+    _SWAP32(a->flags, b->flags); \
+    _SWAP32(a->xyz[0], b->xyz[0]); \
+    _SWAP32(a->xyz[1], b->xyz[1]); \
+    _SWAP32(a->xyz[2], b->xyz[2]); \
+    _SWAP32(a->uv[0], b->uv[0]); \
+    _SWAP32(a->uv[1], b->uv[1]); \
+    _SWAP32(a->bgra, b->bgra); \
+    _SWAP32(a->w, b->w); \
 } while(0)
 
 
