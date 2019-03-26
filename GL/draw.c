@@ -20,6 +20,12 @@ static AttribPointer DIFFUSE_POINTER;
 static GLuint ENABLED_VERTEX_ATTRIBUTES = 0;
 static GLubyte ACTIVE_CLIENT_TEXTURE = 0;
 
+
+#define ITERATE(count) \
+    GLushort i = count; \
+    while(i--)
+
+
 void _glInitAttributePointers() {
     TRACE();
 
@@ -69,9 +75,7 @@ typedef void (*PolyBuildFunc)(Vertex* first, Vertex* previous, Vertex* vertex, V
 
 
 static void _readVertexData3f3f(const float* input, GLuint count, GLubyte stride, float* output) {
-    const float* end = (float*) (((GLubyte*) input) + (count * stride));
-
-    while(input < end) {
+    ITERATE(count) {
         output[0] = input[0];
         output[1] = input[1];
         output[2] = input[2];
@@ -83,9 +87,7 @@ static void _readVertexData3f3f(const float* input, GLuint count, GLubyte stride
 
 /* VE == VertexExtra */
 static void _readVertexData3f3fVE(const float* input, GLuint count, GLubyte stride, float* output) {
-    const float* end = (float*) (((GLubyte*) input) + (count * stride));
-
-    while(input < end) {
+    ITERATE(count) {
         output[0] = input[0];
         output[1] = input[1];
         output[2] = input[2];
@@ -96,9 +98,7 @@ static void _readVertexData3f3fVE(const float* input, GLuint count, GLubyte stri
 }
 
 static void _readVertexData3us3f(const GLushort* input, GLuint count, GLubyte stride, GLfloat* output) {
-    const GLushort* end = (GLushort*) ((GLubyte*) input) + (count * stride);
-
-    while(input < end) {
+    ITERATE(count) {
         output[0] = input[0];
         output[1] = input[1];
         output[2] = input[2];
@@ -109,9 +109,7 @@ static void _readVertexData3us3f(const GLushort* input, GLuint count, GLubyte st
 }
 
 static void _readVertexData3us3fVE(const GLushort* input, GLuint count, GLubyte stride, GLfloat* output) {
-    const GLushort* end = (GLushort*) ((GLubyte*) input) + (count * stride);
-
-    while(input < end) {
+    ITERATE(count) {
         output[0] = input[0];
         output[1] = input[1];
         output[2] = input[2];
@@ -122,9 +120,7 @@ static void _readVertexData3us3fVE(const GLushort* input, GLuint count, GLubyte 
 }
 
 static void _readVertexData3ui3f(const GLuint* input, GLuint count, GLubyte stride, GLfloat* output) {
-    const GLuint* end = (GLuint*) ((GLubyte*) input) + (count * stride);
-
-    while(input < end) {
+    ITERATE(count) {
         output[0] = input[0];
         output[1] = input[1];
         output[2] = input[2];
@@ -135,9 +131,7 @@ static void _readVertexData3ui3f(const GLuint* input, GLuint count, GLubyte stri
 }
 
 static void _readVertexData3ui3fVE(const GLuint* input, GLuint count, GLubyte stride, GLfloat* output) {
-    const GLuint* end = (GLuint*) ((GLubyte*) input) + (count * stride);
-
-    while(input < end) {
+    ITERATE(count) {
         output[0] = input[0];
         output[1] = input[1];
         output[2] = input[2];
@@ -149,9 +143,7 @@ static void _readVertexData3ui3fVE(const GLuint* input, GLuint count, GLubyte st
 
 static void _readVertexData3ub3f(const GLubyte* input, GLuint count, GLubyte stride, float* output) {
     const float ONE_OVER_TWO_FIVE_FIVE = 1.0f / 255.0f;
-    const GLubyte* end = ((GLubyte*) input) + (count * stride);
-
-    while(input < end) {
+    ITERATE(count) {
         output[0] = input[0] * ONE_OVER_TWO_FIVE_FIVE;
         output[1] = input[1] * ONE_OVER_TWO_FIVE_FIVE;
         output[2] = input[2] * ONE_OVER_TWO_FIVE_FIVE;
@@ -163,9 +155,7 @@ static void _readVertexData3ub3f(const GLubyte* input, GLuint count, GLubyte str
 
 static void _readVertexData3ub3fVE(const GLubyte* input, GLuint count, GLubyte stride, GLfloat* output) {
     const float ONE_OVER_TWO_FIVE_FIVE = 1.0f / 255.0f;
-    const GLubyte* end = ((GLubyte*) input) + (count * stride);
-
-    while(input < end) {
+    ITERATE(count) {
         output[0] = input[0] * ONE_OVER_TWO_FIVE_FIVE;
         output[1] = input[1] * ONE_OVER_TWO_FIVE_FIVE;
         output[2] = input[2] * ONE_OVER_TWO_FIVE_FIVE;
@@ -176,9 +166,7 @@ static void _readVertexData3ub3fVE(const GLubyte* input, GLuint count, GLubyte s
 }
 
 static void _readVertexData2f2f(const float* input, GLuint count, GLubyte stride, float* output) {
-    const float* end = (float*) ((GLubyte*) input) + (count * stride);
-
-    while(input < end) {
+    ITERATE(count) {
         output[0] = input[0];
         output[1] = input[1];
 
@@ -188,9 +176,7 @@ static void _readVertexData2f2f(const float* input, GLuint count, GLubyte stride
 }
 
 static void _readVertexData2f2fVE(const float* input, GLuint count, GLubyte stride, GLfloat* output) {
-    const float* end = (float*) ((GLubyte*) input) + (count * stride);
-
-    while(input < end) {
+    ITERATE(count) {
         output[0] = input[0];
         output[1] = input[1];
 
@@ -200,9 +186,7 @@ static void _readVertexData2f2fVE(const float* input, GLuint count, GLubyte stri
 }
 
 static void _readVertexData2f3f(const float* input, GLuint count, GLubyte stride, float* output) {
-    const float* end = (float*) ((GLubyte*) input) + (count * stride);
-
-    while(input < end) {
+    ITERATE(count) {
         output[0] = input[0];
         output[1] = input[1];
         output[2] = 0.0f;
@@ -214,9 +198,7 @@ static void _readVertexData2f3f(const float* input, GLuint count, GLubyte stride
 
 static void _readVertexData2ub3f(const GLubyte* input, GLuint count, GLubyte stride, float* output) {
     const float ONE_OVER_TWO_FIVE_FIVE = 1.0f / 255.0f;
-    const GLubyte* end = ((GLubyte*) input) + (count * stride);
-
-    while(input < end) {
+    ITERATE(count) {
         output[0] = input[0] * ONE_OVER_TWO_FIVE_FIVE;
         output[1] = input[1] * ONE_OVER_TWO_FIVE_FIVE;
         output[2] = 0.0f;
@@ -227,9 +209,7 @@ static void _readVertexData2ub3f(const GLubyte* input, GLuint count, GLubyte str
 }
 
 static void _readVertexData2us3f(const GLushort* input, GLuint count, GLubyte stride, float* output) {
-    const GLushort* end = (GLushort*) ((GLubyte*) input) + (count * stride);
-
-    while(input < end) {
+    ITERATE(count) {
         output[0] = input[0];
         output[1] = input[1];
         output[2] = 0.0f;
@@ -240,9 +220,7 @@ static void _readVertexData2us3f(const GLushort* input, GLuint count, GLubyte st
 }
 
 static void _readVertexData2us2f(const GLushort* input, GLuint count, GLubyte stride, float* output) {
-    const GLushort* end = (GLushort*) ((GLubyte*) input) + (count * stride);
-
-    while(input < end) {
+    ITERATE(count) {
         output[0] = input[0];
         output[1] = input[1];
 
@@ -252,9 +230,7 @@ static void _readVertexData2us2f(const GLushort* input, GLuint count, GLubyte st
 }
 
 static void _readVertexData2us2fVE(const GLushort* input, GLuint count, GLubyte stride, GLfloat* output) {
-    const GLushort* end = (GLushort*) ((GLubyte*) input) + (count * stride);
-
-    while(input < end) {
+    ITERATE(count) {
         output[0] = input[0];
         output[1] = input[1];
 
@@ -264,9 +240,7 @@ static void _readVertexData2us2fVE(const GLushort* input, GLuint count, GLubyte 
 }
 
 static void _readVertexData2ui2f(const GLuint* input, GLuint count, GLubyte stride, float* output) {
-    const GLuint* end = (GLuint*) ((GLubyte*) input) + (count * stride);
-
-    while(input < end) {
+    ITERATE(count) {
         output[0] = input[0];
         output[1] = input[1];
 
@@ -276,9 +250,7 @@ static void _readVertexData2ui2f(const GLuint* input, GLuint count, GLubyte stri
 }
 
 static void _readVertexData2ui2fVE(const GLuint* input, GLuint count, GLubyte stride, GLfloat* output) {
-    const GLuint* end = (GLuint*) ((GLubyte*) input) + (count * stride);
-
-    while(input < end) {
+    ITERATE(count) {
         output[0] = input[0];
         output[1] = input[1];
 
@@ -289,9 +261,7 @@ static void _readVertexData2ui2fVE(const GLuint* input, GLuint count, GLubyte st
 
 static void _readVertexData2ub2f(const GLubyte* input, GLuint count, GLubyte stride, float* output) {
     const float ONE_OVER_TWO_FIVE_FIVE = 1.0f / 255.0f;
-    const GLubyte* end = (GLubyte*) ((GLubyte*) input) + (count * stride);
-
-    while(input < end) {
+    ITERATE(count) {
         output[0] = input[0] * ONE_OVER_TWO_FIVE_FIVE;
         output[1] = input[1] * ONE_OVER_TWO_FIVE_FIVE;
 
@@ -302,9 +272,7 @@ static void _readVertexData2ub2f(const GLubyte* input, GLuint count, GLubyte str
 
 static void _readVertexData2ub2fVE(const GLubyte* input, GLuint count, GLubyte stride, GLfloat* output) {
     const float ONE_OVER_TWO_FIVE_FIVE = 1.0f / 255.0f;
-    const GLubyte* end = (GLubyte*) ((GLubyte*) input) + (count * stride);
-
-    while(input < end) {
+    ITERATE(count) {
         output[0] = input[0] * ONE_OVER_TWO_FIVE_FIVE;
         output[1] = input[1] * ONE_OVER_TWO_FIVE_FIVE;
 
@@ -314,9 +282,7 @@ static void _readVertexData2ub2fVE(const GLubyte* input, GLuint count, GLubyte s
 }
 
 static void _readVertexData2ui3f(const GLuint* input, GLuint count, GLubyte stride, float* output) {
-    const GLuint* end = (GLuint*) ((GLubyte*) input) + (count * stride);
-
-    while(input < end) {
+    ITERATE(count) {
         output[0] = input[0];
         output[1] = input[1];
         output[2] = 0.0f;
@@ -327,9 +293,7 @@ static void _readVertexData2ui3f(const GLuint* input, GLuint count, GLubyte stri
 }
 
 static void _readVertexData4ubARGB(const GLubyte* input, GLuint count, GLubyte stride, GLubyte* output) {
-    const GLubyte* end = ((GLubyte*) input) + (count * stride);
-
-    while(input < end) {
+    ITERATE(count) {
         output[R8IDX] = input[0];
         output[G8IDX] = input[1];
         output[B8IDX] = input[2];
@@ -341,9 +305,7 @@ static void _readVertexData4ubARGB(const GLubyte* input, GLuint count, GLubyte s
 }
 
 static void _readVertexData4fARGB(const float* input, GLuint count, GLubyte stride, GLubyte* output) {
-    const float* end = (float*) ((GLubyte*) input) + (count * stride);
-
-    while(input < end) {
+    ITERATE(count) {
         output[R8IDX] = (GLubyte) (input[0] * 255.0f);
         output[G8IDX] = (GLubyte) (input[1] * 255.0f);
         output[B8IDX] = (GLubyte) (input[2] * 255.0f);
@@ -355,9 +317,7 @@ static void _readVertexData4fARGB(const float* input, GLuint count, GLubyte stri
 }
 
 static void _readVertexData3fARGB(const float* input, GLuint count, GLubyte stride, GLubyte* output) {
-    const float* end = (float*) ((GLubyte*) input) + (count * stride);
-
-    while(input < end) {
+    ITERATE(count) {
         output[R8IDX] = (GLubyte) (input[0] * 255.0f);
         output[G8IDX] = (GLubyte) (input[1] * 255.0f);
         output[B8IDX] = (GLubyte) (input[2] * 255.0f);
@@ -369,9 +329,7 @@ static void _readVertexData3fARGB(const float* input, GLuint count, GLubyte stri
 }
 
 static void _readVertexData3ubARGB(const GLubyte* input, GLuint count, GLubyte stride, GLubyte* output) {
-    const GLubyte* end = ((GLubyte*) input) + (count * stride);
-
-    while(input < end) {
+    ITERATE(count) {
         output[R8IDX] = input[0];
         output[G8IDX] = input[1];
         output[B8IDX] = input[2];
@@ -383,8 +341,7 @@ static void _readVertexData3ubARGB(const GLubyte* input, GLuint count, GLubyte s
 }
 
 static void _fillWithNegZVE(GLuint count, GLfloat* output) {
-    const GLfloat* end = output + (count * 3);
-    while(output < end) {
+    ITERATE(count) {
         output[0] = output[1] = 0.0f;
         output[2] = -1.0f;
         output = (GLfloat*) (((GLubyte*) output) + sizeof(VertexExtra));
@@ -392,9 +349,7 @@ static void _fillWithNegZVE(GLuint count, GLfloat* output) {
 }
 
 static void _fillWhiteARGB(GLuint count, GLubyte* output) {
-    const GLubyte* end = output + (sizeof(Vertex) * count);
-
-    while(output < end) {
+    ITERATE(count) {
         output[R8IDX] = 255;
         output[G8IDX] = 255;
         output[B8IDX] = 255;
@@ -405,16 +360,14 @@ static void _fillWhiteARGB(GLuint count, GLubyte* output) {
 }
 
 static void _fillZero2f(GLuint count, GLfloat* output) {
-    const GLfloat* end = (GLfloat*) ((GLubyte*) output) + (count * sizeof(Vertex));
-    while(output < end) {
+    ITERATE(count) {
         output[0] = output[1] = 0.0f;
         output = (GLfloat*) (((GLubyte*) output) + sizeof(Vertex));
     }
 }
 
 static void _fillZero2fVE(GLuint count, GLfloat* output) {
-    const GLfloat* end = output + (2 * count);
-    while(output < end) {
+    ITERATE(count) {
         output[0] = output[1] = 0.0f;
         output = (GLfloat*) (((GLubyte*) output) + sizeof(VertexExtra));
     }
@@ -551,9 +504,8 @@ Vertex* _glSubmissionTargetEnd(SubmissionTarget* target) {
 }
 
 static inline void genTriangles(Vertex* output, GLuint count) {
-    const Vertex* end = output + count;
     Vertex* it = output + 2;
-    while(it < end) {
+    ITERATE(count) {
         it->flags = PVR_CMD_VERTEX_EOL;
         it += 3;
     }
@@ -562,9 +514,8 @@ static inline void genTriangles(Vertex* output, GLuint count) {
 static inline void genQuads(Vertex* output, GLuint count) {
     Vertex* this = output + 2;
     Vertex* next = this + 1;
-    const Vertex* end = output + count;
 
-    while(this < end) {
+    ITERATE(count) {
         swapVertex(this, next);
         next->flags = PVR_CMD_VERTEX_EOL;
 
@@ -841,9 +792,8 @@ static void generate(SubmissionTarget* target, const GLenum mode, const GLsizei 
         profiler_checkpoint("others");
 
         it = _glSubmissionTargetStart(target);
-        end = _glSubmissionTargetEnd(target);
 
-        while(it < end) {
+        ITERATE(target->count) {
             (it++)->flags = PVR_CMD_VERTEX;
         }
 
@@ -872,11 +822,10 @@ static void generate(SubmissionTarget* target, const GLenum mode, const GLsizei 
     } else {
         const IndexParseFunc indexFunc = _calcParseIndexFunc(type);
         it = _glSubmissionTargetStart(target);
-        end = _glSubmissionTargetEnd(target);
 
         GLuint j;
         const GLubyte* idx = indices;
-        while(it < end) {
+        ITERATE(count) {
             j = indexFunc(idx);
             _readPositionData(j, 1, it);
             _readDiffuseData(j, 1, it);
@@ -889,6 +838,7 @@ static void generate(SubmissionTarget* target, const GLenum mode, const GLsizei 
         }
 
         it = _glSubmissionTargetStart(target);
+        end = _glSubmissionTargetEnd(target);
         while(it < end) {
             (it++)->flags = PVR_CMD_VERTEX;
         }
@@ -917,11 +867,10 @@ static void generate(SubmissionTarget* target, const GLenum mode, const GLsizei 
 static void transform(SubmissionTarget* target) {
     /* Perform modelview transform, storing W */
     Vertex* vertex = _glSubmissionTargetStart(target);
-    const Vertex* end = _glSubmissionTargetEnd(target);
 
     _glApplyRenderMatrix(); /* Apply the Render Matrix Stack */
 
-    while(vertex < end) {
+    ITERATE(target->count) {
         register float __x __asm__("fr12") = (vertex->xyz[0]);
         register float __y __asm__("fr13") = (vertex->xyz[1]);
         register float __z __asm__("fr14") = (vertex->xyz[2]);
@@ -953,9 +902,8 @@ static void clip(SubmissionTarget* target) {
 static void mat_transform3(const float* xyz, const float* xyzOut, const uint32_t count, const uint32_t inStride, const uint32_t outStride) {
     uint8_t* dataIn = (uint8_t*) xyz;
     uint8_t* dataOut = (uint8_t*) xyzOut;
-    uint32_t i = count;
 
-    while(i--) {
+    ITERATE(count) {
         float* in = (float*) dataIn;
         float* out = (float*) dataOut;
 
@@ -969,9 +917,8 @@ static void mat_transform3(const float* xyz, const float* xyzOut, const uint32_t
 static void mat_transform_normal3(const float* xyz, const float* xyzOut, const uint32_t count, const uint32_t inStride, const uint32_t outStride) {
     uint8_t* dataIn = (uint8_t*) xyz;
     uint8_t* dataOut = (uint8_t*) xyzOut;
-    uint32_t i = count;
 
-    while(i--) {
+    ITERATE(count) {
         float* in = (float*) dataIn;
         float* out = (float*) dataOut;
 
