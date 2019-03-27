@@ -638,11 +638,8 @@ static inline void _readUVData(const GLuint first, const GLuint count, Vertex* o
     }
 }
 
-static inline void _readSTData(const GLuint first, const GLuint count, SubmissionTarget* target) {
-    assert(target->extras->size == count);
-
+static inline void _readSTData(const GLuint first, const GLuint count, VertexExtra* extra) {
     if((ENABLED_VERTEX_ATTRIBUTES & ST_ENABLED_FLAG) != ST_ENABLED_FLAG) {
-        VertexExtra* extra = aligned_vector_at(target->extras, 0);
         _fillZero2fVE(count, extra->st);
         return;
     }
@@ -651,7 +648,6 @@ static inline void _readSTData(const GLuint first, const GLuint count, Submissio
     const void* stptr = ((GLubyte*) ST_POINTER.ptr + (first * ststride));
 
     if(ST_POINTER.size == 2) {
-        VertexExtra* extra = aligned_vector_at(target->extras, 0);
         switch(ST_POINTER.type) {
             case GL_FLOAT:
                 _readVertexData2f2fVE(stptr, count, ststride, extra->st);
@@ -676,11 +672,8 @@ static inline void _readSTData(const GLuint first, const GLuint count, Submissio
     }
 }
 
-static inline void _readNormalData(const GLuint first, const GLuint count, SubmissionTarget* target) {
-    assert(target->extras->size == count);
-
+static inline void _readNormalData(const GLuint first, const GLuint count, VertexExtra* extra) {
     if((ENABLED_VERTEX_ATTRIBUTES & NORMAL_ENABLED_FLAG) != NORMAL_ENABLED_FLAG) {
-        VertexExtra* extra = aligned_vector_at(target->extras, 0);
         _fillWithNegZVE(count, extra->nxyz);
         return;
     }
@@ -689,7 +682,6 @@ static inline void _readNormalData(const GLuint first, const GLuint count, Submi
     const void* nptr = ((GLubyte*) NORMAL_POINTER.ptr + (first * nstride));
 
     if(NORMAL_POINTER.size == 3) {
-        VertexExtra* extra = aligned_vector_at(target->extras, 0);
         switch(NORMAL_POINTER.type) {
             case GL_FLOAT:
                 _readVertexData3f3fVE(nptr, count, nstride, extra->nxyz);
@@ -787,8 +779,11 @@ static void generate(SubmissionTarget* target, const GLenum mode, const GLsizei 
         profiler_checkpoint("diffuse");
 
         if(doTexture) _readUVData(first, count, _glSubmissionTargetStart(target));
-        if(doLighting) _readNormalData(first, count, target);
-        if(doTexture && doMultitexture) _readSTData(first, count, target);
+
+        VertexExtra* ve = aligned_vector_at(target->extras, 0);
+
+        if(doLighting) _readNormalData(first, count, ve);
+        if(doTexture && doMultitexture) _readSTData(first, count, ve);
         profiler_checkpoint("others");
 
         it = _glSubmissionTargetStart(target);
@@ -821,19 +816,24 @@ static void generate(SubmissionTarget* target, const GLenum mode, const GLsizei 
         profiler_pop();
     } else {
         const IndexParseFunc indexFunc = _calcParseIndexFunc(type);
-        it = _glSubmissionTargetStart(target);
-
         GLuint j;
         const GLubyte* idx = indices;
+
+        Vertex* vertices = _glSubmissionTargetStart(target);
+        VertexExtra* extras = aligned_vector_at(target->extras, 0);
+
         ITERATE(count) {
             j = indexFunc(idx);
-            _readPositionData(j, 1, it);
-            _readDiffuseData(j, 1, it);
-            if(doTexture) _readUVData(j, 1, it);
-            //FIXME: Need to think about how we can share this */
-            //if(doLighting) _readNormalData(j, 1, it);
-            //if(doTexture && doMultitexture) _readSTData(j, 1, it);
-            ++it;
+
+            _readPositionData(j, 1, vertices);
+            _readDiffuseData(j, 1, vertices);
+            if(doTexture) _readUVData(j, 1, vertices);
+            if(doLighting) _readNormalData(j, 1, extras);
+            if(doTexture && doMultitexture) _readSTData(j, 1, extras);
+
+            ++vertices;
+            ++extras;
+
             idx += istride;
         }
 
