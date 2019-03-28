@@ -1159,7 +1159,7 @@ static void submitVertices(GLenum mode, GLsizei first, GLuint count, GLenum type
 
     profiler_checkpoint("divide");
 
-    push(_glSubmissionTargetHeader(target), _glSubmissionTargetStart(target), target->count, _glActivePolyList(), 0);
+    push(_glSubmissionTargetHeader(target), _glSubmissionTargetStart(target), target->count, target->output, 0);
 
     profiler_checkpoint("push");
     /*
