@@ -764,6 +764,7 @@ static inline void _readDiffuseData(const GLuint first, const GLuint count, Vert
 static void generate(SubmissionTarget* target, const GLenum mode, const GLsizei first, const GLuint count,
         const GLubyte* indices, const GLenum type, const GLboolean doTexture, const GLboolean doMultitexture, const GLboolean doLighting) {
     /* Read from the client buffers and generate an array of ClipVertices */
+    TRACE();
 
     const GLsizei istride = byte_size(type);
     Vertex* it;
@@ -865,6 +866,8 @@ static void generate(SubmissionTarget* target, const GLenum mode, const GLsizei 
 }
 
 static void transform(SubmissionTarget* target) {
+    TRACE();
+
     /* Perform modelview transform, storing W */
     Vertex* vertex = _glSubmissionTargetStart(target);
 
@@ -892,6 +895,8 @@ static void transform(SubmissionTarget* target) {
 }
 
 static void clip(SubmissionTarget* target) {
+    TRACE();
+
     /* Perform clipping, generating new vertices as necessary */
     _glClipTriangleStrip(target, _glGetShadeModel() == GL_FLAT);
 
@@ -988,6 +993,8 @@ static void light(SubmissionTarget* target) {
 }
 
 static void divide(SubmissionTarget* target) {
+    TRACE();
+
     /* Perform perspective divide on each vertex */
     Vertex* vertex = _glSubmissionTargetStart(target);
     const Vertex* end = _glSubmissionTargetEnd(target);
@@ -1001,6 +1008,8 @@ static void divide(SubmissionTarget* target) {
 }
 
 static void push(PVRHeader* header, Vertex* output, const GLuint count, PolyList* activePolyList, GLshort textureUnit) {
+    TRACE();
+
     // Compile the header
     pvr_poly_cxt_t cxt = *_glGetPVRContext();
     cxt.list_type = activePolyList->list_type;
@@ -1026,6 +1035,8 @@ static void push(PVRHeader* header, Vertex* output, const GLuint count, PolyList
 #define DEBUG_CLIPPING 0
 
 static void submitVertices(GLenum mode, GLsizei first, GLuint count, GLenum type, const GLvoid* indices) {
+    TRACE();
+
     /* Do nothing if vertices aren't enabled */
     if(!(ENABLED_VERTEX_ATTRIBUTES & VERTEX_ENABLED_FLAG)) {
         return;
