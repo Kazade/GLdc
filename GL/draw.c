@@ -22,7 +22,7 @@ static GLubyte ACTIVE_CLIENT_TEXTURE = 0;
 
 
 #define ITERATE(count) \
-    GLushort i = count; \
+    GLuint i = count; \
     while(i--)
 
 
@@ -1238,7 +1238,7 @@ void APIENTRY glDrawArrays(GLenum mode, GLint first, GLsizei count) {
         return;
     }
 
-    submitVertices(mode, first, count, GL_UNSIGNED_SHORT, NULL);
+    submitVertices(mode, first, count, GL_UNSIGNED_INT, NULL);
 }
 
 void APIENTRY glEnableClientState(GLenum cap) {
