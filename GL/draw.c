@@ -505,7 +505,7 @@ Vertex* _glSubmissionTargetEnd(SubmissionTarget* target) {
 
 static inline void genTriangles(Vertex* output, GLuint count) {
     Vertex* it = output + 2;
-    ITERATE(count) {
+    ITERATE(count / 3) {
         it->flags = PVR_CMD_VERTEX_EOL;
         it += 3;
     }
@@ -513,9 +513,9 @@ static inline void genTriangles(Vertex* output, GLuint count) {
 
 static inline void genQuads(Vertex* output, GLuint count) {
     Vertex* this = output + 2;
-    Vertex* next = this + 1;
+    Vertex* next = output + 3;
 
-    ITERATE(count) {
+    ITERATE(count / 4) {
         swapVertex(this, next);
         next->flags = PVR_CMD_VERTEX_EOL;
 
