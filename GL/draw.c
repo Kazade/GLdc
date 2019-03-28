@@ -767,19 +767,19 @@ static void generate(SubmissionTarget* target, const GLenum mode, const GLsizei 
     TRACE();
 
     const GLsizei istride = byte_size(type);
-    Vertex* it;
-    const Vertex* end;
 
     if(!indices) {
         profiler_push(__func__);
 
-        _readPositionData(first, count, _glSubmissionTargetStart(target));        
+        Vertex* start = _glSubmissionTargetStart(target);
+
+        _readPositionData(first, count, start);
         profiler_checkpoint("positions");
 
-        _readDiffuseData(first, count, _glSubmissionTargetStart(target));
+        _readDiffuseData(first, count, start);
         profiler_checkpoint("diffuse");
 
-        if(doTexture) _readUVData(first, count, _glSubmissionTargetStart(target));
+        if(doTexture) _readUVData(first, count, start);
 
         VertexExtra* ve = aligned_vector_at(target->extras, 0);
 
@@ -787,10 +787,11 @@ static void generate(SubmissionTarget* target, const GLenum mode, const GLsizei 
         if(doTexture && doMultitexture) _readSTData(first, count, ve);
         profiler_checkpoint("others");
 
-        it = _glSubmissionTargetStart(target);
+        Vertex* it = _glSubmissionTargetStart(target);
 
-        ITERATE(target->count) {
-            (it++)->flags = PVR_CMD_VERTEX;
+        ITERATE(count) {
+            it->flags = PVR_CMD_VERTEX;
+            ++it;
         }
 
         profiler_checkpoint("flags");
@@ -798,13 +799,13 @@ static void generate(SubmissionTarget* target, const GLenum mode, const GLsizei 
         // Drawing arrays
         switch(mode) {
         case GL_TRIANGLES:
-            genTriangles(_glSubmissionTargetStart(target), count);
+            genTriangles(start, count);
             break;
         case GL_QUADS:
-            genQuads(_glSubmissionTargetStart(target), count);
+            genQuads(start, count);
             break;
         case GL_TRIANGLE_FAN:
-            genTriangleFan(_glSubmissionTargetStart(target), count);
+            genTriangleFan(start, count);
             break;
         case GL_TRIANGLE_STRIP:
             genTriangleStrip(_glSubmissionTargetStart(target), count);
@@ -838,8 +839,8 @@ static void generate(SubmissionTarget* target, const GLenum mode, const GLsizei 
             idx += istride;
         }
 
-        it = _glSubmissionTargetStart(target);
-        end = _glSubmissionTargetEnd(target);
+        Vertex* it = _glSubmissionTargetStart(target);
+        const Vertex* end = _glSubmissionTargetEnd(target);
         while(it < end) {
             (it++)->flags = PVR_CMD_VERTEX;
         }
@@ -997,9 +998,8 @@ static void divide(SubmissionTarget* target) {
 
     /* Perform perspective divide on each vertex */
     Vertex* vertex = _glSubmissionTargetStart(target);
-    const Vertex* end = _glSubmissionTargetEnd(target);
 
-    while(vertex < end) {
+    ITERATE(target->count) {
         vertex->xyz[2] = 1.0f / vertex->w;
         vertex->xyz[0] *= vertex->xyz[2];
         vertex->xyz[1] *= vertex->xyz[2];
@@ -1100,6 +1100,8 @@ static void submitVertices(GLenum mode, GLsizei first, GLuint count, GLenum type
     target->header_offset = target->output->vector.size;
     target->start_offset = target->header_offset + 1;
 
+    assert(target->count);
+
     /* Make sure we have enough room for all the "extra" data */
     aligned_vector_resize(&extras, target->count);
 
@@ -1192,15 +1194,14 @@ static void submitVertices(GLenum mode, GLsizei first, GLuint count, GLenum type
         &_glTransparentPolyList()->vector, (Vertex*) _glSubmissionTargetHeader(target), target->count + 1
     );
 
+    assert(vertex);
+
     PVRHeader* mtHeader = (PVRHeader*) vertex++;
     Vertex* mtStart = vertex;
 
     /* Replace the UV coordinates with the ST ones */
-
     VertexExtra* ve = aligned_vector_at(target->extras, 0);
-    const VertexExtra* end = ve + target->count;
-
-    while(ve < end) {
+    ITERATE(target->count) {
         vertex->uv[0] = ve->st[0];
         vertex->uv[1] = ve->st[1];
         ++vertex;
