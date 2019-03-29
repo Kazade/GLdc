@@ -1095,6 +1095,8 @@ static void submitVertices(GLenum mode, GLsizei first, GLuint count, GLenum type
     glBlendFunc(blendSrc, blendDst);
     (blendEnabled) ? glEnable(GL_BLEND) : glDisable(GL_BLEND);
     (depthEnabled) ? glEnable(GL_DEPTH_TEST) : glDisable(GL_DEPTH_TEST);
+
+    profiler_pop();
 }
 
 void APIENTRY glDrawElements(GLenum mode, GLsizei count, GLenum type, const GLvoid* indices) {
