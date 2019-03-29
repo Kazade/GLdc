@@ -528,30 +528,18 @@ static void genTriangleStrip(Vertex* output, GLuint count) {
     output[count - 1].flags = PVR_CMD_VERTEX_EOL;
 }
 
-#define MAX_POLYGON_SIZE 32
-
 static void genTriangleFan(Vertex* output, GLuint count) {
-    assert(count < MAX_POLYGON_SIZE);
-    static Vertex buffer[MAX_POLYGON_SIZE];
+    assert(count <= 255);
 
-    if(count <= 3){
-        output[2].flags = PVR_CMD_VERTEX_EOL;
-        return;
-    }
+    Vertex* dst = output + (((count - 2) * 3) - 1);
+    Vertex* src = output + (count - 1);
 
-    memcpy(buffer, output, sizeof(Vertex) * count);
-
-    // First 3 vertices are in the right place, just end early
-    output[2].flags = PVR_CMD_VERTEX_EOL;
-
-    GLsizei i = 3, target = 3;
-    Vertex* first = &output[0];
-
-    for(; i < count; ++i) {
-        output[target++] = *first;
-        output[target++] = buffer[i - 1];
-        output[target] = buffer[i];
-        output[target++].flags = PVR_CMD_VERTEX_EOL;
+    GLubyte i = count - 2;
+    while(i--) {
+        *dst = *src--;
+        (*dst--).flags = PVR_CMD_VERTEX_EOL;
+        *dst-- = *src;
+        *dst-- = *output;
     }
 }
 

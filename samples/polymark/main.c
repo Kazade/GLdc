@@ -72,8 +72,6 @@ void do_frame() {
     int i;
     float col;
 
-
-
     for(i = 0; i < polycnt; i++) {
         glBegin(GL_POLYGON);
         x = rand() % 640;
@@ -90,8 +88,6 @@ void do_frame() {
         glVertex3f(x - size, y + size, z);
         glEnd();
     }
-
-
 
     glKosSwapBuffers();
 }
