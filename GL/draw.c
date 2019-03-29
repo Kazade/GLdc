@@ -389,8 +389,8 @@ static void _readVertexData4uiARGB(const GLuint* input, GLuint count, GLubyte st
     assert(0 && "Not Implemented");
 }
 
-GLuint _glGetEnabledAttributes() {
-    return ENABLED_VERTEX_ATTRIBUTES;
+GLuint* _glGetEnabledAttributes() {
+    return &ENABLED_VERTEX_ATTRIBUTES;
 }
 
 AttribPointer* _glGetVertexAttribPointer() {

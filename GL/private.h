@@ -210,7 +210,7 @@ typedef struct {
 
 GLboolean _glCheckValidEnum(GLint param, GLint* values, const char* func);
 
-GLuint _glGetEnabledAttributes();
+GLuint* _glGetEnabledAttributes();
 AttribPointer* _glGetVertexAttribPointer();
 AttribPointer* _glGetDiffuseAttribPointer();
 AttribPointer* _glGetNormalAttribPointer();

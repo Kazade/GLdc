@@ -24,7 +24,7 @@ typedef struct {
 
 static RootProfiler* root = NULL;
 
-static char PROFILER_ENABLED = 0;
+static char PROFILER_ENABLED = 1;
 
 void profiler_enable() {
     PROFILER_ENABLED = 1;

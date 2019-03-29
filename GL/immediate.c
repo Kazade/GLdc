@@ -29,6 +29,12 @@ static GLfloat UV_COORD[2] = {0.0f, 0.0f};
 static GLfloat ST_COORD[2] = {0.0f, 0.0f};
 
 
+static AttribPointer VERTEX_ATTRIB;
+static AttribPointer DIFFUSE_ATTRIB;
+static AttribPointer UV_ATTRIB;
+static AttribPointer ST_ATTRIB;
+static AttribPointer NORMAL_ATTRIB;
+
 void _glInitImmediateMode(GLuint initial_size) {
     aligned_vector_init(&VERTICES, sizeof(GLfloat));
     aligned_vector_init(&COLOURS, sizeof(GLubyte));
@@ -41,6 +47,31 @@ void _glInitImmediateMode(GLuint initial_size) {
     aligned_vector_reserve(&UV_COORDS, initial_size);
     aligned_vector_reserve(&ST_COORDS, initial_size);
     aligned_vector_reserve(&NORMALS, initial_size);
+
+    VERTEX_ATTRIB.ptr = VERTICES.data;
+    VERTEX_ATTRIB.size = 3;
+    VERTEX_ATTRIB.type = GL_FLOAT;
+    VERTEX_ATTRIB.stride = 0;
+
+    DIFFUSE_ATTRIB.ptr = COLOURS.data;
+    DIFFUSE_ATTRIB.size = 4;
+    DIFFUSE_ATTRIB.type = GL_UNSIGNED_BYTE;
+    DIFFUSE_ATTRIB.stride = 0;
+
+    UV_ATTRIB.ptr = UV_COORDS.data;
+    UV_ATTRIB.stride = 0;
+    UV_ATTRIB.type = GL_FLOAT;
+    UV_ATTRIB.size = 2;
+
+    ST_ATTRIB.ptr = ST_COORDS.data;
+    ST_ATTRIB.stride = 0;
+    ST_ATTRIB.type = GL_FLOAT;
+    ST_ATTRIB.size = 2;
+
+    NORMAL_ATTRIB.ptr = NORMALS.data;
+    NORMAL_ATTRIB.stride = 0;
+    NORMAL_ATTRIB.type = GL_FLOAT;
+    NORMAL_ATTRIB.size = 3;
 }
 
 GLubyte _glCheckImmediateModeInactive(const char* func) {
@@ -179,85 +210,62 @@ void APIENTRY glEnd() {
 
     IMMEDIATE_MODE_ACTIVE = GL_FALSE;
 
-    GLboolean vertexArrayEnabled, colorArrayEnabled, normalArrayEnabled;
-    GLboolean texArray0Enabled, texArray1Enabled;
+    /* Resizing could have invalidated these pointers */
+    VERTEX_ATTRIB.ptr = VERTICES.data;
+    DIFFUSE_ATTRIB.ptr = COLOURS.data;
+    UV_ATTRIB.ptr = UV_COORDS.data;
+    ST_ATTRIB.ptr = ST_COORDS.data;
+    NORMAL_ATTRIB.ptr = NORMALS.data;
 
-    glGetBooleanv(GL_VERTEX_ARRAY, &vertexArrayEnabled);
-    glGetBooleanv(GL_COLOR_ARRAY, &colorArrayEnabled);
-    glGetBooleanv(GL_NORMAL_ARRAY, &normalArrayEnabled);
+    GLuint* attrs = _glGetEnabledAttributes();
 
-    AttribPointer vptr = *_glGetVertexAttribPointer();
-    AttribPointer dptr = *_glGetDiffuseAttribPointer();
-    AttribPointer nptr = *_glGetNormalAttribPointer();
-    AttribPointer uvptr = *_glGetUVAttribPointer();
-    AttribPointer stptr = *_glGetSTAttribPointer();
+    AttribPointer* vattr = _glGetVertexAttribPointer();
+    AttribPointer* dattr = _glGetDiffuseAttribPointer();
+    AttribPointer* nattr = _glGetNormalAttribPointer();
+    AttribPointer* uattr = _glGetUVAttribPointer();
+    AttribPointer* sattr = _glGetSTAttribPointer();
 
-    profiler_checkpoint("prep");
+    /* Stash existing values */
+    AttribPointer vptr = *vattr;
+    AttribPointer dptr = *dattr;
+    AttribPointer nptr = *nattr;
+    AttribPointer uvptr = *uattr;
+    AttribPointer stptr = *sattr;
 
-    glEnableClientState(GL_VERTEX_ARRAY);
-    glEnableClientState(GL_COLOR_ARRAY);
-    glEnableClientState(GL_NORMAL_ARRAY);
+    GLuint prevAttrs = *attrs;
 
-    glVertexPointer(3, GL_FLOAT, 0, VERTICES.data);
-    glColorPointer(4, GL_UNSIGNED_BYTE, 0, COLOURS.data);
-    glNormalPointer(GL_FLOAT, 0, NORMALS.data);
+    /* Switch to our immediate mode arrays */
+    *vattr = VERTEX_ATTRIB;
+    *dattr = DIFFUSE_ATTRIB;
+    *nattr = NORMAL_ATTRIB;
+    *uattr = UV_ATTRIB;
+    *sattr = ST_ATTRIB;
 
-    GLint activeTexture;
-    glGetIntegerv(GL_CLIENT_ACTIVE_TEXTURE, &activeTexture);
-
-    glClientActiveTextureARB(GL_TEXTURE0);
-    glGetBooleanv(GL_TEXTURE_COORD_ARRAY, &texArray0Enabled);
-    glEnableClientState(GL_TEXTURE_COORD_ARRAY);
-    glTexCoordPointer(2, GL_FLOAT, 0, UV_COORDS.data);
-
-    glClientActiveTextureARB(GL_TEXTURE1);
-    glGetBooleanv(GL_TEXTURE_COORD_ARRAY, &texArray1Enabled);
-    glEnableClientState(GL_TEXTURE_COORD_ARRAY);
-    glTexCoordPointer(2, GL_FLOAT, 0, ST_COORDS.data);
-
-    profiler_checkpoint("client_state");
+    *attrs = ~0;  // Enable everything
 
     glDrawArrays(ACTIVE_POLYGON_MODE, 0, VERTICES.size / 3);
 
-    profiler_checkpoint("draw_arrays");
+    /* Restore everything */
+    *vattr = vptr;
+    *dattr = dptr;
+    *nattr = nptr;
+    *uattr = uvptr;
+    *sattr = stptr;
 
+    *attrs = prevAttrs;
+
+    /* Clear arrays for next polys */
     aligned_vector_clear(&VERTICES);
     aligned_vector_clear(&COLOURS);
     aligned_vector_clear(&UV_COORDS);
     aligned_vector_clear(&ST_COORDS);
     aligned_vector_clear(&NORMALS);
 
-    profiler_checkpoint("clear");
-
-    *_glGetVertexAttribPointer() = vptr;
-    *_glGetDiffuseAttribPointer() = dptr;
-    *_glGetNormalAttribPointer() = nptr;
-    *_glGetUVAttribPointer() = uvptr;
-    *_glGetSTAttribPointer() = stptr;
-
-    if(!vertexArrayEnabled) {
-        glDisableClientState(GL_VERTEX_ARRAY);
-    }
-
-    if(!colorArrayEnabled) {
-        glDisableClientState(GL_COLOR_ARRAY);
-    }
-
-    if(!normalArrayEnabled) {
-        glDisableClientState(GL_NORMAL_ARRAY);
-    }
-
-    if(!texArray0Enabled) {
-        glClientActiveTextureARB(GL_TEXTURE0);
-        glDisableClientState(GL_TEXTURE_COORD_ARRAY);
-    }
-
-    if(!texArray1Enabled) {
-        glClientActiveTextureARB(GL_TEXTURE1);
-        glDisableClientState(GL_TEXTURE_COORD_ARRAY);
-    }
-
-    glClientActiveTextureARB((GLuint) activeTexture);
+    *vattr = vptr;
+    *dattr = dptr;
+    *nattr = nptr;
+    *uattr = uvptr;
+    *sattr = stptr;
 
     profiler_checkpoint("restore");
     profiler_pop();
