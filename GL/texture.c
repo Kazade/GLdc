@@ -940,15 +940,17 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
 
         if(needsTwiddling) {
             assert(type == GL_UNSIGNED_BYTE);  // Anything else needs this loop adjusting
-            GLuint x, y, min, min2, mask;
+            GLuint x, y, min, mask;
+
+            GLubyte *pixels   = (GLubyte*) data;
+            GLushort *vtex    = (GLushort*) targetData;
 
             min = MIN(w, h);
-            min2 = min * min;
             mask = min - 1;
 
-            for(y = 0; y < h; y++) {
+            for(y = 0; y < h; y += 2) {
                 for(x = 0; x < w; x++) {
-                    targetData[TWIDOUT(x & mask, y & mask) + (x / min + y / min) * min2] = ((GLubyte*) data)[y * w + x];
+                    vtex[TWIDOUT((y & mask) / 2, x & mask) + (x / min + y / min)*min * min / 2] = pixels[y * w + x] | (pixels[(y + 1) * w + x] << 8);
                 }
             }
         } else {
