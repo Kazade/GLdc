@@ -11,7 +11,7 @@ OBJS += GL/matrix.o GL/fog.o GL/error.o GL/clip.o containers/stack.o containers/
 
 SUBDIRS =
 
-KOS_CFLAGS += -ffast-math -O3 -Iinclude
+KOS_CFLAGS += -ffast-math -Ofast -Iinclude
 
 link:
 	$(KOS_AR) rcs $(TARGET) $(OBJS)

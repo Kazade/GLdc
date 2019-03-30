@@ -576,7 +576,7 @@ static GLenum COMPRESSED_FORMATS [] = {
 static GLint NUM_COMPRESSED_FORMATS = sizeof(COMPRESSED_FORMATS) / sizeof(GLenum);
 
 void APIENTRY glGetBooleanv(GLenum pname, GLboolean* params) {
-    GLuint enabledAttrs = _glGetEnabledAttributes();
+    GLuint enabledAttrs = *_glGetEnabledAttributes();
     GLuint activeClientTexture = _glGetActiveClientTexture();
 
     switch(pname) {

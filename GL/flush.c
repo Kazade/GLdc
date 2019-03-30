@@ -31,7 +31,6 @@ static void pvr_list_submit(void *src, int n) {
         d[7] = *(s++);
         __asm__("pref @%0" : : "r"(d));
         d += 8;
-        s += CLIP_VERTEX_INT_PADDING;
     }
 
     /* Wait for both store queues to complete */
@@ -105,9 +104,9 @@ void APIENTRY glKosInitEx(GLdcConfig* config) {
     PT_LIST.list_type = PVR_LIST_PT_POLY;
     TR_LIST.list_type = PVR_LIST_TR_POLY;
 
-    aligned_vector_init(&OP_LIST.vector, sizeof(ClipVertex));
-    aligned_vector_init(&PT_LIST.vector, sizeof(ClipVertex));
-    aligned_vector_init(&TR_LIST.vector, sizeof(ClipVertex));
+    aligned_vector_init(&OP_LIST.vector, sizeof(Vertex));
+    aligned_vector_init(&PT_LIST.vector, sizeof(Vertex));
+    aligned_vector_init(&TR_LIST.vector, sizeof(Vertex));
 
     aligned_vector_reserve(&OP_LIST.vector, config->initial_op_capacity);
     aligned_vector_reserve(&PT_LIST.vector, config->initial_pt_capacity);

@@ -2,6 +2,7 @@
 #include <string.h>
 #include <math.h>
 #include <assert.h>
+#include <stdio.h>
 
 #if defined(__APPLE__) || defined(__WIN32__)
 /* Linux + Kos define this, OSX does not, so just use malloc there */
@@ -33,6 +34,10 @@ static inline unsigned int round_to_chunk_size(unsigned int val) {
 
 
 void aligned_vector_reserve(AlignedVector* vector, unsigned int element_count) {
+    if(element_count == 0) {
+        return;
+    }
+
     if(element_count <= vector->capacity) {
         return;
     }
@@ -44,7 +49,9 @@ void aligned_vector_reserve(AlignedVector* vector, unsigned int element_count) {
 
     unsigned int new_byte_size = element_count * vector->element_size;
     unsigned char* original_data = vector->data;
+
     vector->data = (unsigned char*) memalign(0x20, new_byte_size);
+    assert(vector->data);
 
     if(original_data) {
         memcpy(vector->data, original_data, original_byte_size);
@@ -56,9 +63,13 @@ void aligned_vector_reserve(AlignedVector* vector, unsigned int element_count) {
 
 void* aligned_vector_push_back(AlignedVector* vector, const void* objs, unsigned int count) {
     /* Resize enough room */
+    assert(count);
+    assert(vector->element_size);
 
     unsigned int initial_size = vector->size;
     aligned_vector_resize(vector, vector->size + count);
+
+    assert(vector->size == initial_size + count);
 
     unsigned char* dest = vector->data + (vector->element_size * initial_size);
 

@@ -1,10 +1,11 @@
 #ifndef PRIVATE_H
 #define PRIVATE_H
 
+#include <stdint.h>
+
 #include "../include/gl.h"
 #include "../containers/aligned_vector.h"
 #include "../containers/named_array.h"
-#include "./clip.h"
 
 #define TRACE_ENABLED 0
 #define TRACE() if(TRACE_ENABLED) {fprintf(stderr, "%s\n", __func__);}
@@ -17,11 +18,8 @@
 
 #define MAX_TEXTURE_SIZE 1024
 
-#define CLIP_VERTEX_INT_PADDING 6
-
 typedef struct {
     pvr_poly_hdr_t hdr;
-    unsigned int padding[CLIP_VERTEX_INT_PADDING];
 } PVRHeader;
 
 typedef struct {
@@ -31,9 +29,6 @@ typedef struct {
              sy,         /* Start y */
              ex,         /* End x */
              ey;         /* End y */
-
-    /* Padding to match clip vertex */
-    unsigned int padding[CLIP_VERTEX_INT_PADDING];
 } PVRTileClipCommand; /* Tile Clip command for the pvr */
 
 typedef struct {
@@ -97,6 +92,88 @@ typedef struct {
     GLboolean is_directional;
 } LightSource;
 
+typedef struct {
+    /* Same 32 byte layout as pvr_vertex_t */
+    uint32_t flags;
+    float xyz[3];
+    float uv[2];
+    uint8_t bgra[4];
+
+    /* In the pvr_vertex_t structure, this next 4 bytes is oargb
+     * but we're not using that for now, so having W here makes the code
+     * simpler */
+    float w;
+} Vertex;
+
+/* FIXME: SH4 has a swap.w instruction, we should leverage it here! */
+#define _SWAP32(x, y) \
+do { \
+    uint32_t t = *((uint32_t*) &x); \
+    *((uint32_t*) &x) = *((uint32_t*) &y); \
+    *((uint32_t*) &y) = t; \
+} while(0)
+
+/*
+    *((uint32_t*) &x) = *((uint32_t*) &x) ^ *((uint32_t*) &y); \
+    *((uint32_t*) &y) = *((uint32_t*) &x) ^ *((uint32_t*) &y); \
+    *((uint32_t*) &x) = *((uint32_t*) &x) ^ *((uint32_t*) &y); */
+
+
+#define swapVertex(a, b)   \
+do {                 \
+    _SWAP32(a->flags, b->flags); \
+    _SWAP32(a->xyz[0], b->xyz[0]); \
+    _SWAP32(a->xyz[1], b->xyz[1]); \
+    _SWAP32(a->xyz[2], b->xyz[2]); \
+    _SWAP32(a->uv[0], b->uv[0]); \
+    _SWAP32(a->uv[1], b->uv[1]); \
+    _SWAP32(a->bgra, b->bgra); \
+    _SWAP32(a->w, b->w); \
+} while(0)
+
+/* ClipVertex doesn't have room for these, so we need to parse them
+ * out separately. Potentially 'w' will be housed here if we support oargb */
+typedef struct {
+    float nxyz[3];
+    float st[2];
+} VertexExtra;
+
+/* Generating PVR vertices from the user-submitted data gets complicated, particularly
+ * when a realloc could invalidate pointers. This structure holds all the information
+ * we need on the target vertex array to allow passing around to the various stages (e.g. generate/clip etc.)
+ */
+typedef struct {
+    PolyList* output;
+    uint32_t header_offset; // The offset of the header in the output list
+    uint32_t start_offset; // The offset into the output list
+    uint32_t count; // The number of vertices in this output
+
+    /* Pointer to count * VertexExtra; */
+    AlignedVector* extras;
+} SubmissionTarget;
+
+PVRHeader* _glSubmissionTargetHeader(SubmissionTarget* target);
+Vertex* _glSubmissionTargetStart(SubmissionTarget* target);
+Vertex* _glSubmissionTargetEnd(SubmissionTarget* target);
+
+typedef enum {
+    CLIP_RESULT_ALL_IN_FRONT,
+    CLIP_RESULT_ALL_BEHIND,
+    CLIP_RESULT_ALL_ON_PLANE,
+    CLIP_RESULT_FRONT_TO_BACK,
+    CLIP_RESULT_BACK_TO_FRONT
+} ClipResult;
+
+
+#define A8IDX 3
+#define R8IDX 2
+#define G8IDX 1
+#define B8IDX 0
+
+struct SubmissionTarget;
+
+void _glClipLineToNearZ(const Vertex* v1, const Vertex* v2, Vertex* vout, float* t);
+void _glClipTriangleStrip(SubmissionTarget* target, uint8_t fladeShade);
 
 PolyList *_glActivePolyList();
 PolyList *_glTransparentPolyList();
@@ -133,7 +210,7 @@ typedef struct {
 
 GLboolean _glCheckValidEnum(GLint param, GLint* values, const char* func);
 
-GLuint _glGetEnabledAttributes();
+GLuint* _glGetEnabledAttributes();
 AttribPointer* _glGetVertexAttribPointer();
 AttribPointer* _glGetDiffuseAttribPointer();
 AttribPointer* _glGetNormalAttribPointer();
