@@ -64,6 +64,7 @@ void setup() {
     glOrtho(0, 640, 0, 480, -100, 100);
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
+    glEnable(GL_CULL_FACE);
 }
 
 void do_frame() {
@@ -95,7 +96,7 @@ void do_frame() {
 time_t start;
 void switch_tests(int ppf) {
     printf("Beginning new test: %d polys per frame (%d per second at 60fps)\n",
-           ppf * 2, ppf * 2 * 60);
+           ppf * 3, ppf * 3 * 60);
     avgfps = -1;
     polycnt = ppf;
 }
