@@ -549,6 +549,7 @@ static inline void _readPositionData(const GLuint first, const GLuint count, Ver
 
     if(VERTEX_POINTER.size == 3) {
         switch(VERTEX_POINTER.type) {
+            case GL_DOUBLE:
             case GL_FLOAT:
                 _readVertexData3f3f(vptr, count, vstride, output[0].xyz);
             break;
@@ -569,6 +570,7 @@ static inline void _readPositionData(const GLuint first, const GLuint count, Ver
         }
     } else if(VERTEX_POINTER.size == 2) {
         switch(VERTEX_POINTER.type) {
+            case GL_DOUBLE:
             case GL_FLOAT:
                 _readVertexData2f3f(vptr, count, vstride, output[0].xyz);
             break;
@@ -603,6 +605,7 @@ static inline void _readUVData(const GLuint first, const GLuint count, Vertex* o
 
     if(UV_POINTER.size == 2) {
         switch(UV_POINTER.type) {
+            case GL_DOUBLE:
             case GL_FLOAT:
                 _readVertexData2f2f(uvptr, count, uvstride, output[0].uv);
             break;
@@ -637,6 +640,7 @@ static inline void _readSTData(const GLuint first, const GLuint count, VertexExt
 
     if(ST_POINTER.size == 2) {
         switch(ST_POINTER.type) {
+            case GL_DOUBLE:
             case GL_FLOAT:
                 _readVertexData2f2fVE(stptr, count, ststride, extra->st);
             break;
@@ -671,6 +675,7 @@ static inline void _readNormalData(const GLuint first, const GLuint count, Verte
 
     if(NORMAL_POINTER.size == 3) {
         switch(NORMAL_POINTER.type) {
+            case GL_DOUBLE:
             case GL_FLOAT:
                 _readVertexData3f3fVE(nptr, count, nstride, extra->nxyz);
             break;
@@ -706,6 +711,7 @@ static inline void _readDiffuseData(const GLuint first, const GLuint count, Vert
 
     if(DIFFUSE_POINTER.size == 3) {
         switch(DIFFUSE_POINTER.type) {
+            case GL_DOUBLE:
             case GL_FLOAT:
                 _readVertexData3fARGB(cptr, count, cstride, output[0].bgra);
             break;
@@ -726,6 +732,7 @@ static inline void _readDiffuseData(const GLuint first, const GLuint count, Vert
         }
     } else if(DIFFUSE_POINTER.size == 4) {
         switch(DIFFUSE_POINTER.type) {
+            case GL_DOUBLE:
             case GL_FLOAT:
                 _readVertexData4fARGB(cptr, count, cstride, output[0].bgra);
             break;
