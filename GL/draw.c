@@ -1318,6 +1318,12 @@ void APIENTRY glClientActiveTextureARB(GLenum texture) {
 void APIENTRY glTexCoordPointer(GLint size,  GLenum type,  GLsizei stride,  const GLvoid * pointer) {
     TRACE();
 
+    if(size < 1 || size > 4) {
+        _glKosThrowError(GL_INVALID_VALUE, __func__);
+        _glKosPrintError();
+        return;
+    }
+
     AttribPointer* tointer = (ACTIVE_CLIENT_TEXTURE == 0) ? &UV_POINTER : &ST_POINTER;
 
     tointer->ptr = pointer;
@@ -1329,6 +1335,12 @@ void APIENTRY glTexCoordPointer(GLint size,  GLenum type,  GLsizei stride,  cons
 void APIENTRY glVertexPointer(GLint size,  GLenum type,  GLsizei stride,  const GLvoid * pointer) {
     TRACE();
 
+    if(size < 2 || size > 4) {
+        _glKosThrowError(GL_INVALID_VALUE, __func__);
+        _glKosPrintError();
+        return;
+    }
+
     VERTEX_POINTER.ptr = pointer;
     VERTEX_POINTER.stride = stride;
     VERTEX_POINTER.type = type;
@@ -1337,6 +1349,12 @@ void APIENTRY glVertexPointer(GLint size,  GLenum type,  GLsizei stride,  const 
 
 void APIENTRY glColorPointer(GLint size,  GLenum type,  GLsizei stride,  const GLvoid * pointer) {
     TRACE();
+
+    if(size != 3 && size != 4) {
+        _glKosThrowError(GL_INVALID_VALUE, __func__);
+        _glKosPrintError();
+        return;
+    }
 
     DIFFUSE_POINTER.ptr = pointer;
     DIFFUSE_POINTER.stride = stride;
