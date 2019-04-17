@@ -206,6 +206,13 @@ void APIENTRY glGenerateMipmapEXT(GLenum target) {
 
     TextureObject* tex = _glGetBoundTexture();
 
+    if(tex->width != tex->height) {
+        fprintf(stderr, "[GL ERROR] Mipmaps cannot be supported on non-square textures\n");
+        _glKosThrowError(GL_INVALID_OPERATION, __func__);
+        _glKosPrintError();
+        return;
+    }
+
     if(!tex || !tex->data || !tex->mipmapCount) {
         _glKosThrowError(GL_INVALID_OPERATION, __func__);
         _glKosPrintError();
