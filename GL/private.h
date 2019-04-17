@@ -200,6 +200,7 @@ pvr_poly_cxt_t* _glGetPVRContext();
 GLubyte _glInitTextures();
 
 void _glUpdatePVRTextureContext(pvr_poly_cxt_t* context, GLshort textureUnit);
+void _glAllocateSpaceForMipmaps(TextureObject* active);
 
 typedef struct {
     const void* ptr;

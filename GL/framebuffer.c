@@ -222,6 +222,9 @@ void APIENTRY glGenerateMipmapEXT(GLenum target) {
     GLuint prevWidth = tex->width;
     GLuint prevHeight = tex->height;
 
+    /* Make sure there is room for the mipmap data on the texture object */
+    _glAllocateSpaceForMipmaps(tex);
+
     for(; i < _glGetMipmapLevelCount(tex); ++i) {
         GLubyte* prevData = _glGetMipmapLocation(tex, i - 1);
         GLubyte* thisData = _glGetMipmapLocation(tex, i);
