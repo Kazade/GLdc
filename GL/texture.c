@@ -781,6 +781,31 @@ GLboolean _glIsMipmapComplete(const TextureObject* obj) {
 #define MIN(a, b) ( (a)<(b)? (a):(b) )
 
 
+void _glAllocateSpaceForMipmaps(TextureObject* active) {
+    if(active->data && active->mipmap > 1) {
+        /* Already done */
+        return;
+    }
+
+    /* We've allocated level 0 before, but now we're allocating
+     * a level beyond that, we need to reallocate the data, copy level 0
+     * then free the original
+    */
+
+    GLubyte* src = active->data;
+    GLubyte* dest = active->data = pvr_mem_malloc(_glGetMipmapDataSize(active));
+
+    /* If there was existing data, then copy it across before freeing */
+    if(src) {
+        GLuint i = 0;
+        for(; i < active->width * active->height * active->dataStride; ++i) {
+            *dest++ = *src++;
+        }
+
+        pvr_mem_free(src);
+    }
+}
+
 void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
                            GLsizei width, GLsizei height, GLint border,
                            GLenum format, GLenum type, const GLvoid *data) {
@@ -888,7 +913,12 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
         active->mipmapCount = _glGetMipmapLevelCount(active);
         active->dataStride = destStride;
 
-        GLuint size = _glGetMipmapDataSize(active);
+        GLuint size = bytes;
+
+        /* If we're uploading a mipmap level, we need to allocate the full amount of space */
+        if(level > 0) {
+            size = _glGetMipmapDataSize(active);
+        }
         assert(size);
 
         active->data = pvr_mem_malloc(size);
@@ -896,6 +926,12 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
 
         active->isCompressed = GL_FALSE;
         active->isPaletted = isPaletted;
+    }
+
+    /* We're supplying a mipmap level, but previously we only had
+     * data for the first level (level 0, e.g. 1 << 0 == 1) */
+    if(level > 0 && active->mipmap == 1) {
+        _glAllocateSpaceForMipmaps(active);
     }
 
     /* Mark this level as set in the mipmap bitmask */
