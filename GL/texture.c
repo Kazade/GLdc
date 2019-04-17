@@ -852,6 +852,11 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
         _glKosThrowError(GL_INVALID_VALUE, "glTexImage2D");
     }
 
+    if(level > 0 && width != height) {
+        fprintf(stderr, "[GL ERROR] Mipmaps cannot be supported on non-square textures\n");
+        _glKosThrowError(GL_INVALID_OPERATION, __func__);
+    }
+
     if(border) {
         _glKosThrowError(GL_INVALID_VALUE, "glTexImage2D");
     }
