@@ -232,6 +232,13 @@ __BEGIN_DECLS
 #define GL_SINGLE_COLOR                   0x81F9
 #define GL_SEPARATE_SPECULAR_COLOR		  0x81FA
 
+/* glPolygonOffset */
+#define GL_POLYGON_OFFSET_FACTOR          0x8038
+#define GL_POLYGON_OFFSET_UNITS           0x2A00
+#define GL_POLYGON_OFFSET_POINT           0x2A01
+#define	GL_POLYGON_OFFSET_LINE            0x2A02
+#define GL_POLYGON_OFFSET_FILL            0x8037
+
 /* Client state caps */
 #define GL_VERTEX_ARRAY                   0x8074
 #define GL_NORMAL_ARRAY                   0x8075
