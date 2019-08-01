@@ -281,98 +281,148 @@ static inline float FPOW(float b, float p) {
     return FEXP(FLOG(b) * p);
 }
 
-void _glCalculateLightingContribution(const GLint light, const GLfloat* pos, const GLfloat* normal, uint8_t* bgra, GLfloat* colour) __attribute__((optimize("fast-math")));
-void _glCalculateLightingContribution(const GLint light, const GLfloat* pos, const GLfloat* normal, uint8_t* bgra, GLfloat* colour) {
-    LightSource* l = &LIGHTS[light];
+void _glCalculateLighting(EyeSpaceData* ES, Vertex* vertex) {
 
-    struct vec3f L = {
-        l->position[0],
-        l->position[1],
-        l->position[2]
-    };
+    /* Before we begin, lets fiddle some pointers if COLOR_MATERIAL
+     * is enabled */
 
-    if(!l->is_directional) {
-        L.x -= pos[0];
-        L.y -= pos[1];
-        L.z -= pos[2];
+    const GLboolean colorMaterial = _glIsColorMaterialEnabled();
+    const GLboolean isDiffuseCM = isDiffuseColorMaterial();
+    const GLboolean isAmbientCM = isAmbientColorMaterial();
+    const GLboolean isSpecularCM = isSpecularColorMaterial();
+
+    static GLfloat CM[4];
+
+    if(colorMaterial) {
+        CM[0] = ((GLfloat) vertex->bgra[R8IDX]) / 255.0f;
+        CM[1] = ((GLfloat) vertex->bgra[G8IDX]) / 255.0f;
+        CM[2] = ((GLfloat) vertex->bgra[B8IDX]) / 255.0f;
+        CM[3] = ((GLfloat) vertex->bgra[A8IDX]) / 255.0f;
     }
 
-    struct vec3f N = {
-        normal[0],
-        normal[1],
-        normal[2]
-    };
+    const GLfloat* MD = (colorMaterial && isDiffuseCM) ? CM : MATERIAL.diffuse;
+    const GLfloat* MA = (colorMaterial && isAmbientCM) ? CM : MATERIAL.ambient;
+    const GLfloat* MS = (colorMaterial && isSpecularCM) ? CM : MATERIAL.specular;
 
-    struct vec3f V = {
-        pos[0],
-        pos[1],
-        pos[2]
-    };
+    /* Right..
+     *
+     * global propertie:
+     *
+     * acs - Global Ambient
+     *
+     * vertex-specific properties:
+     *
+     * ecm - Material Emission
+     * acm - Material Ambient
+     * dcm - Material Diffuse
+     * n - Normal
+     * V - Vertex Position
+     * VPe - Vector from V to eye point (0, 0, 0, -1) basically negative V
+     *
+     * light-specifc properties:
+     *
+     * att - Attenution
+     * acli - Light Ambient
+     * Ppli - Light Position
+     * dcli - Light Diffuse
+     * fi - 1/0 facing light or not
+     * VPpli - Vector from V to Ppli
+     * ndotPpli - Dot product between n and Ppli
+     * hi -
+     * PpliV - vector from Ppli to V
+     */
 
-    GLfloat d;
-    vec3f_length(L.x, L.y, L.z, d);
 
-    GLfloat oneOverL = 1.0f / d;
-
-    L.x *= oneOverL;
-    L.y *= oneOverL;
-    L.z *= oneOverL;
-
-    vec3f_normalize(V.x, V.y, V.z);
-
-    GLfloat NdotL, VdotN;
-    vec3f_dot(N.x, N.y, N.z, L.x, L.y, L.z, NdotL);
-    vec3f_dot(V.x, V.y, V.z, N.x, N.y, N.z, VdotN);
-
-    GLfloat VdotR = VdotN - NdotL;
-    GLfloat specularPower = FPOW(VdotR > 0 ? VdotR : 0, MATERIAL.exponent);
-
-    GLboolean colorMaterial = _glIsColorMaterialEnabled();
-
-    GLfloat mD [] = {
-        (colorMaterial && isDiffuseColorMaterial()) ? ((GLfloat)bgra[R8IDX]) / 255.0f : MATERIAL.diffuse[0],
-        (colorMaterial && isDiffuseColorMaterial()) ? ((GLfloat)bgra[G8IDX]) / 255.0f : MATERIAL.diffuse[1],
-        (colorMaterial && isDiffuseColorMaterial()) ? ((GLfloat)bgra[B8IDX]) / 255.0f : MATERIAL.diffuse[2],
-        (colorMaterial && isDiffuseColorMaterial()) ? ((GLfloat)bgra[A8IDX]) / 255.0f : MATERIAL.diffuse[3]
-    };
-
-    GLfloat mA [] = {
-        (colorMaterial && isAmbientColorMaterial()) ? ((GLfloat)bgra[R8IDX]) / 255.0f : MATERIAL.ambient[0],
-        (colorMaterial && isAmbientColorMaterial()) ? ((GLfloat)bgra[G8IDX]) / 255.0f : MATERIAL.ambient[1],
-        (colorMaterial && isAmbientColorMaterial()) ? ((GLfloat)bgra[B8IDX]) / 255.0f : MATERIAL.ambient[2],
-        (colorMaterial && isAmbientColorMaterial()) ? ((GLfloat)bgra[A8IDX]) / 255.0f : MATERIAL.ambient[3]
-    };
-
-    GLfloat mS [] = {
-        (colorMaterial && isSpecularColorMaterial()) ? ((GLfloat)bgra[R8IDX]) / 255.0f : MATERIAL.specular[0],
-        (colorMaterial && isSpecularColorMaterial()) ? ((GLfloat)bgra[G8IDX]) / 255.0f : MATERIAL.specular[1],
-        (colorMaterial && isSpecularColorMaterial()) ? ((GLfloat)bgra[B8IDX]) / 255.0f : MATERIAL.specular[2],
-        (colorMaterial && isSpecularColorMaterial()) ? ((GLfloat)bgra[A8IDX]) / 255.0f : MATERIAL.specular[3]
-    };
-
-    colour[0] = l->ambient[0] * mA[0];
-    colour[1] = l->ambient[1] * mA[1];
-    colour[2] = l->ambient[2] * mA[2];
-    colour[3] = mD[3];
-
-    if(NdotL >= 0) {
-        colour[0] += (l->diffuse[0] * mD[0] * NdotL + l->specular[0] * mS[0] * specularPower);
-        colour[1] += (l->diffuse[1] * mD[1] * NdotL + l->specular[1] * mS[1] * specularPower);
-        colour[2] += (l->diffuse[2] * mD[2] * NdotL + l->specular[2] * mS[2] * specularPower);
-    }
-
-    if(!l->is_directional) {
-        GLfloat att = (
-            1.0f / (l->constant_attenuation + (l->linear_attenuation * d) + (l->quadratic_attenuation * d * d))
-        );
-
-        colour[0] *= att;
-        colour[1] *= att;
-        colour[2] *= att;
-    }
-
-    if(colour[0] > 1.0f) colour[0] = 1.0f;
-    if(colour[1] > 1.0f) colour[1] = 1.0f;
-    if(colour[2] > 1.0f) colour[2] = 1.0f;
-    if(colour[3] > 1.0f) colour[3] = 1.0f;
+/* Each colour component is calculated in its own scope
+ * so that the SH4 float registers don't get flooded */
+#define LIGHT_COMPONENT(C) { \
+    const GLfloat acm = MA[C]; \
+    const GLfloat dcm = MD[C]; \
+    const GLfloat scm = MS[C]; \
+    const GLfloat scli = light->specular[C]; \
+    const GLfloat dcli = light->diffuse[C]; \
+    const GLfloat acli = light->ambient[C]; \
+    const GLfloat srm = MATERIAL.exponent; \
+\
+    final[C] += (att * spot * ( \
+        (acm * acli) + (ndotVPpli * dcm * dcli) + \
+        (FPOW((fi * ndothi), srm) * scm * scli) \
+    )); \
 }
+
+    const GLfloat* n = ES->n;
+    const GLfloat* V = ES->xyz;
+
+    GLfloat Vpe [] = {-V[0], -V[1], -V[2]};
+    GLfloat VpeL;
+    vec3f_length(Vpe[0], Vpe[1], Vpe[2], VpeL);
+    Vpe[0] /= VpeL;
+    Vpe[1] /= VpeL;
+    Vpe[2] /= VpeL;
+
+    GLfloat final[4] = {
+        MATERIAL.emissive[0] + (MA[0] * SCENE_AMBIENT[0]),
+        MATERIAL.emissive[1] + (MA[1] * SCENE_AMBIENT[1]),
+        MATERIAL.emissive[2] + (MA[2] * SCENE_AMBIENT[2]),
+        MD[3] // GL spec says alpha is always from the diffuse
+    };
+
+    GLubyte i;
+    for(i = 0; i < MAX_LIGHTS; ++i) {
+        if(!_glIsLightEnabled(i)) continue;
+
+        const LightSource* light = &LIGHTS[i];
+
+        const GLfloat* Ppli = light->position;
+        GLfloat VPpli [] = {
+            Ppli[0] - V[0],
+            Ppli[1] - V[1],
+            Ppli[2] - V[2]
+        };
+
+        GLfloat VPpliL;
+        vec3f_length(VPpli[0], VPpli[1], VPpli[2], VPpliL);
+
+        VPpli[0] /= VPpliL;
+        VPpli[1] /= VPpliL;
+        VPpli[2] /= VPpliL;
+
+        GLfloat ndotVPpli;
+        vec3f_dot(n[0], n[1], n[2], VPpli[0], VPpli[1], VPpli[2], ndotVPpli);
+
+        const GLfloat k0 = light->constant_attenuation;
+        const GLfloat k1 = light->linear_attenuation;
+        const GLfloat k2 = light->quadratic_attenuation;
+        const GLfloat att = (light->position[3] == 0) ? 1.0f : 1.0f / k0 + (k1 * VPpliL) + (k2 * VPpliL * VPpliL);
+        const GLfloat spot = 1.0f; // FIXME: Spotlights
+
+        const GLfloat fi = (ndotVPpli == 0) ? 0 : 1;
+
+        GLfloat hi [3];
+        if(!VIEWER_IN_EYE_COORDINATES) {
+            // FIXME: Docs show power of T or something?
+            hi[0] = VPpli[0] + 0;
+            hi[1] = VPpli[1] + 0;
+            hi[2] = VPpli[2] + 1;
+        } else {
+            hi[0] = VPpli[0] + Vpe[0];
+            hi[1] = VPpli[1] + Vpe[1];
+            hi[2] = VPpli[2] + Vpe[2];
+        }
+
+        GLfloat ndothi;
+        vec3f_dot(n[0], n[1], n[2], hi[0], hi[1], hi[2], ndothi);
+
+        LIGHT_COMPONENT(0);
+        LIGHT_COMPONENT(1);
+        LIGHT_COMPONENT(2);
+    }
+
+#undef LIGHT_COMPONENT
+
+    vertex->bgra[R8IDX] = (GLubyte)(fminf(final[0] * 255.0f, 255.0f));
+    vertex->bgra[G8IDX] = (GLubyte)(fminf(final[1] * 255.0f, 255.0f));
+    vertex->bgra[B8IDX] = (GLubyte)(fminf(final[2] * 255.0f, 255.0f));
+    vertex->bgra[A8IDX] = (GLubyte)(fminf(final[3] * 255.0f, 255.0f));
+}
+

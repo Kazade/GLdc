@@ -935,11 +935,6 @@ static void light(SubmissionTarget* target) {
         return;
     }
 
-    typedef struct {
-        float xyz[3];
-        float n[3];
-    } EyeSpaceData;
-
     static AlignedVector* eye_space_data = NULL;
 
     if(!eye_space_data) {
@@ -966,25 +961,7 @@ static void light(SubmissionTarget* target) {
     for(i = 0; i < target->count; ++i, ++vertex, ++ES) {
         /* We ignore diffuse colour when lighting is enabled. If GL_COLOR_MATERIAL is enabled
          * then the lighting calculation should possibly take it into account */
-
-        GLfloat total [] = {0.0f, 0.0f, 0.0f, 0.0f};
-        GLfloat to_add [] = {0.0f, 0.0f, 0.0f, 0.0f};
-        GLubyte j;
-        for(j = 0; j < MAX_LIGHTS; ++j) {
-            if(_glIsLightEnabled(j)) {
-                _glCalculateLightingContribution(j, ES->xyz, ES->n, vertex->bgra, to_add);
-
-                total[0] += to_add[0];
-                total[1] += to_add[1];
-                total[2] += to_add[2];
-                total[3] += to_add[3];
-            }
-        }
-
-        vertex->bgra[A8IDX] = (GLubyte) (255.0f * fminf(total[3], 1.0f));
-        vertex->bgra[R8IDX] = (GLubyte) (255.0f * fminf(total[0], 1.0f));
-        vertex->bgra[G8IDX] = (GLubyte) (255.0f * fminf(total[1], 1.0f));
-        vertex->bgra[B8IDX] = (GLubyte) (255.0f * fminf(total[2], 1.0f));
+        _glCalculateLighting(ES, vertex);
     }
 }
 

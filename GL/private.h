@@ -240,7 +240,13 @@ GLuint _glGetMipmapLevelCount(TextureObject* obj);
 GLboolean _glIsLightingEnabled();
 GLboolean _glIsLightEnabled(GLubyte light);
 GLboolean _glIsColorMaterialEnabled();
-void _glCalculateLightingContribution(const GLint light, const GLfloat* pos, const GLfloat* normal, uint8_t* bgra, GLfloat* colour);
+
+typedef struct {
+    float xyz[3];
+    float n[3];
+} EyeSpaceData;
+
+extern void _glCalculateLighting(EyeSpaceData* ES, Vertex* vertex);
 
 unsigned char _glIsClippingEnabled();
 void _glEnableClipping(unsigned char v);
