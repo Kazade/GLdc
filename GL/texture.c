@@ -260,7 +260,7 @@ static void _glInitializeTextureObject(TextureObject* txr, unsigned int id) {
     txr->width = txr->height = 0;
     txr->mipmap = 0;
     txr->uv_clamp = 0;
-    txr->env = PVR_TXRENV_MODULATEALPHA;
+    txr->env = PVR_TXRENV_MODULATE;
     txr->data = NULL;
     txr->mipmapCount = 0;
     txr->minFilter = GL_NEAREST;
@@ -370,7 +370,7 @@ void APIENTRY glTexEnvi(GLenum target, GLenum pname, GLint param) {
 
     switch(param) {
     case GL_MODULATE:
-        active->env = PVR_TXRENV_MODULATEALPHA;
+        active->env = PVR_TXRENV_MODULATE;
     break;
     case GL_DECAL:
         active->env = PVR_TXRENV_DECAL;
