@@ -475,6 +475,7 @@ GLAPI void APIENTRY glClearDepth(GLfloat depth);
 GLAPI void APIENTRY glClearDepthf(GLfloat depth);
 GLAPI void APIENTRY glDepthMask(GLboolean flag);
 GLAPI void APIENTRY glDepthFunc(GLenum func);
+GLAPI void APIENTRY glDepthRange(GLclampf n, GLclampf f);
 
 /* Hints */
 /* Currently Supported Capabilities:
