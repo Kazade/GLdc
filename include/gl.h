@@ -417,6 +417,7 @@ GLAPI void APIENTRY glColor1ui(GLuint argb);
 GLAPI void APIENTRY glColor4ub(GLubyte r, GLubyte  g, GLubyte b, GLubyte a);
 GLAPI void APIENTRY glColor3f(GLfloat r, GLfloat g, GLfloat b);
 GLAPI void APIENTRY glColor3ub(GLubyte r, GLubyte  g, GLubyte b);
+GLAPI void APIENTRY glColor3ubv(const GLubyte *v);
 GLAPI void APIENTRY glColor3fv(const GLfloat *rgb);
 GLAPI void APIENTRY glColor4f(GLfloat r, GLfloat g, GLfloat b, GLfloat a);
 GLAPI void APIENTRY glColor4fv(const GLfloat *rgba);
