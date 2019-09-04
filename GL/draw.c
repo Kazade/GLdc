@@ -74,6 +74,11 @@ typedef void (*ByteParseFunc)(GLubyte* out, const GLubyte* in);
 typedef void (*PolyBuildFunc)(Vertex* first, Vertex* previous, Vertex* vertex, Vertex* next, const GLsizei i);
 
 
+static inline float clamp(float d, float min, float max) {
+    const float t = d < min ? min : d;
+    return t > max ? max : t;
+}
+
 static void _readVertexData3f3f(const float* input, GLuint count, GLubyte stride, float* output) {
     ITERATE(count) {
         output[0] = input[0];
@@ -306,21 +311,21 @@ static void _readVertexData4ubARGB(const GLubyte* input, GLuint count, GLubyte s
 
 static void _readVertexData4fARGB(const float* input, GLuint count, GLubyte stride, GLubyte* output) {
     ITERATE(count) {
-        output[R8IDX] = (GLubyte) (input[0] * 255.0f);
-        output[G8IDX] = (GLubyte) (input[1] * 255.0f);
-        output[B8IDX] = (GLubyte) (input[2] * 255.0f);
-        output[A8IDX] = (GLubyte) (input[3] * 255.0f);
+        output[R8IDX] = (GLubyte) clamp(input[0] * 255.0f, 0, 255);
+        output[G8IDX] = (GLubyte) clamp(input[1] * 255.0f, 0, 255);
+        output[B8IDX] = (GLubyte) clamp(input[2] * 255.0f, 0, 255);
+        output[A8IDX] = (GLubyte) clamp(input[3] * 255.0f, 0, 255);
 
         input = (float*) (((GLubyte*) input) + stride);
-        output = (GLubyte*) (((GLubyte*) output) + sizeof(Vertex));
+        output += sizeof(Vertex);
     }
 }
 
 static void _readVertexData3fARGB(const float* input, GLuint count, GLubyte stride, GLubyte* output) {
     ITERATE(count) {
-        output[R8IDX] = (GLubyte) (input[0] * 255.0f);
-        output[G8IDX] = (GLubyte) (input[1] * 255.0f);
-        output[B8IDX] = (GLubyte) (input[2] * 255.0f);
+        output[R8IDX] = (GLubyte) clamp(input[0] * 255.0f, 0, 255);
+        output[G8IDX] = (GLubyte) clamp(input[1] * 255.0f, 0, 255);
+        output[B8IDX] = (GLubyte) clamp(input[2] * 255.0f, 0, 255);
         output[A8IDX] = 1.0f;
 
         input = (float*) (((GLubyte*) input) + stride);
