@@ -21,16 +21,16 @@ __BEGIN_DECLS
 
 /* Primitive Types taken from GL for compatability */
 /* Not all types are implemented in Open GL DC V.1.0 */
-#define GL_POINTS           0x01
-#define GL_LINES            0x02
-#define GL_LINE_LOOP        0x03
-#define GL_LINE_STRIP       0x04
-#define GL_TRIANGLES        0x05
-#define GL_TRIANGLE_STRIP   0x06
-#define GL_TRIANGLE_FAN     0x07
-#define GL_QUADS            0x08
-#define GL_QUAD_STRIP       0x09
-#define GL_POLYGON          0x0A
+#define GL_POINTS                               0x0000
+#define GL_LINES                                0x0001
+#define GL_LINE_LOOP                            0x0002
+#define GL_LINE_STRIP                           0x0003
+#define GL_TRIANGLES                            0x0004
+#define GL_TRIANGLE_STRIP                       0x0005
+#define GL_TRIANGLE_FAN                         0x0006
+#define GL_QUADS                                0x0007
+#define GL_QUAD_STRIP                           0x0008
+#define GL_POLYGON                              0x0009
 
 /* FrontFaceDirection */
 #define GL_CW               0x0900
