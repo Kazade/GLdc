@@ -2,6 +2,11 @@
 #define PRIVATE_H
 
 #include <stdint.h>
+#include <dc/matrix.h>
+#include <dc/pvr.h>
+#include <dc/vec3f.h>
+#include <dc/fmath.h>
+#include <dc/matrix3d.h>
 
 #include "../include/gl.h"
 #include "../containers/aligned_vector.h"

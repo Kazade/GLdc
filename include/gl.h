@@ -19,13 +19,6 @@ __BEGIN_DECLS
 
 #include <math.h>
 
-#include <dc/fmath.h>
-#include <dc/matrix.h>
-#include <dc/matrix3d.h>
-#include <dc/pvr.h>
-#include <dc/vec3f.h>
-#include <dc/video.h>
-
 /* Primitive Types taken from GL for compatability */
 /* Not all types are implemented in Open GL DC V.1.0 */
 #define GL_POINTS           0x01

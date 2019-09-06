@@ -1,7 +1,10 @@
 #include <string.h>
 
-#include <dc/matrix.h>
 #include <stdio.h>
+#include <dc/fmath.h>
+#include <dc/matrix.h>
+#include <dc/matrix3d.h>
+#include <dc/vec3f.h>
 
 #include "../include/gl.h"
 #include "../containers/stack.h"
