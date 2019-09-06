@@ -27,3 +27,4 @@ all:
 	$(KOS_MAKE) -C depth_funcs all
 	$(KOS_MAKE) -C polymark all
 	$(KOS_MAKE) -C polygon_offset all
+	$(KOS_MAKE) -C blend_test all
