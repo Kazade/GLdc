@@ -118,17 +118,14 @@ static int _calcPVRBlendFactor(GLenum factor) {
 static void _updatePVRBlend(pvr_poly_cxt_t* context) {
     if(BLEND_ENABLED) {
         context->gen.alpha = PVR_ALPHA_ENABLE;
-        context->blend.src = _calcPVRBlendFactor(BLEND_SFACTOR);
-        context->blend.dst = _calcPVRBlendFactor(BLEND_DFACTOR);
-        context->blend.src_enable = PVR_BLEND_DISABLE;
-        context->blend.dst_enable = PVR_BLEND_DISABLE;
+        context->txr.alpha = PVR_TXRALPHA_ENABLE;
     } else {
         context->gen.alpha = PVR_ALPHA_DISABLE;
-        context->blend.src = PVR_BLEND_ONE;
-        context->blend.dst = PVR_BLEND_ZERO;
-        context->blend.src_enable = PVR_BLEND_DISABLE;
-        context->blend.dst_enable = PVR_BLEND_DISABLE;
+        context->txr.alpha = PVR_TXRALPHA_DISABLE;
     }
+
+    context->blend.src = _calcPVRBlendFactor(BLEND_SFACTOR);
+    context->blend.dst = _calcPVRBlendFactor(BLEND_DFACTOR);
 }
 
 GLboolean _glCheckValidEnum(GLint param, GLint* values, const char* func) {
@@ -155,15 +152,14 @@ static GLboolean TEXTURES_ENABLED [] = {GL_FALSE, GL_FALSE};
 void _glUpdatePVRTextureContext(pvr_poly_cxt_t* context, GLshort textureUnit) {
     const TextureObject *tx1 = (textureUnit == 0) ? _glGetTexture0() : _glGetTexture1();
 
-    if(!TEXTURES_ENABLED[textureUnit] || !tx1) {
-        context->txr.enable = PVR_TEXTURE_DISABLE;
-        context->txr.base = 0;
-        context->txr.format = 0;
-        return;
-    }
-
+    /* Disable all texturing to start with */
+    context->txr.enable = PVR_TEXTURE_DISABLE;
     context->txr2.enable = PVR_TEXTURE_DISABLE;
     context->txr2.alpha = PVR_TXRALPHA_DISABLE;
+
+    if(!TEXTURES_ENABLED[textureUnit] || !tx1) {
+        return;
+    }
 
     GLuint filter = PVR_FILTER_NEAREST;
     GLboolean enableMipmaps = GL_FALSE;
@@ -206,9 +202,6 @@ void _glUpdatePVRTextureContext(pvr_poly_cxt_t* context, GLshort textureUnit) {
      * This is effectively what standard GL does (it renders a white texture)
      */
     if(!_glIsMipmapComplete(tx1) && enableMipmaps) {
-        context->txr.enable = PVR_TEXTURE_DISABLE;
-        context->txr.base = 0;
-        context->txr.format = 0;
         return;
     }
 
@@ -234,9 +227,6 @@ void _glUpdatePVRTextureContext(pvr_poly_cxt_t* context, GLshort textureUnit) {
         context->txr.env = tx1->env;
         context->txr.uv_flip = PVR_UVFLIP_NONE;
         context->txr.uv_clamp = tx1->uv_clamp;
-        context->txr.alpha = PVR_TXRALPHA_ENABLE;
-    } else {
-        context->txr.enable = PVR_TEXTURE_DISABLE;
     }
 }
 
