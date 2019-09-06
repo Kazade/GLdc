@@ -1024,6 +1024,11 @@ static void submitVertices(GLenum mode, GLsizei first, GLuint count, GLenum type
         return;
     }
 
+    if(mode == GL_LINE_STRIP || mode == GL_LINES) {
+        fprintf(stderr, "Line drawing is currently unsupported\n");
+        return;
+    }
+
     static SubmissionTarget* target = NULL;
     static AlignedVector extras;
 
