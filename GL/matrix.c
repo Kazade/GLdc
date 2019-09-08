@@ -15,7 +15,8 @@
 static GLfloat gl_viewport_scale[3], gl_viewport_offset[3];
 
 /* Depth range */
-static GLclampf gl_depthrange_near, gl_depthrange_far;
+GLfloat DEPTH_RANGE_MULTIPLIER_L = (1 - 0) / 2;
+GLfloat DEPTH_RANGE_MULTIPLIER_H = (0 + 1) / 2;
 
 /* Viewport size */
 static GLint gl_viewport_x1, gl_viewport_y1, gl_viewport_width, gl_viewport_height;
@@ -316,8 +317,8 @@ void APIENTRY glDepthRange(GLclampf n, GLclampf f) {
     if(f < 0.0f) f = 0.0f;
     else if(f > 1.0f) f = 1.0f;
 
-    gl_depthrange_near = n;
-    gl_depthrange_far = f;
+    DEPTH_RANGE_MULTIPLIER_L = (f - n) / 2.0f;
+    DEPTH_RANGE_MULTIPLIER_H = (n + f) / 2.0f;
 }
 
 /* Vector Cross Product - Used by glhLookAtf2 */

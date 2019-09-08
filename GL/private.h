@@ -195,6 +195,9 @@ void _glMatrixLoadModelView();
 void _glMatrixLoadTexture();
 void _glApplyRenderMatrix();
 
+extern GLfloat DEPTH_RANGE_MULTIPLIER_L;
+extern GLfloat DEPTH_RANGE_MULTIPLIER_H;
+
 matrix_t* _glGetProjectionMatrix();
 matrix_t* _glGetModelViewMatrix();
 

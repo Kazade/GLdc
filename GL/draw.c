@@ -811,6 +811,7 @@ static void generate(SubmissionTarget* target, const GLenum mode, const GLsizei 
             genTriangleStrip(_glSubmissionTargetStart(target), count);
             break;
         default:
+            fprintf(stderr, "Unhandled mode %d\n", (int) mode);
             assert(0 && "Not Implemented");
         }
 
@@ -977,9 +978,12 @@ static void divide(SubmissionTarget* target) {
     Vertex* vertex = _glSubmissionTargetStart(target);
 
     ITERATE(target->count) {
-        vertex->xyz[2] = 1.0f / vertex->w;
-        vertex->xyz[0] *= vertex->xyz[2];
-        vertex->xyz[1] *= vertex->xyz[2];
+        // fprintf(stderr, "%f %f %f -> ", vertex->xyz[0], vertex->xyz[1], vertex->xyz[2]);
+        vertex->xyz[0] /= vertex->w;
+        vertex->xyz[1] /= vertex->w;
+        vertex->xyz[2] /= vertex->w;
+        vertex->xyz[2] = (DEPTH_RANGE_MULTIPLIER_L * (1.0f / vertex->xyz[2])) + DEPTH_RANGE_MULTIPLIER_H;
+        // fprintf(stderr, "%f %f %f %f\n", vertex->xyz[0], vertex->xyz[1], vertex->xyz[2], vertex->w);
         ++vertex;
     }
 }
