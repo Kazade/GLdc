@@ -988,7 +988,7 @@ static void divide(SubmissionTarget* target) {
     }
 }
 
-static void push(PVRHeader* header, Vertex* output, const GLuint count, PolyList* activePolyList, GLshort textureUnit) {
+static void push(PVRHeader* header, GLboolean multiTextureHeader, PolyList* activePolyList, GLshort textureUnit) {
     TRACE();
 
     // Compile the header
@@ -996,6 +996,16 @@ static void push(PVRHeader* header, Vertex* output, const GLuint count, PolyList
     cxt.list_type = activePolyList->list_type;
 
     _glUpdatePVRTextureContext(&cxt, textureUnit);
+
+    if(multiTextureHeader) {
+        assert(cxt.list_type == PVR_LIST_TR_POLY);
+
+        cxt.gen.alpha = PVR_ALPHA_ENABLE;
+        cxt.txr.alpha = PVR_TXRALPHA_ENABLE;
+        cxt.blend.src = PVR_BLEND_ZERO;
+        cxt.blend.dst = PVR_BLEND_DESTCOLOR;
+        cxt.depth.comparison = PVR_DEPTHCMP_EQUAL;
+    }
 
     pvr_poly_compile(&header->hdr, &cxt);
 
@@ -1147,7 +1157,7 @@ static void submitVertices(GLenum mode, GLsizei first, GLuint count, GLenum type
 
     profiler_checkpoint("divide");
 
-    push(_glSubmissionTargetHeader(target), _glSubmissionTargetStart(target), target->count, target->output, 0);
+    push(_glSubmissionTargetHeader(target), GL_FALSE, target->output, 0);
 
     profiler_checkpoint("push");
     /*
@@ -1183,7 +1193,6 @@ static void submitVertices(GLenum mode, GLsizei first, GLuint count, GLenum type
     assert(vertex);
 
     PVRHeader* mtHeader = (PVRHeader*) vertex++;
-    Vertex* mtStart = vertex;
 
     /* Replace the UV coordinates with the ST ones */
     VertexExtra* ve = aligned_vector_at(target->extras, 0);
@@ -1194,29 +1203,8 @@ static void submitVertices(GLenum mode, GLsizei first, GLuint count, GLenum type
         ++ve;
     }
 
-    /* Store state, as we're about to mess around with it */
-    GLint depthFunc, blendSrc, blendDst;
-    glGetIntegerv(GL_DEPTH_FUNC, &depthFunc);
-    glGetIntegerv(GL_BLEND_SRC, &blendSrc);
-    glGetIntegerv(GL_BLEND_DST, &blendDst);
-
-    GLboolean blendEnabled = glIsEnabled(GL_BLEND);
-    GLboolean depthEnabled = glIsEnabled(GL_DEPTH_TEST);
-
-    glDepthFunc(GL_EQUAL);
-    glEnable(GL_BLEND);
-
-    /* This is modulation, we need to switch depending on the texture env mode! */
-    glBlendFunc(GL_DST_COLOR, GL_ZERO);
-
     /* Send the buffer again to the transparent list */
-    push(mtHeader, mtStart, target->count, _glTransparentPolyList(), 1);
-
-    /* Reset state */
-    glDepthFunc(depthFunc);
-    glBlendFunc(blendSrc, blendDst);
-    (blendEnabled) ? glEnable(GL_BLEND) : glDisable(GL_BLEND);
-    (depthEnabled) ? glEnable(GL_DEPTH_TEST) : glDisable(GL_DEPTH_TEST);
+    push(mtHeader, GL_TRUE, _glTransparentPolyList(), 1);
 
     profiler_pop();
 }
