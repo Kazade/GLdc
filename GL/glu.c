@@ -4,14 +4,12 @@
 /* Set the Perspective */
 void APIENTRY gluPerspective(GLfloat angle, GLfloat aspect,
                     GLfloat znear, GLfloat zfar) {
-    GLfloat xmin, xmax, ymin, ymax;
+    GLdouble fW, fH;
 
-    ymax = znear * tanf(angle * F_PI / 360.0f);
-    ymin = -ymax;
-    xmin = ymin * aspect;
-    xmax = ymax * aspect;
+    fH = tan(angle / 360 * F_PI) * znear;
+    fW = fH * aspect;
 
-    glFrustum(xmin, xmax, ymin, ymax, znear, zfar);
+    glFrustum(-fW, fW, -fH, fH, znear, zfar);
 }
 
 void APIENTRY gluOrtho2D(GLdouble left, GLdouble right, GLdouble bottom, GLdouble top) {

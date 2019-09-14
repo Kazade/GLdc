@@ -26,7 +26,7 @@ void _glEnableClipping(unsigned char v) {
 
 void _glClipLineToNearZ(const Vertex* v1, const Vertex* v2, Vertex* vout, float* t) __attribute__((optimize("fast-math")));
 void _glClipLineToNearZ(const Vertex* v1, const Vertex* v2, Vertex* vout, float* t) {
-    const float NEAR_PLANE = 0.2; // FIXME: this needs to be read from the projection matrix.. somehow
+    const float NEAR_PLANE = NEAR_PLANE_DISTANCE + 0.0001f;
 
     *t = (NEAR_PLANE - v1->w) / (v2->w - v1->w);
 
@@ -182,6 +182,13 @@ void _glClipTriangle(const Triangle* triangle, const uint8_t visible, Submission
 
 static inline void markDead(Vertex* vert) {
     vert->flags = VERTEX_CMD_EOL;
+
+    // If we're debugging, wipe out the xyz
+#ifndef NDEBUG
+    *((uint32_t*) &vert->xyz[0]) = 0xDEADBEEF;
+    *((uint32_t*) &vert->xyz[1]) = 0xDEADBEEF;
+    *((uint32_t*) &vert->xyz[2]) = 0xDEADBEEF;
+#endif
 }
 
 #define B000 0

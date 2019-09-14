@@ -879,7 +879,7 @@ static void transform(SubmissionTarget* target) {
         register float __x __asm__("fr12") = (vertex->xyz[0]);
         register float __y __asm__("fr13") = (vertex->xyz[1]);
         register float __z __asm__("fr14") = (vertex->xyz[2]);
-        register float __w __asm__("fr15");
+        register float __w __asm__("fr15") = (vertex->w);
 
         __asm__ __volatile__(
             "fldi1 fr15\n"
@@ -978,12 +978,10 @@ static void divide(SubmissionTarget* target) {
     Vertex* vertex = _glSubmissionTargetStart(target);
 
     ITERATE(target->count) {
-        // fprintf(stderr, "%f %f %f -> ", vertex->xyz[0], vertex->xyz[1], vertex->xyz[2]);
-        vertex->xyz[0] /= vertex->w;
-        vertex->xyz[1] /= vertex->w;
-        vertex->xyz[2] /= vertex->w;
-        vertex->xyz[2] = (DEPTH_RANGE_MULTIPLIER_L * (1.0f / vertex->xyz[2])) + DEPTH_RANGE_MULTIPLIER_H;
-        // fprintf(stderr, "%f %f %f %f\n", vertex->xyz[0], vertex->xyz[1], vertex->xyz[2], vertex->w);
+        float f = 1.0f / vertex->w;
+        vertex->xyz[0] *= f;
+        vertex->xyz[1] *= f;
+        vertex->xyz[2] = 1.0 - ((DEPTH_RANGE_MULTIPLIER_L * vertex->xyz[2] * f) + DEPTH_RANGE_MULTIPLIER_H);
         ++vertex;
     }
 }

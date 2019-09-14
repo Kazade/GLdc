@@ -23,6 +23,49 @@
 
 #define MAX_TEXTURE_SIZE 1024
 
+typedef float Matrix4x4[16];
+
+/* This gives us an easy way to switch
+ * internal matrix order if necessary */
+
+#define TRANSPOSE 0
+
+#if TRANSPOSE
+#define M0 0
+#define M1 4
+#define M2 8
+#define M3 12
+#define M4 1
+#define M5 5
+#define M6 9
+#define M7 13
+#define M8 2
+#define M9 6
+#define M10 10
+#define M11 14
+#define M12 3
+#define M13 7
+#define M14 11
+#define M15 15
+#else
+#define M0 0
+#define M1 1
+#define M2 2
+#define M3 3
+#define M4 4
+#define M5 5
+#define M6 6
+#define M7 7
+#define M8 8
+#define M9 9
+#define M10 10
+#define M11 11
+#define M12 12
+#define M13 13
+#define M14 14
+#define M15 15
+#endif
+
 typedef struct {
     pvr_poly_hdr_t hdr;
 } PVRHeader;
@@ -198,8 +241,8 @@ void _glApplyRenderMatrix();
 extern GLfloat DEPTH_RANGE_MULTIPLIER_L;
 extern GLfloat DEPTH_RANGE_MULTIPLIER_H;
 
-matrix_t* _glGetProjectionMatrix();
-matrix_t* _glGetModelViewMatrix();
+Matrix4x4* _glGetProjectionMatrix();
+Matrix4x4* _glGetModelViewMatrix();
 
 void _glWipeTextureOnFramebuffers(GLuint texture);
 GLubyte _glCheckImmediateModeInactive(const char* func);
@@ -209,6 +252,10 @@ GLubyte _glInitTextures();
 
 void _glUpdatePVRTextureContext(pvr_poly_cxt_t* context, GLshort textureUnit);
 void _glAllocateSpaceForMipmaps(TextureObject* active);
+
+extern GLfloat NEAR_PLANE_DISTANCE;
+
+GLfloat _glGetNearPlane();
 
 typedef struct {
     const void* ptr;
