@@ -688,7 +688,7 @@ static TextureConversionFunc _determineConversion(GLint internalFormat, GLenum f
     switch(internalFormat) {
     case GL_ALPHA: {
         if(format == GL_ALPHA) {
-            /* Dreamcast doesn't really support GL_RED internally, so store as argb with each rgb value as white */
+            /* Dreamcast doesn't really support GL_ALPHA internally, so store as argb with each rgb value as white */
             return _alpha8_to_argb4444;
         } else if(type == GL_UNSIGNED_BYTE && format == GL_RGBA) {
             return _rgba8888_to_a000;
