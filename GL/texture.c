@@ -143,9 +143,9 @@ static GLint _determineStride(GLenum format, GLenum type) {
     switch(type) {
     case GL_BYTE:
     case GL_UNSIGNED_BYTE:
-        return (format == GL_RED) ? 1 : (format == GL_RGB) ? 3 : 4;
+        return (format == GL_RED || format == GL_ALPHA) ? 1 : (format == GL_RGB) ? 3 : 4;
     case GL_UNSIGNED_SHORT:
-        return (format == GL_RED) ? 2 : (format == GL_RGB) ? 6 : 8;
+        return (format == GL_RED || format == GL_ALPHA) ? 2 : (format == GL_RGB) ? 6 : 8;
     case GL_UNSIGNED_SHORT_5_6_5:
     case GL_UNSIGNED_SHORT_5_6_5_REV:
     case GL_UNSIGNED_SHORT_5_6_5_TWID_KOS:
@@ -680,10 +680,17 @@ static inline void _i8_to_i8(const GLubyte* source, GLubyte* dest) {
     *dst = *source;
 }
 
+static inline void _alpha8_to_argb4444(const GLubyte* source, GLubyte* dest) {
+    *((GLushort*) dest) = (*source & 0xF0) << 8 | (0xFF & 0xF0) << 4 | (0xFF & 0xF0) | (0xFF & 0xF0) >> 4;
+}
+
 static TextureConversionFunc _determineConversion(GLint internalFormat, GLenum format, GLenum type) {
     switch(internalFormat) {
     case GL_ALPHA: {
-        if(type == GL_UNSIGNED_BYTE && format == GL_RGBA) {
+        if(format == GL_ALPHA) {
+            /* Dreamcast doesn't really support GL_RED internally, so store as argb with each rgb value as white */
+            return _alpha8_to_argb4444;
+        } else if(type == GL_UNSIGNED_BYTE && format == GL_RGBA) {
             return _rgba8888_to_a000;
         } else if(type == GL_BYTE && format == GL_RGBA) {
             return _rgba8888_to_a000;
@@ -748,6 +755,7 @@ static TextureConversionFunc _determineConversion(GLint internalFormat, GLenum f
 
 static GLboolean _isSupportedFormat(GLenum format) {
     switch(format) {
+    case GL_ALPHA:
     case GL_RED:
     case GL_RGB:
     case GL_RGBA:
