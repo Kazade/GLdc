@@ -37,7 +37,7 @@ static TexturePalette* _initTexturePalette() {
     TexturePalette* palette = (TexturePalette*) malloc(sizeof(TexturePalette));
     assert(palette);
 
-    memset(palette, 0x0, sizeof(TexturePalette));
+    sq_clr(palette, (sizeof(TexturePalette) & 0xfffffffc) + 4);
     palette->bank = -1;
     return palette;
 }

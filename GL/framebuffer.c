@@ -189,7 +189,7 @@ GLboolean _glCalculateAverageTexel(const GLubyte* src, const GLuint srcWidth, co
         *d1 = (r << 11 | g << 5 | b);
     } else {
         fprintf(stderr, "ERROR: Unsupported PVR format for mipmap generation");
-        _glKosThrowError(GL_INVALID_OPERATION, "glGenerateMipmapEXT");
+        _glKosThrowError(GL_INVALID_OPERATION, __func__);
         _glKosPrintError();
         return GL_FALSE;
     }

@@ -1246,7 +1246,7 @@ void APIENTRY glEnableClientState(GLenum cap) {
             (ENABLED_VERTEX_ATTRIBUTES |= UV_ENABLED_FLAG);
     break;
     default:
-        _glKosThrowError(GL_INVALID_ENUM, "glEnableClientState");
+        _glKosThrowError(GL_INVALID_ENUM, __func__);
     }
 }
 
@@ -1269,7 +1269,7 @@ void APIENTRY glDisableClientState(GLenum cap) {
             (ENABLED_VERTEX_ATTRIBUTES &= ~UV_ENABLED_FLAG);
     break;
     default:
-        _glKosThrowError(GL_INVALID_ENUM, "glDisableClientState");
+        _glKosThrowError(GL_INVALID_ENUM, __func__);
     }
 }
 
