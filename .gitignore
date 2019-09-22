@@ -6,3 +6,4 @@
 *.img
 dc-build.sh
 .buildconfig
+GL/version.h
