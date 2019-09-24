@@ -1,4 +1,6 @@
 #include <stdio.h>
+#include <assert.h>
+
 #include "private.h"
 #include "../include/glkos.h"
 #include "../include/glext.h"
@@ -156,37 +158,37 @@ GLboolean _glCalculateAverageTexel(const GLubyte* src, const GLuint srcWidth, co
     if((pvrFormat & PVR_TXRFMT_ARGB1555) == PVR_TXRFMT_ARGB1555) {
         a = A1555(*s1) + A1555(*s2) + A1555(*s3) + A1555(*s4);
         r = R1555(*s1) + R1555(*s2) + R1555(*s3) + R1555(*s4);
-        g = G1555(*s1) + R1555(*s2) + R1555(*s3) + R1555(*s4);
-        b = B1555(*s1) + R1555(*s2) + R1555(*s3) + R1555(*s4);
+        g = G1555(*s1) + G1555(*s2) + G1555(*s3) + G1555(*s4);
+        b = B1555(*s1) + B1555(*s2) + B1555(*s3) + B1555(*s4);
 
         a /= 4;
         r /= 4;
         g /= 4;
         b /= 4;
 
-        *d1 = (a << 15 | r << 10 | g << 5 | b);
+        *d1 = PACK_ARGB1555(a, r, g, b);
     } else if((pvrFormat & PVR_TXRFMT_ARGB4444) == PVR_TXRFMT_ARGB4444) {
         a = A4444(*s1) + A4444(*s2) + A4444(*s3) + A4444(*s4);
         r = R4444(*s1) + R4444(*s2) + R4444(*s3) + R4444(*s4);
-        g = G4444(*s1) + R4444(*s2) + R4444(*s3) + R4444(*s4);
-        b = B4444(*s1) + R4444(*s2) + R4444(*s3) + R4444(*s4);
+        g = G4444(*s1) + G4444(*s2) + G4444(*s3) + G4444(*s4);
+        b = B4444(*s1) + B4444(*s2) + B4444(*s3) + B4444(*s4);
 
         a /= 4;
         r /= 4;
         g /= 4;
         b /= 4;
 
-        *d1 = (a << 12 | r << 8 | g << 4 | b);
-    } else if((pvrFormat & PVR_TXRFMT_RGB565) == PVR_TXRFMT_ARGB4444) {
+        *d1 = PACK_ARGB4444(a, r, g, b);
+    } else if((pvrFormat & PVR_TXRFMT_RGB565) == PVR_TXRFMT_RGB565) {
         r = R565(*s1) + R565(*s2) + R565(*s3) + R565(*s4);
-        g = G565(*s1) + R565(*s2) + R565(*s3) + R565(*s4);
-        b = B565(*s1) + R565(*s2) + R565(*s3) + R565(*s4);
+        g = G565(*s1) + G565(*s2) + G565(*s3) + G565(*s4);
+        b = B565(*s1) + B565(*s2) + B565(*s3) + B565(*s4);
 
         r /= 4;
         g /= 4;
         b /= 4;
 
-        *d1 = (r << 11 | g << 5 | b);
+        *d1 = PACK_RGB565(r, g, b);
     } else {
         fprintf(stderr, "ERROR: Unsupported PVR format for mipmap generation");
         _glKosThrowError(GL_INVALID_OPERATION, __func__);
@@ -239,7 +241,6 @@ void APIENTRY glGenerateMipmapEXT(GLenum target) {
         GLuint thisWidth = (prevWidth > 1) ? prevWidth / 2 : 1;
         GLuint thisHeight = (prevHeight > 1) ? prevHeight / 2 : 1;
 
-        /* Do the minification */
         for(sx = 0, dx = 0; sx < prevWidth; sx += 2, dx += 1) {
             for(sy = 0, dy = 0; sy < prevHeight; sy += 2, dy += 1) {
                 GLubyte* srcTexel = &prevData[
@@ -266,6 +267,8 @@ void APIENTRY glGenerateMipmapEXT(GLenum target) {
         prevWidth = thisWidth;
         prevHeight = thisHeight;
     }
+
+    assert(_glIsMipmapComplete(tex));
 }
 
 GLenum APIENTRY glCheckFramebufferStatusEXT(GLenum target) {

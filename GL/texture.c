@@ -23,12 +23,6 @@ static TexturePalette* SHARED_PALETTES[4] = {NULL, NULL, NULL, NULL};
 
 static GLuint _determinePVRFormat(GLint internalFormat, GLenum type);
 
-#define PACK_ARGB8888(a,r,g,b) ( ((a & 0xFF) << 24) | ((r & 0xFF) << 16) | ((g & 0xFF) << 8) | (b & 0xFF) )
-
-
-#define _PACK4(v) ((v * 0xF) / 0xFF)
-#define PACK_ARGB4444(a,r,g,b) (_PACK4(a) << 12) | (_PACK4(r) << 8) | (_PACK4(g) << 4) | (_PACK4(b))
-
 static GLboolean BANKS_USED[4];  // Each time a 256 colour bank is used, this is set to true
 static GLboolean SUBBANKS_USED[4][16]; // 4 counts of the used 16 colour banks within the 256 ones
 static GLenum INTERNAL_PALETTE_FORMAT = GL_RGBA4;
@@ -172,37 +166,48 @@ static GLuint _glGetMipmapDataOffset(TextureObject* obj, GLuint level) {
 
     if(obj->isPaletted){
         switch(size >> level) {
+            case 1024:
+            offset = 0x15556;
+            break;
+            case 512:
+            offset = 0x05556;
+            break;
             case 256:
-            offset = 0x05558;
+            offset = 0x01556;
             break;
             case 128:
-            offset = 0x01558;
+            offset = 0x00556;
             break;
             case 64:
-            offset = 0x00558;
+            offset = 0x00156;
             break;
             case 32:
-            offset = 0x00158;
+            offset = 0x00056;
             break;
             case 16:
-            offset = 0x00058;
+            offset = 0x00016;
             break;
             case 8:
-            offset = 0x00018;
+            offset = 0x00006;
             break;
             case 4:
-            offset = 0x00008;
+            offset = 0x00002;
             break;
             case 2:
-            offset = 0x00004;
+            offset = 0x00001;
             break;
             case 1:
-            case 0:
             offset = 0x00000;
             break;
         }
     } else {
         switch(size >> level) {
+            case 1024:
+            offset = 0xAAAB0;
+            break;
+            case 512:
+            offset = 0x2AAB0;
+            break;
             case 256:
             offset = 0x0AAB0;
             break;
@@ -248,7 +253,7 @@ static GLuint _glGetMipmapDataSize(TextureObject* obj) {
     /* The mipmap data size is the offset + the size of the
      * image */
 
-    GLuint imageSize = obj->width * obj->height * obj->dataStride;
+    GLuint imageSize = obj->baseDataSize;
     GLuint offset = _glGetMipmapDataOffset(obj, 0);
 
     return imageSize + offset;
