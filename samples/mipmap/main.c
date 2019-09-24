@@ -174,9 +174,28 @@ void DrawQuad() {
     glEnd();                                    // done with the polygon.
 }
 
+static GLboolean mipmap_enabled = GL_FALSE;
+static GLuint timer = 0;
+
 /* The main drawing function. */
 void DrawGLScene()
 {
+    timer++;
+    if(timer > 60) {
+        timer = 0;
+        mipmap_enabled = !mipmap_enabled;
+
+        if(mipmap_enabled) {
+            printf("Enabling mipmaps!\n");
+            glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_LINEAR);
+            glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_LINEAR_MIPMAP_LINEAR);
+        } else {
+            printf("Disabling mipmaps!\n");
+            glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_NEAREST);
+            glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_NEAREST);
+        }
+    }
+
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glLoadIdentity();
     glClearColor(0.5, 0.5, 0.5, 1.0);

@@ -105,12 +105,20 @@ typedef struct {
     GLuint   index;
     GLvoid *data;
     GLuint dataStride;
+    GLuint baseDataSize; /* The data size of mipmap level 0 */
 
     GLenum minFilter;
     GLenum magFilter;
 
     GLboolean isCompressed;
     GLboolean isPaletted;
+
+    /* Mipmap textures have a different
+     * offset for the base level when supplying the data, this
+     * keeps track of that. baseDataOffset == 0
+     * means that the texture has no mipmaps
+     */
+    GLuint baseDataOffset;
 
     TexturePalette* palette;
 
