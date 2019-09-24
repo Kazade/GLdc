@@ -860,11 +860,9 @@ void _glAllocateSpaceForMipmaps(TextureObject* active) {
     /* Figure out how much room to allocate for mipmaps */
     GLuint bytes = _glGetMipmapDataSize(active);
 
-    fprintf(stderr, "Allocating %d PVR bytes\n", bytes);
     active->data = pvr_mem_malloc(bytes);
 
     /* If there was existing data, then copy it where it should go */
-    fprintf(stderr, "Copying data\n");
     memcpy(_glGetMipmapLocation(active, 0), temp, size);
 
     /* Set the data offset depending on whether or not this is a
@@ -1054,7 +1052,7 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
         assert(bytes);
 
         /* No conversion? Just copy the data, and the pvr_format is correct */
-        sq_cpy(targetData, data, bytes);
+        FASTCPY(targetData, data, bytes);
         return;
     } else if(needsConversion) {
         TextureConversionFunc convert = _determineConversion(
@@ -1114,7 +1112,7 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
 
         // We've already converted the data and we
         // don't need to twiddle it!
-        sq_cpy(targetData, conversionBuffer, bytes);
+        FASTCPY(targetData, conversionBuffer, bytes);
     }
 
     if(conversionBuffer) {

@@ -12,6 +12,9 @@
 #include "../containers/aligned_vector.h"
 #include "../containers/named_array.h"
 
+#define FASTCPY(dst, src, bytes) \
+    (bytes % 32 == 0) ? sq_cpy(dst, src, bytes) : memcpy(dst, src, bytes);
+
 #define TRACE_ENABLED 0
 #define TRACE() if(TRACE_ENABLED) {fprintf(stderr, "%s\n", __func__);}
 
