@@ -131,61 +131,25 @@ static inline GLuint B4444(GLuint v) {
     return (v & MASK) >> 0;
 }
 
-static inline GLuint R565(GLuint v) {
+static inline GLubyte R565(GLshort v) {
     const GLuint MASK = (31 << 11);
-    return (v & MASK) >> 11;
+    return (v & MASK) >> 8;
 }
 
-static inline GLuint G565(GLuint v) {
-    const GLuint MASK = (63 << 5);
-    return (v & MASK) >> 5;
+static inline GLubyte G565(GLushort v) {
+    const GLuint MASK = (31 << 5);
+    return (v & MASK) >> 3;
 }
 
-static inline GLuint B565(GLuint v) {
+static inline GLubyte B565(GLushort v) {
     const GLuint MASK = (31 << 0);
-    return (v & MASK) >> 0;
+    return (v & MASK);
 }
 
 GLboolean _glCalculateAverageTexel(GLuint pvrFormat, const GLubyte* src1, const GLubyte* src2, const GLubyte* src3, const GLubyte* src4, GLubyte* t) {
     GLuint a, r, g, b;
 
-    if((pvrFormat & PVR_TXRFMT_ARGB1555) == PVR_TXRFMT_ARGB1555) {
-        GLushort* s1 = (GLushort*) src1;
-        GLushort* s2 = (GLushort*) src2;
-        GLushort* s3 = (GLushort*) src3;
-        GLushort* s4 = (GLushort*) src4;
-        GLushort* d1 = (GLushort*) t;
-
-        a = A1555(*s1) + A1555(*s2) + A1555(*s3) + A1555(*s4);
-        r = R1555(*s1) + R1555(*s2) + R1555(*s3) + R1555(*s4);
-        g = G1555(*s1) + G1555(*s2) + G1555(*s3) + G1555(*s4);
-        b = B1555(*s1) + B1555(*s2) + B1555(*s3) + B1555(*s4);
-
-        a /= 4;
-        r /= 4;
-        g /= 4;
-        b /= 4;
-
-        *d1 = PACK_ARGB1555((GLubyte) a, (GLubyte) r, (GLubyte) g, (GLubyte) b);
-    } else if((pvrFormat & PVR_TXRFMT_ARGB4444) == PVR_TXRFMT_ARGB4444) {
-        GLushort* s1 = (GLushort*) src1;
-        GLushort* s2 = (GLushort*) src2;
-        GLushort* s3 = (GLushort*) src3;
-        GLushort* s4 = (GLushort*) src4;
-        GLushort* d1 = (GLushort*) t;
-
-        a = A4444(*s1) + A4444(*s2) + A4444(*s3) + A4444(*s4);
-        r = R4444(*s1) + R4444(*s2) + R4444(*s3) + R4444(*s4);
-        g = G4444(*s1) + G4444(*s2) + G4444(*s3) + G4444(*s4);
-        b = B4444(*s1) + B4444(*s2) + B4444(*s3) + B4444(*s4);
-
-        a /= 4;
-        r /= 4;
-        g /= 4;
-        b /= 4;
-
-        *d1 = PACK_ARGB4444(a, r, g, b);
-    } else if((pvrFormat & PVR_TXRFMT_RGB565) == PVR_TXRFMT_RGB565) {
+    if((pvrFormat & PVR_TXRFMT_RGB565) == PVR_TXRFMT_RGB565) {
         GLushort* s1 = (GLushort*) src1;
         GLushort* s2 = (GLushort*) src2;
         GLushort* s3 = (GLushort*) src3;
@@ -202,10 +166,43 @@ GLboolean _glCalculateAverageTexel(GLuint pvrFormat, const GLubyte* src1, const 
 
         *d1 = PACK_RGB565(r, g, b);
     } else {
-        fprintf(stderr, "ERROR: Unsupported PVR format for mipmap generation");
-        _glKosThrowError(GL_INVALID_OPERATION, __func__);
-        _glKosPrintError();
-        return GL_FALSE;
+        if((pvrFormat & PVR_TXRFMT_ARGB4444) == PVR_TXRFMT_ARGB4444) {
+            GLushort* s1 = (GLushort*) src1;
+            GLushort* s2 = (GLushort*) src2;
+            GLushort* s3 = (GLushort*) src3;
+            GLushort* s4 = (GLushort*) src4;
+            GLushort* d1 = (GLushort*) t;
+
+            a = A4444(*s1) + A4444(*s2) + A4444(*s3) + A4444(*s4);
+            r = R4444(*s1) + R4444(*s2) + R4444(*s3) + R4444(*s4);
+            g = G4444(*s1) + G4444(*s2) + G4444(*s3) + G4444(*s4);
+            b = B4444(*s1) + B4444(*s2) + B4444(*s3) + B4444(*s4);
+
+            a /= 4;
+            r /= 4;
+            g /= 4;
+            b /= 4;
+
+            *d1 = PACK_ARGB4444(a, r, g, b);
+        } else {
+            GLushort* s1 = (GLushort*) src1;
+            GLushort* s2 = (GLushort*) src2;
+            GLushort* s3 = (GLushort*) src3;
+            GLushort* s4 = (GLushort*) src4;
+            GLushort* d1 = (GLushort*) t;
+
+            a = A1555(*s1) + A1555(*s2) + A1555(*s3) + A1555(*s4);
+            r = R1555(*s1) + R1555(*s2) + R1555(*s3) + R1555(*s4);
+            g = G1555(*s1) + G1555(*s2) + G1555(*s3) + G1555(*s4);
+            b = B1555(*s1) + B1555(*s2) + B1555(*s3) + B1555(*s4);
+
+            a /= 4;
+            r /= 4;
+            g /= 4;
+            b /= 4;
+
+            *d1 = PACK_ARGB1555((GLubyte) a, (GLubyte) r, (GLubyte) g, (GLubyte) b);
+        }
     }
 
     return GL_TRUE;
@@ -291,6 +288,7 @@ void APIENTRY glGenerateMipmapEXT(GLenum target) {
         GLuint thisHeight = (prevHeight > 1) ? prevHeight / 2 : 1;
 
         if((tex->color & PVR_TXRFMT_TWIDDLED) == PVR_TXRFMT_TWIDDLED) {
+            fprintf(stderr, "Format: %d\n", tex->color);
             _glGenerateMipmapTwiddled(tex->color, prevData, thisWidth, thisHeight, thisData);
         } else {
             _glGenerateMipmap(tex->color, prevData, thisWidth, thisHeight, thisData);
