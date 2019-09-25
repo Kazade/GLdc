@@ -91,24 +91,24 @@ void APIENTRY glFramebufferTexture2DEXT(GLenum target, GLenum attachment, GLenum
     ACTIVE_FRAMEBUFFER->texture_id = texture;
 }
 
-static inline GLuint A1555(GLuint v) {
+static inline GLubyte A1555(GLushort v) {
     const GLuint MASK = (1 << 15);
-    return (v & MASK) >> 15;
+    return (v & MASK) >> 8;
 }
 
-static inline GLuint R1555(GLuint v) {
+static inline GLubyte R1555(GLushort v) {
     const GLuint MASK = (31 << 10);
-    return (v & MASK) >> 10;
+    return (v & MASK) >> 7;
 }
 
-static inline GLuint G1555(GLuint v) {
+static inline GLubyte G1555(GLushort v) {
     const GLuint MASK = (31 << 5);
-    return (v & MASK) >> 5;
+    return (v & MASK) >> 2;
 }
 
-static inline GLuint B1555(GLuint v) {
+static inline GLubyte B1555(GLushort v) {
     const GLuint MASK = (31 << 0);
-    return (v & MASK) >> 0;
+    return (v & MASK) << 3;
 }
 
 static inline GLuint A4444(GLuint v) {
@@ -146,16 +146,16 @@ static inline GLuint B565(GLuint v) {
     return (v & MASK) >> 0;
 }
 
-GLboolean _glCalculateAverageTexel(const GLubyte* src, const GLuint srcWidth, const GLuint pvrFormat, GLubyte* dest) {
-    GLushort* s1 = ((GLushort*) src);
-    GLushort* s2 = ((GLushort*) src) + 1;
-    GLushort* s3 = ((GLushort*) src) + srcWidth;
-    GLushort* s4 = ((GLushort*) src) + srcWidth + 1;
-    GLushort* d1 = ((GLushort*) dest);
-
+GLboolean _glCalculateAverageTexel(GLuint pvrFormat, const GLubyte* src1, const GLubyte* src2, const GLubyte* src3, const GLubyte* src4, GLubyte* t) {
     GLuint a, r, g, b;
 
     if((pvrFormat & PVR_TXRFMT_ARGB1555) == PVR_TXRFMT_ARGB1555) {
+        GLushort* s1 = (GLushort*) src1;
+        GLushort* s2 = (GLushort*) src2;
+        GLushort* s3 = (GLushort*) src3;
+        GLushort* s4 = (GLushort*) src4;
+        GLushort* d1 = (GLushort*) t;
+
         a = A1555(*s1) + A1555(*s2) + A1555(*s3) + A1555(*s4);
         r = R1555(*s1) + R1555(*s2) + R1555(*s3) + R1555(*s4);
         g = G1555(*s1) + G1555(*s2) + G1555(*s3) + G1555(*s4);
@@ -166,8 +166,14 @@ GLboolean _glCalculateAverageTexel(const GLubyte* src, const GLuint srcWidth, co
         g /= 4;
         b /= 4;
 
-        *d1 = PACK_ARGB1555(a, r, g, b);
+        *d1 = PACK_ARGB1555((GLubyte) a, (GLubyte) r, (GLubyte) g, (GLubyte) b);
     } else if((pvrFormat & PVR_TXRFMT_ARGB4444) == PVR_TXRFMT_ARGB4444) {
+        GLushort* s1 = (GLushort*) src1;
+        GLushort* s2 = (GLushort*) src2;
+        GLushort* s3 = (GLushort*) src3;
+        GLushort* s4 = (GLushort*) src4;
+        GLushort* d1 = (GLushort*) t;
+
         a = A4444(*s1) + A4444(*s2) + A4444(*s3) + A4444(*s4);
         r = R4444(*s1) + R4444(*s2) + R4444(*s3) + R4444(*s4);
         g = G4444(*s1) + G4444(*s2) + G4444(*s3) + G4444(*s4);
@@ -180,6 +186,12 @@ GLboolean _glCalculateAverageTexel(const GLubyte* src, const GLuint srcWidth, co
 
         *d1 = PACK_ARGB4444(a, r, g, b);
     } else if((pvrFormat & PVR_TXRFMT_RGB565) == PVR_TXRFMT_RGB565) {
+        GLushort* s1 = (GLushort*) src1;
+        GLushort* s2 = (GLushort*) src2;
+        GLushort* s3 = (GLushort*) src3;
+        GLushort* s4 = (GLushort*) src4;
+        GLushort* d1 = (GLushort*) t;
+
         r = R565(*s1) + R565(*s2) + R565(*s3) + R565(*s4);
         g = G565(*s1) + G565(*s2) + G565(*s3) + G565(*s4);
         b = B565(*s1) + B565(*s2) + B565(*s3) + B565(*s4);
@@ -196,6 +208,44 @@ GLboolean _glCalculateAverageTexel(const GLubyte* src, const GLuint srcWidth, co
         return GL_FALSE;
     }
 
+    return GL_TRUE;
+}
+
+GLboolean _glGenerateMipmapTwiddled(const GLuint pvrFormat, const GLubyte* prevData, GLuint thisWidth, GLuint thisHeight, GLubyte* thisData) {
+    uint32_t lastWidth = thisWidth * 2;
+    uint32_t lastHeight = thisHeight * 2;
+
+    uint32_t i, j;
+    uint32_t stride = 0;
+
+    if((pvrFormat & PVR_TXRFMT_PAL8BPP) == PVR_TXRFMT_PAL8BPP) {
+        stride = 1;
+    } else {
+        stride = 2;
+    }
+
+    for(i = 0, j = 0; i < lastWidth * lastHeight; i += 4, j++) {
+
+        /* In a twiddled texture, the neighbouring texels
+         * are next to each other. By averaging them we just basically shrink
+         * the reverse Ns so each reverse N becomes the next level down... if that makes sense!? */
+
+        GLubyte* s1 = &prevData[i * stride];
+        GLubyte* s2 = s1 + stride;
+        GLubyte* s3 = s2 + stride;
+        GLubyte* s4 = s3 + stride;
+        GLubyte* t = &thisData[j * stride];
+
+        assert(s4 < prevData + (lastHeight * lastWidth * stride));
+        assert(t < thisData + (thisHeight * thisWidth * stride));
+
+        _glCalculateAverageTexel(pvrFormat, s1, s2, s3, s4, t);
+    }
+
+    return GL_TRUE;
+}
+
+GLboolean _glGenerateMipmap(const GLuint pvrFormat, const GLubyte* prevData, GLuint thisWidth, GLuint thisHeight, GLubyte* thisData) {
     return GL_TRUE;
 }
 
@@ -226,40 +276,24 @@ void APIENTRY glGenerateMipmapEXT(GLenum target) {
         return;
     }
 
-    GLuint i = 1;
-    GLuint sx, sy, dx, dy;
+    GLuint i;
     GLuint prevWidth = tex->width;
     GLuint prevHeight = tex->height;
 
     /* Make sure there is room for the mipmap data on the texture object */
     _glAllocateSpaceForMipmaps(tex);
 
-    for(; i < _glGetMipmapLevelCount(tex); ++i) {
+    for(i = 1; i < _glGetMipmapLevelCount(tex); ++i) {
         GLubyte* prevData = _glGetMipmapLocation(tex, i - 1);
         GLubyte* thisData = _glGetMipmapLocation(tex, i);
 
         GLuint thisWidth = (prevWidth > 1) ? prevWidth / 2 : 1;
         GLuint thisHeight = (prevHeight > 1) ? prevHeight / 2 : 1;
 
-        for(sx = 0, dx = 0; sx < prevWidth; sx += 2, dx += 1) {
-            for(sy = 0, dy = 0; sy < prevHeight; sy += 2, dy += 1) {
-                GLubyte* srcTexel = &prevData[
-                    ((sy * prevWidth) + sx) * tex->dataStride
-                ];
-
-                GLubyte* destTexel = &thisData[
-                    ((dy * thisWidth) + dx) * tex->dataStride
-                ];
-
-                if(!_glCalculateAverageTexel(
-                    srcTexel,
-                    prevWidth,
-                    tex->color,
-                    destTexel
-                )) {
-                    return;
-                }
-            }
+        if((tex->color & PVR_TXRFMT_TWIDDLED) == PVR_TXRFMT_TWIDDLED) {
+            _glGenerateMipmapTwiddled(tex->color, prevData, thisWidth, thisHeight, thisData);
+        } else {
+            _glGenerateMipmap(tex->color, prevData, thisWidth, thisHeight, thisData);
         }
 
         tex->mipmap |= (1 << i);

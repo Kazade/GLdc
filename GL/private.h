@@ -18,8 +18,9 @@
 #define _PACK4(v) ((v * 0xF) / 0xFF)
 #define PACK_ARGB4444(a,r,g,b) (_PACK4(a) << 12) | (_PACK4(r) << 8) | (_PACK4(g) << 4) | (_PACK4(b))
 #define PACK_ARGB8888(a,r,g,b) ( ((a & 0xFF) << 24) | ((r & 0xFF) << 16) | ((g & 0xFF) << 8) | (b & 0xFF) )
-#define PACK_ARGB1555(a,r,g, b) \
-    (a > 0 | (r >> 3) << 10 | (g >> 3) << 5 | (b >> 3))
+#define PACK_ARGB1555(a,r,g,b) \
+    (((GLushort)(a > 0) << 15) | (((GLushort) r >> 3) << 10) | (((GLushort)g >> 3) << 5) | ((GLushort)b >> 3))
+
 #define PACK_RGB565(r,g,b) \
     ((r >> 3) << 15 | (g >> 2) << 11 | b >> 3)
 
