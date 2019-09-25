@@ -1109,7 +1109,7 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
         /* We make sure we remove nontwiddled and add twiddled. We could always
          * make it twiddled when determining the format but I worry that would make the
          * code less flexible to change in the future */
-        active->color &= ~PVR_TXRFMT_NONTWIDDLED;
+        active->color &= ~(1 << 26);
     } else {
         /* We should only get here if we converted twiddled data... which is never currently */
         assert(conversionBuffer);

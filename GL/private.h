@@ -22,7 +22,7 @@
     (((GLushort)(a > 0) << 15) | (((GLushort) r >> 3) << 10) | (((GLushort)g >> 3) << 5) | ((GLushort)b >> 3))
 
 #define PACK_RGB565(r,g,b) \
-    (((r & 0xf8) << 8) | ((g & 0xfc) << 3) | (b >> 3))
+    ((((GLushort)r & 0xf8) << 8) | (((GLushort) g & 0xfc) << 3) | ((GLushort) b >> 3))
 
 #define TRACE_ENABLED 0
 #define TRACE() if(TRACE_ENABLED) {fprintf(stderr, "%s\n", __func__);}

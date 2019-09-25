@@ -137,13 +137,13 @@ static inline GLubyte R565(GLshort v) {
 }
 
 static inline GLubyte G565(GLushort v) {
-    const GLuint MASK = (31 << 5);
+    const GLuint MASK = (63 << 5);
     return (v & MASK) >> 3;
 }
 
 static inline GLubyte B565(GLushort v) {
     const GLuint MASK = (31 << 0);
-    return (v & MASK);
+    return (v & MASK) << 3;
 }
 
 GLboolean _glCalculateAverageTexel(GLuint pvrFormat, const GLubyte* src1, const GLubyte* src2, const GLubyte* src3, const GLubyte* src4, GLubyte* t) {
@@ -288,7 +288,6 @@ void APIENTRY glGenerateMipmapEXT(GLenum target) {
         GLuint thisHeight = (prevHeight > 1) ? prevHeight / 2 : 1;
 
         if((tex->color & PVR_TXRFMT_TWIDDLED) == PVR_TXRFMT_TWIDDLED) {
-            fprintf(stderr, "Format: %d\n", tex->color);
             _glGenerateMipmapTwiddled(tex->color, prevData, thisWidth, thisHeight, thisData);
         } else {
             _glGenerateMipmap(tex->color, prevData, thisWidth, thisHeight, thisData);
