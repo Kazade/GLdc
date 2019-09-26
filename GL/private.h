@@ -12,6 +12,18 @@
 #include "../containers/aligned_vector.h"
 #include "../containers/named_array.h"
 
+#define FASTCPY(dst, src, bytes) \
+    (bytes % 32 == 0) ? sq_cpy(dst, src, bytes) : memcpy(dst, src, bytes);
+
+#define _PACK4(v) ((v * 0xF) / 0xFF)
+#define PACK_ARGB4444(a,r,g,b) (_PACK4(a) << 12) | (_PACK4(r) << 8) | (_PACK4(g) << 4) | (_PACK4(b))
+#define PACK_ARGB8888(a,r,g,b) ( ((a & 0xFF) << 24) | ((r & 0xFF) << 16) | ((g & 0xFF) << 8) | (b & 0xFF) )
+#define PACK_ARGB1555(a,r,g,b) \
+    (((GLushort)(a > 0) << 15) | (((GLushort) r >> 3) << 10) | (((GLushort)g >> 3) << 5) | ((GLushort)b >> 3))
+
+#define PACK_RGB565(r,g,b) \
+    ((((GLushort)r & 0xf8) << 8) | (((GLushort) g & 0xfc) << 3) | ((GLushort) b >> 3))
+
 #define TRACE_ENABLED 0
 #define TRACE() if(TRACE_ENABLED) {fprintf(stderr, "%s\n", __func__);}
 
@@ -105,12 +117,20 @@ typedef struct {
     GLuint   index;
     GLvoid *data;
     GLuint dataStride;
+    GLuint baseDataSize; /* The data size of mipmap level 0 */
 
     GLenum minFilter;
     GLenum magFilter;
 
     GLboolean isCompressed;
     GLboolean isPaletted;
+
+    /* Mipmap textures have a different
+     * offset for the base level when supplying the data, this
+     * keeps track of that. baseDataOffset == 0
+     * means that the texture has no mipmaps
+     */
+    GLuint baseDataOffset;
 
     TexturePalette* palette;
 

@@ -23,12 +23,6 @@ static TexturePalette* SHARED_PALETTES[4] = {NULL, NULL, NULL, NULL};
 
 static GLuint _determinePVRFormat(GLint internalFormat, GLenum type);
 
-#define PACK_ARGB8888(a,r,g,b) ( ((a & 0xFF) << 24) | ((r & 0xFF) << 16) | ((g & 0xFF) << 8) | (b & 0xFF) )
-
-
-#define _PACK4(v) ((v * 0xF) / 0xFF)
-#define PACK_ARGB4444(a,r,g,b) (_PACK4(a) << 12) | (_PACK4(r) << 8) | (_PACK4(g) << 4) | (_PACK4(b))
-
 static GLboolean BANKS_USED[4];  // Each time a 256 colour bank is used, this is set to true
 static GLboolean SUBBANKS_USED[4][16]; // 4 counts of the used 16 colour banks within the 256 ones
 static GLenum INTERNAL_PALETTE_FORMAT = GL_RGBA4;
@@ -37,7 +31,7 @@ static TexturePalette* _initTexturePalette() {
     TexturePalette* palette = (TexturePalette*) malloc(sizeof(TexturePalette));
     assert(palette);
 
-    sq_clr(palette, (sizeof(TexturePalette) & 0xfffffffc) + 4);
+    memset(palette, 0x0, sizeof(TexturePalette));
     palette->bank = -1;
     return palette;
 }
@@ -161,26 +155,94 @@ static GLint _determineStride(GLenum format, GLenum type) {
     return -1;
 }
 
-GLubyte* _glGetMipmapLocation(TextureObject* obj, GLuint level) {
+static GLuint _glGetMipmapDataOffset(TextureObject* obj, GLuint level) {
     GLuint offset = 0;
+    GLuint size = obj->height;
 
-    GLuint i = 0;
-    GLuint width = obj->width;
-    GLuint height = obj->height;
+    if(obj->width != obj->height) {
+        fprintf(stderr, "ERROR: Accessing memory location of mipmaps on non-square texture\n");
+        return obj->baseDataOffset;
+    }
 
-    for(; i < level; ++i) {
-        offset += (width * height * obj->dataStride);
-
-        if(width > 1) {
-            width /= 2;
+    if(obj->isPaletted){
+        switch(size >> level){
+            case 1024:
+            offset = 0x55558;
+            break;
+            case 512:
+            offset = 0x15558;
+            break;
+            case 256:
+            offset = 0x05558;
+            break;
+            case 128:
+            offset = 0x01558;
+            break;
+            case 64:
+            offset = 0x00558;
+            break;
+            case 32:
+            offset = 0x00158;
+            break;
+            case 16:
+            offset = 0x00058;
+            break;
+            case 8:
+            offset = 0x00018;
+            break;
+            case 4:
+            offset = 0x00008;
+            break;
+            case 2:
+            offset = 0x00004;
+            break;
+            case 1:
+            offset = 0x00003;
+            break;
         }
-
-        if(height > 1) {
-            height /= 2;
+    } else {
+        switch(size >> level) {
+            case 1024:
+            offset = 0xAAAB0;
+            break;
+            case 512:
+            offset = 0x2AAB0;
+            break;
+            case 256:
+            offset = 0x0AAB0;
+            break;
+            case 128:
+            offset = 0x02AB0;
+            break;
+            case 64:
+            offset = 0x00AB0;
+            break;
+            case 32:
+            offset = 0x002B0;
+            break;
+            case 16:
+            offset = 0x000B0;
+            break;
+            case 8:
+            offset = 0x00030;
+            break;
+            case 4:
+            offset = 0x00010;
+            break;
+            case 2:
+            offset = 0x00008;
+            break;
+            case 1:
+            offset = 0x00006;
+            break;
         }
     }
 
-    return ((GLubyte*) obj->data) + offset;
+    return offset;
+}
+
+GLubyte* _glGetMipmapLocation(TextureObject* obj, GLuint level) {
+    return ((GLubyte*) obj->data) + _glGetMipmapDataOffset(obj, level);
 }
 
 GLuint _glGetMipmapLevelCount(TextureObject* obj) {
@@ -188,25 +250,13 @@ GLuint _glGetMipmapLevelCount(TextureObject* obj) {
 }
 
 static GLuint _glGetMipmapDataSize(TextureObject* obj) {
-    GLuint size = 0;
+    /* The mipmap data size is the offset + the size of the
+     * image */
 
-    GLuint i = 0;
-    GLuint width = obj->width;
-    GLuint height = obj->height;
+    GLuint imageSize = obj->baseDataSize;
+    GLuint offset = _glGetMipmapDataOffset(obj, 0);
 
-    for(; i < _glGetMipmapLevelCount(obj); ++i) {
-        size += (width * height * obj->dataStride);
-
-        if(width > 1) {
-            width /= 2;
-        }
-
-        if(height > 1) {
-            height /= 2;
-        }
-    }
-
-    return size;
+    return imageSize + offset;
 }
 
 GLubyte _glInitTextures() {
@@ -268,6 +318,9 @@ static void _glInitializeTextureObject(TextureObject* txr, unsigned int id) {
     txr->palette = NULL;
     txr->isCompressed = GL_FALSE;
     txr->isPaletted = GL_FALSE;
+
+    /* Not mipmapped by default */
+    txr->baseDataOffset = 0;
 
     /* Always default to the first shared bank */
     txr->shared_bank = 0;
@@ -768,6 +821,12 @@ static GLboolean _isSupportedFormat(GLenum format) {
 }
 
 GLboolean _glIsMipmapComplete(const TextureObject* obj) {
+
+    // Non-square textures can't have mipmaps
+    if(obj->width != obj->height) {
+        return GL_FALSE;
+    }
+
     if(!obj->mipmap || !obj->mipmapCount) {
         return GL_FALSE;
     }
@@ -782,16 +841,9 @@ GLboolean _glIsMipmapComplete(const TextureObject* obj) {
     return GL_TRUE;
 }
 
-#define TWIDTAB(x) ( (x&1)|((x&2)<<1)|((x&4)<<2)|((x&8)<<3)|((x&16)<<4)| \
-                     ((x&32)<<5)|((x&64)<<6)|((x&128)<<7)|((x&256)<<8)|((x&512)<<9) )
-
-#define TWIDOUT(x, y) ( TWIDTAB((y)) | (TWIDTAB((x)) << 1) )
-#define MIN(a, b) ( (a)<(b)? (a):(b) )
-
-
 void _glAllocateSpaceForMipmaps(TextureObject* active) {
-    if(active->data && active->mipmap > 1) {
-        /* Already done */
+    if(active->data && active->baseDataOffset > 0) {
+        /* Already done - mipmaps have a dataOffset */
         return;
     }
 
@@ -800,18 +852,27 @@ void _glAllocateSpaceForMipmaps(TextureObject* active) {
      * then free the original
     */
 
-    GLubyte* src = active->data;
-    GLubyte* dest = active->data = pvr_mem_malloc(_glGetMipmapDataSize(active));
+    GLuint size = active->baseDataSize;
 
-    /* If there was existing data, then copy it across before freeing */
-    if(src) {
-        GLuint i = 0;
-        for(; i < active->width * active->height * active->dataStride; ++i) {
-            *dest++ = *src++;
-        }
+    /* Copy the data out of the pvr and back to ram */
+    GLubyte* temp = (GLubyte*) malloc(size);
+    memcpy(temp, active->data, size);
 
-        pvr_mem_free(src);
-    }
+    /* Free the PVR data */
+    pvr_mem_free(active->data);
+    active->data = NULL;
+
+    /* Figure out how much room to allocate for mipmaps */
+    GLuint bytes = _glGetMipmapDataSize(active);
+
+    active->data = pvr_mem_malloc(bytes);
+
+    /* If there was existing data, then copy it where it should go */
+    memcpy(_glGetMipmapLocation(active, 0), temp, size);
+
+    /* Set the data offset depending on whether or not this is a
+     * paletted texure */
+    active->baseDataOffset = _glGetMipmapDataOffset(active, 0);
 }
 
 void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
@@ -892,7 +953,7 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
 
     assert(active);
 
-    if(active->data) {
+    if(active->data && level == 0) {
         /* pre-existing texture - check if changed */
         if(active->width != width ||
            active->height != height ||
@@ -903,6 +964,8 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
             active->mipmap = 0;
             active->mipmapCount = 0;
             active->dataStride = 0;
+            active->baseDataOffset = 0;
+            active->baseDataSize = 0;
         }
     }
 
@@ -925,25 +988,25 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
         /* Set the required mipmap count */
         active->mipmapCount = _glGetMipmapLevelCount(active);
         active->dataStride = destStride;
+        active->baseDataSize = bytes;
 
-        GLuint size = bytes;
+        assert(bytes);
 
-        /* If we're uploading a mipmap level, we need to allocate the full amount of space */
         if(level > 0) {
-            size = _glGetMipmapDataSize(active);
+            /* If we're uploading a mipmap level, we need to allocate the full amount of space */
+            _glAllocateSpaceForMipmaps(active);
+        } else {
+            active->data = pvr_mem_malloc(active->baseDataSize);
         }
-        assert(size);
 
-        active->data = pvr_mem_malloc(size);
         assert(active->data);
-
         active->isCompressed = GL_FALSE;
         active->isPaletted = isPaletted;
     }
 
     /* We're supplying a mipmap level, but previously we only had
-     * data for the first level (level 0, e.g. 1 << 0 == 1) */
-    if(level > 0 && active->mipmap == 1) {
+     * data for the first level (level 0) */
+    if(level > 0 && active->baseDataOffset == 0) {
         _glAllocateSpaceForMipmaps(active);
     }
 
@@ -952,7 +1015,9 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
 
     /* Let's assume we need to convert */
     GLboolean needsConversion = GL_TRUE;
-    GLboolean needsTwiddling = GL_FALSE;
+
+    /* Let's assume we need twiddling - we always store things twiddled! */
+    GLboolean needsTwiddling = GL_TRUE;
 
     /*
      * These are the only formats where the source format passed in matches the pvr format.
@@ -961,7 +1026,10 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
     if(format == GL_COLOR_INDEX) {
         /* Don't convert color indexes */
         needsConversion = GL_FALSE;
-        needsTwiddling = type == GL_UNSIGNED_BYTE;
+
+        if(type == GL_UNSIGNED_BYTE_TWID_KOS) {
+            needsTwiddling = GL_FALSE;
+        }
     } else if(format == GL_BGRA && type == GL_UNSIGNED_SHORT_4_4_4_4_REV && internalFormat == GL_RGBA) {
         needsConversion = GL_FALSE;
     } else if(format == GL_BGRA && type == GL_UNSIGNED_SHORT_1_5_5_5_REV && internalFormat == GL_RGBA) {
@@ -970,45 +1038,32 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
         needsConversion = GL_FALSE;
     } else if(format == GL_RGB && type == GL_UNSIGNED_SHORT_5_6_5_TWID_KOS && internalFormat == GL_RGB) {
         needsConversion = GL_FALSE;
+        needsTwiddling = GL_FALSE;
     } else if(format == GL_BGRA && type == GL_UNSIGNED_SHORT_1_5_5_5_REV_TWID_KOS && internalFormat == GL_RGBA) {
         needsConversion = GL_FALSE;
+        needsTwiddling = GL_FALSE;
     } else if(format == GL_BGRA && type == GL_UNSIGNED_SHORT_4_4_4_4_REV_TWID_KOS && internalFormat == GL_RGBA) {
         needsConversion = GL_FALSE;
+        needsTwiddling = GL_FALSE;
     }
 
-    GLubyte* targetData = _glGetMipmapLocation(active, level);
+    GLubyte* targetData = (active->baseDataOffset == 0) ? active->data : _glGetMipmapLocation(active, level);
     assert(targetData);
+
+    GLubyte* conversionBuffer = NULL;
 
     if(!data) {
         /* No data? Do nothing! */
         return;
-    } else if(!needsConversion) {
+    } else if(!needsConversion && !needsTwiddling) {
         assert(targetData);
         assert(data);
         assert(bytes);
 
-        if(needsTwiddling) {
-            assert(type == GL_UNSIGNED_BYTE);  // Anything else needs this loop adjusting
-            GLuint x, y, min, mask;
-
-            GLubyte *pixels   = (GLubyte*) data;
-            GLushort *vtex    = (GLushort*) targetData;
-
-            min = MIN(w, h);
-            mask = min - 1;
-
-            for(y = 0; y < h; y += 2) {
-                for(x = 0; x < w; x++) {
-                    vtex[TWIDOUT((y & mask) / 2, x & mask) + (x / min + y / min)*min * min / 2] = pixels[y * w + x] | (pixels[(y + 1) * w + x] << 8);
-                }
-            }
-        } else {
-            /* No conversion? Just copy the data, and the pvr_format is correct */
-            sq_cpy(targetData, data, bytes);
-        }
-
+        /* No conversion? Just copy the data, and the pvr_format is correct */
+        FASTCPY(targetData, data, bytes);
         return;
-    } else {
+    } else if(needsConversion) {
         TextureConversionFunc convert = _determineConversion(
             internalFormat,
             format,
@@ -1020,12 +1075,6 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
             return;
         }
 
-        GLubyte* dest = (GLubyte*) targetData;
-        const GLubyte* source = data;
-
-        assert(dest);
-        assert(source);
-
         GLint stride = _determineStride(format, type);
         assert(stride > -1);
 
@@ -1033,6 +1082,14 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
             _glKosThrowError(GL_INVALID_OPERATION, __func__);
             return;
         }
+
+        conversionBuffer = malloc(bytes);
+
+        GLubyte* dest = conversionBuffer;
+        const GLubyte* source = data;
+
+        assert(conversionBuffer);
+        assert(source);
 
         /* Perform the conversion */
         GLuint i;
@@ -1042,6 +1099,33 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
             dest += destStride;
             source += stride;
         }
+    }
+
+    if(needsTwiddling) {
+        const GLubyte *pixels = (GLubyte*) (conversionBuffer) ? conversionBuffer : data;
+
+        if(internalFormat == GL_COLOR_INDEX8_EXT) {
+            pvr_txr_load_ex((void*) pixels, targetData, width, height, PVR_TXRLOAD_8BPP);
+        } else {
+            pvr_txr_load_ex((void*) pixels, targetData, width, height, PVR_TXRLOAD_16BPP);
+        }
+
+        /* We make sure we remove nontwiddled and add twiddled. We could always
+         * make it twiddled when determining the format but I worry that would make the
+         * code less flexible to change in the future */
+        active->color &= ~(1 << 26);
+    } else {
+        /* We should only get here if we converted twiddled data... which is never currently */
+        assert(conversionBuffer);
+
+        // We've already converted the data and we
+        // don't need to twiddle it!
+        FASTCPY(targetData, conversionBuffer, bytes);
+    }
+
+    if(conversionBuffer) {
+        free(conversionBuffer);
+        conversionBuffer = NULL;
     }
 }
 

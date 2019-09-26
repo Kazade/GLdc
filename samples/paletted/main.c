@@ -123,6 +123,7 @@ void LoadGLTextures() {
     // 2d texture, level of detail 0 (normal), 3 components (red, green, blue), x size from image, y size from image,
     // border 0 (normal), rgb color data, unsigned byte data, and finally the data itself.
     glTexImage2D(GL_TEXTURE_2D, 0, GL_COLOR_INDEX8_EXT, image1->width, image1->height, 0, GL_COLOR_INDEX, GL_UNSIGNED_BYTE_TWID_KOS, image1->data);
+    glGenerateMipmapEXT(GL_TEXTURE_2D);
 }
 
 /* A general OpenGL initialization function.  Sets all of the initial parameters. */
@@ -130,7 +131,7 @@ void InitGL(int Width, int Height)	        // We call this right after our OpenG
 {
     LoadGLTextures();
     glEnable(GL_TEXTURE_2D);
-    glClearColor(0.0f, 0.0f, 0.0f, 0.0f);		// This Will Clear The Background Color To Black
+    glClearColor(0.5f, 0.5f, 0.5f, 1.0f);
     glClearDepth(1.0);				// Enables Clearing Of The Depth Buffer
     glDepthFunc(GL_LESS);				// The Type Of Depth Test To Do
     glEnable(GL_DEPTH_TEST);			// Enables Depth Testing

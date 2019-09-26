@@ -208,11 +208,19 @@ void _glUpdatePVRTextureContext(pvr_poly_cxt_t* context, GLshort textureUnit) {
     if(tx1->data) {
         context->txr.enable = PVR_TEXTURE_ENABLE;
         context->txr.filter = filter;
-        context->txr.mipmap = (enableMipmaps) ? PVR_MIPMAP_ENABLE : PVR_MIPMAP_DISABLE;
-        context->txr.mipmap_bias = PVR_MIPBIAS_NORMAL;
         context->txr.width = tx1->width;
         context->txr.height = tx1->height;
-        context->txr.base = tx1->data;
+
+        if(enableMipmaps) {
+            context->txr.base = tx1->data;
+            context->txr.mipmap = PVR_MIPMAP_ENABLE;
+            context->txr.mipmap_bias = PVR_MIPBIAS_NORMAL;
+        } else {
+            context->txr.base = tx1->data + tx1->baseDataOffset;
+            context->txr.mipmap = PVR_MIPMAP_DISABLE;
+            context->txr.mipmap_bias = PVR_MIPBIAS_NORMAL;
+        }
+
         context->txr.format = tx1->color;
 
         if(tx1->isPaletted) {
