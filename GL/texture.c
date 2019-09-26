@@ -31,7 +31,7 @@ static TexturePalette* _initTexturePalette() {
     TexturePalette* palette = (TexturePalette*) malloc(sizeof(TexturePalette));
     assert(palette);
 
-    sq_clr(palette, (sizeof(TexturePalette) & 0xfffffffc) + 4);
+    memset(palette, 0x0, sizeof(TexturePalette));
     palette->bank = -1;
     return palette;
 }
@@ -165,39 +165,39 @@ static GLuint _glGetMipmapDataOffset(TextureObject* obj, GLuint level) {
     }
 
     if(obj->isPaletted){
-        switch(size >> level) {
+        switch(size >> level){
             case 1024:
-            offset = 0x15556;
+            offset = 0x55558;
             break;
             case 512:
-            offset = 0x05556;
+            offset = 0x15558;
             break;
             case 256:
-            offset = 0x01556;
+            offset = 0x05558;
             break;
             case 128:
-            offset = 0x00556;
+            offset = 0x01558;
             break;
             case 64:
-            offset = 0x00156;
+            offset = 0x00558;
             break;
             case 32:
-            offset = 0x00056;
+            offset = 0x00158;
             break;
             case 16:
-            offset = 0x00016;
+            offset = 0x00058;
             break;
             case 8:
-            offset = 0x00006;
+            offset = 0x00018;
             break;
             case 4:
-            offset = 0x00002;
+            offset = 0x00008;
             break;
             case 2:
-            offset = 0x00001;
+            offset = 0x00004;
             break;
             case 1:
-            offset = 0x00000;
+            offset = 0x00003;
             break;
         }
     } else {
@@ -1026,6 +1026,10 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
     if(format == GL_COLOR_INDEX) {
         /* Don't convert color indexes */
         needsConversion = GL_FALSE;
+
+        if(type == GL_UNSIGNED_BYTE_TWID_KOS) {
+            needsTwiddling = GL_FALSE;
+        }
     } else if(format == GL_BGRA && type == GL_UNSIGNED_SHORT_4_4_4_4_REV && internalFormat == GL_RGBA) {
         needsConversion = GL_FALSE;
     } else if(format == GL_BGRA && type == GL_UNSIGNED_SHORT_1_5_5_5_REV && internalFormat == GL_RGBA) {
