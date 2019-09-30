@@ -60,7 +60,7 @@ typedef struct {
     GLfloat z;
     GLfloat u;
     GLfloat v;
-    GLubyte rgba[4];
+    GLubyte bgra[4];
     GLuint padding1;
 } GLVertexKOS;
 

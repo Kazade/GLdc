@@ -55,7 +55,7 @@ void _glInitImmediateMode(GLuint initial_size) {
     UV_ATTRIB.size = 2;
 
     DIFFUSE_ATTRIB.ptr = VERTEX_ATTRIB.ptr + (sizeof(GLfloat) * 5);
-    DIFFUSE_ATTRIB.size = 4;
+    DIFFUSE_ATTRIB.size = GL_BGRA;  /* Flipped color order */
     DIFFUSE_ATTRIB.type = GL_UNSIGNED_BYTE;
     DIFFUSE_ATTRIB.stride = 32;
 
@@ -152,10 +152,10 @@ void APIENTRY glVertex3f(GLfloat x, GLfloat y, GLfloat z) {
     vert->u = UV_COORD[0];
     vert->v = UV_COORD[1];
 
-    vert->rgba[0] = COLOR[0];
-    vert->rgba[1] = COLOR[1];
-    vert->rgba[2] = COLOR[2];
-    vert->rgba[3] = COLOR[3];
+    vert->bgra[R8IDX] = COLOR[0];
+    vert->bgra[G8IDX] = COLOR[1];
+    vert->bgra[B8IDX] = COLOR[2];
+    vert->bgra[A8IDX] = COLOR[3];
 
     memcpy(st, ST_COORD, sizeof(GLfloat) * 2);
     memcpy(n, NORMAL, sizeof(GLfloat) * 3);
