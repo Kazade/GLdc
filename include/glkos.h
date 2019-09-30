@@ -53,6 +53,20 @@ typedef struct {
 } GLdcConfig;
 
 
+typedef struct {
+    GLuint padding0;
+    GLfloat x;
+    GLfloat y;
+    GLfloat z;
+    GLfloat u;
+    GLfloat v;
+    GLubyte rgba[4];
+    GLuint padding1;
+} GLVertexKOS;
+
+GLAPI void APIENTRY glVertexPackColor3fKOS(GLVertexKOS* vertex, float r, float g, float b);
+GLAPI void APIENTRY glVertexPackColor4fKOS(GLVertexKOS* vertex, float r, float g, float b, float a);
+
 GLAPI void APIENTRY glKosInitConfig(GLdcConfig* config);
 
 /* Usage:

@@ -7,8 +7,12 @@
  * 3. This is entirely untested.
  */
 
+#include <string.h>
+#include <stdio.h>
+
 #include "../include/gl.h"
 #include "../include/glext.h"
+#include "../include/glkos.h"
 #include "profiler.h"
 
 #include "private.h"
@@ -17,17 +21,13 @@ static GLboolean IMMEDIATE_MODE_ACTIVE = GL_FALSE;
 static GLenum ACTIVE_POLYGON_MODE = GL_TRIANGLES;
 
 static AlignedVector VERTICES;
-static AlignedVector COLOURS;
-static AlignedVector UV_COORDS;
 static AlignedVector ST_COORDS;
 static AlignedVector NORMALS;
-
 
 static GLfloat NORMAL[3] = {0.0f, 0.0f, 1.0f};
 static GLubyte COLOR[4] = {255, 255, 255, 255};
 static GLfloat UV_COORD[2] = {0.0f, 0.0f};
 static GLfloat ST_COORD[2] = {0.0f, 0.0f};
-
 
 static AttribPointer VERTEX_ATTRIB;
 static AttribPointer DIFFUSE_ATTRIB;
@@ -36,42 +36,38 @@ static AttribPointer ST_ATTRIB;
 static AttribPointer NORMAL_ATTRIB;
 
 void _glInitImmediateMode(GLuint initial_size) {
-    aligned_vector_init(&VERTICES, sizeof(GLfloat));
-    aligned_vector_init(&COLOURS, sizeof(GLubyte));
-    aligned_vector_init(&UV_COORDS, sizeof(GLfloat));
+    aligned_vector_init(&VERTICES, sizeof(GLVertexKOS));
     aligned_vector_init(&ST_COORDS, sizeof(GLfloat));
     aligned_vector_init(&NORMALS, sizeof(GLfloat));
 
     aligned_vector_reserve(&VERTICES, initial_size);
-    aligned_vector_reserve(&COLOURS, initial_size);
-    aligned_vector_reserve(&UV_COORDS, initial_size);
-    aligned_vector_reserve(&ST_COORDS, initial_size);
-    aligned_vector_reserve(&NORMALS, initial_size);
+    aligned_vector_reserve(&ST_COORDS, initial_size * 2);
+    aligned_vector_reserve(&NORMALS, initial_size * 3);
 
-    VERTEX_ATTRIB.ptr = VERTICES.data;
+    VERTEX_ATTRIB.ptr = VERTICES.data + sizeof(uint32_t);
     VERTEX_ATTRIB.size = 3;
     VERTEX_ATTRIB.type = GL_FLOAT;
-    VERTEX_ATTRIB.stride = 0;
+    VERTEX_ATTRIB.stride = 32;
 
-    DIFFUSE_ATTRIB.ptr = COLOURS.data;
-    DIFFUSE_ATTRIB.size = 4;
-    DIFFUSE_ATTRIB.type = GL_UNSIGNED_BYTE;
-    DIFFUSE_ATTRIB.stride = 0;
-
-    UV_ATTRIB.ptr = UV_COORDS.data;
-    UV_ATTRIB.stride = 0;
+    UV_ATTRIB.ptr = VERTEX_ATTRIB.ptr + (sizeof(GLfloat) * 3);
+    UV_ATTRIB.stride = 32;
     UV_ATTRIB.type = GL_FLOAT;
     UV_ATTRIB.size = 2;
 
-    ST_ATTRIB.ptr = ST_COORDS.data;
-    ST_ATTRIB.stride = 0;
-    ST_ATTRIB.type = GL_FLOAT;
-    ST_ATTRIB.size = 2;
+    DIFFUSE_ATTRIB.ptr = VERTEX_ATTRIB.ptr + (sizeof(GLfloat) * 5);
+    DIFFUSE_ATTRIB.size = 4;
+    DIFFUSE_ATTRIB.type = GL_UNSIGNED_BYTE;
+    DIFFUSE_ATTRIB.stride = 32;
 
     NORMAL_ATTRIB.ptr = NORMALS.data;
     NORMAL_ATTRIB.stride = 0;
     NORMAL_ATTRIB.type = GL_FLOAT;
     NORMAL_ATTRIB.size = 3;
+
+    ST_ATTRIB.ptr = ST_COORDS.data;
+    ST_ATTRIB.stride = 0;
+    ST_ATTRIB.type = GL_FLOAT;
+    ST_ATTRIB.size = 2;
 }
 
 GLubyte _glCheckImmediateModeInactive(const char* func) {
@@ -146,17 +142,23 @@ void APIENTRY glColor3fv(const GLfloat* v) {
 }
 
 void APIENTRY glVertex3f(GLfloat x, GLfloat y, GLfloat z) {
-    aligned_vector_reserve(&VERTICES, VERTICES.size + 3);
-    aligned_vector_push_back(&VERTICES, &x, 1);
-    aligned_vector_push_back(&VERTICES, &y, 1);
-    aligned_vector_push_back(&VERTICES, &z, 1);
+    GLVertexKOS* vert = aligned_vector_extend(&VERTICES, 1);
+    GLfloat* st = aligned_vector_extend(&ST_COORDS, 2);
+    GLfloat* n = aligned_vector_extend(&NORMALS, 3);
 
+    vert->x = x;
+    vert->y = y;
+    vert->z = z;
+    vert->u = UV_COORD[0];
+    vert->v = UV_COORD[1];
 
-    /* Push back the stashed colour, normal and uv_coordinate */
-    aligned_vector_push_back(&COLOURS, COLOR, 4);
-    aligned_vector_push_back(&UV_COORDS, UV_COORD, 2);
-    aligned_vector_push_back(&ST_COORDS, ST_COORD, 2);
-    aligned_vector_push_back(&NORMALS, NORMAL, 3);
+    vert->rgba[0] = COLOR[0];
+    vert->rgba[1] = COLOR[1];
+    vert->rgba[2] = COLOR[2];
+    vert->rgba[3] = COLOR[3];
+
+    memcpy(st, ST_COORD, sizeof(GLfloat) * 2);
+    memcpy(n, NORMAL, sizeof(GLfloat) * 3);
 }
 
 void APIENTRY glVertex3fv(const GLfloat* v) {
@@ -218,11 +220,12 @@ void APIENTRY glEnd() {
     IMMEDIATE_MODE_ACTIVE = GL_FALSE;
 
     /* Resizing could have invalidated these pointers */
-    VERTEX_ATTRIB.ptr = VERTICES.data;
-    DIFFUSE_ATTRIB.ptr = COLOURS.data;
-    UV_ATTRIB.ptr = UV_COORDS.data;
-    ST_ATTRIB.ptr = ST_COORDS.data;
+    VERTEX_ATTRIB.ptr = VERTICES.data + sizeof(uint32_t);
+    UV_ATTRIB.ptr = VERTEX_ATTRIB.ptr + (sizeof(GLfloat) * 3);
+    DIFFUSE_ATTRIB.ptr = VERTEX_ATTRIB.ptr + (sizeof(GLfloat) * 5);
+
     NORMAL_ATTRIB.ptr = NORMALS.data;
+    ST_ATTRIB.ptr = ST_COORDS.data;
 
     GLuint* attrs = _glGetEnabledAttributes();
 
@@ -250,7 +253,15 @@ void APIENTRY glEnd() {
 
     *attrs = ~0;  // Enable everything
 
-    glDrawArrays(ACTIVE_POLYGON_MODE, 0, VERTICES.size / 3);
+#ifndef NDEBUG
+    _glRecalcFastPath();
+#else
+    // Immediate mode should always activate the fast path
+    GLboolean fastPathEnabled = _glRecalcFastPath();
+    assert(fastPathEnabled);
+#endif
+
+    glDrawArrays(ACTIVE_POLYGON_MODE, 0, VERTICES.size);
 
     /* Restore everything */
     *vattr = vptr;
@@ -263,8 +274,6 @@ void APIENTRY glEnd() {
 
     /* Clear arrays for next polys */
     aligned_vector_clear(&VERTICES);
-    aligned_vector_clear(&COLOURS);
-    aligned_vector_clear(&UV_COORDS);
     aligned_vector_clear(&ST_COORDS);
     aligned_vector_clear(&NORMALS);
 
