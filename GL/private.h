@@ -316,6 +316,8 @@ GLboolean _glIsLightingEnabled();
 GLboolean _glIsLightEnabled(GLubyte light);
 GLboolean _glIsColorMaterialEnabled();
 
+GLboolean _glRecalcFastPath();
+
 typedef struct {
     float xyz[3];
     float n[3];

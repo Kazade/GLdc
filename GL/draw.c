@@ -19,7 +19,7 @@ static AttribPointer DIFFUSE_POINTER;
 
 static GLuint ENABLED_VERTEX_ATTRIBUTES = 0;
 static GLubyte ACTIVE_CLIENT_TEXTURE = 0;
-
+static GLboolean FAST_PATH_ENABLED = GL_FALSE;
 
 #define ITERATE(count) \
     GLuint i = count; \
@@ -53,6 +53,44 @@ void _glInitAttributePointers() {
     NORMAL_POINTER.stride = 0;
     NORMAL_POINTER.type = GL_FLOAT;
     NORMAL_POINTER.size = 3;
+}
+
+static GLboolean _glIsVertexDataFastPathCompatible() {
+    /*
+     * We provide a "fast path" if vertex data is provided in
+     * exactly the right format that matches what the PVR can handle.
+     * This function returns true if all the requirements are met.
+     */
+
+    /*
+     * At least these attributes need to be enabled, because we're not going to do any checking
+     * in the loop
+     */
+    if((ENABLED_VERTEX_ATTRIBUTES & VERTEX_ENABLED_FLAG) != VERTEX_ENABLED_FLAG) return GL_FALSE;
+    if((ENABLED_VERTEX_ATTRIBUTES & UV_ENABLED_FLAG) != UV_ENABLED_FLAG) return GL_FALSE;
+    if((ENABLED_VERTEX_ATTRIBUTES & DIFFUSE_ENABLED_FLAG) != DIFFUSE_ENABLED_FLAG) return GL_FALSE;
+
+    // All 3 attribute types must have a stride of 32
+    if(VERTEX_POINTER.stride != 32) return GL_FALSE;
+    if(UV_POINTER.stride != 32) return GL_FALSE;
+    if(DIFFUSE_POINTER.stride != 32) return GL_FALSE;
+
+    // UV must follow vertex, diffuse must follow UV
+    if((UV_POINTER.ptr - VERTEX_POINTER.ptr) != sizeof(GLfloat) * 3) return GL_FALSE;
+    if((DIFFUSE_POINTER.ptr - UV_POINTER.ptr) != sizeof(GLfloat) * 2) return GL_FALSE;
+
+    if(VERTEX_POINTER.type != GL_FLOAT) return GL_FALSE;
+    if(VERTEX_POINTER.size != 3) return GL_FALSE;
+
+    if(UV_POINTER.type != GL_FLOAT) return GL_FALSE;
+    if(UV_POINTER.size != 2) return GL_FALSE;
+
+    if(DIFFUSE_POINTER.type != GL_UNSIGNED_BYTE) return GL_FALSE;
+
+    /* BGRA is the required color order */
+    if(DIFFUSE_POINTER.size != GL_BGRA) return GL_FALSE;
+
+    return GL_TRUE;
 }
 
 static inline GLuint byte_size(GLenum type) {
@@ -304,8 +342,8 @@ static void _readVertexData4ubARGB(const GLubyte* input, GLuint count, GLubyte s
         output[B8IDX] = input[2];
         output[A8IDX] = input[3];
 
-        input = (GLubyte*) (((GLubyte*) input) + stride);
-        output = (GLubyte*) (((GLubyte*) output) + sizeof(Vertex));
+        input += stride;
+        output += sizeof(Vertex);
     }
 }
 
@@ -342,6 +380,30 @@ static void _readVertexData3ubARGB(const GLubyte* input, GLuint count, GLubyte s
 
         input = (((GLubyte*) input) + stride);
         output = (GLubyte*) (((GLubyte*) output) + sizeof(Vertex));
+    }
+}
+
+static void _readVertexData4ubRevARGB(const GLubyte* input, GLuint count, GLubyte stride, GLubyte* output) {
+    ITERATE(count) {
+        output[0] = input[0];
+        output[1] = input[1];
+        output[2] = input[2];
+        output[3] = input[3];
+
+        input += stride;
+        output += sizeof(Vertex);
+    }
+}
+
+static void _readVertexData4fRevARGB(const float* input, GLuint count, GLubyte stride, GLubyte* output) {
+    ITERATE(count) {
+        output[0] = (GLubyte) clamp(input[0] * 255.0f, 0, 255);
+        output[1] = (GLubyte) clamp(input[1] * 255.0f, 0, 255);
+        output[2] = (GLubyte) clamp(input[2] * 255.0f, 0, 255);
+        output[3] = (GLubyte) clamp(input[3] * 255.0f, 0, 255);
+
+        input = (float*) (((GLubyte*) input) + stride);
+        output += sizeof(Vertex);
     }
 }
 
@@ -391,6 +453,14 @@ static void _readVertexData4usARGB(const GLushort* input, GLuint count, GLubyte 
 }
 
 static void _readVertexData4uiARGB(const GLuint* input, GLuint count, GLubyte stride, GLubyte* output) {
+    assert(0 && "Not Implemented");
+}
+
+static void _readVertexData4usRevARGB(const GLushort* input, GLuint count, GLubyte stride, GLubyte* output) {
+    assert(0 && "Not Implemented");
+}
+
+static void _readVertexData4uiRevARGB(const GLuint* input, GLuint count, GLubyte stride, GLubyte* output) {
     assert(0 && "Not Implemented");
 }
 
@@ -712,7 +782,7 @@ static inline void _readDiffuseData(const GLuint first, const GLuint count, Vert
     }
 
     const GLubyte cstride = (DIFFUSE_POINTER.stride) ? DIFFUSE_POINTER.stride : DIFFUSE_POINTER.size * byte_size(DIFFUSE_POINTER.type);
-    const void* cptr = ((GLubyte*) DIFFUSE_POINTER.ptr + (first * cstride));
+    const void* cptr = ((GLubyte*) DIFFUSE_POINTER.ptr) + (first * cstride);
 
     if(DIFFUSE_POINTER.size == 3) {
         switch(DIFFUSE_POINTER.type) {
@@ -756,7 +826,28 @@ static inline void _readDiffuseData(const GLuint first, const GLuint count, Vert
         default:
             assert(0 && "Not Implemented");
         }
-    } else {
+    } else if(DIFFUSE_POINTER.size == GL_BGRA) {
+        switch(DIFFUSE_POINTER.type) {
+            case GL_DOUBLE:
+            case GL_FLOAT:
+                _readVertexData4fRevARGB(cptr, count, cstride, output[0].bgra);
+            break;
+            case GL_BYTE:
+            case GL_UNSIGNED_BYTE:
+                _readVertexData4ubRevARGB(cptr, count, cstride, output[0].bgra);
+            break;
+            case GL_SHORT:
+            case GL_UNSIGNED_SHORT:
+                _readVertexData4usRevARGB(cptr, count, cstride, output[0].bgra);
+            break;
+            case GL_INT:
+            case GL_UNSIGNED_INT:
+                _readVertexData4uiRevARGB(cptr, count, cstride, output[0].bgra);
+            break;
+        default:
+            assert(0 && "Not Implemented");
+        }
+    }else {
         assert(0 && "Not Implemented");
     }
 }
@@ -766,6 +857,7 @@ static void generate(SubmissionTarget* target, const GLenum mode, const GLsizei 
     /* Read from the client buffers and generate an array of ClipVertices */
     TRACE();
 
+    static const uint32_t FAST_PATH_BYTE_SIZE = (sizeof(GLfloat) * 3) + (sizeof(GLfloat) * 2) + (sizeof(GLubyte) * 4);
     const GLsizei istride = byte_size(type);
 
     if(!indices) {
@@ -773,28 +865,38 @@ static void generate(SubmissionTarget* target, const GLenum mode, const GLsizei 
 
         Vertex* start = _glSubmissionTargetStart(target);
 
-        _readPositionData(first, count, start);
-        profiler_checkpoint("positions");
+        if(FAST_PATH_ENABLED) {
+            /* Copy the pos, uv and color directly in one go */
+            const GLfloat* pos = VERTEX_POINTER.ptr;
+            Vertex* it = start;
+            ITERATE(count) {
+                it->flags = PVR_CMD_VERTEX;
+                memcpy(it->xyz, pos, FAST_PATH_BYTE_SIZE);
+                it++;
+                pos += 32 / sizeof(GLfloat);
+            }
+        } else {
+            _readPositionData(first, count, start);
+            profiler_checkpoint("positions");
 
-        _readDiffuseData(first, count, start);
-        profiler_checkpoint("diffuse");
+            _readDiffuseData(first, count, start);
+            profiler_checkpoint("diffuse");
 
-        if(doTexture) _readUVData(first, count, start);
+            if(doTexture) _readUVData(first, count, start);
+
+            Vertex* it = _glSubmissionTargetStart(target);
+
+            ITERATE(count) {
+                it->flags = PVR_CMD_VERTEX;
+                ++it;
+            }
+        }
 
         VertexExtra* ve = aligned_vector_at(target->extras, 0);
 
         if(doLighting) _readNormalData(first, count, ve);
         if(doTexture && doMultitexture) _readSTData(first, count, ve);
         profiler_checkpoint("others");
-
-        Vertex* it = _glSubmissionTargetStart(target);
-
-        ITERATE(count) {
-            it->flags = PVR_CMD_VERTEX;
-            ++it;
-        }
-
-        profiler_checkpoint("flags");
 
         // Drawing arrays
         switch(mode) {
@@ -1292,6 +1394,11 @@ void APIENTRY glClientActiveTextureARB(GLenum texture) {
     ACTIVE_CLIENT_TEXTURE = (texture == GL_TEXTURE1_ARB) ? 1 : 0;
 }
 
+GLboolean _glRecalcFastPath() {
+    FAST_PATH_ENABLED = _glIsVertexDataFastPathCompatible();
+    return FAST_PATH_ENABLED;
+}
+
 void APIENTRY glTexCoordPointer(GLint size,  GLenum type,  GLsizei stride,  const GLvoid * pointer) {
     TRACE();
 
@@ -1307,6 +1414,8 @@ void APIENTRY glTexCoordPointer(GLint size,  GLenum type,  GLsizei stride,  cons
     tointer->stride = stride;
     tointer->type = type;
     tointer->size = size;
+
+    _glRecalcFastPath();
 }
 
 void APIENTRY glVertexPointer(GLint size,  GLenum type,  GLsizei stride,  const GLvoid * pointer) {
@@ -1322,12 +1431,14 @@ void APIENTRY glVertexPointer(GLint size,  GLenum type,  GLsizei stride,  const 
     VERTEX_POINTER.stride = stride;
     VERTEX_POINTER.type = type;
     VERTEX_POINTER.size = size;
+
+    _glRecalcFastPath();
 }
 
 void APIENTRY glColorPointer(GLint size,  GLenum type,  GLsizei stride,  const GLvoid * pointer) {
     TRACE();
 
-    if(size != 3 && size != 4) {
+    if(size != 3 && size != 4 && size != GL_BGRA) {
         _glKosThrowError(GL_INVALID_VALUE, __func__);
         _glKosPrintError();
         return;
@@ -1337,6 +1448,8 @@ void APIENTRY glColorPointer(GLint size,  GLenum type,  GLsizei stride,  const G
     DIFFUSE_POINTER.stride = stride;
     DIFFUSE_POINTER.type = type;
     DIFFUSE_POINTER.size = size;
+
+    _glRecalcFastPath();
 }
 
 void APIENTRY glNormalPointer(GLenum type,  GLsizei stride,  const GLvoid * pointer) {
@@ -1346,4 +1459,6 @@ void APIENTRY glNormalPointer(GLenum type,  GLsizei stride,  const GLvoid * poin
     NORMAL_POINTER.stride = stride;
     NORMAL_POINTER.type = type;
     NORMAL_POINTER.size = 3;
+
+    _glRecalcFastPath();
 }

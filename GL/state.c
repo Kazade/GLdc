@@ -671,7 +671,7 @@ const GLubyte *glGetString(GLenum name) {
             return (const GLubyte*) "1.2 (partial) - GLdc 1.1";
 
         case GL_EXTENSIONS:
-            return (const GLubyte*) "GL_ARB_framebuffer_object, GL_ARB_multitexture, GL_ARB_texture_rg, GL_EXT_paletted_texture, GL_EXT_shared_texture_palette, GL_KOS_multiple_shared_palette";
+            return (const GLubyte*) "GL_ARB_framebuffer_object, GL_ARB_multitexture, GL_ARB_texture_rg, GL_EXT_paletted_texture, GL_EXT_shared_texture_palette, GL_KOS_multiple_shared_palette, GL_ARB_vertex_array_bgra";
     }
 
     return (const GLubyte*) "GL_KOS_ERROR: ENUM Unsupported\n";
