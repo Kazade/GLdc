@@ -199,7 +199,7 @@ void APIENTRY glRotatef(GLfloat angle, GLfloat x, GLfloat  y, GLfloat z) {
         0.0f, 0.0f, 0.0f, 1.0f
     };
 
-    float r = DEG2RAD * -angle;
+    float r = DEG2RAD * angle;
 
     float c = cos(r);
     float s = sin(r);
