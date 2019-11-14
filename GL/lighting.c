@@ -388,7 +388,9 @@ void _glCalculateLighting(EyeSpaceData* ES, Vertex* vertex) {
         VPpli[2] /= VPpliL;
 
         GLfloat ndotVPpli;
+
         vec3f_dot(n[0], n[1], n[2], VPpli[0], VPpli[1], VPpli[2], ndotVPpli);
+        ndotVPpli = (ndotVPpli < 0) ? 0 : ndotVPpli;
 
         const GLfloat k0 = light->constant_attenuation;
         const GLfloat k1 = light->linear_attenuation;
@@ -425,4 +427,3 @@ void _glCalculateLighting(EyeSpaceData* ES, Vertex* vertex) {
     vertex->bgra[B8IDX] = (GLubyte)(fminf(final[2] * 255.0f, 255.0f));
     vertex->bgra[A8IDX] = (GLubyte)(fminf(final[3] * 255.0f, 255.0f));
 }
-
