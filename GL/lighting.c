@@ -395,7 +395,7 @@ void _glCalculateLighting(EyeSpaceData* ES, Vertex* vertex) {
         const GLfloat k0 = light->constant_attenuation;
         const GLfloat k1 = light->linear_attenuation;
         const GLfloat k2 = light->quadratic_attenuation;
-        const GLfloat att = (light->position[3] == 0) ? 1.0f : 1.0f / k0 + (k1 * VPpliL) + (k2 * VPpliL * VPpliL);
+        const GLfloat att = (light->position[3] == 0.0f) ? 1.0f : 1.0f / (k0 + (k1 * VPpliL) + (k2 * VPpliL * VPpliL));
         const GLfloat spot = 1.0f; // FIXME: Spotlights
 
         const GLfloat fi = (ndotVPpli == 0) ? 0 : 1;

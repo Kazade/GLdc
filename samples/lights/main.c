@@ -171,6 +171,16 @@ void InitGL(int Width, int Height)
     glLightfv(GL_LIGHT0, GL_POSITION, position);
 
     glDisable(GL_TEXTURE_2D);
+
+    diffuseLight[1] = 1.0f;
+
+    glEnable(GL_LIGHT1);
+    glLightfv(GL_LIGHT1, GL_DIFFUSE, diffuseLight);
+    glLightfv(GL_LIGHT1, GL_SPECULAR, specularLight);
+
+    glLightf(GL_LIGHT1, GL_CONSTANT_ATTENUATION, 1.0);
+    glLightf(GL_LIGHT1, GL_LINEAR_ATTENUATION, 4.5 / 100);
+    glLightf(GL_LIGHT1, GL_QUADRATIC_ATTENUATION, 75.0f / (100 * 100));
 }
 
 
@@ -189,6 +199,14 @@ void ReSizeGLScene(int Width, int Height)
 }
 
 void DrawCube(float x, float z) {
+    static float pos = 0.0f;
+    const static float radius = 30.0f;
+
+    pos += 0.001f;
+
+    GLfloat position[] = { cos(pos) * radius, 15.0f, sin(pos) * radius, 1.0f };
+    glLightfv(GL_LIGHT1, GL_POSITION, position);
+
     glPushMatrix();
     glTranslatef(x, 0, z);
     glColor4f(1, 1, 1, 1);
