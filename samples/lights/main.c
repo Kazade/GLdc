@@ -181,6 +181,8 @@ void InitGL(int Width, int Height)
     glLightf(GL_LIGHT1, GL_CONSTANT_ATTENUATION, 1.0);
     glLightf(GL_LIGHT1, GL_LINEAR_ATTENUATION, 4.5 / 100);
     glLightf(GL_LIGHT1, GL_QUADRATIC_ATTENUATION, 75.0f / (100 * 100));
+
+    glEnable(GL_NORMALIZE);
 }
 
 

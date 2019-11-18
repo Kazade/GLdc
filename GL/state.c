@@ -32,6 +32,7 @@ static GLboolean SHARED_PALETTE_ENABLED = GL_FALSE;
 
 static GLboolean ALPHA_TEST_ENABLED = GL_FALSE;
 
+static GLboolean NORMALIZE_ENABLED = GL_FALSE;
 
 GLboolean _glIsSharedTexturePaletteEnabled() {
     return SHARED_PALETTE_ENABLED;
@@ -82,6 +83,10 @@ static int _calc_pvr_depth_test() {
 static GLenum BLEND_SFACTOR = GL_ONE;
 static GLenum BLEND_DFACTOR = GL_ZERO;
 static GLboolean BLEND_ENABLED = GL_FALSE;
+
+GLboolean _glIsNormalizeEnabled() {
+    return NORMALIZE_ENABLED;
+}
 
 GLboolean _glIsBlendingEnabled() {
     return BLEND_ENABLED;
@@ -333,6 +338,9 @@ GLAPI void APIENTRY glEnable(GLenum cap) {
         case GL_NEARZ_CLIPPING_KOS:
             _glEnableClipping(GL_TRUE);
         break;
+        case GL_NORMALIZE:
+            NORMALIZE_ENABLED = GL_TRUE;
+        break;
     default:
         break;
     }
@@ -386,6 +394,9 @@ GLAPI void APIENTRY glDisable(GLenum cap) {
         break;
         case GL_NEARZ_CLIPPING_KOS:
             _glEnableClipping(GL_FALSE);
+        break;
+        case GL_NORMALIZE:
+            NORMALIZE_ENABLED = GL_FALSE;
         break;
     default:
         break;
@@ -671,7 +682,7 @@ const GLubyte *glGetString(GLenum name) {
             return (const GLubyte*) "1.2 (partial) - GLdc 1.1";
 
         case GL_EXTENSIONS:
-            return (const GLubyte*) "GL_ARB_framebuffer_object, GL_ARB_multitexture, GL_ARB_texture_rg, GL_EXT_paletted_texture, GL_EXT_shared_texture_palette, GL_KOS_multiple_shared_palette, GL_ARB_vertex_array_bgra";
+            return (const GLubyte*) "GL_ARB_framebuffer_object, GL_ARB_multitexture, GL_ARB_texture_rg, GL_EXT_paletted_texture, GL_EXT_shared_texture_palette, GL_KOS_multiple_shared_palette, GL_ARB_vertex_array_bgra, GL_ARB_vertex_type_2_10_10_10_rev";
     }
 
     return (const GLubyte*) "GL_KOS_ERROR: ENUM Unsupported\n";

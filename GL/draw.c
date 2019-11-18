@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <math.h>
 #include <assert.h>
+#include <dc/vec3f.h>
 
 #include "../include/gl.h"
 #include "../include/glext.h"
@@ -102,6 +103,7 @@ static inline GLuint byte_size(GLenum type) {
     case GL_INT: return sizeof(GLint);
     case GL_UNSIGNED_INT: return sizeof(GLuint);
     case GL_DOUBLE: return sizeof(GLdouble);
+    case GL_UNSIGNED_INT_2_10_10_10_REV: return sizeof(GLuint);
     case GL_FLOAT:
     default: return sizeof(GLfloat);
     }
@@ -125,6 +127,32 @@ static void _readVertexData3f3f(const float* input, GLuint count, GLubyte stride
 
         input = (float*) (((GLubyte*) input) + stride);
         output = (float*) (((GLubyte*) output) + sizeof(Vertex));
+    }
+}
+
+
+static inline float conv_i10_to_norm_float(int i10) {
+    struct attr_bits_10 {
+        signed int x:10;
+    } val;
+
+    val.x = i10;
+
+    return (2.0F * (float)val.x + 1.0F) * (1.0F  / 1023.0F);
+}
+
+// 10:10:10:2REV format
+static void _readVertexData1ui3f(const GLuint* input, GLuint count, GLubyte stride, float* output) {
+    ITERATE(count) {
+        int inp = *input;
+        output[0] = conv_i10_to_norm_float((inp) & 0x3ff);
+        output[1] = conv_i10_to_norm_float(((inp) >> 10) & 0x3ff);
+        output[2] = conv_i10_to_norm_float(((inp) >> 20) & 0x3ff);
+
+        // fprintf(stderr, "%d -> %f %f %f\n", inp, output[0], output[1], output[2]);
+
+        input = (GLuint*) (((GLubyte*) input) + stride);
+        output = (GLfloat*) (((GLubyte*) output) + sizeof(VertexExtra));
     }
 }
 
@@ -748,7 +776,7 @@ static inline void _readNormalData(const GLuint first, const GLuint count, Verte
     const GLuint nstride = (NORMAL_POINTER.stride) ? NORMAL_POINTER.stride : NORMAL_POINTER.size * byte_size(NORMAL_POINTER.type);
     const void* nptr = ((GLubyte*) NORMAL_POINTER.ptr + (first * nstride));
 
-    if(NORMAL_POINTER.size == 3) {
+    if(NORMAL_POINTER.size == 3 || NORMAL_POINTER.type == GL_UNSIGNED_INT_2_10_10_10_REV) {
         switch(NORMAL_POINTER.type) {
             case GL_DOUBLE:
             case GL_FLOAT:
@@ -766,11 +794,32 @@ static inline void _readNormalData(const GLuint first, const GLuint count, Verte
             case GL_UNSIGNED_INT:
                 _readVertexData3ui3fVE(nptr, count, nstride, extra->nxyz);
             break;
+            case GL_UNSIGNED_INT_2_10_10_10_REV:
+                _readVertexData1ui3f(nptr, count, nstride, extra->nxyz);
+            break;
         default:
             assert(0 && "Not Implemented");
         }
     } else {
         assert(0 && "Not Implemented");
+    }
+
+    if(_glIsNormalizeEnabled()) {
+        GLubyte* ptr = (GLubyte*) extra->nxyz;
+        GLfloat l;
+        ITERATE(count) {
+            GLfloat* n = (GLfloat*) ptr;
+
+            vec3f_length(n[0], n[1], n[2], l);
+
+            l = 1.0f / l;
+
+            n[0] *= l;
+            n[1] *= l;
+            n[2] *= l;
+
+            ptr += sizeof(VertexExtra);
+        }
     }
 }
 

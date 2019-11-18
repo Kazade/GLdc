@@ -38,11 +38,11 @@ static AttribPointer NORMAL_ATTRIB;
 void _glInitImmediateMode(GLuint initial_size) {
     aligned_vector_init(&VERTICES, sizeof(GLVertexKOS));
     aligned_vector_init(&ST_COORDS, sizeof(GLfloat));
-    aligned_vector_init(&NORMALS, sizeof(GLfloat));
+    aligned_vector_init(&NORMALS, sizeof(GLuint));
 
     aligned_vector_reserve(&VERTICES, initial_size);
     aligned_vector_reserve(&ST_COORDS, initial_size * 2);
-    aligned_vector_reserve(&NORMALS, initial_size * 3);
+    aligned_vector_reserve(&NORMALS, initial_size);
 
     VERTEX_ATTRIB.ptr = VERTICES.data + sizeof(uint32_t);
     VERTEX_ATTRIB.size = 3;
@@ -61,8 +61,8 @@ void _glInitImmediateMode(GLuint initial_size) {
 
     NORMAL_ATTRIB.ptr = NORMALS.data;
     NORMAL_ATTRIB.stride = 0;
-    NORMAL_ATTRIB.type = GL_FLOAT;
-    NORMAL_ATTRIB.size = 3;
+    NORMAL_ATTRIB.type = GL_UNSIGNED_INT_2_10_10_10_REV;
+    NORMAL_ATTRIB.size = 1;
 
     ST_ATTRIB.ptr = ST_COORDS.data;
     ST_ATTRIB.stride = 0;
@@ -141,10 +141,25 @@ void APIENTRY glColor3fv(const GLfloat* v) {
     COLOR[3] = 255;
 }
 
+static inline uint32_t pack_vertex_attribute_vec3_1ui(float x, float y, float z) {
+    struct attr_bits_10 {
+        signed int x:10;
+    };
+
+    struct attr_bits_10 xi, yi, zi;
+    xi.x = x * 511.0f;
+    yi.x = y * 511.0f;
+    zi.x = z * 511.0f;
+
+    int ret = (xi.x) | (yi.x << 10) | (zi.x << 20);
+
+    return ret;
+}
+
 void APIENTRY glVertex3f(GLfloat x, GLfloat y, GLfloat z) {
     GLVertexKOS* vert = aligned_vector_extend(&VERTICES, 1);
     GLfloat* st = aligned_vector_extend(&ST_COORDS, 2);
-    GLfloat* n = aligned_vector_extend(&NORMALS, 3);
+    GLuint* n = aligned_vector_extend(&NORMALS, 1);
 
     vert->x = x;
     vert->y = y;
@@ -157,8 +172,9 @@ void APIENTRY glVertex3f(GLfloat x, GLfloat y, GLfloat z) {
     vert->bgra[B8IDX] = COLOR[2];
     vert->bgra[A8IDX] = COLOR[3];
 
+    *n = pack_vertex_attribute_vec3_1ui(NORMAL[0], NORMAL[1], NORMAL[2]);
+
     memcpy(st, ST_COORD, sizeof(GLfloat) * 2);
-    memcpy(n, NORMAL, sizeof(GLfloat) * 3);
 }
 
 void APIENTRY glVertex3fv(const GLfloat* v) {
