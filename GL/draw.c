@@ -104,6 +104,7 @@ static inline GLuint byte_size(GLenum type) {
     case GL_UNSIGNED_INT: return sizeof(GLuint);
     case GL_DOUBLE: return sizeof(GLdouble);
     case GL_UNSIGNED_INT_2_10_10_10_REV: return sizeof(GLuint);
+    case GL_INT_2_10_10_10_REV: return sizeof(GLint);
     case GL_FLOAT:
     default: return sizeof(GLfloat);
     }
@@ -142,7 +143,7 @@ static inline float conv_i10_to_norm_float(int i10) {
 }
 
 // 10:10:10:2REV format
-static void _readVertexData1ui3f(const GLuint* input, GLuint count, GLubyte stride, float* output) {
+static void _readVertexData1i3f(const GLuint* input, GLuint count, GLubyte stride, float* output) {
     ITERATE(count) {
         int inp = *input;
         output[0] = conv_i10_to_norm_float((inp) & 0x3ff);
@@ -774,9 +775,10 @@ static inline void _readNormalData(const GLuint first, const GLuint count, Verte
     }
 
     const GLuint nstride = (NORMAL_POINTER.stride) ? NORMAL_POINTER.stride : NORMAL_POINTER.size * byte_size(NORMAL_POINTER.type);
+
     const void* nptr = ((GLubyte*) NORMAL_POINTER.ptr + (first * nstride));
 
-    if(NORMAL_POINTER.size == 3 || NORMAL_POINTER.type == GL_UNSIGNED_INT_2_10_10_10_REV) {
+    if(NORMAL_POINTER.size == 3 || NORMAL_POINTER.type == GL_INT_2_10_10_10_REV) {
         switch(NORMAL_POINTER.type) {
             case GL_DOUBLE:
             case GL_FLOAT:
@@ -794,8 +796,8 @@ static inline void _readNormalData(const GLuint first, const GLuint count, Verte
             case GL_UNSIGNED_INT:
                 _readVertexData3ui3fVE(nptr, count, nstride, extra->nxyz);
             break;
-            case GL_UNSIGNED_INT_2_10_10_10_REV:
-                _readVertexData1ui3f(nptr, count, nstride, extra->nxyz);
+            case GL_INT_2_10_10_10_REV:
+                _readVertexData1i3f(nptr, count, nstride, extra->nxyz);
             break;
         default:
             assert(0 && "Not Implemented");
@@ -916,13 +918,13 @@ static void generate(SubmissionTarget* target, const GLenum mode, const GLsizei 
 
         if(FAST_PATH_ENABLED) {
             /* Copy the pos, uv and color directly in one go */
-            const GLfloat* pos = VERTEX_POINTER.ptr;
+            const GLubyte* pos = VERTEX_POINTER.ptr;
             Vertex* it = start;
             ITERATE(count) {
                 it->flags = PVR_CMD_VERTEX;
                 memcpy(it->xyz, pos, FAST_PATH_BYTE_SIZE);
                 it++;
-                pos += 32 / sizeof(GLfloat);
+                pos += VERTEX_POINTER.stride;
             }
         } else {
             _readPositionData(first, count, start);
@@ -1259,7 +1261,9 @@ static void submitVertices(GLenum mode, GLsizei first, GLuint count, GLenum type
 
     profiler_checkpoint("generate");
 
-    light(target);
+    if(doLighting) {
+        light(target);
+    }
 
     profiler_checkpoint("light");
 
@@ -1507,7 +1511,7 @@ void APIENTRY glNormalPointer(GLenum type,  GLsizei stride,  const GLvoid * poin
     NORMAL_POINTER.ptr = pointer;
     NORMAL_POINTER.stride = stride;
     NORMAL_POINTER.type = type;
-    NORMAL_POINTER.size = 3;
+    NORMAL_POINTER.size = (type == GL_INT_2_10_10_10_REV) ? 1 : 3;
 
     _glRecalcFastPath();
 }

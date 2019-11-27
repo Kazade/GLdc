@@ -61,7 +61,7 @@ void _glInitImmediateMode(GLuint initial_size) {
 
     NORMAL_ATTRIB.ptr = NORMALS.data;
     NORMAL_ATTRIB.stride = 0;
-    NORMAL_ATTRIB.type = GL_UNSIGNED_INT_2_10_10_10_REV;
+    NORMAL_ATTRIB.type = GL_INT_2_10_10_10_REV;
     NORMAL_ATTRIB.size = 1;
 
     ST_ATTRIB.ptr = ST_COORDS.data;
@@ -141,19 +141,21 @@ void APIENTRY glColor3fv(const GLfloat* v) {
     COLOR[3] = 255;
 }
 
-static inline uint32_t pack_vertex_attribute_vec3_1ui(float x, float y, float z) {
-    struct attr_bits_10 {
-        signed int x:10;
-    };
+static inline uint32_t pack_vertex_attribute_vec3_1i(float x, float y, float z) {
+    const float w = 0.0f;
 
-    struct attr_bits_10 xi, yi, zi;
-    xi.x = x * 511.0f;
-    yi.x = y * 511.0f;
-    zi.x = z * 511.0f;
+    const uint32_t xs = x < 0;
+    const uint32_t ys = y < 0;
+    const uint32_t zs = z < 0;
+    const uint32_t ws = w < 0;
 
-    int ret = (xi.x) | (yi.x << 10) | (zi.x << 20);
+    uint32_t vi =
+        ws << 31 | ((uint32_t)(w + (ws << 1)) & 1) << 30 |
+        zs << 29 | ((uint32_t)(z * 511 + (zs << 9)) & 511) << 20 |
+        ys << 19 | ((uint32_t)(y * 511 + (ys << 9)) & 511) << 10 |
+        xs << 9  | ((uint32_t)(x * 511 + (xs << 9)) & 511);
 
-    return ret;
+    return vi;
 }
 
 void APIENTRY glVertex3f(GLfloat x, GLfloat y, GLfloat z) {
@@ -172,7 +174,7 @@ void APIENTRY glVertex3f(GLfloat x, GLfloat y, GLfloat z) {
     vert->bgra[B8IDX] = COLOR[2];
     vert->bgra[A8IDX] = COLOR[3];
 
-    *n = pack_vertex_attribute_vec3_1ui(NORMAL[0], NORMAL[1], NORMAL[2]);
+    *n = pack_vertex_attribute_vec3_1i(NORMAL[0], NORMAL[1], NORMAL[2]);
 
     memcpy(st, ST_COORD, sizeof(GLfloat) * 2);
 }
