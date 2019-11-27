@@ -978,28 +978,51 @@ static void generate(SubmissionTarget* target, const GLenum mode, const GLsizei 
         Vertex* vertices = _glSubmissionTargetStart(target);
         VertexExtra* extras = aligned_vector_at(target->extras, 0);
 
-        ITERATE(count) {
-            j = indexFunc(idx);
+        if(FAST_PATH_ENABLED) {
+            typedef struct FastPath {
+                float xyz[3];
+                float uv[2];
+                uint32_t argb;
+            } FastPath;
 
-            _readPositionData(j, 1, vertices);
-            _readDiffuseData(j, 1, vertices);
-            if(doTexture) _readUVData(j, 1, vertices);
-            if(doLighting) _readNormalData(j, 1, extras);
-            if(doTexture && doMultitexture) _readSTData(j, 1, extras);
+            GLboolean readST = doTexture && doMultitexture;
 
-            ++vertices;
-            ++extras;
+            ITERATE(count) {
+                j = indexFunc(idx);
 
-            idx += istride;
+                vertices->flags = PVR_CMD_VERTEX;
+
+                FastPath* srcV = (FastPath*) ((uint8_t*) VERTEX_POINTER.ptr + (VERTEX_POINTER.stride * j));
+                FastPath* dst = (FastPath*) &vertices->xyz;
+                *dst = *srcV;
+
+                if(doLighting) _readNormalData(j, 1, extras);
+                if(readST) _readSTData(j, 1, extras);
+
+                ++vertices;
+                ++extras;
+
+                idx += istride;
+            }
+        } else {
+            ITERATE(count) {
+                j = indexFunc(idx);
+                vertices->flags = PVR_CMD_VERTEX;
+
+                _readPositionData(j, 1, vertices);
+                _readDiffuseData(j, 1, vertices);
+                if(doTexture) _readUVData(j, 1, vertices);
+                if(doLighting) _readNormalData(j, 1, extras);
+                if(doTexture && doMultitexture) _readSTData(j, 1, extras);
+
+                ++vertices;
+                ++extras;
+
+                idx += istride;
+            }
         }
 
         Vertex* it = _glSubmissionTargetStart(target);
-        const Vertex* end = _glSubmissionTargetEnd(target);
-        while(it < end) {
-            (it++)->flags = PVR_CMD_VERTEX;
-        }
-
-        it = _glSubmissionTargetStart(target);
         // Drawing arrays
         switch(mode) {
         case GL_TRIANGLES:
