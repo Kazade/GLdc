@@ -123,10 +123,8 @@ static int _calcPVRBlendFactor(GLenum factor) {
 static void _updatePVRBlend(pvr_poly_cxt_t* context) {
     if(BLEND_ENABLED) {
         context->gen.alpha = PVR_ALPHA_ENABLE;
-        context->txr.alpha = PVR_TXRALPHA_ENABLE;
     } else {
         context->gen.alpha = PVR_ALPHA_DISABLE;
-        context->txr.alpha = PVR_TXRALPHA_DISABLE;
     }
 
     context->blend.src = _calcPVRBlendFactor(BLEND_SFACTOR);
@@ -165,6 +163,8 @@ void _glUpdatePVRTextureContext(pvr_poly_cxt_t* context, GLshort textureUnit) {
     if(!TEXTURES_ENABLED[textureUnit] || !tx1) {
         return;
     }
+
+    context->txr.alpha = (BLEND_ENABLED) ? PVR_TXRALPHA_ENABLE : PVR_TXRALPHA_DISABLE;
 
     GLuint filter = PVR_FILTER_NEAREST;
     GLboolean enableMipmaps = GL_FALSE;
