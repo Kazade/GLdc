@@ -67,7 +67,7 @@ void RenderCallback(GLuint texID0, GLuint texID1) {
     glClientActiveTextureARB(GL_TEXTURE0_ARB);
 
     /* Bind the Color Array */
-    glColorPointer(1, GL_UNSIGNED_INT, 0, ARGB_ARRAY);
+    glColorPointer(GL_BGRA, GL_UNSIGNED_BYTE, 0, ARGB_ARRAY);
 
     /* Bind the Vertex Array */
     glVertexPointer(3, GL_FLOAT, 0, VERTEX_ARRAY);
