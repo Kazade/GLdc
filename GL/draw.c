@@ -414,10 +414,10 @@ static void _readVertexData3ubARGB(const GLubyte* input, GLuint count, GLubyte s
 
 static void _readVertexData4ubRevARGB(const GLubyte* input, GLuint count, GLubyte stride, GLubyte* output) {
     ITERATE(count) {
-        output[0] = input[0];
-        output[1] = input[1];
-        output[2] = input[2];
-        output[3] = input[3];
+        output[B8IDX] = input[0];
+        output[G8IDX] = input[1];
+        output[R8IDX] = input[2];
+        output[A8IDX] = input[3];
 
         input += stride;
         output += sizeof(Vertex);
@@ -608,23 +608,22 @@ Vertex* _glSubmissionTargetEnd(SubmissionTarget* target) {
 }
 
 static inline void genTriangles(Vertex* output, GLuint count) {
+    const GLuint tris = count / 3;
     Vertex* it = output + 2;
-    ITERATE(count / 3) {
+    ITERATE(tris) {
         it->flags = PVR_CMD_VERTEX_EOL;
         it += 3;
     }
 }
 
 static inline void genQuads(Vertex* output, GLuint count) {
-    Vertex* this = output + 2;
-    Vertex* next = output + 3;
+    const GLuint quads = count / 4;
+    Vertex* final = output + 3;
 
-    ITERATE(count / 4) {
-        swapVertex(this, next);
-        next->flags = PVR_CMD_VERTEX_EOL;
-
-        this += 4;
-        next += 4;
+    ITERATE(quads) {
+        swapVertex((final - 1), final);
+        final->flags = PVR_CMD_VERTEX_EOL;
+        final += 4;
     }
 }
 
@@ -982,7 +981,7 @@ static void generate(SubmissionTarget* target, const GLenum mode, const GLsizei 
             typedef struct FastPath {
                 float xyz[3];
                 float uv[2];
-                uint32_t argb;
+                uint8_t bgra[4];
             } FastPath;
 
             GLboolean readST = doTexture && doMultitexture;
@@ -993,7 +992,7 @@ static void generate(SubmissionTarget* target, const GLenum mode, const GLsizei 
                 vertices->flags = PVR_CMD_VERTEX;
 
                 FastPath* srcV = (FastPath*) ((uint8_t*) VERTEX_POINTER.ptr + (VERTEX_POINTER.stride * j));
-                FastPath* dst = (FastPath*) &vertices->xyz;
+                FastPath* dst = (FastPath*) vertices->xyz;
                 *dst = *srcV;
 
                 if(doLighting) _readNormalData(j, 1, extras);
@@ -1426,6 +1425,8 @@ void APIENTRY glEnableClientState(GLenum cap) {
     default:
         _glKosThrowError(GL_INVALID_ENUM, __func__);
     }
+
+    _glRecalcFastPath();
 }
 
 void APIENTRY glDisableClientState(GLenum cap) {
@@ -1449,6 +1450,8 @@ void APIENTRY glDisableClientState(GLenum cap) {
     default:
         _glKosThrowError(GL_INVALID_ENUM, __func__);
     }
+
+    _glRecalcFastPath();
 }
 
 GLuint _glGetActiveClientTexture() {
