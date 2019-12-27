@@ -348,7 +348,7 @@ void _glPerformLighting(Vertex* vertices, const EyeSpaceData* es, const int32_t 
             MS = (isSpecularCM) ? CM : MATERIAL.specular;
         }
 
-        float final[3];
+        float final[4];
 
         /* Initial, non-light related values */
         final[0] = (SCENE_AMBIENT[0] * MA[0]) + MATERIAL.emissive[0];
