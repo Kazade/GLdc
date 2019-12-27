@@ -320,7 +320,7 @@ typedef struct {
     float n[3];
 } EyeSpaceData;
 
-extern void _glCalculateLighting(EyeSpaceData* ES, Vertex* vertex);
+extern void _glPerformLighting(Vertex* vertices, const EyeSpaceData* es, const int32_t count);
 
 unsigned char _glIsClippingEnabled();
 void _glEnableClipping(unsigned char v);

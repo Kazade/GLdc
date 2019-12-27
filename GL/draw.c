@@ -1136,14 +1136,8 @@ static void light(SubmissionTarget* target) {
     _glMatrixLoadNormal();
     mat_transform_normal3(extra->nxyz, eye_space->n, target->count, sizeof(VertexExtra), sizeof(EyeSpaceData));
 
-    GLsizei i;
     EyeSpaceData* ES = aligned_vector_at(eye_space_data, 0);
-
-    for(i = 0; i < target->count; ++i, ++vertex, ++ES) {
-        /* We ignore diffuse colour when lighting is enabled. If GL_COLOR_MATERIAL is enabled
-         * then the lighting calculation should possibly take it into account */
-        _glCalculateLighting(ES, vertex);
-    }
+    _glPerformLighting(vertex, ES, target->count);
 }
 
 static void divide(SubmissionTarget* target) {

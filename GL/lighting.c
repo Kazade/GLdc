@@ -281,10 +281,37 @@ static inline float FPOW(float b, float p) {
     return FEXP(FLOG(b) * p);
 }
 
-void _glCalculateLighting(EyeSpaceData* ES, Vertex* vertex) {
+#define LIGHT_COMPONENT(C) { \
+    const GLfloat* acm = &MA[C]; \
+    const GLfloat* dcm = &MD[C]; \
+    const GLfloat* scm = &MS[C]; \
+    const GLfloat* scli = &light->specular[C]; \
+    const GLfloat* dcli = &light->diffuse[C]; \
+    const GLfloat* acli = &light->ambient[C]; \
+    const GLfloat* srm = &MATERIAL.exponent; \
+    const GLfloat fi = (LdotN == 0) ? 0 : 1; \
+    GLfloat component = (*acm * *acli); \
+    component += (LdotN * *dcm * *dcli); \
+    component += (FPOW((fi * NdotH), *srm) * *scm * *scli); \
+    component *= att; \
+    component *= spot; \
+    final[C] += component; \
+}
 
-    /* Before we begin, lets fiddle some pointers if COLOR_MATERIAL
-     * is enabled */
+static inline float vec3_dot_limited(
+        const float* x1, const float* y1, const float* z1,
+        const float* x2, const float* y2, const float* z2) {
+
+    float ret;
+    vec3f_dot(*x1, *y1, *z1, *x2, *y2, *z2, ret);
+    return (ret < 0) ? 0 : ret;
+}
+
+void _glPerformLighting(Vertex* vertices, const EyeSpaceData* es, const int32_t count) {
+    int8_t i;
+    int32_t j;
+
+    const LightSource* light = NULL;
 
     const GLboolean colorMaterial = _glIsColorMaterialEnabled();
     const GLboolean isDiffuseCM = isDiffuseColorMaterial();
@@ -293,137 +320,105 @@ void _glCalculateLighting(EyeSpaceData* ES, Vertex* vertex) {
 
     static GLfloat CM[4];
 
-    if(colorMaterial) {
-        CM[0] = ((GLfloat) vertex->bgra[R8IDX]) / 255.0f;
-        CM[1] = ((GLfloat) vertex->bgra[G8IDX]) / 255.0f;
-        CM[2] = ((GLfloat) vertex->bgra[B8IDX]) / 255.0f;
-        CM[3] = ((GLfloat) vertex->bgra[A8IDX]) / 255.0f;
-    }
+     /* So the DC has 16 floating point registers, that means
+     * we need to limit the number of floats as much as possible
+     * to give the compiler a good enough chance to do the right
+     * thing */
 
-    const GLfloat* MD = (colorMaterial && isDiffuseCM) ? CM : MATERIAL.diffuse;
-    const GLfloat* MA = (colorMaterial && isAmbientCM) ? CM : MATERIAL.ambient;
-    const GLfloat* MS = (colorMaterial && isSpecularCM) ? CM : MATERIAL.specular;
+    Vertex* vertex = vertices;
+    const EyeSpaceData* data = es;
 
-    /* Right..
-     *
-     * global propertie:
-     *
-     * acs - Global Ambient
-     *
-     * vertex-specific properties:
-     *
-     * ecm - Material Emission
-     * acm - Material Ambient
-     * dcm - Material Diffuse
-     * n - Normal
-     * V - Vertex Position
-     * VPe - Vector from V to eye point (0, 0, 0, -1) basically negative V
-     *
-     * light-specifc properties:
-     *
-     * att - Attenution
-     * acli - Light Ambient
-     * Ppli - Light Position
-     * dcli - Light Diffuse
-     * fi - 1/0 facing light or not
-     * VPpli - Vector from V to Ppli
-     * ndotPpli - Dot product between n and Ppli
-     * hi -
-     * PpliV - vector from Ppli to V
-     */
+    const static float ONE_OVER_255 = 1.0f / 255.0f;
 
+    for(j = 0; j < count; ++j, ++vertex, ++data) {
+        /* When GL_COLOR_MATERIAL is on, we need to pull out
+         * the passed in diffuse and use it */
+        const GLfloat* MD = MATERIAL.diffuse;
+        const GLfloat* MA = MATERIAL.ambient;
+        const GLfloat* MS = MATERIAL.specular;
 
-/* Each colour component is calculated in its own scope
- * so that the SH4 float registers don't get flooded */
-#define LIGHT_COMPONENT(C) { \
-    const GLfloat acm = MA[C]; \
-    const GLfloat dcm = MD[C]; \
-    const GLfloat scm = MS[C]; \
-    const GLfloat scli = light->specular[C]; \
-    const GLfloat dcli = light->diffuse[C]; \
-    const GLfloat acli = light->ambient[C]; \
-    const GLfloat srm = MATERIAL.exponent; \
-\
-    final[C] += (att * spot * ( \
-        (acm * acli) + (ndotVPpli * dcm * dcli) + \
-        (FPOW((fi * ndothi), srm) * scm * scli) \
-    )); \
-}
+        if(colorMaterial) {
+            CM[0] = ((GLfloat) vertex->bgra[R8IDX]) * ONE_OVER_255;
+            CM[1] = ((GLfloat) vertex->bgra[G8IDX]) * ONE_OVER_255;
+            CM[2] = ((GLfloat) vertex->bgra[B8IDX]) * ONE_OVER_255;
+            CM[3] = ((GLfloat) vertex->bgra[A8IDX]) * ONE_OVER_255;
 
-    const GLfloat* n = ES->n;
-    const GLfloat* V = ES->xyz;
-
-    GLfloat Vpe [] = {-V[0], -V[1], -V[2]};
-    GLfloat VpeL;
-    vec3f_length(Vpe[0], Vpe[1], Vpe[2], VpeL);
-    Vpe[0] /= VpeL;
-    Vpe[1] /= VpeL;
-    Vpe[2] /= VpeL;
-
-    GLfloat final[4] = {
-        MATERIAL.emissive[0] + (MA[0] * SCENE_AMBIENT[0]),
-        MATERIAL.emissive[1] + (MA[1] * SCENE_AMBIENT[1]),
-        MATERIAL.emissive[2] + (MA[2] * SCENE_AMBIENT[2]),
-        MD[3] // GL spec says alpha is always from the diffuse
-    };
-
-    GLubyte i;
-    for(i = 0; i < MAX_LIGHTS; ++i) {
-        if(!_glIsLightEnabled(i)) continue;
-
-        const LightSource* light = &LIGHTS[i];
-
-        const GLfloat* Ppli = light->position;
-        GLfloat VPpli [] = {
-            Ppli[0] - V[0],
-            Ppli[1] - V[1],
-            Ppli[2] - V[2]
-        };
-
-        GLfloat VPpliL;
-        vec3f_length(VPpli[0], VPpli[1], VPpli[2], VPpliL);
-
-        VPpli[0] /= VPpliL;
-        VPpli[1] /= VPpliL;
-        VPpli[2] /= VPpliL;
-
-        GLfloat ndotVPpli;
-
-        vec3f_dot(n[0], n[1], n[2], VPpli[0], VPpli[1], VPpli[2], ndotVPpli);
-        ndotVPpli = (ndotVPpli < 0) ? 0 : ndotVPpli;
-
-        const GLfloat k0 = light->constant_attenuation;
-        const GLfloat k1 = light->linear_attenuation;
-        const GLfloat k2 = light->quadratic_attenuation;
-        const GLfloat att = (light->position[3] == 0.0f) ? 1.0f : 1.0f / (k0 + (k1 * VPpliL) + (k2 * VPpliL * VPpliL));
-        const GLfloat spot = 1.0f; // FIXME: Spotlights
-
-        const GLfloat fi = (ndotVPpli == 0) ? 0 : 1;
-
-        GLfloat hi [3];
-        if(!VIEWER_IN_EYE_COORDINATES) {
-            // FIXME: Docs show power of T or something?
-            hi[0] = VPpli[0] + 0;
-            hi[1] = VPpli[1] + 0;
-            hi[2] = VPpli[2] + 1;
-        } else {
-            hi[0] = VPpli[0] + Vpe[0];
-            hi[1] = VPpli[1] + Vpe[1];
-            hi[2] = VPpli[2] + Vpe[2];
+            MD = (isDiffuseCM) ? CM : MATERIAL.diffuse;
+            MA = (isAmbientCM) ? CM : MATERIAL.ambient;
+            MS = (isSpecularCM) ? CM : MATERIAL.specular;
         }
 
-        GLfloat ndothi;
-        vec3f_dot(n[0], n[1], n[2], hi[0], hi[1], hi[2], ndothi);
+        float final[3];
 
-        LIGHT_COMPONENT(0);
-        LIGHT_COMPONENT(1);
-        LIGHT_COMPONENT(2);
+        /* Initial, non-light related values */
+        final[0] = (SCENE_AMBIENT[0] * MA[0]) + MATERIAL.emissive[0];
+        final[1] = (SCENE_AMBIENT[1] * MA[1]) + MATERIAL.emissive[1];
+        final[2] = (SCENE_AMBIENT[2] * MA[2]) + MATERIAL.emissive[2];
+        final[3] = MD[3];
+
+        float Vx, Vy, Vz;
+        Vx = -data->xyz[0];
+        Vy = -data->xyz[1];
+        Vz = -data->xyz[2];
+        vec3f_normalize(Vx, Vy, Vz);
+
+        for(i = 0; i < MAX_LIGHTS; ++i) {
+            if(!_glIsLightEnabled(i)) continue;
+
+            /* Calc light specific parameters */
+            light = &LIGHTS[i];
+
+            float Lx, Ly, Lz, D;
+            float Hx, Hy, Hz;
+            const float* Nx = &data->n[0];
+            const float* Ny = &data->n[1];
+            const float* Nz = &data->n[2];
+
+            Lx = light->position[0] - data->xyz[0];
+            Ly = light->position[1] - data->xyz[1];
+            Lz = light->position[2] - data->xyz[2];
+            vec3f_length(Lx, Ly, Lz, D);
+
+            {
+                /* Normalize L - scoping ensures Llen is temporary */
+                const float Llen = 1.0f / D;
+                Lx *= Llen;
+                Ly *= Llen;
+                Lz *= Llen;
+            }
+
+            Hx = (Lx + Vx);
+            Hy = (Ly + Vy);
+            Hz = (Lz + Vz);
+            vec3f_normalize(Hx, Hy, Hz);
+
+            const float LdotN = vec3_dot_limited(
+                &Lx, &Ly, &Lz,
+                Nx, Ny, Nz
+            );
+
+            const float NdotH = vec3_dot_limited(
+                Nx, Ny, Nz,
+                &Hx, &Hy, &Hz
+            );
+
+            const float att = (
+                light->position[3] == 0.0f) ? 1.0f :
+                1.0f / (light->constant_attenuation + (light->linear_attenuation * D) + (light->quadratic_attenuation * D * D)
+            );
+
+            const float spot = 1.0f;
+
+            LIGHT_COMPONENT(0);
+            LIGHT_COMPONENT(1);
+            LIGHT_COMPONENT(2);
+        }
+
+        vertex->bgra[R8IDX] = (GLubyte)(fminf(final[0] * 255.0f, 255.0f));
+        vertex->bgra[G8IDX] = (GLubyte)(fminf(final[1] * 255.0f, 255.0f));
+        vertex->bgra[B8IDX] = (GLubyte)(fminf(final[2] * 255.0f, 255.0f));
+        vertex->bgra[A8IDX] = (GLubyte)(fminf(final[3] * 255.0f, 255.0f));
     }
+}
 
 #undef LIGHT_COMPONENT
-
-    vertex->bgra[R8IDX] = (GLubyte)(fminf(final[0] * 255.0f, 255.0f));
-    vertex->bgra[G8IDX] = (GLubyte)(fminf(final[1] * 255.0f, 255.0f));
-    vertex->bgra[B8IDX] = (GLubyte)(fminf(final[2] * 255.0f, 255.0f));
-    vertex->bgra[A8IDX] = (GLubyte)(fminf(final[3] * 255.0f, 255.0f));
-}
