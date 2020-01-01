@@ -14,7 +14,7 @@ SUBDIRS =
 KOS_CFLAGS += -ffast-math -Ofast -Iinclude
 
 GL/version.h:
-    rm $@
+	rm $@
 	@echo -e '#pragma once\n#define GLDC_VERSION "$(shell git describe --abbrev=4 --dirty --always --tags)"\n' > $@
 
 link:
