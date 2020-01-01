@@ -31,5 +31,6 @@ include $(KOS_BASE)/addons/Makefile.prefab
 
 # creates the kos link to the headers
 create_kos_link:
+	GL/version.h
 	rm -f ../include/GL
 	ln -s ../GLdc/include ../include/GL
