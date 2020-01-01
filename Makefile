@@ -3,7 +3,7 @@
 # kos-ports/libgl Makefile
 # Copyright (C) 2013, 2014 Josh Pearson
 # Copyright (C) 2014 Lawrence Sebald
-# Copyright (C) 2018 Luke Benstead
+# Copyright (C) 2020 Luke Benstead
 
 TARGET = libGLdc.a
 OBJS = GL/draw.o GL/flush.o GL/framebuffer.o GL/immediate.o GL/lighting.o GL/state.o GL/texture.o GL/glu.o GL/version.h
@@ -14,7 +14,7 @@ SUBDIRS =
 KOS_CFLAGS += -ffast-math -Ofast -Iinclude
 
 GL/version.h:
-	rm $@
+	rm -f $@
 	@echo -e '#pragma once\n#define GLDC_VERSION "$(shell git describe --abbrev=4 --dirty --always --tags)"\n' > $@
 
 link:
