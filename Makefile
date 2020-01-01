@@ -14,6 +14,7 @@ SUBDIRS =
 KOS_CFLAGS += -ffast-math -Ofast -Iinclude
 
 GL/version.h:
+    rm $@
 	@echo -e '#pragma once\n#define GLDC_VERSION "$(shell git describe --abbrev=4 --dirty --always --tags)"\n' > $@
 
 link:
@@ -25,12 +26,11 @@ build: GL/version.h $(OBJS) link
 samples: build
 	$(KOS_MAKE) -C samples all
 
-defaultall: GL/version.h create_kos_link $(OBJS) subdirs linklib samples
+defaultall: create_kos_link $(OBJS) subdirs linklib samples
 
 include $(KOS_BASE)/addons/Makefile.prefab
 
 # creates the kos link to the headers
 create_kos_link:
-	GL/version.h
 	rm -f ../include/GL
 	ln -s ../GLdc/include ../include/GL
