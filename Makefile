@@ -25,7 +25,7 @@ build: GL/version.h $(OBJS) link
 samples: build
 	$(KOS_MAKE) -C samples all
 
-defaultall: create_kos_link $(OBJS) subdirs linklib samples
+defaultall: GL/version.h create_kos_link $(OBJS) subdirs linklib samples
 
 include $(KOS_BASE)/addons/Makefile.prefab
 
