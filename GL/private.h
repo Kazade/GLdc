@@ -12,6 +12,8 @@
 #include "../containers/aligned_vector.h"
 #include "../containers/named_array.h"
 
+#define GL_FORCE_INLINE __attribute__((always_inline)) static __inline__
+
 #define FASTCPY(dst, src, bytes) \
     (bytes % 32 == 0) ? sq_cpy(dst, src, bytes) : memcpy(dst, src, bytes);
 
@@ -143,7 +145,9 @@ typedef struct {
     GLfloat ambient[4];
     GLfloat diffuse[4];
     GLfloat specular[4];
-    GLfloat exponent;
+
+    /* Valid values are 0-128 */
+    GLubyte exponent;
 } Material;
 
 typedef struct {
@@ -157,7 +161,6 @@ typedef struct {
     GLfloat diffuse[4];
     GLfloat specular[4];
     GLfloat ambient[4];
-    GLboolean is_directional;
 } LightSource;
 
 typedef struct {
