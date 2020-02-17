@@ -338,7 +338,8 @@ GL_FORCE_INLINE void _glLightVertexDirectional(uint8_t* final, int8_t lid, float
 #define _PROCESS_COMPONENT(T, X) \
     F = (MATERIAL.ambient[X] * LIGHTS[lid].ambient[X]); \
     F += (LdotN * MATERIAL.diffuse[X] * LIGHTS[lid].diffuse[X]); \
-    F += FPOW(FI * NdotH, MATERIAL.exponent) * MATERIAL.specular[X] * LIGHTS[lid].specular[X]; \
+    if(MATERIAL.exponent) \
+        F += FPOW(FI * NdotH, MATERIAL.exponent) * MATERIAL.specular[X] * LIGHTS[lid].specular[X]; \
     FO = (uint8_t) (F * 255.0f); \
 \
     final[T] += _MIN(FO, final[T] - FO); \
@@ -358,7 +359,8 @@ GL_FORCE_INLINE void _glLightVertexPoint(uint8_t* final, int8_t lid, float LdotN
 #define _PROCESS_COMPONENT(T, X) \
     F = (MATERIAL.ambient[X] * LIGHTS[lid].ambient[X]); \
     F += (LdotN * MATERIAL.diffuse[X] * LIGHTS[lid].diffuse[X]); \
-    F += FPOW(FI * NdotH, MATERIAL.exponent) * MATERIAL.specular[X] * LIGHTS[lid].specular[X]; \
+    if(MATERIAL.exponent) \
+        F += FPOW(FI * NdotH, MATERIAL.exponent) * MATERIAL.specular[X] * LIGHTS[lid].specular[X]; \
     FO = (uint8_t) (F * att * 255.0f); \
 \
     final[T] += _MIN(FO, final[T] - FO); \
