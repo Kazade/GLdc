@@ -1,6 +1,6 @@
 #include <stdio.h>
 #include <string.h>
-
+#include <math.h>
 #include <dc/vec3f.h>
 #include "private.h"
 
@@ -272,26 +272,47 @@ GL_FORCE_INLINE float FEXP(float y) {
     return eco.d;
 }
 
-GL_FORCE_INLINE float MATH_Fast_Divide(float numerator, float denominator) {
-    __asm__ volatile ("fsrra %[div_denom]\n\t"
-        "fmul %[div_denom], %[div_denom]\n\t"
-        "fmul %[div_numer], %[div_denom]\n"
-        : [div_denom] "+&f" (denominator)
-        : [div_numer] "f" (numerator) // inputs
-        : // clobbers
-    );
+/* Inspired by: https://web.archive.org/web/20180423090243/www.dctsystems.co.uk/Software/power.html */
+#define SHIFT23 (1 << 23)
+#define INVSHIFT23 (1.0f / SHIFT23)
+#define LOGBODGE 0.346607f
+#define POWBODGE 0.33971f
 
-    return denominator;
+GL_FORCE_INLINE float FLOG2(float i) {
+    float y;
+
+    union {
+        float f;
+        int i;
+    } x;
+
+    x.f = i;
+
+    x.i *= INVSHIFT23;
+    x.i = x.i - 127;
+
+    y = x.i - floorf(x.i);
+    y = (y - y * y) * LOGBODGE;
+
+    return x.i + y;
 }
 
-GL_FORCE_INLINE float FLOG(float y) {
-    int *nTemp = (int *)&y;
-    y = (*nTemp) >> 16;
-    return MATH_Fast_Divide((y - EXP_C), EXP_A);
+GL_FORCE_INLINE float FPOW2(float i) {
+    float y = i - floorf(i);
+    y = (y - y * y) * POWBODGE;
+
+    union {
+        float f;
+        float i;
+    } x;
+
+    x.f = i + 127 - y;
+    x.f *= SHIFT23;
+    return x.i;
 }
 
-GL_FORCE_INLINE float FPOW(float b, float p) {
-    return FEXP(FLOG(b) * p);
+GL_FORCE_INLINE float FPOW(float a, float b) {
+    return FPOW2(b * FLOG2(a));
 }
 
 GL_FORCE_INLINE float vec3_dot_limited(
