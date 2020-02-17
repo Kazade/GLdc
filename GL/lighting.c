@@ -278,6 +278,10 @@ GL_FORCE_INLINE float FEXP(float y) {
 #define LOGBODGE 0.346607f
 #define POWBODGE 0.33971f
 
+GL_FORCE_INLINE float FFLOOR(float x) {
+    return (int) x - (x < (int) x);
+}
+
 GL_FORCE_INLINE float FLOG2(float i) {
     float y;
 
@@ -286,19 +290,19 @@ GL_FORCE_INLINE float FLOG2(float i) {
         int i;
     } x;
 
-    x.f = i;
+    x.i = i;
 
-    x.i *= INVSHIFT23;
-    x.i = x.i - 127;
+    x.f *= INVSHIFT23;
+    x.f = x.f - 127;
 
-    y = x.i - floorf(x.i);
+    y = x.f - FFLOOR(x.f);
     y = (y - y * y) * LOGBODGE;
 
-    return x.i + y;
+    return x.f + y;
 }
 
 GL_FORCE_INLINE float FPOW2(float i) {
-    float y = i - floorf(i);
+    float y = i - FFLOOR(i);
     y = (y - y * y) * POWBODGE;
 
     union {
