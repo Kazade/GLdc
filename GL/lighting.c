@@ -324,7 +324,7 @@ GL_FORCE_INLINE float vec3_dot_limited(
     return (ret < 0) ? 0 : ret;
 }
 
-#define _MIN(x, y) (x < y) ? x : y;
+#define _MIN(x, y) (x < y) ? x : y
 
 GL_FORCE_INLINE void _glLightVertexDirectional(uint8_t* final, int8_t lid, float LdotN, float NdotH) {
     float F;
@@ -337,7 +337,7 @@ GL_FORCE_INLINE void _glLightVertexDirectional(uint8_t* final, int8_t lid, float
     F += FPOW(FI * NdotH, MATERIAL.exponent) * MATERIAL.specular[X] * LIGHTS[lid].specular[X]; \
     FO = (uint8_t) (F * 255.0f); \
 \
-    final[T] += _MIN(FO, final[T] - FO) \
+    final[T] += _MIN(FO, final[T] - FO); \
 
     _PROCESS_COMPONENT(R8IDX, 0);
     _PROCESS_COMPONENT(G8IDX, 1);
@@ -357,7 +357,7 @@ GL_FORCE_INLINE void _glLightVertexPoint(uint8_t* final, int8_t lid, float LdotN
     F += FPOW(FI * NdotH, MATERIAL.exponent) * MATERIAL.specular[X] * LIGHTS[lid].specular[X]; \
     FO = (uint8_t) (F * att * 255.0f); \
 \
-    final[T] += _MIN(FO, final[T] - FO) \
+    final[T] += _MIN(FO, final[T] - FO); \
 
     _PROCESS_COMPONENT(R8IDX, 0);
     _PROCESS_COMPONENT(G8IDX, 1);
@@ -387,14 +387,14 @@ void _glPerformLighting(Vertex* vertices, const EyeSpaceData* es, const int32_t 
     for(j = 0; j < count; ++j, ++vertex, ++data) {
         /* Initial, non-light related values */
         base = (SCENE_AMBIENT[0] * MATERIAL.ambient[0]) + MATERIAL.emissive[0];
-        vertex->bgra[R8IDX] = (uint8_t)(base * 255.0f);
+        vertex->bgra[R8IDX] = (uint8_t)(_MIN(base * 255.0f, 255.0f));
 
         base = (SCENE_AMBIENT[1] * MATERIAL.ambient[1]) + MATERIAL.emissive[1];
-        vertex->bgra[G8IDX] = (uint8_t)(base * 255.0f);
+        vertex->bgra[G8IDX] = (uint8_t)(_MIN(base * 255.0f, 255.0f));
 
         base = (SCENE_AMBIENT[2] * MATERIAL.ambient[2]) + MATERIAL.emissive[2];
-        vertex->bgra[B8IDX] = (uint8_t)(base * 255.0f);
-        vertex->bgra[A8IDX] = (uint8_t)(MATERIAL.diffuse[3] * 255.0f);
+        vertex->bgra[B8IDX] = (uint8_t)(_MIN(base * 255.0f, 255.0f));
+        vertex->bgra[A8IDX] = (uint8_t)(_MIN(MATERIAL.diffuse[3] * 255.0f, 255.0f));
 
         float Vx = -data->xyz[0];
         float Vy = -data->xyz[1];
