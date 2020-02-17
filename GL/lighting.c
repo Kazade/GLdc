@@ -387,14 +387,14 @@ void _glPerformLighting(Vertex* vertices, const EyeSpaceData* es, const int32_t 
     for(j = 0; j < count; ++j, ++vertex, ++data) {
         /* Initial, non-light related values */
         base = (SCENE_AMBIENT[0] * MATERIAL.ambient[0]) + MATERIAL.emissive[0];
-        vertex->bgra[0] = (uint8_t)(base * 255.0f);
+        vertex->bgra[R8IDX] = (uint8_t)(base * 255.0f);
 
         base = (SCENE_AMBIENT[1] * MATERIAL.ambient[1]) + MATERIAL.emissive[1];
-        vertex->bgra[1] = (uint8_t)(base * 255.0f);
+        vertex->bgra[G8IDX] = (uint8_t)(base * 255.0f);
 
         base = (SCENE_AMBIENT[2] * MATERIAL.ambient[2]) + MATERIAL.emissive[2];
-        vertex->bgra[2] = (uint8_t)(base * 255.0f);
-        vertex->bgra[3] = (uint8_t)(MATERIAL.diffuse[3] * 255.0f);
+        vertex->bgra[B8IDX] = (uint8_t)(base * 255.0f);
+        vertex->bgra[A8IDX] = (uint8_t)(MATERIAL.diffuse[3] * 255.0f);
 
         float Vx = -data->xyz[0];
         float Vy = -data->xyz[1];
