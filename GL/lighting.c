@@ -210,7 +210,7 @@ void APIENTRY glMaterialfv(GLenum face, GLenum pname, const GLfloat *params) {
             memcpy(MATERIAL.specular, params, sizeof(GLfloat) * 4);
         break;
         case GL_EMISSION:
-            memcpy(MATERIAL.specular, params, sizeof(GLfloat) * 4);
+            memcpy(MATERIAL.emissive, params, sizeof(GLfloat) * 4);
         break;
         case GL_AMBIENT_AND_DIFFUSE: {
             glMaterialfv(face, GL_AMBIENT, params);
