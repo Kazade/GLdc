@@ -147,7 +147,7 @@ typedef struct {
     GLfloat specular[4];
 
     /* Valid values are 0-128 */
-    GLubyte exponent;
+    GLfloat exponent;
 } Material;
 
 typedef struct {
