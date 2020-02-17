@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <math.h>
+#include <limits.h>
 #include <dc/vec3f.h>
 #include "private.h"
 
@@ -278,8 +279,10 @@ GL_FORCE_INLINE float FEXP(float y) {
 #define LOGBODGE 0.346607f
 #define POWBODGE 0.33971f
 
+const static float FINT_MAX = (float) INT_MAX;
+
 GL_FORCE_INLINE float FFLOOR(float x) {
-    return (int) x - (x < (int) x);
+    return (int)(x + FINT_MAX) - INT_MAX;
 }
 
 GL_FORCE_INLINE float FLOG2(float i) {
