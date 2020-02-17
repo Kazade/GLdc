@@ -91,8 +91,10 @@ void _glClipTriangle(const Triangle* triangle, const uint8_t visible, Submission
     const Vertex* vertices = triangle->vertex;
     const VertexExtra* extras = triangle->extra;
 
+    char* bgra = (char*) vertices[2].bgra;
+
     /* Used when flat shading is enabled */
-    uint32_t finalColour = *((uint32_t*) vertices[2].bgra);
+    uint32_t finalColour = *((uint32_t*) bgra);
 
     for(i = 0; i < 4; ++i) {
         uint8_t thisIndex = (i == 3) ? 0 : i;
@@ -123,7 +125,8 @@ void _glClipTriangle(const Triangle* triangle, const uint8_t visible, Submission
                 interpolateVec2(ve1->st, ve2->st, t, veNext.st);
 
                 if(flatShade) {
-                    *((uint32_t*) next.bgra) = finalColour;
+                    char* next_bgra = (char*) next.bgra;
+                    *((uint32_t*) next_bgra) = finalColour;
                 } else {
                     interpolateColour(v1->bgra, v2->bgra, t, next.bgra);
                 }
@@ -185,9 +188,19 @@ static inline void markDead(Vertex* vert) {
 
     // If we're debugging, wipe out the xyz
 #ifndef NDEBUG
-    *((uint32_t*) &vert->xyz[0]) = 0xDEADBEEF;
-    *((uint32_t*) &vert->xyz[1]) = 0xDEADBEEF;
-    *((uint32_t*) &vert->xyz[2]) = 0xDEADBEEF;
+    typedef union {
+        float* f;
+        int* i;
+    } cast;
+
+    cast v1, v2, v3;
+    v1.f = &vert->xyz[0];
+    v2.f = &vert->xyz[1];
+    v3.f = &vert->xyz[2];
+
+    *v1.i = 0xDEADBEEF;
+    *v2.i = 0xDEADBEEF;
+    *v3.i = 0xDEADBEEF;
 #endif
 }
 
