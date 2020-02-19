@@ -5,11 +5,13 @@
 #include <dc/vec3f.h>
 #include "private.h"
 
+#define _MIN(x, y) (x < y) ? x : y
+
 /* Lighting will not be calculated if the attenuation
  * multiplier ends up less than this value */
 #define ATTENUATION_THRESHOLD 0.01f
 
-static GLfloat SCENE_AMBIENT [] = {0.2, 0.2, 0.2, 1.0};
+static GLfloat SCENE_AMBIENT [] = {0.2f, 0.2f, 0.2f, 1.0f};
 static GLboolean VIEWER_IN_EYE_COORDINATES = GL_TRUE;
 static GLenum COLOR_CONTROL = GL_SINGLE_COLOR;
 static GLboolean TWO_SIDED_LIGHTING = GL_FALSE;
@@ -181,7 +183,7 @@ void APIENTRY glMaterialf(GLenum face, GLenum pname, const GLfloat param) {
         return;
     }
 
-    MATERIAL.exponent = param;
+    MATERIAL.exponent = _MIN(param, 128);  /* 128 is the max according to the GL spec */
 }
 
 void APIENTRY glMateriali(GLenum face, GLenum pname, const GLint param) {
@@ -279,10 +281,10 @@ GL_FORCE_INLINE float FEXP(float y) {
 #define LOGBODGE 0.346607f
 #define POWBODGE 0.33971f
 
-const static float FINT_MAX = (float) INT_MAX;
+const static float FINT_MAX = ((float) INT_MAX) + 1.0f;
 
 GL_FORCE_INLINE float FFLOOR(float x) {
-    return (int)(x + FINT_MAX) - INT_MAX;
+    return ((int)(x + FINT_MAX) + INT_MIN);
 }
 
 GL_FORCE_INLINE float FLOG2(float i) {
@@ -331,21 +333,18 @@ GL_FORCE_INLINE float vec3_dot_limited(
     return (ret < 0) ? 0 : ret;
 }
 
-#define _MIN(x, y) (x < y) ? x : y
-
 GL_FORCE_INLINE void _glLightVertexDirectional(uint8_t* final, int8_t lid, float LdotN, float NdotH) {
     float F;
-    float FI = (LdotN != 0.0f);
     uint8_t FO;
+    float FI = (LdotN != 0.0f);
+    FI = (MATERIAL.exponent) ? FPOW(FI * NdotH, MATERIAL.exponent) : 1.0f;
 
 #define _PROCESS_COMPONENT(T, X) \
     F = (MATERIAL.ambient[X] * LIGHTS[lid].ambient[X]); \
     F += (LdotN * MATERIAL.diffuse[X] * LIGHTS[lid].diffuse[X]); \
-    FI = (MATERIAL.exponent) ? FPOW(FI * NdotH, MATERIAL.exponent) : 1.0f; \
     F += FI * MATERIAL.specular[X] * LIGHTS[lid].specular[X]; \
     FO = (uint8_t) (_MIN(F * 255.0f, 255.0f)); \
-\
-    final[T] += _MIN(FO, 255 - final[T]); \
+    final[T] += _MIN(FO, 255 - final[T]);
 
     _PROCESS_COMPONENT(R8IDX, 0);
     _PROCESS_COMPONENT(G8IDX, 1);
@@ -356,13 +355,13 @@ GL_FORCE_INLINE void _glLightVertexDirectional(uint8_t* final, int8_t lid, float
 
 GL_FORCE_INLINE void _glLightVertexPoint(uint8_t* final, int8_t lid, float LdotN, float NdotH, float att) {
     float F;
-    float FI = (LdotN != 0.0f);
     uint8_t FO;
+    float FI = (LdotN != 0.0f);
+    FI = (MATERIAL.exponent) ? FPOW(FI * NdotH, MATERIAL.exponent) : 1.0f;
 
 #define _PROCESS_COMPONENT(T, X) \
     F = (MATERIAL.ambient[X] * LIGHTS[lid].ambient[X]); \
     F += (LdotN * MATERIAL.diffuse[X] * LIGHTS[lid].diffuse[X]); \
-    FI = (MATERIAL.exponent) ? FPOW(FI * NdotH, MATERIAL.exponent) : 1.0f; \
     F += FI * MATERIAL.specular[X] * LIGHTS[lid].specular[X]; \
     FO = (uint8_t) (_MIN(F * att * 255.0f, 255.0f)); \
 \
