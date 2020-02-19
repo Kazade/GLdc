@@ -333,16 +333,20 @@ GL_FORCE_INLINE float vec3_dot_limited(
     return (ret < 0) ? 0 : ret;
 }
 
-GL_FORCE_INLINE void _glLightVertexDirectional(uint8_t* final, int8_t lid, float LdotN, float NdotH) {
+GL_FORCE_INLINE void _glLightVertexDirectional(
+    uint8_t* final, int8_t lid,
+    float LdotN, float NdotH,
+    const float* ambient, const float* diffuse, const float* specular) {
+
     float F;
     uint8_t FO;
     float FI = (LdotN != 0.0f);
     FI = (MATERIAL.exponent) ? FPOW(FI * NdotH, MATERIAL.exponent) : 1.0f;
 
 #define _PROCESS_COMPONENT(T, X) \
-    F = (MATERIAL.ambient[X] * LIGHTS[lid].ambient[X]); \
-    F += (LdotN * MATERIAL.diffuse[X] * LIGHTS[lid].diffuse[X]); \
-    F += FI * MATERIAL.specular[X] * LIGHTS[lid].specular[X]; \
+    F = (ambient[X] * LIGHTS[lid].ambient[X]); \
+    F += (LdotN * diffuse[X] * LIGHTS[lid].diffuse[X]); \
+    F += FI * specular[X] * LIGHTS[lid].specular[X]; \
     FO = (uint8_t) (_MIN(F * 255.0f, 255.0f)); \
     final[T] += _MIN(FO, 255 - final[T]);
 
@@ -353,16 +357,20 @@ GL_FORCE_INLINE void _glLightVertexDirectional(uint8_t* final, int8_t lid, float
 #undef _PROCESS_COMPONENT
 }
 
-GL_FORCE_INLINE void _glLightVertexPoint(uint8_t* final, int8_t lid, float LdotN, float NdotH, float att) {
+GL_FORCE_INLINE void _glLightVertexPoint(
+    uint8_t* final, int8_t lid,
+    float LdotN, float NdotH, float att,
+    const float* ambient, const float* diffuse, const float* specular) {
+
     float F;
     uint8_t FO;
     float FI = (LdotN != 0.0f);
     FI = (MATERIAL.exponent) ? FPOW(FI * NdotH, MATERIAL.exponent) : 1.0f;
 
 #define _PROCESS_COMPONENT(T, X) \
-    F = (MATERIAL.ambient[X] * LIGHTS[lid].ambient[X]); \
-    F += (LdotN * MATERIAL.diffuse[X] * LIGHTS[lid].diffuse[X]); \
-    F += FI * MATERIAL.specular[X] * LIGHTS[lid].specular[X]; \
+    F = (ambient[X] * LIGHTS[lid].ambient[X]); \
+    F += (LdotN * diffuse[X] * LIGHTS[lid].diffuse[X]); \
+    F += FI * specular[X] * LIGHTS[lid].specular[X]; \
     FO = (uint8_t) (_MIN(F * att * 255.0f, 255.0f)); \
 \
     final[T] += _MIN(FO, 255 - final[T]); \
@@ -384,6 +392,15 @@ GL_FORCE_INLINE float MATH_fsrra(float x) {
     return x;
 }
 
+GL_FORCE_INLINE void bgra_to_float(const uint8_t* input, GLfloat* output) {
+    const static float scale = 1.0f / 255.0f;
+
+    output[0] = ((float) input[R8IDX]) * scale;
+    output[1] = ((float) input[G8IDX]) * scale;
+    output[2] = ((float) input[B8IDX]) * scale;
+    output[3] = ((float) input[A8IDX]) * scale;
+}
+
 void _glPerformLighting(Vertex* vertices, const EyeSpaceData* es, const int32_t count) {
     int8_t i;
     int32_t j;
@@ -392,15 +409,31 @@ void _glPerformLighting(Vertex* vertices, const EyeSpaceData* es, const int32_t 
     const EyeSpaceData* data = es;
     float base;
 
+    /* This is the original vertex colour, before we replace it. It's
+     * used for colour material */
+    float vdiffuse[4];
+
+    unsigned char isCM = _glIsColorMaterialEnabled();
+
+    /* Update pointers as necessary depending on color material */
+    GLfloat* ambient = (isCM && isAmbientColorMaterial()) ? vdiffuse : MATERIAL.ambient;
+    GLfloat* diffuse = (isCM && isDiffuseColorMaterial()) ? vdiffuse : MATERIAL.diffuse;
+    GLfloat* specular = (isCM && isSpecularColorMaterial()) ? vdiffuse : MATERIAL.specular;
+
     for(j = 0; j < count; ++j, ++vertex, ++data) {
+        /* Unpack the colour for use in glColorMaterial */
+        if(isCM) {
+            bgra_to_float(vertex->bgra, vdiffuse);
+        }
+
         /* Initial, non-light related values */
-        base = (SCENE_AMBIENT[0] * MATERIAL.ambient[0]) + MATERIAL.emissive[0];
+        base = (SCENE_AMBIENT[0] * ambient[0]) + MATERIAL.emissive[0];
         vertex->bgra[R8IDX] = (uint8_t)(_MIN(base * 255.0f, 255.0f));
 
-        base = (SCENE_AMBIENT[1] * MATERIAL.ambient[1]) + MATERIAL.emissive[1];
+        base = (SCENE_AMBIENT[1] * ambient[1]) + MATERIAL.emissive[1];
         vertex->bgra[G8IDX] = (uint8_t)(_MIN(base * 255.0f, 255.0f));
 
-        base = (SCENE_AMBIENT[2] * MATERIAL.ambient[2]) + MATERIAL.emissive[2];
+        base = (SCENE_AMBIENT[2] * ambient[2]) + MATERIAL.emissive[2];
         vertex->bgra[B8IDX] = (uint8_t)(_MIN(base * 255.0f, 255.0f));
         vertex->bgra[A8IDX] = (uint8_t)(_MIN(MATERIAL.diffuse[3] * 255.0f, 255.0f));
 
@@ -439,7 +472,8 @@ void _glPerformLighting(Vertex* vertices, const EyeSpaceData* es, const int32_t 
 
                 _glLightVertexDirectional(
                     vertex->bgra,
-                    i, LdotN, NdotH
+                    i, LdotN, NdotH,
+                    ambient, diffuse, specular
                 );
             } else {
                 float Lx = LIGHTS[i].position[0] - data->xyz[0];
@@ -477,7 +511,8 @@ void _glPerformLighting(Vertex* vertices, const EyeSpaceData* es, const int32_t 
 
                     _glLightVertexPoint(
                         vertex->bgra,
-                        i, LdotN, NdotH, att
+                        i, LdotN, NdotH, att,
+                        ambient, diffuse, specular
                     );
                 }
             }
