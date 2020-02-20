@@ -1,3 +1,4 @@
+#include <assert.h>
 #include <stdio.h>
 #include <string.h>
 #include <math.h>
@@ -259,69 +260,32 @@ GL_FORCE_INLINE void initVec3(struct vec3f* v, const GLfloat* src) {
     memcpy(v, src, sizeof(GLfloat) * 3);
 }
 
-/* Fast POW Implementation - Less accurate, but much faster than math.h */
-#define EXP_A 184
-#define EXP_C 16249
+/*
+ * Implementation from here (MIT):
+ * https://github.com/appleseedhq/appleseed/blob/master/src/appleseed/foundation/math/fastmath.h
+ */
+GL_FORCE_INLINE float faster_pow2(const float p) {
+    // Underflow of exponential is common practice in numerical routines, so handle it here.
+    const float clipp = p < -126.0f ? -126.0f : p;
+    const union { uint32_t i; float f; } v =
+    {
+        (uint32_t) ((1 << 23) * (clipp + 126.94269504f))
+    };
 
-GL_FORCE_INLINE float FEXP(float y) {
-    union {
-        float d;
-        struct {
-            short j, i;
-        } n;
-    } eco;
-    eco.n.i = EXP_A * (y) + (EXP_C);
-    eco.n.j = 0;
-    return eco.d;
+    return v.f;
 }
 
-/* Inspired by: https://web.archive.org/web/20180423090243/www.dctsystems.co.uk/Software/power.html */
-#define SHIFT23 (1 << 23)
-#define INVSHIFT23 (1.0f / SHIFT23)
-#define LOGBODGE 0.346607f
-#define POWBODGE 0.33971f
+GL_FORCE_INLINE float faster_log2(const float x) {
+    assert(x >= 0.0f);
 
-const static float FINT_MAX = ((float) INT_MAX) + 1.0f;
+    const union { float f; uint32_t i; } vx = { x };
+    const float y = (float) (vx.i) * 1.1920928955078125e-7f;
 
-GL_FORCE_INLINE float FFLOOR(float x) {
-    return ((int)(x + FINT_MAX) + INT_MIN);
+    return y - 126.94269504f;
 }
 
-GL_FORCE_INLINE float FLOG2(float i) {
-    float y;
-
-    union {
-        float f;
-        int i;
-    } x;
-
-    x.i = i;
-
-    x.f *= INVSHIFT23;
-    x.f = x.f - 127;
-
-    y = x.f - FFLOOR(x.f);
-    y = (y - y * y) * LOGBODGE;
-
-    return x.f + y;
-}
-
-GL_FORCE_INLINE float FPOW2(float i) {
-    float y = i - FFLOOR(i);
-    y = (y - y * y) * POWBODGE;
-
-    union {
-        float f;
-        float i;
-    } x;
-
-    x.f = i + 127 - y;
-    x.f *= SHIFT23;
-    return x.i;
-}
-
-GL_FORCE_INLINE float FPOW(float a, float b) {
-    return FPOW2(b * FLOG2(a));
+GL_FORCE_INLINE float faster_pow(const float x, const float p) {
+    return faster_pow2(p * faster_log2(x));
 }
 
 GL_FORCE_INLINE float vec3_dot_limited(
@@ -341,7 +305,7 @@ GL_FORCE_INLINE void _glLightVertexDirectional(
     float F;
     uint8_t FO;
     float FI = (LdotN != 0.0f);
-    FI = (MATERIAL.exponent) ? FPOW(FI * NdotH, MATERIAL.exponent) : 1.0f;
+    FI = (MATERIAL.exponent) ? faster_pow(FI * NdotH, MATERIAL.exponent) : 1.0f;
 
 #define _PROCESS_COMPONENT(T, X) \
     F = (ambient[X] * LIGHTS[lid].ambient[X]); \
@@ -365,7 +329,7 @@ GL_FORCE_INLINE void _glLightVertexPoint(
     float F;
     uint8_t FO;
     float FI = (LdotN != 0.0f);
-    FI = (MATERIAL.exponent) ? FPOW(FI * NdotH, MATERIAL.exponent) : 1.0f;
+    FI = (MATERIAL.exponent) ? faster_pow(FI * NdotH, MATERIAL.exponent) : 1.0f;
 
 #define _PROCESS_COMPONENT(T, X) \
     F = (ambient[X] * LIGHTS[lid].ambient[X]); \
