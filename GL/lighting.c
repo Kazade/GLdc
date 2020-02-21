@@ -401,6 +401,7 @@ void _glPerformLighting(Vertex* vertices, const EyeSpaceData* es, const int32_t 
         vertex->bgra[B8IDX] = (uint8_t)(_MIN(base * 255.0f, 255.0f));
         vertex->bgra[A8IDX] = (uint8_t)(_MIN(MATERIAL.diffuse[3] * 255.0f, 255.0f));
 
+        /* Direction to vertex in eye space */
         float Vx = -data->xyz[0];
         float Vy = -data->xyz[1];
         float Vz = -data->xyz[2];
@@ -417,9 +418,10 @@ void _glPerformLighting(Vertex* vertices, const EyeSpaceData* es, const int32_t 
                 float Lx = -LIGHTS[i].position[0];
                 float Ly = -LIGHTS[i].position[1];
                 float Lz = -LIGHTS[i].position[2];
-                float Hx = (Lx + Vx);
-                float Hy = (Ly + Vy);
-                float Hz = (Lz + Vz);
+
+                float Hx = (Lx + 0);
+                float Hy = (Ly + 0);
+                float Hz = (Lz + 1);
 
                 vec3f_normalize(Lx, Ly, Lz);
                 vec3f_normalize(Hx, Hy, Hz);
