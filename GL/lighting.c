@@ -415,9 +415,9 @@ void _glPerformLighting(Vertex* vertices, const EyeSpaceData* es, const int32_t 
             if(!_glIsLightEnabled(i)) continue;
 
             if(LIGHTS[i].position[3] == 0.0f) {
-                float Lx = -LIGHTS[i].position[0];
-                float Ly = -LIGHTS[i].position[1];
-                float Lz = -LIGHTS[i].position[2];
+                float Lx = LIGHTS[i].position[0] - data->xyz[0];
+                float Ly = LIGHTS[i].position[1] - data->xyz[1];
+                float Lz = LIGHTS[i].position[2] - data->xyz[2];
 
                 float Hx = (Lx + 0);
                 float Hy = (Ly + 0);
