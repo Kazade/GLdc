@@ -608,19 +608,19 @@ Vertex* _glSubmissionTargetEnd(SubmissionTarget* target) {
 }
 
 static inline void genTriangles(Vertex* output, GLuint count) {
-    const GLuint tris = count / 3;
     Vertex* it = output + 2;
-    ITERATE(tris) {
+
+    GLuint i;
+    for(i = 0; i < count; i += 3) {
         it->flags = PVR_CMD_VERTEX_EOL;
         it += 3;
     }
 }
 
 static inline void genQuads(Vertex* output, GLuint count) {
-    const GLuint quads = count / 4;
     Vertex* final = output + 3;
-
-    ITERATE(quads) {
+    GLuint i;
+    for(i = 0; i < count; i += 4) {
         swapVertex((final - 1), final);
         final->flags = PVR_CMD_VERTEX_EOL;
         final += 4;
@@ -807,18 +807,9 @@ static inline void _readNormalData(const GLuint first, const GLuint count, Verte
 
     if(_glIsNormalizeEnabled()) {
         GLubyte* ptr = (GLubyte*) extra->nxyz;
-        GLfloat l;
         ITERATE(count) {
             GLfloat* n = (GLfloat*) ptr;
-
-            vec3f_length(n[0], n[1], n[2], l);
-
-            l = 1.0f / l;
-
-            n[0] *= l;
-            n[1] *= l;
-            n[2] *= l;
-
+            vec3f_normalize(n[0], n[1], n[2]);
             ptr += sizeof(VertexExtra);
         }
     }
@@ -1140,6 +1131,16 @@ static void light(SubmissionTarget* target) {
     _glPerformLighting(vertex, ES, target->count);
 }
 
+GL_FORCE_INLINE float MATH_fsrra(float x) {
+    __asm__ volatile ("fsrra %[one_div_sqrt]\n"
+        : [one_div_sqrt] "+f" (x) // outputs, "+" means r/w
+        : // no inputs
+        : // no clobbers
+    );
+
+    return x;
+}
+
 static void divide(SubmissionTarget* target) {
     TRACE();
 
@@ -1147,7 +1148,7 @@ static void divide(SubmissionTarget* target) {
     Vertex* vertex = _glSubmissionTargetStart(target);
 
     ITERATE(target->count) {
-        float f = 1.0f / vertex->w;
+        float f = MATH_fsrra(vertex->w * vertex->w);
         vertex->xyz[0] *= f;
         vertex->xyz[1] *= f;
         vertex->xyz[2] = 1.0 - ((DEPTH_RANGE_MULTIPLIER_L * vertex->xyz[2] * f) + DEPTH_RANGE_MULTIPLIER_H);
