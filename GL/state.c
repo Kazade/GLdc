@@ -634,7 +634,7 @@ void APIENTRY glGetIntegerv(GLenum pname, GLint *params) {
             *params = MAX_LIGHTS;
         break;
         case GL_TEXTURE_BINDING_2D:
-            *params = _glGetBoundTexture()->index;
+            *params = (_glGetBoundTexture()) ? _glGetBoundTexture()->index : 0;
         break;
         case GL_DEPTH_FUNC:
             *params = DEPTH_FUNC;

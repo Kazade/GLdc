@@ -371,7 +371,9 @@ void APIENTRY glDeleteTextures(GLsizei n, GLuint *textures) {
             txr->palette = NULL;
         }
 
-        named_array_release(&TEXTURE_OBJECTS, *textures++);
+        named_array_release(&TEXTURE_OBJECTS, *textures);
+        *textures = 0;
+        textures++;
     }
 }
 

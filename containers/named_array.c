@@ -34,6 +34,9 @@ char named_array_used(NamedArray* array, unsigned int id) {
     unsigned int i = id / 8;
     unsigned int j = id % 8;
 
+    assert(i < array->max_element_count);
+    assert(array->used_markers);
+
     unsigned char v = array->used_markers[i] & (unsigned char) (1 << j);
     return !!(v);
 }
