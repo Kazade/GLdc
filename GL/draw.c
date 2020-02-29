@@ -104,7 +104,6 @@ static inline GLuint byte_size(GLenum type) {
     case GL_UNSIGNED_INT: return sizeof(GLuint);
     case GL_DOUBLE: return sizeof(GLdouble);
     case GL_UNSIGNED_INT_2_10_10_10_REV: return sizeof(GLuint);
-    case GL_INT_2_10_10_10_REV: return sizeof(GLint);
     case GL_FLOAT:
     default: return sizeof(GLfloat);
     }
@@ -777,7 +776,7 @@ static inline void _readNormalData(const GLuint first, const GLuint count, Verte
 
     const void* nptr = ((GLubyte*) NORMAL_POINTER.ptr + (first * nstride));
 
-    if(NORMAL_POINTER.size == 3 || NORMAL_POINTER.type == GL_INT_2_10_10_10_REV) {
+    if(NORMAL_POINTER.size == 3 || NORMAL_POINTER.type == GL_UNSIGNED_INT_2_10_10_10_REV) {
         switch(NORMAL_POINTER.type) {
             case GL_DOUBLE:
             case GL_FLOAT:
@@ -795,13 +794,15 @@ static inline void _readNormalData(const GLuint first, const GLuint count, Verte
             case GL_UNSIGNED_INT:
                 _readVertexData3ui3fVE(nptr, count, nstride, extra->nxyz);
             break;
-            case GL_INT_2_10_10_10_REV:
+            case GL_UNSIGNED_INT_2_10_10_10_REV:
                 _readVertexData1i3f(nptr, count, nstride, extra->nxyz);
             break;
         default:
+            fprintf(stderr, "Invalid normal pointer type: %d\n", NORMAL_POINTER.type);
             assert(0 && "Not Implemented");
         }
     } else {
+        fprintf(stderr, "Invalid normal pointer type or stride (%d or %d)\n", NORMAL_POINTER.type, NORMAL_POINTER.stride);
         assert(0 && "Not Implemented");
     }
 
@@ -1529,10 +1530,25 @@ void APIENTRY glColorPointer(GLint size,  GLenum type,  GLsizei stride,  const G
 void APIENTRY glNormalPointer(GLenum type,  GLsizei stride,  const GLvoid * pointer) {
     TRACE();
 
+    GLint validTypes[] = {
+        GL_DOUBLE,
+        GL_FLOAT,
+        GL_BYTE,
+        GL_UNSIGNED_BYTE,
+        GL_INT,
+        GL_UNSIGNED_INT,
+        GL_UNSIGNED_INT_2_10_10_10_REV,
+        0
+    };
+
+    if(_glCheckValidEnum(type, validTypes, __func__) != 0) {
+        return;
+    }
+
     NORMAL_POINTER.ptr = pointer;
     NORMAL_POINTER.stride = stride;
     NORMAL_POINTER.type = type;
-    NORMAL_POINTER.size = (type == GL_INT_2_10_10_10_REV) ? 1 : 3;
+    NORMAL_POINTER.size = (type == GL_UNSIGNED_INT_2_10_10_10_REV) ? 1 : 3;
 
     _glRecalcFastPath();
 }

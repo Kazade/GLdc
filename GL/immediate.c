@@ -61,7 +61,7 @@ void _glInitImmediateMode(GLuint initial_size) {
 
     NORMAL_ATTRIB.ptr = NORMALS.data;
     NORMAL_ATTRIB.stride = 0;
-    NORMAL_ATTRIB.type = GL_INT_2_10_10_10_REV;
+    NORMAL_ATTRIB.type = GL_UNSIGNED_INT_2_10_10_10_REV;
     NORMAL_ATTRIB.size = 1;
 
     ST_ATTRIB.ptr = ST_COORDS.data;

@@ -336,7 +336,6 @@ __BEGIN_DECLS
 #define GL_UNSIGNED_SHORT_1_5_5_5_REV   0x8366
 
 #define GL_UNSIGNED_INT_2_10_10_10_REV  0x8368
-#define GL_INT_2_10_10_10_REV           0x8D9F
 
 #define GL_COLOR_INDEX                    0x1900
 #define GL_RED                            0x1903
