@@ -56,7 +56,7 @@ void _glInitAttributePointers() {
     NORMAL_POINTER.size = 3;
 }
 
-static GLboolean _glIsVertexDataFastPathCompatible() {
+GL_FORCE_INLINE GLboolean _glIsVertexDataFastPathCompatible() {
     /*
      * We provide a "fast path" if vertex data is provided in
      * exactly the right format that matches what the PVR can handle.
@@ -94,7 +94,7 @@ static GLboolean _glIsVertexDataFastPathCompatible() {
     return GL_TRUE;
 }
 
-static inline GLuint byte_size(GLenum type) {
+GL_FORCE_INLINE GLuint byte_size(GLenum type) {
     switch(type) {
     case GL_BYTE: return sizeof(GLbyte);
     case GL_UNSIGNED_BYTE: return sizeof(GLubyte);
@@ -114,7 +114,7 @@ typedef void (*ByteParseFunc)(GLubyte* out, const GLubyte* in);
 typedef void (*PolyBuildFunc)(Vertex* first, Vertex* previous, Vertex* vertex, Vertex* next, const GLsizei i);
 
 
-static inline float clamp(float d, float min, float max) {
+GL_FORCE_INLINE float clamp(float d, float min, float max) {
     const float t = d < min ? min : d;
     return t > max ? max : t;
 }
@@ -131,7 +131,7 @@ static void _readVertexData3f3f(const float* input, GLuint count, GLubyte stride
 }
 
 
-static inline float conv_i10_to_norm_float(int i10) {
+GL_FORCE_INLINE float conv_i10_to_norm_float(int i10) {
     struct attr_bits_10 {
         signed int x:10;
     } val;
@@ -531,7 +531,7 @@ static inline GLuint _parseUShortIndex(const GLubyte* in) {
 }
 
 
-static inline IndexParseFunc _calcParseIndexFunc(GLenum type) {
+GL_FORCE_INLINE IndexParseFunc _calcParseIndexFunc(GLenum type) {
     switch(type) {
     case GL_UNSIGNED_BYTE:
         return &_parseUByteIndex;
@@ -582,12 +582,12 @@ static inline IndexParseFunc _calcParseIndexFunc(GLenum type) {
 }
 
 
-static inline void transformToEyeSpace(GLfloat* point) {
+GL_FORCE_INLINE void transformToEyeSpace(GLfloat* point) {
     _glMatrixLoadModelView();
     mat_trans_single3_nodiv(point[0], point[1], point[2]);
 }
 
-static inline void transformNormalToEyeSpace(GLfloat* normal) {
+GL_FORCE_INLINE void transformNormalToEyeSpace(GLfloat* normal) {
     _glMatrixLoadNormal();
     mat_trans_normal3(normal[0], normal[1], normal[2]);
 }
@@ -645,7 +645,7 @@ static void genTriangleFan(Vertex* output, GLuint count) {
     }
 }
 
-static inline void _readPositionData(const GLuint first, const GLuint count, Vertex* output) {
+GL_FORCE_INLINE void _readPositionData(const GLuint first, const GLuint count, Vertex* output) {
     const GLubyte vstride = (VERTEX_POINTER.stride) ? VERTEX_POINTER.stride : VERTEX_POINTER.size * byte_size(VERTEX_POINTER.type);
     const void* vptr = ((GLubyte*) VERTEX_POINTER.ptr + (first * vstride));
 
@@ -696,7 +696,7 @@ static inline void _readPositionData(const GLuint first, const GLuint count, Ver
     }
 }
 
-static inline void _readUVData(const GLuint first, const GLuint count, Vertex* output) {
+GL_FORCE_INLINE void _readUVData(const GLuint first, const GLuint count, Vertex* output) {
     if((ENABLED_VERTEX_ATTRIBUTES & UV_ENABLED_FLAG) != UV_ENABLED_FLAG) {
         _fillZero2f(count, output->uv);
         return;
@@ -731,7 +731,7 @@ static inline void _readUVData(const GLuint first, const GLuint count, Vertex* o
     }
 }
 
-static inline void _readSTData(const GLuint first, const GLuint count, VertexExtra* extra) {
+GL_FORCE_INLINE void _readSTData(const GLuint first, const GLuint count, VertexExtra* extra) {
     if((ENABLED_VERTEX_ATTRIBUTES & ST_ENABLED_FLAG) != ST_ENABLED_FLAG) {
         _fillZero2fVE(count, extra->st);
         return;
@@ -766,7 +766,7 @@ static inline void _readSTData(const GLuint first, const GLuint count, VertexExt
     }
 }
 
-static inline void _readNormalData(const GLuint first, const GLuint count, VertexExtra* extra) {
+GL_FORCE_INLINE void _readNormalData(const GLuint first, const GLuint count, VertexExtra* extra) {
     if((ENABLED_VERTEX_ATTRIBUTES & NORMAL_ENABLED_FLAG) != NORMAL_ENABLED_FLAG) {
         _fillWithNegZVE(count, extra->nxyz);
         return;
@@ -816,14 +816,14 @@ static inline void _readNormalData(const GLuint first, const GLuint count, Verte
     }
 }
 
-static inline void _readDiffuseData(const GLuint first, const GLuint count, Vertex* output) {
+GL_FORCE_INLINE void _readDiffuseData(const GLuint first, const GLuint count, Vertex* output) {
     if((ENABLED_VERTEX_ATTRIBUTES & DIFFUSE_ENABLED_FLAG) != DIFFUSE_ENABLED_FLAG) {
         /* Just fill the whole thing white if the attribute is disabled */
         _fillWhiteARGB(count, output[0].bgra);
         return;
     }
 
-    const GLubyte cstride = (DIFFUSE_POINTER.stride) ? DIFFUSE_POINTER.stride : DIFFUSE_POINTER.size * byte_size(DIFFUSE_POINTER.type);
+    const GLuint cstride = (DIFFUSE_POINTER.stride) ? DIFFUSE_POINTER.stride : DIFFUSE_POINTER.size * byte_size(DIFFUSE_POINTER.type);
     const void* cptr = ((GLubyte*) DIFFUSE_POINTER.ptr) + (first * cstride);
 
     if(DIFFUSE_POINTER.size == 3) {
@@ -1142,7 +1142,7 @@ GL_FORCE_INLINE float MATH_fsrra(float x) {
     return x;
 }
 
-static void divide(SubmissionTarget* target) {
+GL_FORCE_INLINE void divide(SubmissionTarget* target) {
     TRACE();
 
     /* Perform perspective divide on each vertex */
@@ -1157,7 +1157,7 @@ static void divide(SubmissionTarget* target) {
     }
 }
 
-static void push(PVRHeader* header, GLboolean multiTextureHeader, PolyList* activePolyList, GLshort textureUnit) {
+GL_FORCE_INLINE void push(PVRHeader* header, GLboolean multiTextureHeader, PolyList* activePolyList, GLshort textureUnit) {
     TRACE();
 
     // Compile the header
@@ -1194,7 +1194,7 @@ static void push(PVRHeader* header, GLboolean multiTextureHeader, PolyList* acti
 
 #define DEBUG_CLIPPING 0
 
-static void submitVertices(GLenum mode, GLsizei first, GLuint count, GLenum type, const GLvoid* indices) {
+GL_FORCE_INLINE void submitVertices(GLenum mode, GLsizei first, GLuint count, GLenum type, const GLvoid* indices) {
     TRACE();
 
     /* Do nothing if vertices aren't enabled */

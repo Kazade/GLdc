@@ -27,7 +27,7 @@
     ((((GLushort)r & 0xf8) << 8) | (((GLushort) g & 0xfc) << 3) | ((GLushort) b >> 3))
 
 #define TRACE_ENABLED 0
-#define TRACE() if(TRACE_ENABLED) {fprintf(stderr, "%s\n", __func__);}
+#define TRACE() if(TRACE_ENABLED) {fprintf(stderr, "%s\n", __func__);} (void) 0
 
 #define VERTEX_ENABLED_FLAG     (1 << 0)
 #define UV_ENABLED_FLAG         (1 << 1)
