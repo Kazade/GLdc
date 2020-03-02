@@ -872,6 +872,9 @@ void _glAllocateSpaceForMipmaps(TextureObject* active) {
     /* If there was existing data, then copy it where it should go */
     memcpy(_glGetMipmapLocation(active, 0), temp, size);
 
+    /* We no longer need this */
+    free(temp);
+
     /* Set the data offset depending on whether or not this is a
      * paletted texure */
     active->baseDataOffset = _glGetMipmapDataOffset(active, 0);
