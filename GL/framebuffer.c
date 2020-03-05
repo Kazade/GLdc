@@ -63,6 +63,7 @@ void APIENTRY glDeleteFramebuffersEXT(GLsizei n, const GLuint* framebuffers) {
 }
 
 void APIENTRY glBindFramebufferEXT(GLenum target, GLuint framebuffer) {
+    _GL_UNUSED(target);
     TRACE();
 
     if(framebuffer) {
@@ -76,6 +77,10 @@ void APIENTRY glBindFramebufferEXT(GLenum target, GLuint framebuffer) {
 }
 
 void APIENTRY glFramebufferTexture2DEXT(GLenum target, GLenum attachment, GLenum textarget, GLuint texture, GLint level) {
+    _GL_UNUSED(target);
+    _GL_UNUSED(attachment);
+    _GL_UNUSED(textarget);
+    _GL_UNUSED(level);
     if(texture != 0 && !glIsTexture(texture)) {
         _glKosThrowError(GL_INVALID_OPERATION, __func__);
         _glKosPrintError();
@@ -91,62 +96,62 @@ void APIENTRY glFramebufferTexture2DEXT(GLenum target, GLenum attachment, GLenum
     ACTIVE_FRAMEBUFFER->texture_id = texture;
 }
 
-static inline GLubyte A1555(GLushort v) {
+GL_FORCE_INLINE GLuint A1555(GLuint v) {
     const GLuint MASK = (1 << 15);
     return (v & MASK) >> 8;
 }
 
-static inline GLubyte R1555(GLushort v) {
+GL_FORCE_INLINE GLuint R1555(GLuint v) {
     const GLuint MASK = (31 << 10);
     return (v & MASK) >> 7;
 }
 
-static inline GLubyte G1555(GLushort v) {
+GL_FORCE_INLINE GLuint G1555(GLuint v) {
     const GLuint MASK = (31 << 5);
     return (v & MASK) >> 2;
 }
 
-static inline GLubyte B1555(GLushort v) {
+GL_FORCE_INLINE GLuint B1555(GLuint v) {
     const GLuint MASK = (31 << 0);
     return (v & MASK) << 3;
 }
 
-static inline GLubyte A4444(GLushort v) {
+GL_FORCE_INLINE GLuint A4444(GLuint v) {
     const GLuint MASK = (0xF << 12);
     return (v & MASK) >> 12;
 }
 
-static inline GLubyte R4444(GLushort v) {
+GL_FORCE_INLINE GLuint R4444(GLuint v) {
     const GLuint MASK = (0xF << 8);
     return (v & MASK) >> 8;
 }
 
-static inline GLubyte G4444(GLushort v) {
+GL_FORCE_INLINE GLuint G4444(GLuint v) {
     const GLuint MASK = (0xF << 4);
     return (v & MASK) >> 4;
 }
 
-static inline GLubyte B4444(GLushort v) {
+GL_FORCE_INLINE GLuint B4444(GLuint v) {
     const GLuint MASK = (0xF << 0);
     return (v & MASK) >> 0;
 }
 
-static inline GLubyte R565(GLushort v) {
+GL_FORCE_INLINE GLuint R565(GLuint v) {
     const GLuint MASK = (31 << 11);
     return (v & MASK) >> 8;
 }
 
-static inline GLubyte G565(GLushort v) {
+GL_FORCE_INLINE GLuint G565(GLuint v) {
     const GLuint MASK = (63 << 5);
     return (v & MASK) >> 3;
 }
 
-static inline GLubyte B565(GLushort v) {
+GL_FORCE_INLINE GLuint B565(GLuint v) {
     const GLuint MASK = (31 << 0);
     return (v & MASK) << 3;
 }
 
-GLboolean _glCalculateAverageTexel(GLuint pvrFormat, const GLubyte* src1, const GLubyte* src2, const GLubyte* src3, const GLubyte* src4, GLubyte* t) {
+static GL_NO_INSTRUMENT GLboolean _glCalculateAverageTexel(GLuint pvrFormat, const GLubyte* src1, const GLubyte* src2, const GLubyte* src3, const GLubyte* src4, GLubyte* t) {
     GLuint a, r, g, b;
 
     GLubyte format = ((pvrFormat & (1 << 27)) | (pvrFormat & (1 << 26))) >> 26;

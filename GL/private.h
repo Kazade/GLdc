@@ -11,11 +11,20 @@
 #include "../include/gl.h"
 #include "../containers/aligned_vector.h"
 #include "../containers/named_array.h"
+#include "sh4_math.h"
 
-#define GL_FORCE_INLINE __attribute__((always_inline)) static __inline__
+extern void* memcpy4 (void *dest, const void *src, size_t count);
+
+#define GL_NO_INSTRUMENT inline __attribute__((no_instrument_function))
+#define GL_INLINE_DEBUG GL_NO_INSTRUMENT __attribute__((always_inline))
+#define GL_FORCE_INLINE static GL_INLINE_DEBUG
+#define _GL_UNUSED(x) (void)(x)
 
 #define FASTCPY(dst, src, bytes) \
     (bytes % 32 == 0) ? sq_cpy(dst, src, bytes) : memcpy(dst, src, bytes);
+
+#define FASTCPY4(dst, src, bytes) \
+    (bytes % 32 == 0) ? sq_cpy(dst, src, bytes) : memcpy4(dst, src, bytes);
 
 #define _PACK4(v) ((v * 0xF) / 0xFF)
 #define PACK_ARGB4444(a,r,g,b) (_PACK4(a) << 12) | (_PACK4(r) << 8) | (_PACK4(g) << 4) | (_PACK4(b))
@@ -109,35 +118,41 @@ typedef struct {
 } TexturePalette;
 
 typedef struct {
-    GLushort width;
-    GLushort height;
-    GLuint   color; /* This is the PVR texture format */
-    GLubyte  env;
-    GLushort  mipmap;  /* Bitmask of supplied mipmap levels */
-    GLubyte mipmapCount; /* The number of mipmap levels */
-    GLubyte  uv_clamp;
+    //0
     GLuint   index;
-    GLvoid *data;
-    GLuint dataStride;
-    GLuint baseDataSize; /* The data size of mipmap level 0 */
-
+    GLuint   color; /* This is the PVR texture format */
+    //8
     GLenum minFilter;
     GLenum magFilter;
-
-    GLboolean isCompressed;
-    GLboolean isPaletted;
-
+    //16
+    GLvoid *data;
+    TexturePalette* palette;
+    //24
+    GLushort width;
+    GLushort height;
+    //28
+    GLushort  mipmap;  /* Bitmask of supplied mipmap levels */
+    /* When using the shared palette, this is the bank (0-3) */
+    GLushort shared_bank;
+    //32
+    GLuint dataStride;
+    //36
+    GLubyte mipmap_bias;
+    GLubyte  env;
+    GLubyte mipmapCount; /* The number of mipmap levels */
+    GLubyte  uv_clamp;
+    //40
     /* Mipmap textures have a different
      * offset for the base level when supplying the data, this
      * keeps track of that. baseDataOffset == 0
      * means that the texture has no mipmaps
      */
     GLuint baseDataOffset;
-
-    TexturePalette* palette;
-
-    /* When using the shared palette, this is the bank (0-3) */
-    GLushort shared_bank;
+    GLuint baseDataSize; /* The data size of mipmap level 0 */
+    //48
+    GLboolean isCompressed;
+    GLboolean isPaletted;
+    //50
 } TextureObject;
 
 typedef struct {
@@ -175,20 +190,6 @@ typedef struct {
      * simpler */
     float w;
 } Vertex;
-
-/* FIXME: SH4 has a swap.w instruction, we should leverage it here! */
-#define _SWAP32(x, y) \
-do { \
-    uint32_t t = *((uint32_t*) &x); \
-    *((uint32_t*) &x) = *((uint32_t*) &y); \
-    *((uint32_t*) &y) = t; \
-} while(0)
-
-/*
-    *((uint32_t*) &x) = *((uint32_t*) &x) ^ *((uint32_t*) &y); \
-    *((uint32_t*) &y) = *((uint32_t*) &x) ^ *((uint32_t*) &y); \
-    *((uint32_t*) &x) = *((uint32_t*) &x) ^ *((uint32_t*) &y); */
-
 
 #define swapVertex(a, b)   \
 do {                 \
@@ -307,8 +308,8 @@ GLboolean _glIsBlendingEnabled();
 GLboolean _glIsAlphaTestEnabled();
 
 GLboolean _glIsMipmapComplete(const TextureObject* obj);
-GLubyte* _glGetMipmapLocation(TextureObject* obj, GLuint level);
-GLuint _glGetMipmapLevelCount(TextureObject* obj);
+GLubyte* _glGetMipmapLocation(const TextureObject* obj, GLuint level);
+GLuint _glGetMipmapLevelCount(const TextureObject* obj);
 
 GLboolean _glIsLightingEnabled();
 GLboolean _glIsLightEnabled(GLubyte light);
@@ -336,19 +337,8 @@ GLubyte _glKosHasError();
 #define MAX_TEXTURE_UNITS 2
 #define MAX_LIGHTS 8
 
-#define CLAMP( X, MIN, MAX )  ( (X)<(MIN) ? (MIN) : ((X)>(MAX) ? (MAX) : (X)) )
-
-#define mat_trans_fv12() { \
-        __asm__ __volatile__( \
-                              "fldi1 fr15\n" \
-                              "ftrv	 xmtrx, fv12\n" \
-                              "fldi1 fr14\n" \
-                              "fdiv	 fr15, fr14\n" \
-                              "fmul	 fr14, fr12\n" \
-                              "fmul	 fr14, fr13\n" \
-                              : "=f" (__x), "=f" (__y), "=f" (__z) \
-                              : "0" (__x), "1" (__y), "2" (__z) \
-                              : "fr15" ); \
-    }
+#define MIN(a,b) (((a)<(b))?(a):(b))
+#define MAX(a,b) (((a)>(b))?(a):(b))
+#define CLAMP( X, _MIN, _MAX )  ( (X)<(_MIN) ? (_MIN) : ((X)>(_MAX) ? (_MAX) : (X)) )
 
 #endif // PRIVATE_H

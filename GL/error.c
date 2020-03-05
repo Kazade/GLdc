@@ -57,6 +57,7 @@ void _glKosPrintError() {
     }
 
     fprintf(stderr, "GL ERROR: %s when calling %s\n", _glErrorEnumAsString(last_error), error_function);
+    _glKosResetError();
 }
 
 GLenum glGetError(void) {

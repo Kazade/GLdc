@@ -15,7 +15,7 @@
 static GLfloat SCENE_AMBIENT [] = {0.2f, 0.2f, 0.2f, 1.0f};
 static GLboolean VIEWER_IN_EYE_COORDINATES = GL_TRUE;
 static GLenum COLOR_CONTROL = GL_SINGLE_COLOR;
-static GLboolean TWO_SIDED_LIGHTING = GL_FALSE;
+
 static GLenum COLOR_MATERIAL_MODE = GL_AMBIENT_AND_DIFFUSE;
 
 static LightSource LIGHTS[MAX_LIGHTS];
@@ -346,18 +346,8 @@ GL_FORCE_INLINE void _glLightVertexPoint(
 #undef _PROCESS_COMPONENT
 }
 
-GL_FORCE_INLINE float MATH_fsrra(float x) {
-    __asm__ volatile ("fsrra %[one_div_sqrt]\n"
-        : [one_div_sqrt] "+f" (x) // outputs, "+" means r/w
-        : // no inputs
-        : // no clobbers
-    );
-
-    return x;
-}
-
 GL_FORCE_INLINE void bgra_to_float(const uint8_t* input, GLfloat* output) {
-    const static float scale = 1.0f / 255.0f;
+    static const float scale = 1.0f / 255.0f;
 
     output[0] = ((float) input[R8IDX]) * scale;
     output[1] = ((float) input[G8IDX]) * scale;

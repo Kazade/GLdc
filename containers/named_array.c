@@ -1,4 +1,5 @@
 #include <stdlib.h>
+#include <stdio.h>
 #include <math.h>
 #include <string.h>
 #include <assert.h>
@@ -16,8 +17,7 @@ void named_array_init(NamedArray* array, unsigned int element_size, unsigned int
     array->element_size = element_size;
     array->max_element_count = max_elements;
 
-    float c = (float) max_elements / 8.0f;
-    array->marker_count = (unsigned char) ceil(c);
+    array->marker_count = (unsigned char)((max_elements+8-1)/8);
 
 #ifdef _arch_dreamcast
     // Use 32-bit aligned memory on the Dreamcast
@@ -28,17 +28,6 @@ void named_array_init(NamedArray* array, unsigned int element_size, unsigned int
     array->used_markers = (unsigned char*) malloc(array->marker_count);
 #endif
     memset(array->used_markers, 0, sizeof(unsigned char) * array->marker_count);
-}
-
-char named_array_used(NamedArray* array, unsigned int id) {
-    unsigned int i = id / 8;
-    unsigned int j = id % 8;
-
-    assert(i < array->max_element_count);
-    assert(array->used_markers);
-
-    unsigned char v = array->used_markers[i] & (unsigned char) (1 << j);
-    return !!(v);
 }
 
 void* named_array_alloc(NamedArray* array, unsigned int* new_id) {

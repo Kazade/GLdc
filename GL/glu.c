@@ -4,9 +4,9 @@
 /* Set the Perspective */
 void APIENTRY gluPerspective(GLfloat angle, GLfloat aspect,
                     GLfloat znear, GLfloat zfar) {
-    GLdouble fW, fH;
+    GLfloat fW, fH;
 
-    fH = tan(angle / 360 * F_PI) * znear;
+    fH = tanf(angle * (F_PI / 360.0f)) * znear;
     fW = fH * aspect;
 
     glFrustum(-fW, fW, -fH, fH, znear, zfar);
