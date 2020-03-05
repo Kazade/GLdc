@@ -13,6 +13,7 @@ static inline void* memalign(size_t alignment, size_t size) {
     #include <malloc.h>
 #endif
 
+#include "../GL/private.h"
 #include "aligned_vector.h"
 
 void aligned_vector_init(AlignedVector* vector, unsigned int element_size) {
@@ -24,14 +25,12 @@ void aligned_vector_init(AlignedVector* vector, unsigned int element_size) {
     aligned_vector_reserve(vector, ALIGNED_VECTOR_CHUNK_SIZE);
 }
 
-
 static inline unsigned int round_to_chunk_size(unsigned int val) {
     const unsigned int n = val;
     const unsigned int m = ALIGNED_VECTOR_CHUNK_SIZE;
 
     return ((n + m - 1) / m) * m;
 }
-
 
 void aligned_vector_reserve(AlignedVector* vector, unsigned int element_count) {
     if(element_count == 0) {
@@ -54,7 +53,7 @@ void aligned_vector_reserve(AlignedVector* vector, unsigned int element_count) {
     assert(vector->data);
 
     if(original_data) {
-        memcpy(vector->data, original_data, original_byte_size);
+        FASTCPY(vector->data, original_data, original_byte_size);
         free(original_data);
     }
 
@@ -74,7 +73,7 @@ void* aligned_vector_push_back(AlignedVector* vector, const void* objs, unsigned
     unsigned char* dest = vector->data + (vector->element_size * initial_size);
 
     /* Copy the objects in */
-    memcpy(dest, objs, vector->element_size * count);
+    FASTCPY(dest, objs, vector->element_size * count);
 
     return dest;
 }
@@ -101,23 +100,10 @@ void* aligned_vector_resize(AlignedVector* vector, const unsigned int element_co
     }
 }
 
-void* aligned_vector_at(const AlignedVector* vector, const unsigned int index) {
-    assert(index < vector->size);
-    return &vector->data[index * vector->element_size];
-}
-
-void* aligned_vector_back(AlignedVector* vector) {
-    return aligned_vector_at(vector, vector->size - 1);
-}
-
 void* aligned_vector_extend(AlignedVector* vector, const unsigned int additional_count) {
     const unsigned int current = vector->size;
     aligned_vector_resize(vector, vector->size + additional_count);
     return aligned_vector_at(vector, current);
-}
-
-void aligned_vector_clear(AlignedVector* vector) {
-    vector->size = 0;
 }
 
 void aligned_vector_shrink_to_fit(AlignedVector* vector) {
@@ -131,7 +117,7 @@ void aligned_vector_shrink_to_fit(AlignedVector* vector) {
         vector->data = (unsigned char*) memalign(0x20, new_byte_size);
 
         if(original_data) {
-            memcpy(vector->data, original_data, new_byte_size);
+            FASTCPY(vector->data, original_data, new_byte_size);
             free(original_data);
         }
 
