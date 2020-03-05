@@ -443,7 +443,7 @@ static void _fillWithNegZVE(GLuint count, GLfloat* output) {
     }
 }
 
-static void _fillWhiteARGB(GLuint count, GLubyte* output) {
+GL_FORCE_INLINE void  _fillWhiteARGB(GLuint count, GLubyte* output) {
     ITERATE(count) {
         output[R8IDX] = 255;
         output[G8IDX] = 255;
@@ -469,26 +469,50 @@ static void _fillZero2fVE(GLuint count, GLfloat* output) {
 }
 
 static void _readVertexData3usARGB(const GLushort* input, GLuint count, GLubyte stride, GLubyte* output) {
+    _GL_UNUSED(input);
+    _GL_UNUSED(count);
+    _GL_UNUSED(stride);
+    _GL_UNUSED(output);
     assert(0 && "Not Implemented");
 }
 
 static void _readVertexData3uiARGB(const GLuint* input, GLuint count, GLubyte stride, GLubyte* output) {
+    _GL_UNUSED(input);
+    _GL_UNUSED(count);
+    _GL_UNUSED(stride);
+    _GL_UNUSED(output);
     assert(0 && "Not Implemented");
 }
 
 static void _readVertexData4usARGB(const GLushort* input, GLuint count, GLubyte stride, GLubyte* output) {
+    _GL_UNUSED(input);
+    _GL_UNUSED(count);
+    _GL_UNUSED(stride);
+    _GL_UNUSED(output);
     assert(0 && "Not Implemented");
 }
 
 static void _readVertexData4uiARGB(const GLuint* input, GLuint count, GLubyte stride, GLubyte* output) {
+    _GL_UNUSED(input);
+    _GL_UNUSED(count);
+    _GL_UNUSED(stride);
+    _GL_UNUSED(output);
     assert(0 && "Not Implemented");
 }
 
 static void _readVertexData4usRevARGB(const GLushort* input, GLuint count, GLubyte stride, GLubyte* output) {
+    _GL_UNUSED(input);
+    _GL_UNUSED(count);
+    _GL_UNUSED(stride);
+    _GL_UNUSED(output);
     assert(0 && "Not Implemented");
 }
 
 static void _readVertexData4uiRevARGB(const GLuint* input, GLuint count, GLubyte stride, GLubyte* output) {
+    _GL_UNUSED(input);
+    _GL_UNUSED(count);
+    _GL_UNUSED(stride);
+    _GL_UNUSED(output);
     assert(0 && "Not Implemented");
 }
 
@@ -597,7 +621,7 @@ PVRHeader* _glSubmissionTargetHeader(SubmissionTarget* target) {
     return aligned_vector_at(&target->output->vector, target->header_offset);
 }
 
-Vertex* _glSubmissionTargetStart(SubmissionTarget* target) {
+GL_INLINE_DEBUG Vertex* _glSubmissionTargetStart(SubmissionTarget* target) {
     assert(target->start_offset < target->output->vector.size);
     return aligned_vector_at(&target->output->vector, target->start_offset);
 }
@@ -810,7 +834,15 @@ GL_FORCE_INLINE void _readNormalData(const GLuint first, const GLuint count, Ver
         GLubyte* ptr = (GLubyte*) extra->nxyz;
         ITERATE(count) {
             GLfloat* n = (GLfloat*) ptr;
-            vec3f_normalize(n[0], n[1], n[2]);
+            float temp = n[0] * n[0];
+            temp = MATH_fmac(n[1], n[1], temp);
+            temp = MATH_fmac(n[2], n[2], temp);
+
+            float ilength = MATH_fsrra(temp);
+            n[0] *= ilength;
+            n[1] *= ilength;
+            n[2] *= ilength;
+
             ptr += sizeof(VertexExtra);
         }
     }
@@ -1104,9 +1136,6 @@ static void mat_transform_normal3(const float* xyz, const float* xyzOut, const u
 }
 
 static void light(SubmissionTarget* target) {
-    if(!_glIsLightingEnabled()) {
-        return;
-    }
 
     static AlignedVector* eye_space_data = NULL;
 
@@ -1130,16 +1159,6 @@ static void light(SubmissionTarget* target) {
 
     EyeSpaceData* ES = aligned_vector_at(eye_space_data, 0);
     _glPerformLighting(vertex, ES, target->count);
-}
-
-GL_FORCE_INLINE float MATH_fsrra(float x) {
-    __asm__ volatile ("fsrra %[one_div_sqrt]\n"
-        : [one_div_sqrt] "+f" (x) // outputs, "+" means r/w
-        : // no inputs
-        : // no clobbers
-    );
-
-    return x;
 }
 
 GL_FORCE_INLINE void divide(SubmissionTarget* target) {
@@ -1279,7 +1298,7 @@ GL_FORCE_INLINE void submitVertices(GLenum mode, GLsizei first, GLuint count, GL
 
     profiler_checkpoint("generate");
 
-    if(doLighting) {
+    if(doLighting){
         light(target);
     }
 
@@ -1386,6 +1405,7 @@ void APIENTRY glDrawElements(GLenum mode, GLsizei count, GLenum type, const GLvo
     if(_glCheckImmediateModeInactive(__func__)) {
         return;
     }
+    _glRecalcFastPath();
 
     submitVertices(mode, 0, count, type, indices);
 }
@@ -1396,6 +1416,7 @@ void APIENTRY glDrawArrays(GLenum mode, GLint first, GLsizei count) {
     if(_glCheckImmediateModeInactive(__func__)) {
         return;
     }
+    _glRecalcFastPath();
 
     submitVertices(mode, first, count, GL_UNSIGNED_INT, NULL);
 }
@@ -1421,8 +1442,6 @@ void APIENTRY glEnableClientState(GLenum cap) {
     default:
         _glKosThrowError(GL_INVALID_ENUM, __func__);
     }
-
-    _glRecalcFastPath();
 }
 
 void APIENTRY glDisableClientState(GLenum cap) {
@@ -1446,8 +1465,6 @@ void APIENTRY glDisableClientState(GLenum cap) {
     default:
         _glKosThrowError(GL_INVALID_ENUM, __func__);
     }
-
-    _glRecalcFastPath();
 }
 
 GLuint _glGetActiveClientTexture() {
@@ -1458,7 +1475,7 @@ void APIENTRY glClientActiveTextureARB(GLenum texture) {
     TRACE();
 
     if(texture < GL_TEXTURE0_ARB || texture > GL_TEXTURE0_ARB + MAX_TEXTURE_UNITS) {
-        _glKosThrowError(GL_INVALID_ENUM, "glClientActiveTextureARB");
+        _glKosThrowError(GL_INVALID_ENUM, __func__);
     }
 
     if(_glKosHasError()) {
@@ -1489,8 +1506,6 @@ void APIENTRY glTexCoordPointer(GLint size,  GLenum type,  GLsizei stride,  cons
     tointer->stride = stride;
     tointer->type = type;
     tointer->size = size;
-
-    _glRecalcFastPath();
 }
 
 void APIENTRY glVertexPointer(GLint size,  GLenum type,  GLsizei stride,  const GLvoid * pointer) {
@@ -1506,8 +1521,6 @@ void APIENTRY glVertexPointer(GLint size,  GLenum type,  GLsizei stride,  const 
     VERTEX_POINTER.stride = stride;
     VERTEX_POINTER.type = type;
     VERTEX_POINTER.size = size;
-
-    _glRecalcFastPath();
 }
 
 void APIENTRY glColorPointer(GLint size,  GLenum type,  GLsizei stride,  const GLvoid * pointer) {
@@ -1523,8 +1536,6 @@ void APIENTRY glColorPointer(GLint size,  GLenum type,  GLsizei stride,  const G
     DIFFUSE_POINTER.stride = stride;
     DIFFUSE_POINTER.type = type;
     DIFFUSE_POINTER.size = size;
-
-    _glRecalcFastPath();
 }
 
 void APIENTRY glNormalPointer(GLenum type,  GLsizei stride,  const GLvoid * pointer) {
@@ -1550,5 +1561,4 @@ void APIENTRY glNormalPointer(GLenum type,  GLsizei stride,  const GLvoid * poin
     NORMAL_POINTER.type = type;
     NORMAL_POINTER.size = (type == GL_UNSIGNED_INT_2_10_10_10_REV) ? 1 : 3;
 
-    _glRecalcFastPath();
 }
