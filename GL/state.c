@@ -18,7 +18,6 @@ pvr_poly_cxt_t* _glGetPVRContext() {
     return &GL_CONTEXT;
 }
 
-
 /* We can't just use the GL_CONTEXT for this state as the two
  * GL states are combined, so we store them separately and then
  * calculate the appropriate PVR state from them. */
@@ -31,6 +30,8 @@ static GLboolean COLOR_MATERIAL_ENABLED = GL_FALSE;
 static GLboolean SHARED_PALETTE_ENABLED = GL_FALSE;
 
 static GLboolean ALPHA_TEST_ENABLED = GL_FALSE;
+
+static GLboolean POLYGON_OFFSET_ENABLED = GL_FALSE;
 
 static GLboolean NORMALIZE_ENABLED = GL_FALSE;
 
@@ -83,6 +84,9 @@ static int _calc_pvr_depth_test() {
 static GLenum BLEND_SFACTOR = GL_ONE;
 static GLenum BLEND_DFACTOR = GL_ZERO;
 static GLboolean BLEND_ENABLED = GL_FALSE;
+
+static GLfloat OFFSET_FACTOR = 0.0f;
+static GLfloat OFFSET_UNITS = 0.0f;
 
 GLboolean _glIsNormalizeEnabled() {
     return NORMALIZE_ENABLED;
@@ -150,7 +154,7 @@ GLboolean _glCheckValidEnum(GLint param, GLint* values, const char* func) {
     return GL_FALSE;
 }
 
-static GLboolean TEXTURES_ENABLED [] = {GL_FALSE, GL_FALSE};
+GLboolean TEXTURES_ENABLED [] = {GL_FALSE, GL_FALSE};
 
 void _glUpdatePVRTextureContext(pvr_poly_cxt_t* context, GLshort textureUnit) {
     const TextureObject *tx1 = (textureUnit == 0) ? _glGetTexture0() : _glGetTexture1();
@@ -187,6 +191,10 @@ void _glUpdatePVRTextureContext(pvr_poly_cxt_t* context, GLshort textureUnit) {
         enableMipmaps = GL_TRUE;
     }
 
+    if(tx1->height != tx1->width){
+        enableMipmaps = GL_FALSE;
+    }
+
     if(enableMipmaps) {
         if(tx1->minFilter == GL_LINEAR_MIPMAP_NEAREST) {
             filter = PVR_FILTER_TRILINEAR1;
@@ -215,15 +223,13 @@ void _glUpdatePVRTextureContext(pvr_poly_cxt_t* context, GLshort textureUnit) {
         context->txr.filter = filter;
         context->txr.width = tx1->width;
         context->txr.height = tx1->height;
+        context->txr.mipmap = enableMipmaps;
+        context->txr.mipmap_bias = tx1->mipmap_bias;
 
         if(enableMipmaps) {
             context->txr.base = tx1->data;
-            context->txr.mipmap = PVR_MIPMAP_ENABLE;
-            context->txr.mipmap_bias = PVR_MIPBIAS_NORMAL;
         } else {
             context->txr.base = tx1->data + tx1->baseDataOffset;
-            context->txr.mipmap = PVR_MIPMAP_DISABLE;
-            context->txr.mipmap_bias = PVR_MIPBIAS_NORMAL;
         }
 
         context->txr.format = tx1->color;
@@ -338,6 +344,11 @@ GLAPI void APIENTRY glEnable(GLenum cap) {
         case GL_NEARZ_CLIPPING_KOS:
             _glEnableClipping(GL_TRUE);
         break;
+        case GL_POLYGON_OFFSET_POINT:
+        case GL_POLYGON_OFFSET_LINE:
+        case GL_POLYGON_OFFSET_FILL:
+            POLYGON_OFFSET_ENABLED = GL_TRUE;
+        break;
         case GL_NORMALIZE:
             NORMALIZE_ENABLED = GL_TRUE;
         break;
@@ -395,6 +406,11 @@ GLAPI void APIENTRY glDisable(GLenum cap) {
         case GL_NEARZ_CLIPPING_KOS:
             _glEnableClipping(GL_FALSE);
         break;
+        case GL_POLYGON_OFFSET_POINT:
+        case GL_POLYGON_OFFSET_LINE:
+        case GL_POLYGON_OFFSET_FILL:
+            POLYGON_OFFSET_ENABLED = GL_FALSE;
+        break;
         case GL_NORMALIZE:
             NORMALIZE_ENABLED = GL_FALSE;
         break;
@@ -423,18 +439,22 @@ GLAPI void APIENTRY glClearColor(GLfloat r, GLfloat g, GLfloat b, GLfloat a) {
 
 /* Depth Testing */
 GLAPI void APIENTRY glClearDepthf(GLfloat depth) {
+    _GL_UNUSED(depth);
 
 }
 
 GLAPI void APIENTRY glClearDepth(GLfloat depth) {
+    _GL_UNUSED(depth);
 
 }
 
 GLAPI void APIENTRY glDrawBuffer(GLenum mode) {
+    _GL_UNUSED(mode);
 
 }
 
 GLAPI void APIENTRY glReadBuffer(GLenum mode) {
+    _GL_UNUSED(mode);
 
 }
 
@@ -500,23 +520,30 @@ GLAPI void APIENTRY glAlphaFunc(GLenum func, GLclampf ref) {
 }
 
 void glLineWidth(GLfloat width) {
-    ;
+    _GL_UNUSED(width);
 }
 
 void glPolygonOffset(GLfloat factor, GLfloat units) {
-    ;
+    OFFSET_FACTOR = factor;
+    OFFSET_UNITS = units;
 }
 
 void glGetTexParameteriv(GLenum target, GLenum pname, GLint *params) {
-    ;
+    _GL_UNUSED(target);
+    _GL_UNUSED(pname);
+    _GL_UNUSED(params);
 }
 
 void glColorMask(GLboolean red, GLboolean green, GLboolean blue, GLboolean alpha) {
-    ;
+    _GL_UNUSED(red);
+    _GL_UNUSED(green);
+    _GL_UNUSED(blue);
+    _GL_UNUSED(alpha);
 }
 
 void glPixelStorei(GLenum pname, GLint param) {
-    ;
+    _GL_UNUSED(pname);
+    _GL_UNUSED(param);
 }
 
 
@@ -538,8 +565,8 @@ void APIENTRY glScissor(GLint x, GLint y, GLsizei width, GLsizei height) {
     PVRTileClipCommand *c = aligned_vector_extend(&_glActivePolyList()->vector, 1);
 
     GLint miny, maxx, maxy;
-    GLsizei gl_scissor_width = CLAMP(width, 0, vid_mode->width);
-    GLsizei gl_scissor_height = CLAMP(height, 0, vid_mode->height);
+    GLsizei gl_scissor_width = MAX( MIN(width, vid_mode->width), 0 );
+    GLsizei gl_scissor_height = MAX( MIN(height, vid_mode->height), 0 );
 
     /* force the origin to the lower left-hand corner of the screen */
     miny = (vid_mode->height - gl_scissor_height) - y;
@@ -567,6 +594,10 @@ GLboolean APIENTRY glIsEnabled(GLenum cap) {
         return LIGHTING_ENABLED;
     case GL_BLEND:
         return BLEND_ENABLED;
+    case GL_POLYGON_OFFSET_POINT:
+    case GL_POLYGON_OFFSET_LINE:
+    case GL_POLYGON_OFFSET_FILL:
+        return POLYGON_OFFSET_ENABLED;
     }
 
     return GL_FALSE;
@@ -581,7 +612,7 @@ static GLenum COMPRESSED_FORMATS [] = {
     GL_COMPRESSED_RGB_565_VQ_TWID_KOS
 };
 
-static GLint NUM_COMPRESSED_FORMATS = sizeof(COMPRESSED_FORMATS) / sizeof(GLenum);
+static GLuint NUM_COMPRESSED_FORMATS = sizeof(COMPRESSED_FORMATS) / sizeof(GLenum);
 
 void APIENTRY glGetBooleanv(GLenum pname, GLboolean* params) {
     GLuint enabledAttrs = *_glGetEnabledAttributes();
@@ -616,13 +647,19 @@ void APIENTRY glGetBooleanv(GLenum pname, GLboolean* params) {
 void APIENTRY glGetFloatv(GLenum pname, GLfloat* params) {
     switch(pname) {
         case GL_PROJECTION_MATRIX:
-            memcpy(params, _glGetProjectionMatrix(), sizeof(float) * 16);
+            memcpy4(params, _glGetProjectionMatrix(), sizeof(float) * 16);
         break;
         case GL_MODELVIEW_MATRIX:
-            memcpy(params, _glGetModelViewMatrix(), sizeof(float) * 16);
+            memcpy4(params, _glGetModelViewMatrix(), sizeof(float) * 16);
+        break;
+        case GL_POLYGON_OFFSET_FACTOR:
+            *params = OFFSET_FACTOR;
+        break;
+        case GL_POLYGON_OFFSET_UNITS:
+            *params = OFFSET_UNITS;
         break;
         default:
-            _glKosThrowError(GL_INVALID_ENUM, "glGetIntegerv");
+            _glKosThrowError(GL_INVALID_ENUM, __func__);
             _glKosPrintError();
             break;
     }
@@ -664,7 +701,7 @@ void APIENTRY glGetIntegerv(GLenum pname, GLint *params) {
             }
         } break;
     default:
-        _glKosThrowError(GL_INVALID_ENUM, "glGetIntegerv");
+        _glKosThrowError(GL_INVALID_ENUM, __func__);
         _glKosPrintError();
         break;
     }
