@@ -362,6 +362,27 @@ __BEGIN_DECLS
 #define GL_RGBA12                         0x805A
 #define GL_RGBA16                         0x805B
 
+/* Polygons */
+#define GL_POINT				0x1B00
+#define GL_LINE					0x1B01
+#define GL_FILL					0x1B02
+#define GL_CW					0x0900
+#define GL_CCW					0x0901
+#define GL_FRONT				0x0404
+#define GL_BACK					0x0405
+#define GL_POLYGON_MODE				0x0B40
+#define GL_POLYGON_SMOOTH			0x0B41
+#define GL_POLYGON_STIPPLE			0x0B42
+#define GL_EDGE_FLAG				0x0B43
+#define GL_CULL_FACE				0x0B44
+#define GL_CULL_FACE_MODE			0x0B45
+#define GL_FRONT_FACE				0x0B46
+#define GL_POLYGON_OFFSET_FACTOR		0x8038
+#define GL_POLYGON_OFFSET_UNITS			0x2A00
+#define GL_POLYGON_OFFSET_POINT			0x2A01
+#define GL_POLYGON_OFFSET_LINE			0x2A02
+#define GL_POLYGON_OFFSET_FILL			0x8037
+
 #define GLbyte   char
 #define GLshort  short
 #define GLint    int
@@ -471,6 +492,7 @@ GLAPI void APIENTRY glClearDepthf(GLfloat depth);
 GLAPI void APIENTRY glDepthMask(GLboolean flag);
 GLAPI void APIENTRY glDepthFunc(GLenum func);
 GLAPI void APIENTRY glDepthRange(GLclampf n, GLclampf f);
+GLAPI void APIENTRY glDepthRangef(GLclampf n, GLclampf f);
 
 /* Hints */
 /* Currently Supported Capabilities:

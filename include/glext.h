@@ -190,6 +190,21 @@ GLAPI void APIENTRY glCompressedTexImage2DARB(GLenum target,
 #define glGenerateMipmap glGenerateMipmapEXT
 #define glCompressedTexImage2D glCompressedTexImage2DARB
 
+#ifndef GL_VERSION_1_4
+#define GL_VERSION_1_4 1
+#define GL_MAX_TEXTURE_LOD_BIAS           0x84FD
+#define GL_TEXTURE_LOD_BIAS               0x8501
+#define GL_MAX_TEXTURE_LOD_BIAS_DEFAULT 7
+#define GL_KOS_INTERNAL_DEFAULT_MIPMAP_LOD_BIAS -4
+#endif
+
+#ifndef GL_EXT_texture_lod_bias
+#define GL_EXT_texture_lod_bias 1
+#define GL_MAX_TEXTURE_LOD_BIAS_EXT       0x84FD
+#define GL_TEXTURE_FILTER_CONTROL_EXT     0x8500
+#define GL_TEXTURE_LOD_BIAS_EXT           0x8501
+#endif /* GL_EXT_texture_lod_bias */
+
 __END_DECLS
 
 #endif /* !__GL_GLEXT_H */
