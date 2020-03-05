@@ -12,8 +12,6 @@
 
 #define DEG2RAD (0.01745329251994329576923690768489)
 
-/* Viewport mapping */
-static GLfloat gl_viewport_scale[3], gl_viewport_offset[3];
 
 /* Depth range */
 GLfloat DEPTH_RANGE_MULTIPLIER_L = (1 - 0) / 2;
@@ -47,8 +45,6 @@ static void _glStoreNearPlane() {
     NEAR_PLANE_DISTANCE = -b / (1.0f - a);
 }
 
-void APIENTRY glDepthRange(GLclampf n, GLclampf f);
-
 static inline void upload_matrix(Matrix4x4* m) {
     mat_load((matrix_t*) m);
 }
@@ -78,8 +74,8 @@ void _glInitMatrices() {
     stack_push(&MATRIX_STACKS[1], IDENTITY);
     stack_push(&MATRIX_STACKS[2], IDENTITY);
 
-    memcpy(NORMAL_MATRIX, IDENTITY, sizeof(Matrix4x4));
-    memcpy(SCREENVIEW_MATRIX, IDENTITY, sizeof(Matrix4x4));
+    memcpy4(NORMAL_MATRIX, IDENTITY, sizeof(Matrix4x4));
+    memcpy4(SCREENVIEW_MATRIX, IDENTITY, sizeof(Matrix4x4));
 
     glDepthRange(0.0f, 1.0f);
     glViewport(0, 0, vid_mode->width, vid_mode->height);
@@ -123,7 +119,7 @@ static void transpose(GLfloat* m) {
 }
 
 static void recalculateNormalMatrix() {
-    memcpy(NORMAL_MATRIX, stack_top(MATRIX_STACKS + (GL_MODELVIEW & 0xF)), sizeof(Matrix4x4));
+    memcpy4(NORMAL_MATRIX, stack_top(MATRIX_STACKS + (GL_MODELVIEW & 0xF)), sizeof(Matrix4x4));
     inverse((GLfloat*) NORMAL_MATRIX);
     transpose((GLfloat*) NORMAL_MATRIX);
 }
@@ -465,7 +461,7 @@ GLfloat _glGetNearPlane() {
 }
 
 /* Set the depth range */
-void APIENTRY glDepthRange(GLclampf n, GLclampf f) {
+void APIENTRY glDepthRangef(GLclampf n, GLclampf f) {
     if(n < 0.0f) n = 0.0f;
     else if(n > 1.0f) n = 1.0f;
 
@@ -476,58 +472,55 @@ void APIENTRY glDepthRange(GLclampf n, GLclampf f) {
     DEPTH_RANGE_MULTIPLIER_H = (n + f) / 2.0f;
 }
 
-/* Vector Cross Product - Used by glhLookAtf2 */
+void APIENTRY glDepthRange(GLclampf n, GLclampf f){
+    glDepthRangef(n,f);
+}
+
+/* Vector Cross Product - Used by gluLookAt */
 static inline void vec3f_cross(const GLfloat* v1, const GLfloat* v2, GLfloat* result) {
     result[0] = v1[1] * v2[2] - v1[2] * v2[1];
     result[1] = v1[2] * v2[0] - v1[0] * v2[2];
     result[2] = v1[0] * v2[1] - v1[1] * v2[0];
 }
 
-/* glhLookAtf2 adapted from http://www.opengl.org/wiki/GluLookAt_code */
-void glhLookAtf2(const GLfloat* eyePosition3D,
-                 const GLfloat* center3D,
-                 const GLfloat* upVector3D) {
+static inline void vec3f_normalize_sh4(float *v){
+    float length, ilength;
 
-    /* Look-At Matrix */
-    static Matrix4x4 MatrixLookAt __attribute__((aligned(32))) = {
-        1.0f, 0.0f, 0.0f, 0.0f,
-        0.0f, 1.0f, 0.0f, 0.0f,
-        0.0f, 0.0f, 1.0f, 0.0f,
-        0.0f, 0.0f, 0.0f, 1.0f
-    };
+	ilength = MATH_fsrra(v[0]*v[0] + v[1]*v[1] + v[2]*v[2]);
+	length = MATH_Invert(ilength);
+	if (length)
+	{
+		v[0] *= ilength;
+		v[1] *= ilength;
+		v[2] *= ilength;
+	}
+}
 
-    GLfloat forward[3];
-    GLfloat side[3];
-    GLfloat up[3];
+void gluLookAt(GLfloat eyex, GLfloat eyey, GLfloat eyez, GLfloat centerx,
+               GLfloat centery, GLfloat centerz, GLfloat upx, GLfloat upy,
+               GLfloat upz) {
+    GLfloat m [16];
+   	GLfloat f [3];
+	GLfloat u [3];
+	GLfloat s [3];
 
-    vec3f_sub_normalize(center3D[0], center3D[1], center3D[2],
-                        eyePosition3D[0], eyePosition3D[1], eyePosition3D[2],
-                        forward[0], forward[1], forward[2]);
+	f[0] = centerx - eyex;
+	f[1] = centery - eyey;
+	f[2] = centerz - eyez;
 
-    //Side = forward x up
-    vec3f_cross(forward, upVector3D, side);
-    vec3f_normalize(side[0], side[1], side[2]);
+	u[0] = upx;
+	u[1] = upy;
+	u[2] = upz;
 
-    //Recompute up as: up = side x forward
-    vec3f_cross(side, forward, up);
+    vec3f_normalize_sh4(f);
+	vec3f_cross(f, u, s);
+    vec3f_normalize_sh4(s);
+	vec3f_cross(s, f, u);
 
-    MatrixLookAt[M0] = side[0];
-    MatrixLookAt[M4] = side[1];
-    MatrixLookAt[M8] = side[2];
-    MatrixLookAt[M12] = 0;
-
-    MatrixLookAt[M1] = up[0];
-    MatrixLookAt[M5] = up[1];
-    MatrixLookAt[M9] = up[2];
-    MatrixLookAt[M13] = 0;
-
-    MatrixLookAt[M2] = -forward[0];
-    MatrixLookAt[M6] = -forward[1];
-    MatrixLookAt[M10] = -forward[2];
-    MatrixLookAt[M14] = 0;
-
-    MatrixLookAt[M3] = MatrixLookAt[11] = MatrixLookAt[15] = 0;
-    MatrixLookAt[M15] = 1;
+	m[0] =  s[0]; m[4] =  s[1]; m[8] =   s[2]; m[12] = 0.0f;
+	m[1] =  u[0]; m[5] =  u[1]; m[9] =   u[2]; m[13] = 0.0f;
+	m[2] = -f[0]; m[6] = -f[1]; m[10] = -f[2]; m[14] = 0.0f;
+    m[3] =  0.0f; m[7] =  0.0f; m[11] =  0.0f; m[15] = 1.0f;
 
     static Matrix4x4 trn __attribute__((aligned(32))) = {
         1.0f, 0.0f, 0.0f, 0.0f,
@@ -536,24 +529,15 @@ void glhLookAtf2(const GLfloat* eyePosition3D,
         0.0f, 0.0f, 0.0f, 1.0f
     };
 
-    trn[M12] = -eyePosition3D[0];
-    trn[M13] = -eyePosition3D[1];
-    trn[M14] = -eyePosition3D[2];
+    trn[M12] = -eyex;
+    trn[M13] = -eyey;
+    trn[M14] = -eyez;
 
     // Does not modify internal Modelview matrix
-    upload_matrix(&MatrixLookAt);
+    upload_matrix(&m);
     multiply_matrix(&trn);
     multiply_matrix(stack_top(MATRIX_STACKS + (GL_MODELVIEW & 0xF)));
     download_matrix(stack_top(MATRIX_STACKS + (GL_MODELVIEW & 0xF)));
-}
-
-void gluLookAt(GLfloat eyex, GLfloat eyey, GLfloat eyez, GLfloat centerx,
-               GLfloat centery, GLfloat centerz, GLfloat upx, GLfloat upy,
-               GLfloat upz) {
-    GLfloat eye [] = { eyex, eyey, eyez };
-    GLfloat point [] = { centerx, centery, centerz };
-    GLfloat up [] = { upx, upy, upz };
-    glhLookAtf2(eye, point, up);
 }
 
 void _glApplyRenderMatrix() {
