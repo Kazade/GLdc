@@ -32,39 +32,35 @@ void _glClipLineToNearZ(const Vertex* v1, const Vertex* v2, Vertex* vout, float*
 
     float vec [] = {v2->xyz[0] - v1->xyz[0], v2->xyz[1] - v1->xyz[1], v2->xyz[2] - v1->xyz[2]};
 
-    vout->xyz[0] = v1->xyz[0] + (vec[0] * (*t));
-    vout->xyz[1] = v1->xyz[1] + (vec[1] * (*t));
-    vout->xyz[2] = v1->xyz[2] + (vec[2] * (*t));
+    vout->xyz[0] = MATH_fmac(vec[0], (*t), v1->xyz[0]);
+    vout->xyz[1] = MATH_fmac(vec[1], (*t), v1->xyz[1]);
+    vout->xyz[2] = MATH_fmac(vec[2], (*t), v1->xyz[2]);
+
 }
 
-static inline void interpolateFloat(const float v1, const float v2, const float t, float* out) {
-    float v = v2 - v1;
-    *out = (v * t) + v1;
+GL_FORCE_INLINE void interpolateFloat(const float v1, const float v2, const float t, float* out) {
+    *out = MATH_fmac(v2 - v1,t, v1);
 }
 
-static inline void interpolateVec2(const float* v1, const float* v2, const float t, float* out) {
-    /* FIXME: SH4 has an asm instruction for this */
+GL_FORCE_INLINE void interpolateVec2(const float* v1, const float* v2, const float t, float* out) {
     interpolateFloat(v1[0], v2[0], t, &out[0]);
     interpolateFloat(v1[1], v2[1], t, &out[1]);
 }
 
-static inline void interpolateVec3(const float* v1, const float* v2, const float t, float* out) {
-    /* FIXME: SH4 has an asm instruction for this */
-
+GL_FORCE_INLINE void interpolateVec3(const float* v1, const float* v2, const float t, float* out) {
     interpolateFloat(v1[0], v2[0], t, &out[0]);
     interpolateFloat(v1[1], v2[1], t, &out[1]);
     interpolateFloat(v1[2], v2[2], t, &out[2]);
 }
 
-static inline void interpolateVec4(const float* v1, const float* v2, const float t, float* out) {
-    /* FIXME: SH4 has an asm instruction for this */
+GL_FORCE_INLINE void interpolateVec4(const float* v1, const float* v2, const float t, float* out) {
     interpolateFloat(v1[0], v2[0], t, &out[0]);
     interpolateFloat(v1[1], v2[1], t, &out[1]);
     interpolateFloat(v1[2], v2[2], t, &out[2]);
     interpolateFloat(v1[3], v2[3], t, &out[3]);
 }
 
-static inline void interpolateColour(const uint8_t* v1, const uint8_t* v2, const float t, uint8_t* out) {
+GL_FORCE_INLINE void interpolateColour(const uint8_t* v1, const uint8_t* v2, const float t, uint8_t* out) {
     out[0] = v1[0] + (uint32_t) (((float) (v2[0] - v1[0])) * t);
     out[1] = v1[1] + (uint32_t) (((float) (v2[1] - v1[1])) * t);
     out[2] = v1[2] + (uint32_t) (((float) (v2[2] - v1[2])) * t);
