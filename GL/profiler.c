@@ -6,6 +6,8 @@
 #include "profiler.h"
 #include "../containers/aligned_vector.h"
 
+#if PROFILING_COMPILED
+
 #define MAX_PATH 256
 
 typedef struct {
@@ -141,3 +143,4 @@ void profiler_print_stats() {
         fprintf(stderr, "%-60s%-20f%-20f%" PRIu64 "\n", result->name, (double)avg, (double)ms, result->total_calls);
     }
 }
+#endif
