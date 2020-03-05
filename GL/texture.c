@@ -9,11 +9,10 @@
 #include "config.h"
 #include "../include/glext.h"
 #include "../include/glkos.h"
+#include <kos/string.h>
 
 #define CLAMP_U (1<<1)
 #define CLAMP_V (1<<0)
-
-#define MAX(x, y) ((x > y) ? x : y)
 
 static TextureObject* TEXTURE_UNITS[MAX_TEXTURE_UNITS] = {NULL, NULL};
 static NamedArray TEXTURE_OBJECTS;
@@ -31,7 +30,7 @@ static TexturePalette* _initTexturePalette() {
     TexturePalette* palette = (TexturePalette*) malloc(sizeof(TexturePalette));
     assert(palette);
 
-    memset(palette, 0x0, sizeof(TexturePalette));
+    memset4(palette, 0x0, sizeof(TexturePalette));
     palette->bank = -1;
     return palette;
 }
@@ -133,7 +132,7 @@ GLubyte _glGetActiveTexture() {
     return ACTIVE_TEXTURE;
 }
 
-static GLint _determineStride(GLenum format, GLenum type) {
+ static GLint _determineStride(GLenum format, GLenum type) {
     switch(type) {
     case GL_BYTE:
     case GL_UNSIGNED_BYTE:
@@ -155,7 +154,7 @@ static GLint _determineStride(GLenum format, GLenum type) {
     return -1;
 }
 
-static GLuint _glGetMipmapDataOffset(TextureObject* obj, GLuint level) {
+static GLuint _glGetMipmapDataOffset(const TextureObject* obj, GLuint level) {
     GLuint offset = 0;
     GLuint size = obj->height;
 
@@ -163,7 +162,7 @@ static GLuint _glGetMipmapDataOffset(TextureObject* obj, GLuint level) {
         fprintf(stderr, "ERROR: Accessing memory location of mipmaps on non-square texture\n");
         return obj->baseDataOffset;
     }
-
+    
     if(obj->isPaletted){
         switch(size >> level){
             case 1024:
@@ -200,8 +199,44 @@ static GLuint _glGetMipmapDataOffset(TextureObject* obj, GLuint level) {
             offset = 0x00003;
             break;
         }
-    } else {
-        switch(size >> level) {
+    } else if(obj->isCompressed) {
+        switch(size >> level){
+            case 1024:
+            offset = 0x15556;
+            break;
+            case 512:
+            offset = 0x05556;
+            break;        
+            case 256:
+            offset = 0x01556;
+            break;
+            case 128:
+            offset = 0x00556;
+            break;
+            case 64:
+            offset = 0x00156;
+            break;
+            case 32:
+            offset = 0x00056;
+            break;
+            case 16:
+            offset = 0x00016;
+            break;
+            case 8:
+            offset = 0x00006;
+            break;
+            case 4:
+            offset = 0x00002;
+            break;
+            case 2:
+            offset = 0x00001;
+            break;
+            case 1:
+            offset = 0x00000;
+            break;
+        }
+    }else {
+        switch(size >> level){
             case 1024:
             offset = 0xAAAB0;
             break;
@@ -241,12 +276,12 @@ static GLuint _glGetMipmapDataOffset(TextureObject* obj, GLuint level) {
     return offset;
 }
 
-GLubyte* _glGetMipmapLocation(TextureObject* obj, GLuint level) {
+GLubyte* _glGetMipmapLocation(const TextureObject* obj, GLuint level) {
     return ((GLubyte*) obj->data) + _glGetMipmapDataOffset(obj, level);
 }
 
-GLuint _glGetMipmapLevelCount(TextureObject* obj) {
-    return 1 + floor(log2(MAX(obj->width, obj->height)));
+GLuint _glGetMipmapLevelCount(const TextureObject* obj) {
+    return 1 + floorf(log2f(MAX(obj->width, obj->height)));
 }
 
 static GLuint _glGetMipmapDataSize(TextureObject* obj) {
@@ -318,6 +353,7 @@ static void _glInitializeTextureObject(TextureObject* txr, unsigned int id) {
     txr->palette = NULL;
     txr->isCompressed = GL_FALSE;
     txr->isPaletted = GL_FALSE;
+    txr->mipmap_bias = GL_MAX_TEXTURE_LOD_BIAS_DEFAULT;
 
     /* Not mipmapped by default */
     txr->baseDataOffset = 0;
@@ -403,18 +439,13 @@ void APIENTRY glBindTexture(GLenum  target, GLuint texture) {
 void APIENTRY glTexEnvi(GLenum target, GLenum pname, GLint param) {
     TRACE();
 
-    GLint target_values [] = {GL_TEXTURE_ENV, 0};
-    GLint pname_values [] = {GL_TEXTURE_ENV_MODE, 0};
-    GLint param_values [] = {GL_MODULATE, GL_DECAL, GL_REPLACE, 0};
-
     GLubyte failures = 0;
 
+    GLint target_values [] = {GL_TEXTURE_ENV, GL_TEXTURE_FILTER_CONTROL_EXT, 0};
     failures += _glCheckValidEnum(target, target_values, __func__);
-    failures += _glCheckValidEnum(pname, pname_values, __func__);
-    failures += _glCheckValidEnum(param, param_values, __func__);
 
     TextureObject* active = TEXTURE_UNITS[ACTIVE_TEXTURE];
-
+    
     if(!active) {
         return;
     }
@@ -422,19 +453,47 @@ void APIENTRY glTexEnvi(GLenum target, GLenum pname, GLint param) {
     if(failures) {
         return;
     }
+    switch(target){
+        case GL_TEXTURE_ENV:
+            {
+            GLint pname_values [] = {GL_TEXTURE_ENV_MODE, 0};
+            GLint param_values [] = {GL_MODULATE, GL_DECAL, GL_REPLACE, 0};
+            failures += _glCheckValidEnum(pname, pname_values, __func__);
+            failures += _glCheckValidEnum(param, param_values, __func__);
+            
+            if(failures) {
+                return;
+            }
 
-    switch(param) {
-    case GL_MODULATE:
-        active->env = PVR_TXRENV_MODULATE;
-    break;
-    case GL_DECAL:
-        active->env = PVR_TXRENV_DECAL;
-    break;
-    case GL_REPLACE:
-        active->env = PVR_TXRENV_REPLACE;
-    break;
-    default:
-        break;
+            switch(param) {
+                case GL_MODULATE:
+                    active->env = PVR_TXRENV_MODULATEALPHA;
+                break;
+                case GL_DECAL:
+                    active->env = PVR_TXRENV_DECAL;
+                break;
+                case GL_REPLACE:
+                    active->env = PVR_TXRENV_REPLACE;
+                break;
+                default:
+                    break;
+                }
+            }
+            break;
+
+        case GL_TEXTURE_FILTER_CONTROL_EXT:
+            {
+            GLint pname_values [] = {GL_TEXTURE_LOD_BIAS_EXT, 0};
+            failures += _glCheckValidEnum(pname, pname_values, __func__);
+            failures += (param > GL_MAX_TEXTURE_LOD_BIAS_DEFAULT || param < -GL_MAX_TEXTURE_LOD_BIAS_DEFAULT); 
+            if(failures) {
+                return;
+            }
+            active->mipmap_bias = (GL_MAX_TEXTURE_LOD_BIAS_DEFAULT+1)+param; // bring to 1-15 inclusive
+            }
+            break;
+        default:
+           break;
     }
 }
 
@@ -546,6 +605,8 @@ void APIENTRY glCompressedTexImage2DARB(GLenum target,
 
 static GLint _cleanInternalFormat(GLint internalFormat) {
     switch (internalFormat) {
+    case GL_COLOR_INDEX4_EXT:
+        return GL_COLOR_INDEX4_EXT;
     case GL_COLOR_INDEX8_EXT:
         return GL_COLOR_INDEX8_EXT;
     case GL_ALPHA:
@@ -616,7 +677,7 @@ static GLint _cleanInternalFormat(GLint internalFormat) {
     }
 }
 
-static GLuint _determinePVRFormat(GLint internalFormat, GLenum type) {
+ static GLuint _determinePVRFormat(GLint internalFormat, GLenum type) {
     /* Given a cleaned internalFormat, return the Dreamcast format
      * that can hold it
      */
@@ -668,6 +729,8 @@ static GLuint _determinePVRFormat(GLint internalFormat, GLenum type) {
             return PVR_TXRFMT_ARGB1555 | PVR_TXRFMT_TWIDDLED | PVR_TXRFMT_VQ_ENABLE;
         case GL_COLOR_INDEX8_EXT:
             return PVR_TXRFMT_PAL8BPP | PVR_TXRFMT_TWIDDLED;
+        case GL_COLOR_INDEX4_EXT:
+            return PVR_TXRFMT_PAL4BPP | PVR_TXRFMT_TWIDDLED;
         default:
             return 0;
     }
@@ -676,11 +739,11 @@ static GLuint _determinePVRFormat(GLint internalFormat, GLenum type) {
 
 typedef void (*TextureConversionFunc)(const GLubyte*, GLubyte*);
 
-static inline void _rgba8888_to_argb4444(const GLubyte* source, GLubyte* dest) {
+GL_FORCE_INLINE void _rgba8888_to_argb4444(const GLubyte* source, GLubyte* dest) {
     *((GLushort*) dest) = (source[3] & 0xF0) << 8 | (source[0] & 0xF0) << 4 | (source[1] & 0xF0) | (source[2] & 0xF0) >> 4;
 }
 
-static inline void _rgba8888_to_rgba8888(const GLubyte* source, GLubyte* dest) {
+GL_FORCE_INLINE void _rgba8888_to_rgba8888(const GLubyte* source, GLubyte* dest) {
     /* Noop */
     GLubyte* dst = (GLubyte*) dest;
     dst[0] = source[0];
@@ -689,11 +752,11 @@ static inline void _rgba8888_to_rgba8888(const GLubyte* source, GLubyte* dest) {
     dst[3] = source[3];
 }
 
-static inline void _rgba8888_to_rgb565(const GLubyte* source, GLubyte* dest) {
+GL_FORCE_INLINE void _rgba8888_to_rgb565(const GLubyte* source, GLubyte* dest) {
     *((GLushort*) dest) = ((source[0] & 0b11111000) << 8) | ((source[1] & 0b11111100) << 3) | (source[2] >> 3);
 }
 
-static inline void _rgb888_to_rgba8888(const GLubyte* source, GLubyte* dest) {
+GL_FORCE_INLINE void _rgb888_to_rgba8888(const GLubyte* source, GLubyte* dest) {
     /* Noop */
     GLubyte* dst = (GLubyte*) dest;
     dst[0] = source[0];
@@ -702,24 +765,24 @@ static inline void _rgb888_to_rgba8888(const GLubyte* source, GLubyte* dest) {
     dst[3] = 255;
 }
 
-static inline void _rgb888_to_rgb565(const GLubyte* source, GLubyte* dest) {
+GL_FORCE_INLINE void _rgb888_to_rgb565(const GLubyte* source, GLubyte* dest) {
     *((GLushort*) dest) = ((source[0] & 0b11111000) << 8) | ((source[1] & 0b11111100) << 3) | (source[2] >> 3);
 }
 
-static inline void _rgba8888_to_a000(const GLubyte* source, GLubyte* dest) {
+GL_FORCE_INLINE void _rgba8888_to_a000(const GLubyte* source, GLubyte* dest) {
     *((GLushort*) dest) = ((source[3] & 0b11111000) << 8);
 }
 
-static inline void _r8_to_rgb565(const GLubyte* source, GLubyte* dest) {
+GL_FORCE_INLINE void _r8_to_rgb565(const GLubyte* source, GLubyte* dest) {
     *((GLushort*) dest) = (source[0] & 0b11111000) << 8;
 }
 
-static inline void _rgba4444_to_argb4444(const GLubyte* source, GLubyte* dest) {
+GL_FORCE_INLINE void _rgba4444_to_argb4444(const GLubyte* source, GLubyte* dest) {
     GLushort* src = (GLushort*) source;
     *((GLushort*) dest) = ((*src & 0x000F) << 12) | *src >> 4;
 }
 
-static inline void _rgba4444_to_rgba8888(const GLubyte* source, GLubyte* dest) {
+GL_FORCE_INLINE void _rgba4444_to_rgba8888(const GLubyte* source, GLubyte* dest) {
     GLushort src = *((GLushort*) source);
     GLubyte* dst = (GLubyte*) dest;
 
@@ -729,7 +792,7 @@ static inline void _rgba4444_to_rgba8888(const GLubyte* source, GLubyte* dest) {
     dst[3] = ((src & 0x000F)) * 2;
 }
 
-static inline void _i8_to_i8(const GLubyte* source, GLubyte* dest) {
+GL_FORCE_INLINE void _i8_to_i8(const GLubyte* source, GLubyte* dest) {
     /* For indexes */
     GLubyte* dst = (GLubyte*) dest;
     *dst = *source;
@@ -880,71 +943,92 @@ void _glAllocateSpaceForMipmaps(TextureObject* active) {
     active->baseDataOffset = _glGetMipmapDataOffset(active, 0);
 }
 
+#define STRINGIFY(x) #x
+#define TOSTRING(x) STRINGIFY(x)
+#define INFO_MSG(x) printf("%s %s\n", __FILE__ ":" TOSTRING(__LINE__), x)
+
 void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
                            GLsizei width, GLsizei height, GLint border,
                            GLenum format, GLenum type, const GLvoid *data) {
 
     TRACE();
 
+
     if(target != GL_TEXTURE_2D) {
-        _glKosThrowError(GL_INVALID_ENUM, "glTexImage2D");
+        INFO_MSG("");
+        _glKosThrowError(GL_INVALID_ENUM, __func__);
     }
 
     if(format != GL_COLOR_INDEX) {
         if(!_isSupportedFormat(format)) {
-            _glKosThrowError(GL_INVALID_ENUM, "glTexImage2D");
+            INFO_MSG("");
+            _glKosThrowError(GL_INVALID_ENUM, __func__);
         }
 
         /* Abuse determineStride to see if type is valid */
         if(_determineStride(GL_RGBA, type) == -1) {
-            _glKosThrowError(GL_INVALID_ENUM, "glTexImage2D");
+            INFO_MSG("");
+            _glKosThrowError(GL_INVALID_ENUM, __func__);
         }
 
         internalFormat = _cleanInternalFormat(internalFormat);
         if(internalFormat == -1) {
-            _glKosThrowError(GL_INVALID_VALUE, "glTexImage2D");
+            INFO_MSG("");
+            _glKosThrowError(GL_INVALID_VALUE, __func__);
         }
     } else {
         if(internalFormat != GL_COLOR_INDEX8_EXT) {
+            INFO_MSG("");
             _glKosThrowError(GL_INVALID_ENUM, __func__);
         }
     }
 
-    GLint w = width;
-    if(w < 8 || (w & -w) != w) {
-        /* Width is not a power of two. Must be!*/
-        _glKosThrowError(GL_INVALID_VALUE, "glTexImage2D");
-    }
+    GLuint w = width;
+    GLuint h = height;
+    if(level == 0){
+        if((w < 8 || (w & -w) != w)) {
+            /* Width is not a power of two. Must be!*/
+            INFO_MSG("");
+            _glKosThrowError(GL_INVALID_VALUE, __func__);
+        }
 
-    GLint h = height;
-    if(h < 8 || (h & -h) != h) {
-        /* height is not a power of two. Must be!*/
-        _glKosThrowError(GL_INVALID_VALUE, "glTexImage2D");
+        
+        if((h < 8 || (h & -h) != h)) {
+            /* height is not a power of two. Must be!*/
+            INFO_MSG("");
+            _glKosThrowError(GL_INVALID_VALUE, __func__);
+        }
+    } else {
+        /* Mipmap Errors, kos crashes if 1x1 */
+        if((h < 2) || (w < 2)){
+            assert(TEXTURE_UNITS[ACTIVE_TEXTURE]);
+            TEXTURE_UNITS[ACTIVE_TEXTURE]->mipmap |= (1 << level);
+            return;
+        }
     }
 
     if(level < 0) {
-        _glKosThrowError(GL_INVALID_VALUE, "glTexImage2D");
+        INFO_MSG("");
+        _glKosThrowError(GL_INVALID_VALUE, __func__);
     }
 
     if(level > 0 && width != height) {
+        INFO_MSG("");
         fprintf(stderr, "[GL ERROR] Mipmaps cannot be supported on non-square textures\n");
         _glKosThrowError(GL_INVALID_OPERATION, __func__);
     }
 
     if(border) {
-        _glKosThrowError(GL_INVALID_VALUE, "glTexImage2D");
+        INFO_MSG("");
+        _glKosThrowError(GL_INVALID_VALUE, __func__);
     }
 
     if(!TEXTURE_UNITS[ACTIVE_TEXTURE]) {
+        INFO_MSG("");
         _glKosThrowError(GL_INVALID_OPERATION, __func__);
     }
 
     GLboolean isPaletted = (internalFormat == GL_COLOR_INDEX8_EXT) ? GL_TRUE : GL_FALSE;
-
-    if(isPaletted && level > 0) {
-        /* Paletted textures can't have mipmaps */
-        _glKosThrowError(GL_INVALID_OPERATION, __func__);
-    }
 
     if(_glKosHasError()) {
         _glKosPrintError();
@@ -958,7 +1042,7 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
 
     assert(active);
 
-    if(active->data && level == 0) {
+    if(active->data && (level == 0)) {
         /* pre-existing texture - check if changed */
         if(active->width != width ||
            active->height != height ||
@@ -968,6 +1052,7 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
             active->data = NULL;
             active->mipmap = 0;
             active->mipmapCount = 0;
+            active->mipmap_bias = GL_KOS_INTERNAL_DEFAULT_MIPMAP_LOD_BIAS;
             active->dataStride = 0;
             active->baseDataOffset = 0;
             active->baseDataSize = 0;
@@ -992,6 +1077,7 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
         active->color   = pvr_format;
         /* Set the required mipmap count */
         active->mipmapCount = _glGetMipmapLevelCount(active);
+        active->mipmap_bias = GL_KOS_INTERNAL_DEFAULT_MIPMAP_LOD_BIAS;
         active->dataStride = destStride;
         active->baseDataSize = bytes;
 
@@ -1336,21 +1422,37 @@ GLAPI void APIENTRY glColorTableEXT(GLenum target, GLenum internalFormat, GLsize
 }
 
 GLAPI void APIENTRY glColorSubTableEXT(GLenum target, GLsizei start, GLsizei count, GLenum format, GLenum type, const GLvoid *data) {
+    _GL_UNUSED(target);
+    _GL_UNUSED(start);
+    _GL_UNUSED(count);
+    _GL_UNUSED(format);
+    _GL_UNUSED(type);
+    _GL_UNUSED(data);
     _glKosThrowError(GL_INVALID_OPERATION, __func__);
     _glKosPrintError();
 }
 
 GLAPI void APIENTRY glGetColorTableEXT(GLenum target, GLenum format, GLenum type, GLvoid *data) {
+    _GL_UNUSED(target);
+    _GL_UNUSED(format);
+    _GL_UNUSED(type);
+    _GL_UNUSED(data);
     _glKosThrowError(GL_INVALID_OPERATION, __func__);
     _glKosPrintError();
 }
 
 GLAPI void APIENTRY glGetColorTableParameterivEXT(GLenum target, GLenum pname, GLint *params) {
+    _GL_UNUSED(target);
+    _GL_UNUSED(pname);
+    _GL_UNUSED(params);
     _glKosThrowError(GL_INVALID_OPERATION, __func__);
     _glKosPrintError();
 }
 
 GLAPI void APIENTRY glGetColorTableParameterfvEXT(GLenum target, GLenum pname, GLfloat *params) {
+    _GL_UNUSED(target);
+    _GL_UNUSED(pname);
+    _GL_UNUSED(params);
     _glKosThrowError(GL_INVALID_OPERATION, __func__);
     _glKosPrintError();
 }
@@ -1358,24 +1460,70 @@ GLAPI void APIENTRY glGetColorTableParameterfvEXT(GLenum target, GLenum pname, G
 GLAPI void APIENTRY glTexSubImage2D(
     GLenum target, GLint level, GLint xoffset, GLint yoffset,
     GLsizei width, GLsizei height, GLenum format, GLenum type, const GLvoid *pixels) {
+    _GL_UNUSED(target);
+    _GL_UNUSED(level);
+    _GL_UNUSED(xoffset);
+    _GL_UNUSED(yoffset);
+    _GL_UNUSED(width);    
+    _GL_UNUSED(height);      
+    _GL_UNUSED(format);      
+    _GL_UNUSED(type);      
+    _GL_UNUSED(pixels);      
+    assert(0 && "Not Implemented");
 }
 
 GLAPI void APIENTRY glCopyTexSubImage2D(GLenum target, GLint level, GLint xoffset, GLint yoffset, GLint x, GLint y, GLsizei width, GLsizei height) {
-
+    _GL_UNUSED(target);
+    _GL_UNUSED(level);
+    _GL_UNUSED(xoffset);
+    _GL_UNUSED(yoffset);
+    _GL_UNUSED(x);    
+    _GL_UNUSED(y);    
+    _GL_UNUSED(width);    
+    _GL_UNUSED(height);      
+    assert(0 && "Not Implemented");
 }
 
 GLAPI void APIENTRY glCopyTexSubImage1D(GLenum target, GLint level, GLint xoffset, GLint x, GLint y, GLsizei width) {
-
+    _GL_UNUSED(target);
+    _GL_UNUSED(level);
+    _GL_UNUSED(xoffset);
+    _GL_UNUSED(x);
+    _GL_UNUSED(y);
+    _GL_UNUSED(width); 
+    assert(0 && "Not Implemented");
 }
 
 GLAPI void APIENTRY glCopyTexImage2D(GLenum target, GLint level, GLenum internalformat, GLint x, GLint y, GLsizei width, GLsizei height, GLint border) {
-
+    _GL_UNUSED(target);
+    _GL_UNUSED(level);
+    _GL_UNUSED(internalformat);
+    _GL_UNUSED(x);    
+    _GL_UNUSED(y);    
+    _GL_UNUSED(width);    
+    _GL_UNUSED(height);    
+    _GL_UNUSED(border);    
+    assert(0 && "Not Implemented");
 }
 
 GLAPI void APIENTRY glCopyTexImage1D(GLenum target, GLint level, GLenum internalformat, GLint x, GLint y, GLsizei width, GLint border) {
-
+    _GL_UNUSED(target);
+    _GL_UNUSED(level);
+    _GL_UNUSED(internalformat);
+    _GL_UNUSED(x);    
+    _GL_UNUSED(y);    
+    _GL_UNUSED(width);    
+    _GL_UNUSED(border);    
+    assert(0 && "Not Implemented");
 }
 
 GLAPI void APIENTRY glReadPixels(GLint x, GLint y, GLsizei width, GLsizei height, GLenum format, GLenum type, GLvoid *pixels) {
-
+    _GL_UNUSED(x);    
+    _GL_UNUSED(y);    
+    _GL_UNUSED(width);    
+    _GL_UNUSED(height);    
+    _GL_UNUSED(format);    
+    _GL_UNUSED(type);    
+    _GL_UNUSED(pixels);    
+    assert(0 && "Not Implemented");
 }
