@@ -192,6 +192,7 @@ void APIENTRY glVertex2fv(const GLfloat* v) {
 }
 
 void APIENTRY glVertex4f(GLfloat x, GLfloat y, GLfloat z, GLfloat w) {
+    _GL_UNUSED(w);
     glVertex3f(x, y, z);
 }
 
