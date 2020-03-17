@@ -13,7 +13,6 @@
 #include "private.h"
 #include "../containers/aligned_vector.h"
 
-
 static unsigned char ZCLIP_ENABLED = 1;
 
 unsigned char _glIsClippingEnabled() {
@@ -26,7 +25,10 @@ void _glEnableClipping(unsigned char v) {
 
 void _glClipLineToNearZ(const Vertex* v1, const Vertex* v2, Vertex* vout, float* t) __attribute__((optimize("fast-math")));
 void _glClipLineToNearZ(const Vertex* v1, const Vertex* v2, Vertex* vout, float* t) {
-    const float NEAR_PLANE = NEAR_PLANE_DISTANCE + 0.0001f;
+
+    /* 0.2f is the zclip distance set by KOS in the PVR registers. This is weird and
+     * no-one yet knows why. */
+    const float NEAR_PLANE = NEAR_PLANE_DISTANCE + 0.2f;
 
     *t = (NEAR_PLANE - v1->w) / (v2->w - v1->w);
 
