@@ -42,6 +42,9 @@ typedef struct {
     /* If GL_TRUE, enables pvr autosorting, this *will* break glDepthFunc/glDepthTest */
     GLboolean autosort_enabled;
 
+    /* If GL_TRUE, enables the PVR FSAA */
+    GLboolean fsaa_enabled;
+
     /* The internal format for paletted textures, must be GL_RGBA4 (default) or GL_RGBA8 */
     GLenum internal_palette_format;
 

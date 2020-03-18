@@ -39,13 +39,13 @@ static void pvr_list_submit(void *src, int n) {
     d[0] = d[8] = 0;
 }
 
-static void _glInitPVR(GLboolean autosort) {
+static void _glInitPVR(GLboolean autosort, GLboolean fsaa) {
     pvr_init_params_t params = {
         /* Enable opaque and translucent polygons with size 32 and 32 */
         {PVR_BINSIZE_32, PVR_BINSIZE_0, PVR_BINSIZE_32, PVR_BINSIZE_0, PVR_BINSIZE_32},
         PVR_VERTEX_BUF_SIZE, /* Vertex buffer size */
         0, /* No DMA */
-        0, /* No FSAA */
+        fsaa, /* No FSAA */
         (autosort) ? 0 : 1 /* Disable translucent auto-sorting to match traditional GL */
     };
 
@@ -78,6 +78,8 @@ void APIENTRY glFinish() {
 
 void APIENTRY glKosInitConfig(GLdcConfig* config) {
     config->autosort_enabled = GL_FALSE;
+    config->fsaa_enabled = GL_FALSE;
+
     config->initial_op_capacity = 1024;
     config->initial_pt_capacity = 512;
     config->initial_tr_capacity = 1024;
@@ -90,7 +92,7 @@ void APIENTRY glKosInitEx(GLdcConfig* config) {
 
     printf("\nWelcome to GLdc! Git revision: %s\n\n", GLDC_VERSION);
 
-    _glInitPVR(config->autosort_enabled);
+    _glInitPVR(config->autosort_enabled, config->fsaa_enabled);
 
     _glInitMatrices();
     _glInitAttributePointers();

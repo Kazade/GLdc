@@ -283,7 +283,12 @@ void DrawGLScene()
 
 int main(int argc, char **argv)
 {
-    glKosInit();
+    GLdcConfig config;
+
+    glKosInitConfig(&config);
+    config.fsaa_enabled = GL_TRUE;
+
+    glKosInitEx(&config);
 
     InitGL(640, 480);
     ReSizeGLScene(640, 480);
