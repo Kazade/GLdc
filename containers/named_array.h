@@ -7,8 +7,6 @@
 extern "C" {
 #endif
 
-#include "../GL/private.h"
-
 typedef struct {
     unsigned int element_size;
     unsigned int max_element_count;

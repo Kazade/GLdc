@@ -13,7 +13,12 @@ static inline void* memalign(size_t alignment, size_t size) {
     #include <malloc.h>
 #endif
 
+#ifdef _arch_dreamcast
 #include "../GL/private.h"
+#else
+#define FASTCPY memcpy
+#endif
+
 #include "aligned_vector.h"
 
 void aligned_vector_init(AlignedVector* vector, unsigned int element_size) {
