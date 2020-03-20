@@ -23,21 +23,21 @@ void _glEnableClipping(unsigned char v) {
     ZCLIP_ENABLED = v;
 }
 
-void _glClipLineToNearZ(const Vertex* v1, const Vertex* v2, Vertex* vout, float* t) __attribute__((optimize("fast-math")));
-void _glClipLineToNearZ(const Vertex* v1, const Vertex* v2, Vertex* vout, float* t) {
+void inline _glClipLineToNearZ(const Vertex* v1, const Vertex* v2, Vertex* vout, float* t) {
+    const float d0 = v1->w + v1->xyz[2];
+    const float d1 = v2->w + v2->xyz[2];
 
-    /* 0.2f is the zclip distance set by KOS in the PVR registers. This is weird and
-     * no-one yet knows why. */
-    const float NEAR_PLANE = NEAR_PLANE_DISTANCE + 0.2f;
+    *t = d0 / (d0 - d1);
 
-    *t = (NEAR_PLANE - v1->w) / (v2->w - v1->w);
-
-    float vec [] = {v2->xyz[0] - v1->xyz[0], v2->xyz[1] - v1->xyz[1], v2->xyz[2] - v1->xyz[2]};
+    const float vec [] = {
+        v2->xyz[0] - v1->xyz[0],
+        v2->xyz[1] - v1->xyz[1],
+        v2->xyz[2] - v1->xyz[2]
+    };
 
     vout->xyz[0] = MATH_fmac(vec[0], (*t), v1->xyz[0]);
     vout->xyz[1] = MATH_fmac(vec[1], (*t), v1->xyz[1]);
     vout->xyz[2] = MATH_fmac(vec[2], (*t), v1->xyz[2]);
-
 }
 
 GL_FORCE_INLINE void interpolateFloat(const float v1, const float v2, const float t, float* out) {
@@ -250,7 +250,15 @@ void _glClipTriangleStrip(SubmissionTarget* target, uint8_t fladeShade) {
         vi2 = v2 - start;
         vi3 = v3 - start;
 
-        uint8_t visible = ((v1->w > 0) ? 4 : 0) | ((v2->w > 0) ? 2 : 0) | ((v3->w > 0) ? 1 : 0);
+        /*
+         * A vertex is visible if it's in front of the camera (W > 0)
+         * and it's in front of the near plane (Z > -W)
+         */
+        uint8_t visible = (
+            ((v1->w > 0 && v1->xyz[2] > -v1->w) ? 4 : 0) |
+            ((v2->w > 0 && v2->xyz[2] > -v2->w) ? 2 : 0) |
+            ((v3->w > 0 && v3->xyz[2] > -v3->w) ? 1 : 0)
+        );
 
         switch(visible) {
             case B111:
