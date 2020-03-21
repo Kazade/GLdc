@@ -272,10 +272,6 @@ GLubyte _glInitTextures();
 void _glUpdatePVRTextureContext(pvr_poly_cxt_t* context, GLshort textureUnit);
 void _glAllocateSpaceForMipmaps(TextureObject* active);
 
-extern GLfloat NEAR_PLANE_DISTANCE;
-
-GLfloat _glGetNearPlane();
-
 typedef struct {
     const void* ptr;
     GLenum type;

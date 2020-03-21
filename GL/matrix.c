@@ -36,15 +36,6 @@ static const Matrix4x4 IDENTITY = {
 
 GLfloat NEAR_PLANE_DISTANCE = 0.0f;
 
-static void _glStoreNearPlane() {
-    Matrix4x4* proj = (Matrix4x4*) stack_top(MATRIX_STACKS + (GL_PROJECTION & 0xF));
-
-    GLfloat a = *(*proj + 10);
-    GLfloat b = *(*proj + 14);
-
-    NEAR_PLANE_DISTANCE = -b / (1.0f - a);
-}
-
 static inline void upload_matrix(Matrix4x4* m) {
     mat_load((matrix_t*) m);
 }
@@ -315,10 +306,6 @@ void APIENTRY glFrustum(GLfloat left, GLfloat right,
     upload_matrix(stack_top(MATRIX_STACKS + MATRIX_IDX));
     multiply_matrix(&FrustumMatrix);
     download_matrix(stack_top(MATRIX_STACKS + MATRIX_IDX));
-
-    if(MATRIX_MODE == GL_PROJECTION) {
-        _glStoreNearPlane();
-    }
 }
 
 
@@ -352,10 +339,6 @@ void glMultMatrixf(const GLfloat *m) {
 
     if(MATRIX_MODE == GL_MODELVIEW) {
         recalculateNormalMatrix();
-    }
-
-    if(MATRIX_MODE == GL_PROJECTION) {
-        _glStoreNearPlane();
     }
 }
 
@@ -391,10 +374,6 @@ void glLoadTransposeMatrixf(const GLfloat *m) {
     if(MATRIX_MODE == GL_MODELVIEW) {
         recalculateNormalMatrix();
     }
-
-    if(MATRIX_MODE == GL_PROJECTION) {
-        _glStoreNearPlane();
-    }
 }
 
 /* Multiply the current matrix by an arbitrary transposed matrix */
@@ -428,10 +407,6 @@ void glMultTransposeMatrixf(const GLfloat *m) {
     if(MATRIX_MODE == GL_MODELVIEW) {
         recalculateNormalMatrix();
     }
-
-    if(MATRIX_MODE == GL_PROJECTION) {
-        _glStoreNearPlane();
-    }
 }
 
 /* Set the GL viewport */
@@ -454,10 +429,6 @@ void APIENTRY glViewport(GLint x, GLint y, GLsizei width, GLsizei height) {
     SCREENVIEW_MATRIX[M10] = 1;
     SCREENVIEW_MATRIX[M12] = (rw + lw) / 2.0f;
     SCREENVIEW_MATRIX[M13] = (tw + bw) / 2.0f;
-}
-
-GLfloat _glGetNearPlane() {
-    return NEAR_PLANE_DISTANCE;
 }
 
 /* Set the depth range */
@@ -483,11 +454,11 @@ static inline void vec3f_cross(const GLfloat* v1, const GLfloat* v2, GLfloat* re
     result[2] = v1[0] * v2[1] - v1[1] * v2[0];
 }
 
-static inline void vec3f_normalize_sh4(float *v){
+GL_FORCE_INLINE void vec3f_normalize_sh4(float *v){
     float length, ilength;
 
 	ilength = MATH_fsrra(v[0]*v[0] + v[1]*v[1] + v[2]*v[2]);
-	length = MATH_Invert(ilength);
+    length = MATH_Fast_Invert(ilength);
 	if (length)
 	{
 		v[0] *= ilength;
