@@ -1172,6 +1172,12 @@ GL_FORCE_INLINE void divide(SubmissionTarget* target) {
         vertex->xyz[0] *= f;
         vertex->xyz[1] *= f;
         vertex->xyz[2] = 1.0 - ((DEPTH_RANGE_MULTIPLIER_L * vertex->xyz[2] * f) + DEPTH_RANGE_MULTIPLIER_H);
+
+        /* Passing a value > 1.0f will cause the polygon to be dropped by the
+         * PVR. Although we clip to the near plane, rounding errors can still
+         * cause this happen. This just ensures it doesn't */
+        vertex->xyz[2] = MIN(1.0f, vertex->xyz[2]);
+
         ++vertex;
     }
 }
