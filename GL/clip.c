@@ -255,9 +255,9 @@ void _glClipTriangleStrip(SubmissionTarget* target, uint8_t fladeShade) {
          * and it's in front of the near plane (Z > -W)
          */
         uint8_t visible = (
-            ((v1->w > 0 && v1->xyz[2] > -v1->w) ? 4 : 0) |
-            ((v2->w > 0 && v2->xyz[2] > -v2->w) ? 2 : 0) |
-            ((v3->w > 0 && v3->xyz[2] > -v3->w) ? 1 : 0)
+            ((v1->w > 0 && v1->xyz[2] >= -v1->w) ? 4 : 0) |
+            ((v2->w > 0 && v2->xyz[2] >= -v2->w) ? 2 : 0) |
+            ((v3->w > 0 && v3->xyz[2] >= -v3->w) ? 1 : 0)
         );
 
         switch(visible) {
