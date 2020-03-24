@@ -1171,10 +1171,15 @@ GL_FORCE_INLINE void divide(SubmissionTarget* target) {
         float f = MATH_fsrra(vertex->w * vertex->w);
         vertex->xyz[0] *= f;
         vertex->xyz[1] *= f;
+        vertex->xyz[2] = f;
 
-        /* Scale depending on glDepthRange */
-        vertex->xyz[2] = 1.0f - ((DEPTH_RANGE_MULTIPLIER_L * vertex->xyz[2] * f) + DEPTH_RANGE_MULTIPLIER_H);
-
+        /* FIXME: Consider taking glDepthRange into account. PVR is designed to use invW rather
+         * than Z which is unlike most GPUs - this apparently provides advantages.
+         *
+         * This can be done (if Z is between -1 and 1) with:
+         *
+         * //((DEPTH_RANGE_MULTIPLIER_L * vertex->xyz[2] * f) + DEPTH_RANGE_MULTIPLIER_H);
+         */
         ++vertex;
     }
 }

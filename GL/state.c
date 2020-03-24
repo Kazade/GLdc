@@ -274,6 +274,7 @@ void _glInitContext() {
     GL_CONTEXT.fmt.uv = PVR_UVFMT_32BIT;
     GL_CONTEXT.gen.color_clamp = PVR_CLRCLAMP_DISABLE;
 
+    glClearDepth(1.0f);
     glDepthFunc(GL_LESS);
     glDepthMask(GL_TRUE);
     glFrontFace(GL_CCW);
@@ -439,13 +440,12 @@ GLAPI void APIENTRY glClearColor(GLfloat r, GLfloat g, GLfloat b, GLfloat a) {
 
 /* Depth Testing */
 GLAPI void APIENTRY glClearDepthf(GLfloat depth) {
-    _GL_UNUSED(depth);
-
+    glClearDepth(depth);
 }
 
 GLAPI void APIENTRY glClearDepth(GLfloat depth) {
-    _GL_UNUSED(depth);
-
+    /* We reverse because using invW means that farther Z == lower number */
+    pvr_set_zclip(1.0f - depth);
 }
 
 GLAPI void APIENTRY glDrawBuffer(GLenum mode) {
