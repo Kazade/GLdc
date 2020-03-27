@@ -23,11 +23,11 @@ void _glEnableClipping(unsigned char v) {
     ZCLIP_ENABLED = v;
 }
 
-void inline _glClipLineToNearZ(const Vertex* v1, const Vertex* v2, Vertex* vout, float* t) {
+inline float _glClipLineToNearZ(const Vertex* v1, const Vertex* v2, Vertex* vout) {
     const float d0 = v1->w + v1->xyz[2];
     const float d1 = v2->w + v2->xyz[2];
 
-    *t = d0 / (d0 - d1);
+    float t = d0 / (d0 - d1);
 
     const float vec [] = {
         v2->xyz[0] - v1->xyz[0],
@@ -35,9 +35,11 @@ void inline _glClipLineToNearZ(const Vertex* v1, const Vertex* v2, Vertex* vout,
         v2->xyz[2] - v1->xyz[2]
     };
 
-    vout->xyz[0] = MATH_fmac(vec[0], (*t), v1->xyz[0]);
-    vout->xyz[1] = MATH_fmac(vec[1], (*t), v1->xyz[1]);
-    vout->xyz[2] = MATH_fmac(vec[2], (*t), v1->xyz[2]);
+    vout->xyz[0] = MATH_fmac(vec[0], t, v1->xyz[0]);
+    vout->xyz[1] = MATH_fmac(vec[1], t, v1->xyz[1]);
+    vout->xyz[2] = MATH_fmac(vec[2], t, v1->xyz[2]);
+
+    return t;
 }
 
 GL_FORCE_INLINE void interpolateFloat(const float v1, const float v2, const float t, float* out) {
@@ -106,16 +108,15 @@ void _glClipTriangle(const Triangle* triangle, const uint8_t visible, Submission
         if(i > 0) {
             uint8_t lastIndex = (i == 3) ? 2 : thisIndex - 1;
 
-            if(lastVisible < 255 && lastVisible != thisVisible) {
+            if(lastVisible != thisVisible) {
                 const Vertex* v1 = &vertices[lastIndex];
                 const Vertex* v2 = &vertices[thisIndex];
 
                 const VertexExtra* ve1 = &extras[lastIndex];
                 const VertexExtra* ve2 = &extras[thisIndex];
 
-                float t;
+                float t = _glClipLineToNearZ(v1, v2, &next);
 
-                _glClipLineToNearZ(v1, v2, &next, &t);
                 interpolateFloat(v1->w, v2->w, t, &next.w);
                 interpolateVec2(v1->uv, v2->uv, t, next.uv);
 
