@@ -27,17 +27,24 @@ inline float _glClipLineToNearZ(const Vertex* v1, const Vertex* v2, Vertex* vout
     const float d0 = v1->w + v1->xyz[2];
     const float d1 = v2->w + v2->xyz[2];
 
-    float t = d0 / (d0 - d1);
+    /* We need to shift 't' a little, to avoid the possibility that a
+     * rounding error leaves the new vertex behind the near plane. We shift
+     * according to the direction we're clipping across the plane */
+    const float epsilon = (d0 < d1) ? -0.000001 : 0.000001;
 
-    const float vec [] = {
-        v2->xyz[0] - v1->xyz[0],
-        v2->xyz[1] - v1->xyz[1],
-        v2->xyz[2] - v1->xyz[2]
-    };
+    float t = MATH_Fast_Divide(d0, (d0 - d1)) + epsilon;
 
-    vout->xyz[0] = MATH_fmac(vec[0], t, v1->xyz[0]);
-    vout->xyz[1] = MATH_fmac(vec[1], t, v1->xyz[1]);
-    vout->xyz[2] = MATH_fmac(vec[2], t, v1->xyz[2]);
+    vout->xyz[0] = MATH_fmac(v2->xyz[0] - v1->xyz[0], t, v1->xyz[0]);
+    vout->xyz[1] = MATH_fmac(v2->xyz[1] - v1->xyz[1], t, v1->xyz[1]);
+    vout->xyz[2] = MATH_fmac(v2->xyz[2] - v1->xyz[2], t, v1->xyz[2]);
+
+    /*
+    printf(
+        "(%f, %f, %f, %f) -> %f -> (%f, %f, %f, %f) = (%f, %f, %f)\n",
+        v1->xyz[0], v1->xyz[1], v1->xyz[2], v1->w, t,
+        v2->xyz[0], v2->xyz[1], v2->xyz[2], v2->w,
+        vout->xyz[0], vout->xyz[1], vout->xyz[2]
+    );*/
 
     return t;
 }
@@ -260,6 +267,8 @@ void _glClipTriangleStrip(SubmissionTarget* target, uint8_t fladeShade) {
             ((v2->w > 0 && v2->xyz[2] >= -v2->w) ? 2 : 0) |
             ((v3->w > 0 && v3->xyz[2] >= -v3->w) ? 1 : 0)
         );
+
+        printf("Visible: %d\n", visible);
 
         switch(visible) {
             case B111:
