@@ -87,7 +87,6 @@ typedef struct {
     uint8_t visible;
 } Triangle;
 
-void _glClipTriangle(const Triangle* triangle, const uint8_t visible, SubmissionTarget* target, const uint8_t flatShade) __attribute__((optimize("fast-math")));
 void _glClipTriangle(const Triangle* triangle, const uint8_t visible, SubmissionTarget* target, const uint8_t flatShade) {
     uint8_t i, c = 0;
 
@@ -102,6 +101,27 @@ void _glClipTriangle(const Triangle* triangle, const uint8_t visible, Submission
 
     /* Used when flat shading is enabled */
     uint32_t finalColour = *((uint32_t*) bgra);
+
+    for(i = 1; i <= 3; ++i) {
+        uint8_t thisIndex = (i == 3) ? 0 : i;
+        uint8_t lastIndex = i - 1;
+
+        uint8_t thisVisible = (visible & (1 << (2 - thisIndex))) > 0;
+        uint8_t lastVisible = (visible & (1 << (2 - lastIndex))) > 0;
+
+        if(thisVisible != lastVisible) {
+            /* We crossed a plane */
+        } else if(thisVisible) {
+            /* Our existing vertex is fine */
+            last = aligned_vector_push_back(&target->output->vector, &vertices[thisIndex], 1);
+            last->flags = VERTEX_CMD;
+
+            veLast = aligned_vector_push_back(target->extras, &extras[thisIndex], 1);
+
+        }
+
+    }
+
 
     for(i = 0; i < 4; ++i) {
         uint8_t thisIndex = (i == 3) ? 0 : i;
