@@ -2,6 +2,8 @@
 #include <stdio.h>
 #include <assert.h>
 #include <string.h>
+#include <stdbool.h>
+#include <stdlib.h>
 
 #ifdef _arch_dreamcast
 #include <dc/pvr.h>
@@ -23,21 +25,30 @@ void _glEnableClipping(unsigned char v) {
     ZCLIP_ENABLED = v;
 }
 
-void inline _glClipLineToNearZ(const Vertex* v1, const Vertex* v2, Vertex* vout, float* t) {
+inline float _glClipLineToNearZ(const Vertex* v1, const Vertex* v2, Vertex* vout) {
     const float d0 = v1->w + v1->xyz[2];
     const float d1 = v2->w + v2->xyz[2];
 
-    *t = d0 / (d0 - d1);
+    /* We need to shift 't' a little, to avoid the possibility that a
+     * rounding error leaves the new vertex behind the near plane. We shift
+     * according to the direction we're clipping across the plane */
+    const float epsilon = (d0 < d1) ? -0.000001 : 0.000001;
 
-    const float vec [] = {
-        v2->xyz[0] - v1->xyz[0],
-        v2->xyz[1] - v1->xyz[1],
-        v2->xyz[2] - v1->xyz[2]
-    };
+    float t = MATH_Fast_Divide(d0, (d0 - d1)) + epsilon;
 
-    vout->xyz[0] = MATH_fmac(vec[0], (*t), v1->xyz[0]);
-    vout->xyz[1] = MATH_fmac(vec[1], (*t), v1->xyz[1]);
-    vout->xyz[2] = MATH_fmac(vec[2], (*t), v1->xyz[2]);
+    vout->xyz[0] = MATH_fmac(v2->xyz[0] - v1->xyz[0], t, v1->xyz[0]);
+    vout->xyz[1] = MATH_fmac(v2->xyz[1] - v1->xyz[1], t, v1->xyz[1]);
+    vout->xyz[2] = MATH_fmac(v2->xyz[2] - v1->xyz[2], t, v1->xyz[2]);
+
+    /*
+    printf(
+        "(%f, %f, %f, %f) -> %f -> (%f, %f, %f, %f) = (%f, %f, %f)\n",
+        v1->xyz[0], v1->xyz[1], v1->xyz[2], v1->w, t,
+        v2->xyz[0], v2->xyz[1], v2->xyz[2], v2->w,
+        vout->xyz[0], vout->xyz[1], vout->xyz[2]
+    );*/
+
+    return t;
 }
 
 GL_FORCE_INLINE void interpolateFloat(const float v1, const float v2, const float t, float* out) {
@@ -78,11 +89,7 @@ typedef struct {
     uint8_t visible;
 } Triangle;
 
-void _glClipTriangle(const Triangle* triangle, const uint8_t visible, SubmissionTarget* target, const uint8_t flatShade) __attribute__((optimize("fast-math")));
 void _glClipTriangle(const Triangle* triangle, const uint8_t visible, SubmissionTarget* target, const uint8_t flatShade) {
-    uint8_t i, c = 0;
-
-    uint8_t lastVisible = 255;
     Vertex* last = NULL;
     VertexExtra* veLast = NULL;
 
@@ -94,90 +101,79 @@ void _glClipTriangle(const Triangle* triangle, const uint8_t visible, Submission
     /* Used when flat shading is enabled */
     uint32_t finalColour = *((uint32_t*) bgra);
 
-    for(i = 0; i < 4; ++i) {
-        uint8_t thisIndex = (i == 3) ? 0 : i;
+    Vertex tmp;
+    VertexExtra veTmp;
 
-        Vertex next;
-        VertexExtra veNext;
+    uint8_t pushedCount = 0;
 
-        next.flags = VERTEX_CMD;
+#define IS_VISIBLE(x) (visible & (1 << (2 - (x)))) > 0
 
-        uint8_t thisVisible = (visible & (1 << (2 - thisIndex))) > 0;
-        if(i > 0) {
-            uint8_t lastIndex = (i == 3) ? 2 : thisIndex - 1;
+#define PUSH_VERT(vert, ve) \
+    last = aligned_vector_push_back(&target->output->vector, vert, 1); \
+    last->flags = VERTEX_CMD; \
+    veLast = aligned_vector_push_back(target->extras, ve, 1); \
+    ++pushedCount;
 
-            if(lastVisible < 255 && lastVisible != thisVisible) {
-                const Vertex* v1 = &vertices[lastIndex];
-                const Vertex* v2 = &vertices[thisIndex];
+#define CLIP_TO_PLANE(vert1, ve1, vert2, ve2) \
+    do { \
+        float t = _glClipLineToNearZ((vert1), (vert2), &tmp); \
+        interpolateFloat((vert1)->w, (vert2)->w, t, &tmp.w); \
+        interpolateVec2((vert1)->uv, (vert2)->uv, t, tmp.uv); \
+        interpolateVec3((ve1)->nxyz, (ve2)->nxyz, t, veTmp.nxyz); \
+        interpolateVec2((ve1)->st, (ve2)->st, t, veTmp.st); \
+        if(flatShade) { \
+            interpolateColour((const uint8_t*) &finalColour, (const uint8_t*) &finalColour, t, tmp.bgra); \
+        } else { interpolateColour((vert1)->bgra, (vert2)->bgra, t, tmp.bgra); } \
+    } while(0); \
 
-                const VertexExtra* ve1 = &extras[lastIndex];
-                const VertexExtra* ve2 = &extras[thisIndex];
-
-                float t;
-
-                _glClipLineToNearZ(v1, v2, &next, &t);
-                interpolateFloat(v1->w, v2->w, t, &next.w);
-                interpolateVec2(v1->uv, v2->uv, t, next.uv);
-
-                interpolateVec3(ve1->nxyz, ve2->nxyz, t, veNext.nxyz);
-                interpolateVec2(ve1->st, ve2->st, t, veNext.st);
-
-                if(flatShade) {
-                    char* next_bgra = (char*) next.bgra;
-                    *((uint32_t*) next_bgra) = finalColour;
-                } else {
-                    interpolateColour(v1->bgra, v2->bgra, t, next.bgra);
-                }
-
-                /* Push back the new vertices to the end of both the ClipVertex and VertexExtra lists */
-                last = aligned_vector_push_back(&target->output->vector, &next, 1);
-                last->flags = VERTEX_CMD;
-
-                veLast = aligned_vector_push_back(target->extras, &veNext, 1);
-
-                ++c;
-            }
-        }
-
-        if(thisVisible && i != 3) {
-            last = aligned_vector_push_back(&target->output->vector, &vertices[thisIndex], 1);
-            last->flags = VERTEX_CMD;
-
-            veLast = aligned_vector_push_back(target->extras, &extras[thisIndex], 1);
-
-            ++c;
-        }
-
-        lastVisible = thisVisible;
+    uint8_t v0 = IS_VISIBLE(0);
+    uint8_t v1 = IS_VISIBLE(1);
+    uint8_t v2 = IS_VISIBLE(2);
+    if(v0) {
+        PUSH_VERT(&vertices[0], &extras[0]);
     }
 
-    if(last) {
-        if(c == 4) {
-            /* Convert to two triangles */
-            Vertex newVerts[3];
-            newVerts[0] = *(last - 3);
-            newVerts[1] = *(last - 1);
-            newVerts[2] = *(last);
+    if(v0 != v1) {
+        CLIP_TO_PLANE(&vertices[0], &extras[0], &vertices[1], &extras[1]);
+        PUSH_VERT(&tmp, &veTmp);
+    }
 
-            VertexExtra newExtras[3];
-            newExtras[0] = *(veLast - 3);
-            newExtras[1] = *(veLast - 1);
-            newExtras[2] = *(veLast);
+    if(v1) {
+        PUSH_VERT(&vertices[1], &extras[1]);
+    }
 
-            (last - 1)->flags = VERTEX_CMD_EOL;
-            newVerts[0].flags = VERTEX_CMD;
-            newVerts[1].flags = VERTEX_CMD;
-            newVerts[2].flags = VERTEX_CMD_EOL;
+    if(v1 != v2) {
+        CLIP_TO_PLANE(&vertices[1], &extras[1], &vertices[2], &extras[2]);
+        PUSH_VERT(&tmp, &veTmp);
+    }
 
-            aligned_vector_resize(&target->output->vector, target->output->vector.size - 1);
-            aligned_vector_push_back(&target->output->vector, newVerts, 3);
+    if(v2) {
+        PUSH_VERT(&vertices[2], &extras[2]);
+    }
 
-            aligned_vector_resize(target->extras, target->extras->size - 1);
-            aligned_vector_push_back(target->extras, newExtras, 3);
-        } else {
-            last->flags = VERTEX_CMD_EOL;
-        }
+    if(v2 != v0) {
+        CLIP_TO_PLANE(&vertices[2], &extras[2], &vertices[0], &extras[0]);
+        PUSH_VERT(&tmp, &veTmp);
+    }
 
+    if(pushedCount == 4) {
+        Vertex* prev = last - 1;
+        VertexExtra* prevVe = veLast - 1;
+
+        tmp = *prev;
+        veTmp = *prevVe;
+
+        *prev = *last;
+        *prevVe = *veLast;
+
+        *last = tmp;
+        *veLast = veTmp;
+
+        prev->flags = VERTEX_CMD;
+        last->flags = VERTEX_CMD_EOL;
+    } else {
+        /* Set the last flag to the end of the new strip */
+        last->flags = VERTEX_CMD_EOL;
     }
 }
 
@@ -255,9 +251,9 @@ void _glClipTriangleStrip(SubmissionTarget* target, uint8_t fladeShade) {
          * and it's in front of the near plane (Z > -W)
          */
         uint8_t visible = (
-            ((v1->w > 0 && v1->xyz[2] >= -v1->w) ? 4 : 0) |
-            ((v2->w > 0 && v2->xyz[2] >= -v2->w) ? 2 : 0) |
-            ((v3->w > 0 && v3->xyz[2] >= -v3->w) ? 1 : 0)
+            ((v1->w >= 0 && v1->xyz[2] >= -v1->w) ? 4 : 0) |
+            ((v2->w >= 0 && v2->xyz[2] >= -v2->w) ? 2 : 0) |
+            ((v3->w >= 0 && v3->xyz[2] >= -v3->w) ? 1 : 0)
         );
 
         switch(visible) {

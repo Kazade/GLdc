@@ -239,7 +239,7 @@ typedef enum {
 
 struct SubmissionTarget;
 
-void _glClipLineToNearZ(const Vertex* v1, const Vertex* v2, Vertex* vout, float* t);
+float _glClipLineToNearZ(const Vertex* v1, const Vertex* v2, Vertex* vout);
 void _glClipTriangleStrip(SubmissionTarget* target, uint8_t fladeShade);
 
 PolyList *_glActivePolyList();

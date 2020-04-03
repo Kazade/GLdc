@@ -44,6 +44,7 @@ void ReSizeGLScene(int Width, int Height)
 /* The main drawing function. */
 void DrawGLScene()
 {
+    static GLfloat rotation = 0.0f;
     static GLfloat movement = 0.0f;
     static GLboolean increasing = GL_TRUE;
 
@@ -59,6 +60,9 @@ void DrawGLScene()
         movement -= 0.05f;
     }
 
+    rotation += 0.5f;
+    rotation = (rotation > 360.0f) ? rotation - 360.0f : rotation;
+
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);		// Clear The Screen And The Depth Buffer
     glLoadIdentity();				// Reset The View
 
@@ -66,6 +70,7 @@ void DrawGLScene()
 
     glPushMatrix();
         glTranslatef(0.0f, -1.0f, movement);
+        glRotatef(rotation, 0.0f, 1.0f, 0.0f);
 
         glBegin(GL_TRIANGLES);
             glColor3f(1.0f, 0.0f, 0.0f);
