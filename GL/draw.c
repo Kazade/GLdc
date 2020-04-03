@@ -1321,10 +1321,10 @@ GL_FORCE_INLINE void submitVertices(GLenum mode, GLsizei first, GLuint count, GL
         uint32_t i = 0;
         fprintf(stderr, "=========\n");
 
-        for(i = offset; i < activeList->vector.size; ++i) {
-            ClipVertex* v = aligned_vector_at(&activeList->vector, i);
+        for(i = 0; i < target->count; ++i) {
+            Vertex* v = aligned_vector_at(&target->output->vector, target->start_offset + i);
             if(v->flags == 0xe0000000 || v->flags == 0xf0000000) {
-                fprintf(stderr, "(%f, %f, %f) -> %x\n", v->xyz[0], v->xyz[1], v->xyz[2], v->flags);
+                fprintf(stderr, "(%f, %f, %f, %f) -> %x\n", v->xyz[0], v->xyz[1], v->xyz[2], v->w, v->flags);
             } else {
                 fprintf(stderr, "%x\n", *((uint32_t*)v));
             }
@@ -1337,10 +1337,10 @@ GL_FORCE_INLINE void submitVertices(GLenum mode, GLsizei first, GLuint count, GL
 
 #if DEBUG_CLIPPING
         fprintf(stderr, "--------\n");
-        for(i = offset; i < activeList->vector.size; ++i) {
-            ClipVertex* v = aligned_vector_at(&activeList->vector, i);
+        for(i = 0; i < target->count; ++i) {
+            Vertex* v = aligned_vector_at(&target->output->vector, target->start_offset + i);
             if(v->flags == 0xe0000000 || v->flags == 0xf0000000) {
-                fprintf(stderr, "(%f, %f, %f) -> %x\n", v->xyz[0], v->xyz[1], v->xyz[2], v->flags);
+                fprintf(stderr, "(%f, %f, %f, %f) -> %x\n", v->xyz[0], v->xyz[1], v->xyz[2], v->w, v->flags);
             } else {
                 fprintf(stderr, "%x\n", *((uint32_t*)v));
             }
