@@ -1,6 +1,6 @@
 // ---- sh4_math.h - SH7091 Math Module ----
 //
-// Version 1.1.1
+// Version 1.1.3
 //
 // This file is part of the DreamHAL project, a hardware abstraction library
 // primarily intended for use on the SH7091 found in hardware such as the SEGA
@@ -109,6 +109,11 @@ typedef struct {
 //
 
 static const ALL_FLOATS_STRUCT MATH_identity_matrix = {1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f};
+
+// Constants
+#define MATH_pi 3.14159265358979323846264338327950288419716939937510f
+#define MATH_e 2.71828182845904523536028747135266249775724709369995f
+#define MATH_phi 1.61803398874989484820458683436563811772030917980576f
 
 //==============================================================================
 // Basic math functions
@@ -518,13 +523,20 @@ static inline __attribute__((always_inline)) float MATH_Slow_Divide(float numera
 
 // Notes:
 // - From http://www.shared-ptr.com/sh_insns.html:
-//      The input angle is specified as a signed fraction in twos complement. The result of sin and cos is a single-precision floating-point number.
+//      The input angle is specified as a signed fraction in twos complement.
+//      The result of sin and cos is a single-precision floating-point number.
 //      0x7FFFFFFF to 0x00000001: 360×2^15−360/2^16 to 360/2^16 degrees
 //      0x00000000: 0 degree
 //      0xFFFFFFFF to 0x80000000: −360/2^16 to −360×2^15 degrees
 // - fsca format is 2^16 is 360 degrees, so a value of 1 is actually
-//  1/182.044444444 of a degree
+//  1/182.044444444 of a degree or 1/10430.3783505 of a radian
 // - fsca does a %360 automatically for values over 360 degrees
+//
+// Also:
+// In order to make the best use of fsca units, a program must expect them from
+// the outset and not "make them" by dividing radians or degrees to get them,
+// otherwise it's just giving the 'fsca' instruction radians or degrees!
+//
 
 // The following functions are available.
 // Please see their definitions for other usage info, otherwise they may not
@@ -810,6 +822,11 @@ static inline __attribute__((always_inline)) _Complex float MATH_fsca_Float_Rad(
 // work for you.
 //
 /*
+
+  //------------------------------------------------------------------------------
+  // Vector and matrix math operations
+  //------------------------------------------------------------------------------
+
   // Inner/dot product (4x1 vec . 4x1 vec = scalar)
   float MATH_fipr(float x1, float x2, float x3, float x4, float y1, float y2, float y3, float y4)
 
@@ -837,6 +854,10 @@ static inline __attribute__((always_inline)) _Complex float MATH_fsca_Float_Rad(
   // 4x4 Matrix product (two from memory)
   void MATH_Load_Matrix_Product(ALL_FLOATS_STRUCT * matrix1, ALL_FLOATS_STRUCT * matrix2)
 
+  //------------------------------------------------------------------------------
+  // Matrix load and store operations
+  //------------------------------------------------------------------------------
+
   // Load 4x4 XMTRX from memory
   void MATH_Load_XMTRX(ALL_FLOATS_STRUCT * back_matrix)
 
@@ -849,6 +870,10 @@ static inline __attribute__((always_inline)) _Complex float MATH_fsca_Float_Rad(
   // Get 2x2 matrix from XMTRX quadrant
   RETURN_VECTOR_STRUCT MATH_Get_XMTRX_2x2(unsigned int which)
 */
+
+//------------------------------------------------------------------------------
+// Vector and matrix math operations
+//------------------------------------------------------------------------------
 
 // Inner/dot product: vec . vec = scalar
 //                       _    _
@@ -1728,22 +1753,102 @@ static inline __attribute__((always_inline)) RETURN_VECTOR_STRUCT MATH_Get_XMTRX
 // The following functions are provided as examples of ways in which these math
 // functions can be used.
 //
+// Reminder: 1 fsca unit = 1/182.044444444 of a degree or 1/10430.3783505 of a radian
+// In order to make the best use of fsca units, a program must expect them from
+// the outset and not "make them" by dividing radians or degrees to get them,
+// otherwise it's just giving the 'fsca' instruction radians or degrees!
+//
 /*
-  // Linear interpolation
-  float lerp(float a, float b, float t)
 
-  // Speherical interpolation
-  float slerp(float a, float b, float t, float theta)
+  //------------------------------------------------------------------------------
+  // Commonly useful functions
+  //------------------------------------------------------------------------------
+
+  // Returns 1 if point 't' is inside triangle with vertices 'v0', 'v1', and 'v2', and 0 if not
+  int MATH_Is_Point_In_Triangle(float v0x, float v0y, float v1x, float v1y, float v2x, float v2y, float ptx, float pty)
+
+  //------------------------------------------------------------------------------
+  // Interpolation
+  //------------------------------------------------------------------------------
+
+  // Linear interpolation
+  float MATH_Lerp(float a, float b, float t)
+
+  // Speherical interpolation ('theta' in fsca units)
+  float MATH_Slerp(float a, float b, float t, float theta)
+
+  //------------------------------------------------------------------------------
+  // Fast Sinc functions (unnormalized, sin(x)/x version)
+  //------------------------------------------------------------------------------
+  // Just pass in MATH_pi * x for normalized versions :)
+
+  // Sinc function (fsca units)
+  float MATH_Fast_Sincf(float x)
+
+  // Sinc function (degrees)
+  float MATH_Fast_Sincf_Deg(float x)
+
+  // Sinc function (rads)
+  float MATH_Fast_Sincf_Rad(float x)
+
+  //------------------------------------------------------------------------------
+  // Kaiser Window
+  //------------------------------------------------------------------------------
+
+  // Generates mipmaps. Angle 'x' in radians.
+  float MATH_Kaiser_Window_Rad(float x, float alpha, float stretch, float m_width)
+
+  // Generates mipmaps. Angle 'x' in fsca units.
+  float MATH_Kaiser_Window(float x, float alpha, float stretch, float m_width)
+
 */
 
+//------------------------------------------------------------------------------
+// Commonly useful functions
+//------------------------------------------------------------------------------
+
+// Returns 1 if point 'pt' is inside triangle with vertices 'v0', 'v1', and 'v2', and 0 if not
+// Determines triangle center using barycentric coordinate transformation
+// Adapted from: https://stackoverflow.com/questions/2049582/how-to-determine-if-a-point-is-in-a-2d-triangle
+// Specifically the answer by user 'adreasdr' in addition to the comment by user 'urraka' on the answer from user 'Andreas Brinck'
+//
+// The notation here assumes v0x is the x-component of v0, v0y is the y-component of v0, etc.
+//
+static inline __attribute__((always_inline)) int MATH_Is_Point_In_Triangle(float v0x, float v0y, float v1x, float v1y, float v2x, float v2y, float ptx, float pty)
+{
+  float sdot = MATH_fipr(v0y, -v0x, v2y - v0y, v0x - v2x, v2x, v2y, ptx, pty);
+  float tdot = MATH_fipr(v0x, -v0y, v0y - v1y, v1x - v0x, v1y, v1x, ptx, pty);
+
+  float areadot = MATH_fipr(-v1y, v0y, v0x, v1x, v2x, -v1x + v2x, v1y - v2y, v2y);
+
+  // 'areadot' could be negative depending on the winding of the triangle
+  if(areadot < 0.0f)
+  {
+    sdot *= -1.0f;
+    tdot *= -1.0f;
+    areadot *= -1.0f;
+  }
+
+  if( (sdot > 0.0f) && (tdot > 0.0f) && (areadot > (sdot + tdot)) )
+  {
+    return 1;
+  }
+
+  return 0;
+}
+
+//------------------------------------------------------------------------------
+// Interpolation
+//------------------------------------------------------------------------------
+
 // Linear interpolation
-static inline __attribute__((always_inline)) float lerp(float a, float b, float t)
+static inline __attribute__((always_inline)) float MATH_Lerp(float a, float b, float t)
 {
   return MATH_fmac(t, (b-a), a);
 }
 
-// Speherical interpolation
-static inline __attribute__((always_inline)) float slerp(float a, float b, float t, float theta)
+// Speherical interpolation ('theta' in fsca units)
+static inline __attribute__((always_inline)) float MATH_Slerp(float a, float b, float t, float theta)
 {
   // a is an element of v0, b is an element of v1
   // v = ( v0 * sin(theta - t * theta) + v1 * sin(t * theta) ) / sin(theta)
@@ -1752,7 +1857,7 @@ static inline __attribute__((always_inline)) float slerp(float a, float b, float
   // which only requires two calls to fsca.
   // Specifically, sin(a + b) = sin(a)cos(b) + cos(a)sin(b) & sin(-a) = -sin(a)
 
-  // Fsca returns reverse-ordered complex numbers for speed reasons (i.e. normally sine is the imaginary part)
+  // MATH_fsca_* functions return reverse-ordered complex numbers for speed reasons (i.e. normally sine is the imaginary part)
   // This could be made even faster by using MATH_fsca_Int() with 'theta' and 't' as unsigned ints
 
 #if __GNUC__ <= GNUC_FSCA_ERROR_VERSION
@@ -1781,6 +1886,213 @@ static inline __attribute__((always_inline)) float slerp(float a, float b, float
   float output_float = a * cosine_value_minus_t_theta + MATH_Fast_Divide(numer, sine_value_theta);
 
   return output_float;
+}
+
+//------------------------------------------------------------------------------
+// Fast Sinc (unnormalized, sin(x)/x version)
+//------------------------------------------------------------------------------
+//
+// Just pass in MATH_pi * x for normalized versions :)
+//
+
+// Sinc function (fsca units)
+static inline __attribute__((always_inline)) float MATH_Fast_Sincf(float x)
+{
+  if(x == 0.0f)
+  {
+    return 1.0f;
+  }
+
+#if __GNUC__ <= GNUC_FSCA_ERROR_VERSION
+
+  RETURN_FSCA_STRUCT sine_cosine = MATH_fsca_Float(x);
+  float sine_value = sine_cosine.sine;
+
+#else
+
+  _Complex float sine_cosine = MATH_fsca_Float(x);
+  float sine_value = __real__ sine_cosine;
+
+#endif
+
+  return MATH_Fast_Divide(sine_value, x);
+}
+
+// Sinc function (degrees)
+static inline __attribute__((always_inline)) float MATH_Fast_Sincf_Deg(float x)
+{
+  if(x == 0.0f)
+  {
+    return 1.0f;
+  }
+
+#if __GNUC__ <= GNUC_FSCA_ERROR_VERSION
+
+  RETURN_FSCA_STRUCT sine_cosine = MATH_fsca_Float_Deg(x);
+  float sine_value = sine_cosine.sine;
+
+#else
+
+  _Complex float sine_cosine = MATH_fsca_Float_Deg(x);
+  float sine_value = __real__ sine_cosine;
+
+#endif
+
+  return MATH_Fast_Divide(sine_value, x);
+}
+
+// Sinc function (rads)
+static inline __attribute__((always_inline)) float MATH_Fast_Sincf_Rad(float x)
+{
+  if(x == 0.0f)
+  {
+    return 1.0f;
+  }
+
+#if __GNUC__ <= GNUC_FSCA_ERROR_VERSION
+
+  RETURN_FSCA_STRUCT sine_cosine = MATH_fsca_Float_Rad(x);
+  float sine_value = sine_cosine.sine;
+
+#else
+
+  _Complex float sine_cosine = MATH_fsca_Float_Rad(x);
+  float sine_value = __real__ sine_cosine;
+
+#endif
+
+  return MATH_Fast_Divide(sine_value, x);
+}
+
+//------------------------------------------------------------------------------
+// Kaiser Window
+//------------------------------------------------------------------------------
+//
+// These use regular divides because they only need to be run once during loads,
+// not during runtime.
+//
+// Adapted from public domain NVidia Filter.cpp:
+// https://github.com/castano/nvidia-texture-tools/blob/master/src/nvimage/Filter.cpp
+// (as of 3/23/2020)
+//
+
+//
+// Kaiser window utility functions
+//
+
+// Utility function for 0th-order bessel function
+static inline __attribute__((always_inline)) float MATH_Bessel0(float x)
+{
+  const float EPSILON_RATIO = 1e-6f;
+  float xh, sum, power, ds, k;
+  // int k;
+
+  xh = 0.5f * x;
+  sum = 1.0f;
+  power = 1.0f;
+  k = 0.0f; // k = 0;
+  ds = 1.0;
+  while (ds > (sum * EPSILON_RATIO))
+  {
+    k += 1.0f; // ++k;
+    power = power * (xh / k);
+    ds = power * power;
+    sum = sum + ds;
+  }
+
+  return sum;
+}
+
+// Utility for kaiser window's expected sincf() format (radians)
+static inline __attribute__((always_inline)) float MATH_NV_Sincf_Rad(const float x)
+{
+  // Does SH4 need this correction term? x86's sinf() definitely does,
+  // but SH4 might be ok with if(x == 0.0f) return 1.0f; Not sure.
+  if (MATH_fabs(x) < 0.0001f) // NV_EPSILON is 0.0001f
+  {
+    return 1.0f + x*x*(-1.0f/6.0f + (x*x)/120.0f); // 1.0 + x^2 * (-1/6 + x^2/120)
+  }
+  else
+  {
+
+#if __GNUC__ <= GNUC_FSCA_ERROR_VERSION
+
+  RETURN_FSCA_STRUCT sine_cosine = MATH_fsca_Float_Rad(x);
+  float sine_value = sine_cosine.sine;
+
+#else
+
+  _Complex float sine_cosine = MATH_fsca_Float_Rad(x);
+  float sine_value = __real__ sine_cosine;
+
+#endif
+
+    return sine_value / x;
+  }
+}
+
+// Utility for kaiser window's expected sincf() format (fsca units)
+static inline __attribute__((always_inline)) float MATH_NV_Sincf(const float x)
+{
+  // Does SH4 need this correction term? x86's sinf() definitely does,
+  // but SH4 might be ok with if(x == 0.0f) return 1.0f; Not sure.
+  if (MATH_fabs(x) < 0.0001f) // NV_EPSILON is 0.0001f
+  {
+    return 1.0f + x*x*(-1.0f/6.0f + (x*x)/120.0f); // 1.0 + x^2 * (-1/6 + x^2/120)
+  }
+  else
+  {
+
+#if __GNUC__ <= GNUC_FSCA_ERROR_VERSION
+
+  RETURN_FSCA_STRUCT sine_cosine = MATH_fsca_Float(x);
+  float sine_value = sine_cosine.sine;
+
+#else
+
+  _Complex float sine_cosine = MATH_fsca_Float(x);
+  float sine_value = __real__ sine_cosine;
+
+#endif
+
+    return sine_value / x;
+  }
+}
+
+//
+// Kaiser window mipmap generator main functions
+//
+
+// Generates mipmaps. Angle 'x' in radians.
+static inline __attribute__((always_inline)) float MATH_Kaiser_Window_Rad(float x, float alpha, float stretch, float m_width)
+{
+	const float sinc_value = MATH_NV_Sincf_Rad(MATH_pi * x * stretch);
+  const float t = x / m_width;
+
+  if ((1 - t * t) >= 0)
+  {
+    return sinc_value * MATH_Bessel0(alpha * MATH_fsqrt(1 - t * t)) / MATH_Bessel0(alpha);
+  }
+	else
+  {
+    return 0;
+  }
+}
+
+// Generates mipmaps. Angle 'x' in fsca units.
+static inline __attribute__((always_inline)) float MATH_Kaiser_Window(float x, float alpha, float stretch, float m_width)
+{
+	const float sinc_value = MATH_NV_Sincf(MATH_pi * x * stretch);
+  const float t = x / m_width;
+
+  if ((1 - t * t) >= 0)
+  {
+    return sinc_value * MATH_Bessel0(alpha * MATH_fsqrt(1 - t * t)) / MATH_Bessel0(alpha);
+  }
+	else
+  {
+    return 0;
+  }
 }
 
 //==============================================================================
@@ -1824,3 +2136,4 @@ static inline __attribute__((always_inline)) float slerp(float a, float b, float
 
 
 #endif /* __SH4_MATH_H_ */
+

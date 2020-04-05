@@ -63,17 +63,17 @@ static int _calc_pvr_depth_test() {
         case GL_NEVER:
             return PVR_DEPTHCMP_NEVER;
         case GL_LESS:
-            return PVR_DEPTHCMP_GREATER;
+            return PVR_DEPTHCMP_LESS;
         case GL_EQUAL:
             return PVR_DEPTHCMP_EQUAL;
         case GL_LEQUAL:
-            return PVR_DEPTHCMP_GEQUAL;
+            return PVR_DEPTHCMP_LEQUAL;
         case GL_GREATER:
-            return PVR_DEPTHCMP_LESS;
+            return PVR_DEPTHCMP_GREATER;
         case GL_NOTEQUAL:
             return PVR_DEPTHCMP_NOTEQUAL;
         case GL_GEQUAL:
-            return PVR_DEPTHCMP_LEQUAL;
+            return PVR_DEPTHCMP_GEQUAL;
         break;
         case GL_ALWAYS:
         default:

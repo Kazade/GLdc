@@ -10,6 +10,7 @@
 #include "../include/glext.h"
 #include "private.h"
 #include "profiler.h"
+#include "sh4_math.h"
 
 
 static AttribPointer VERTEX_POINTER;
@@ -1168,10 +1169,10 @@ GL_FORCE_INLINE void divide(SubmissionTarget* target) {
     Vertex* vertex = _glSubmissionTargetStart(target);
 
     ITERATE(target->count) {
-        float f = MATH_fsrra(vertex->w * vertex->w);
+        float f = MATH_Fast_Invert(vertex->w);
         vertex->xyz[0] *= f;
         vertex->xyz[1] *= f;
-        vertex->xyz[2] = f;
+        vertex->xyz[2] = vertex->w;
 
         /* FIXME: Consider taking glDepthRange into account. PVR is designed to use invW rather
          * than Z which is unlike most GPUs - this apparently provides advantages.
