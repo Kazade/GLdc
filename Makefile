@@ -15,7 +15,7 @@ KOS_CFLAGS += -ffast-math -Ofast -Iinclude
 
 GL/version.h:
 	rm -f $@
-	@echo -e '#pragma once\n#define GLDC_VERSION "$(shell git describe --abbrev=4 --dirty --always --tags)"\n' > $@
+	@printf '#pragma once\n#define GLDC_VERSION "$(shell git describe --abbrev=4 --dirty --always --tags)"\n' > $@
 
 link:
 	$(KOS_AR) rcs $(TARGET) $(OBJS)
