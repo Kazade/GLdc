@@ -1172,10 +1172,14 @@ GL_FORCE_INLINE void divide(SubmissionTarget* target) {
         float f = MATH_Fast_Invert(vertex->w);
         vertex->xyz[0] *= f;
         vertex->xyz[1] *= f;
-        vertex->xyz[2] = vertex->w;
 
-        /* FIXME: Consider taking glDepthRange into account. PVR is designed to use invW rather
-         * than Z which is unlike most GPUs - this apparently provides advantages.
+        /* We have to use 1/z instead of reusing 1/w from above because
+         * orthographic projections always product a W == 1 and so would not
+         * correctly render ordered transparent surfaces */
+        vertex->xyz[2] = MATH_Fast_Invert(vertex->xyz[2]);
+
+        /* FIXME: Consider taking glDepthRange into account. PVR is designed to use 1/w
+         * which is unlike most GPUs - this apparently provides advantages.
          *
          * This can be done (if Z is between -1 and 1) with:
          *
