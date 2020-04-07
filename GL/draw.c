@@ -1173,10 +1173,14 @@ GL_FORCE_INLINE void divide(SubmissionTarget* target) {
         vertex->xyz[0] *= f;
         vertex->xyz[1] *= f;
 
-        /* We have to use 1/z instead of reusing 1/w from above because
-         * orthographic projections always product a W == 1 and so would not
-         * correctly render ordered transparent surfaces */
-        vertex->xyz[2] = MATH_Fast_Invert(vertex->xyz[2]);
+        /* FIXME: OK, so. This is using 1/w as Z. Which is great for perspective projections
+         * but absolutely broken for orthographic ones (because all Z values end up with 1.0).
+         * To fix this, we need to switch to 1/z *BUT* that breaks clipping as it's currently
+         * written... I'm not sure why.
+         * Also, switching to 1/z results in coordinates between -1 and 1 (well, inf) and Z
+         * coordinates *MUST* be > 0.0f to render on the PVR. So we'll need to make use
+         * of glDepthRange when that happens */
+        vertex->xyz[2] = f;
 
         /* FIXME: Consider taking glDepthRange into account. PVR is designed to use 1/w
          * which is unlike most GPUs - this apparently provides advantages.
