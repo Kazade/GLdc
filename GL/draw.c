@@ -1173,14 +1173,17 @@ GL_FORCE_INLINE void divide(SubmissionTarget* target) {
         vertex->xyz[0] *= f;
         vertex->xyz[1] *= f;
 
-        /* FIXME: OK, so. This is using 1/w as Z. Which is great for perspective projections
-         * but absolutely broken for orthographic ones (because all Z values end up with 1.0).
-         * To fix this, we need to switch to 1/z *BUT* that breaks clipping as it's currently
-         * written... I'm not sure why.
-         * Also, switching to 1/z results in coordinates between -1 and 1 (well, inf) and Z
-         * coordinates *MUST* be > 0.0f to render on the PVR. So we'll need to make use
-         * of glDepthRange when that happens */
-        vertex->xyz[2] = f;
+        /* Unlike normal GL graphics, the PVR takes Z coordinates from +EPSILON to +inf
+         * this is annoying because a traditional Z divide plus shift may end up with
+         * a coordinate of 0 which isn't valid. This is because the PVR
+         * expects invW as the coordinate, but that breaks orthographic projections
+         *
+         * So instead, we do a normal z/w divide, but shift from -1 to +1, and
+         * make it 0.001f to 2.001f, then we divide by 0.5 to bring it to
+         * 0.0005 to 1.0005 and finally we invert by subtracting from 1.001
+         * to just ensure we never end up with a value at 0.0 due to rounding
+         * errors */
+        vertex->xyz[2] = 1.001f - (((vertex->xyz[2] * f) + 1.001f) * 0.5f);
 
         /* FIXME: Consider taking glDepthRange into account. PVR is designed to use 1/w
          * which is unlike most GPUs - this apparently provides advantages.
