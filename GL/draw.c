@@ -120,17 +120,14 @@ GL_FORCE_INLINE float clamp(float d, float min, float max) {
     return t > max ? max : t;
 }
 
-static void _readVertexData3f3f(const float* input, GLuint count, GLubyte stride, float* output) {
-    ITERATE(count) {
-        output[0] = input[0];
-        output[1] = input[1];
-        output[2] = input[2];
+static void _readVertexData3f3f(const GLubyte* in, GLubyte* out) {
+    const float* input = (const float*) in;
+    float* output = (float*) out;
 
-        input = (float*) (((GLubyte*) input) + stride);
-        output = (float*) (((GLubyte*) output) + sizeof(Vertex));
-    }
+    output[0] = input[0];
+    output[1] = input[1];
+    output[2] = input[2];
 }
-
 
 GL_FORCE_INLINE float conv_i10_to_norm_float(int i10) {
     struct attr_bits_10 {
@@ -143,297 +140,159 @@ GL_FORCE_INLINE float conv_i10_to_norm_float(int i10) {
 }
 
 // 10:10:10:2REV format
-static void _readVertexData1i3f(const GLuint* input, GLuint count, GLubyte stride, float* output) {
-    ITERATE(count) {
-        int inp = *input;
-        output[0] = conv_i10_to_norm_float((inp) & 0x3ff);
-        output[1] = conv_i10_to_norm_float(((inp) >> 10) & 0x3ff);
-        output[2] = conv_i10_to_norm_float(((inp) >> 20) & 0x3ff);
+static void _readVertexData1i3f(const GLubyte* in, GLubyte* out) {
+    const GLint* input = (const GLint*) in;
+    GLfloat* output = (GLfloat*) out;
 
-        // fprintf(stderr, "%d -> %f %f %f\n", inp, output[0], output[1], output[2]);
-
-        input = (GLuint*) (((GLubyte*) input) + stride);
-        output = (GLfloat*) (((GLubyte*) output) + sizeof(VertexExtra));
-    }
+    output[0] = conv_i10_to_norm_float((*input) & 0x3ff);
+    output[1] = conv_i10_to_norm_float(((*input) >> 10) & 0x3ff);
+    output[2] = conv_i10_to_norm_float(((*input) >> 20) & 0x3ff);
 }
 
-/* VE == VertexExtra */
-static void _readVertexData3f3fVE(const float* input, GLuint count, GLubyte stride, float* output) {
-    ITERATE(count) {
-        output[0] = input[0];
-        output[1] = input[1];
-        output[2] = input[2];
+static void _readVertexData3us3f(const GLubyte* in, GLubyte* out) {
+    const GLushort* input = (const GLushort*) in;
+    float* output = (float*) out;
 
-        input = (float*) (((GLubyte*) input) + stride);
-        output = (float*) (((GLubyte*) output) + sizeof(VertexExtra));
-    }
+    output[0] = input[0];
+    output[1] = input[1];
+    output[2] = input[2];
 }
 
-static void _readVertexData3us3f(const GLushort* input, GLuint count, GLubyte stride, GLfloat* output) {
-    ITERATE(count) {
-        output[0] = input[0];
-        output[1] = input[1];
-        output[2] = input[2];
+static void _readVertexData3ui3f(const GLubyte* in, GLubyte* out) {
+    const GLuint* input = (const GLuint*) in;
+    float* output = (float*) out;
 
-        input = (GLushort*) (((GLubyte*) input) + stride);
-        output = (float*) (((GLubyte*) output) + sizeof(Vertex));
-    }
+    output[0] = input[0];
+    output[1] = input[1];
+    output[2] = input[2];
 }
 
-static void _readVertexData3us3fVE(const GLushort* input, GLuint count, GLubyte stride, GLfloat* output) {
-    ITERATE(count) {
-        output[0] = input[0];
-        output[1] = input[1];
-        output[2] = input[2];
 
-        input = (GLushort*) (((GLubyte*) input) + stride);
-        output = (GLfloat*) (((GLubyte*) output) + sizeof(VertexExtra));
-    }
-}
-
-static void _readVertexData3ui3f(const GLuint* input, GLuint count, GLubyte stride, GLfloat* output) {
-    ITERATE(count) {
-        output[0] = input[0];
-        output[1] = input[1];
-        output[2] = input[2];
-
-        input = (GLuint*) (((GLubyte*) input) + stride);
-        output = (float*) (((GLubyte*) output) + sizeof(Vertex));
-    }
-}
-
-static void _readVertexData3ui3fVE(const GLuint* input, GLuint count, GLubyte stride, GLfloat* output) {
-    ITERATE(count) {
-        output[0] = input[0];
-        output[1] = input[1];
-        output[2] = input[2];
-
-        input = (GLuint*) (((GLubyte*) input) + stride);
-        output = (GLfloat*) (((GLubyte*) output) + sizeof(VertexExtra));
-    }
-}
-
-static void _readVertexData3ub3f(const GLubyte* input, GLuint count, GLubyte stride, float* output) {
+static void _readVertexData3ub3f(const GLubyte* input, GLubyte* out) {
     const float ONE_OVER_TWO_FIVE_FIVE = 1.0f / 255.0f;
-    ITERATE(count) {
-        output[0] = input[0] * ONE_OVER_TWO_FIVE_FIVE;
-        output[1] = input[1] * ONE_OVER_TWO_FIVE_FIVE;
-        output[2] = input[2] * ONE_OVER_TWO_FIVE_FIVE;
 
-        input += stride;
-        output = (float*) (((GLubyte*) output) + sizeof(Vertex));
-    }
+    float* output = (float*) out;
+
+    output[0] = input[0] * ONE_OVER_TWO_FIVE_FIVE;
+    output[1] = input[1] * ONE_OVER_TWO_FIVE_FIVE;
+    output[2] = input[2] * ONE_OVER_TWO_FIVE_FIVE;
 }
 
-static void _readVertexData3ub3fVE(const GLubyte* input, GLuint count, GLubyte stride, GLfloat* output) {
+static void _readVertexData2f2f(const GLubyte* in, GLubyte* out) {
+    const float* input = (const float*) in;
+    float* output = (float*) out;
+
+    output[0] = input[0];
+    output[1] = input[1];
+}
+
+static void _readVertexData2f3f(const GLubyte* in, GLubyte* out) {
+    const float* input = (const float*) in;
+    float* output = (float*) out;
+
+    output[0] = input[0];
+    output[1] = input[1];
+    output[2] = 0.0f;
+}
+
+static void _readVertexData2ub3f(const GLubyte* input, GLubyte* out) {
     const float ONE_OVER_TWO_FIVE_FIVE = 1.0f / 255.0f;
-    ITERATE(count) {
-        output[0] = input[0] * ONE_OVER_TWO_FIVE_FIVE;
-        output[1] = input[1] * ONE_OVER_TWO_FIVE_FIVE;
-        output[2] = input[2] * ONE_OVER_TWO_FIVE_FIVE;
 
-        input += stride;
-        output = (GLfloat*) (((GLubyte*) output) + sizeof(VertexExtra));
-    }
+    float* output = (float*) out;
+
+    output[0] = input[0] * ONE_OVER_TWO_FIVE_FIVE;
+    output[1] = input[1] * ONE_OVER_TWO_FIVE_FIVE;
+    output[2] = 0.0f;
 }
 
-static void _readVertexData2f2f(const float* input, GLuint count, GLubyte stride, float* output) {
-    ITERATE(count) {
-        output[0] = input[0];
-        output[1] = input[1];
+static void _readVertexData2us3f(const GLubyte* in, GLubyte* out) {
+    const GLushort* input = (const GLushort*) in;
+    float* output = (float*) out;
 
-        input = (float*) (((GLubyte*) input) + stride);
-        output = (float*) (((GLubyte*) output) + sizeof(Vertex));
-    }
+    output[0] = input[0];
+    output[1] = input[1];
+    output[2] = 0.0f;
 }
 
-static void _readVertexData2f2fVE(const float* input, GLuint count, GLubyte stride, GLfloat* output) {
-    ITERATE(count) {
-        output[0] = input[0];
-        output[1] = input[1];
+static void _readVertexData2us2f(const GLubyte* in, GLubyte* out) {
+    const GLushort* input = (const GLushort*) in;
+    float* output = (float*) out;
 
-        input = (float*) (((GLubyte*) input) + stride);
-        output = (GLfloat*) (((GLubyte*) output) + sizeof(VertexExtra));
-    }
+    output[0] = input[0];
+    output[1] = input[1];
 }
 
-static void _readVertexData2f3f(const float* input, GLuint count, GLubyte stride, float* output) {
-    ITERATE(count) {
-        output[0] = input[0];
-        output[1] = input[1];
-        output[2] = 0.0f;
+static void _readVertexData2ui2f(const GLubyte* in, GLubyte* out) {
+    const GLuint* input = (const GLuint*) in;
+    float* output = (float*) out;
 
-        input = (float*) (((GLubyte*) input) + stride);
-        output = (float*) (((GLubyte*) output) + sizeof(Vertex));
-    }
+    output[0] = input[0];
+    output[1] = input[1];
 }
 
-static void _readVertexData2ub3f(const GLubyte* input, GLuint count, GLubyte stride, float* output) {
+static void _readVertexData2ub2f(const GLubyte* input, GLubyte* out) {
     const float ONE_OVER_TWO_FIVE_FIVE = 1.0f / 255.0f;
-    ITERATE(count) {
-        output[0] = input[0] * ONE_OVER_TWO_FIVE_FIVE;
-        output[1] = input[1] * ONE_OVER_TWO_FIVE_FIVE;
-        output[2] = 0.0f;
+    float* output = (float*) out;
 
-        input += stride;
-        output = (float*) (((GLubyte*) output) + sizeof(Vertex));
-    }
+    output[0] = input[0] * ONE_OVER_TWO_FIVE_FIVE;
+    output[1] = input[1] * ONE_OVER_TWO_FIVE_FIVE;
 }
 
-static void _readVertexData2us3f(const GLushort* input, GLuint count, GLubyte stride, float* output) {
-    ITERATE(count) {
-        output[0] = input[0];
-        output[1] = input[1];
-        output[2] = 0.0f;
+static void _readVertexData2ui3f(const GLubyte* in, GLubyte* out) {
+    const GLuint* input = (const GLuint*) in;
+    float* output = (float*) out;
 
-        input = (GLushort*) (((GLubyte*) input) + stride);
-        output = (float*) (((GLubyte*) output) + sizeof(Vertex));
-    }
+    output[0] = input[0];
+    output[1] = input[1];
+    output[2] = 0.0f;
 }
 
-static void _readVertexData2us2f(const GLushort* input, GLuint count, GLubyte stride, float* output) {
-    ITERATE(count) {
-        output[0] = input[0];
-        output[1] = input[1];
-
-        input = (GLushort*) (((GLubyte*) input) + stride);
-        output = (float*) (((GLubyte*) output) + sizeof(Vertex));
-    }
+static void _readVertexData4ubARGB(const GLubyte* input, GLubyte* output) {
+    output[R8IDX] = input[0];
+    output[G8IDX] = input[1];
+    output[B8IDX] = input[2];
+    output[A8IDX] = input[3];
 }
 
-static void _readVertexData2us2fVE(const GLushort* input, GLuint count, GLubyte stride, GLfloat* output) {
-    ITERATE(count) {
-        output[0] = input[0];
-        output[1] = input[1];
+static void _readVertexData4fARGB(const GLubyte* in, GLubyte* output) {
+    const float* input = (const float*) in;
 
-        input = (GLushort*) (((GLubyte*) input) + stride);
-        output = (GLfloat*) (((GLubyte*) output) + sizeof(VertexExtra));
-    }
+    output[R8IDX] = (GLubyte) clamp(input[0] * 255.0f, 0, 255);
+    output[G8IDX] = (GLubyte) clamp(input[1] * 255.0f, 0, 255);
+    output[B8IDX] = (GLubyte) clamp(input[2] * 255.0f, 0, 255);
+    output[A8IDX] = (GLubyte) clamp(input[3] * 255.0f, 0, 255);
 }
 
-static void _readVertexData2ui2f(const GLuint* input, GLuint count, GLubyte stride, float* output) {
-    ITERATE(count) {
-        output[0] = input[0];
-        output[1] = input[1];
+static void _readVertexData3fARGB(const GLubyte* in, GLubyte* output) {
+    const float* input = (const float*) in;
 
-        input = (GLuint*) (((GLubyte*) input) + stride);
-        output = (float*) (((GLubyte*) output) + sizeof(Vertex));
-    }
+    output[R8IDX] = (GLubyte) clamp(input[0] * 255.0f, 0, 255);
+    output[G8IDX] = (GLubyte) clamp(input[1] * 255.0f, 0, 255);
+    output[B8IDX] = (GLubyte) clamp(input[2] * 255.0f, 0, 255);
+    output[A8IDX] = 1.0f;
 }
 
-static void _readVertexData2ui2fVE(const GLuint* input, GLuint count, GLubyte stride, GLfloat* output) {
-    ITERATE(count) {
-        output[0] = input[0];
-        output[1] = input[1];
-
-        input = (GLuint*) (((GLubyte*) input) + stride);
-        output = (GLfloat*) (((GLubyte*) output) + sizeof(VertexExtra));
-    }
+static void _readVertexData3ubARGB(const GLubyte* input, GLubyte* output) {
+    output[R8IDX] = input[0];
+    output[G8IDX] = input[1];
+    output[B8IDX] = input[2];
+    output[A8IDX] = 1.0f;
 }
 
-static void _readVertexData2ub2f(const GLubyte* input, GLuint count, GLubyte stride, float* output) {
-    const float ONE_OVER_TWO_FIVE_FIVE = 1.0f / 255.0f;
-    ITERATE(count) {
-        output[0] = input[0] * ONE_OVER_TWO_FIVE_FIVE;
-        output[1] = input[1] * ONE_OVER_TWO_FIVE_FIVE;
-
-        input = (((GLubyte*) input) + stride);
-        output = (float*) (((GLubyte*) output) + sizeof(Vertex));
-    }
+static void _readVertexData4ubRevARGB(const GLubyte* input, GLubyte* output) {
+    output[B8IDX] = input[0];
+    output[G8IDX] = input[1];
+    output[R8IDX] = input[2];
+    output[A8IDX] = input[3];
 }
 
-static void _readVertexData2ub2fVE(const GLubyte* input, GLuint count, GLubyte stride, GLfloat* output) {
-    const float ONE_OVER_TWO_FIVE_FIVE = 1.0f / 255.0f;
-    ITERATE(count) {
-        output[0] = input[0] * ONE_OVER_TWO_FIVE_FIVE;
-        output[1] = input[1] * ONE_OVER_TWO_FIVE_FIVE;
+static void _readVertexData4fRevARGB(const GLubyte* in, GLubyte* output) {
+    const float* input = (const float*) in;
 
-        input = (((GLubyte*) input) + stride);
-        output = (GLfloat*) (((GLubyte*) output) + sizeof(VertexExtra));
-    }
-}
-
-static void _readVertexData2ui3f(const GLuint* input, GLuint count, GLubyte stride, float* output) {
-    ITERATE(count) {
-        output[0] = input[0];
-        output[1] = input[1];
-        output[2] = 0.0f;
-
-        input = (GLuint*) (((GLubyte*) input) + stride);
-        output = (float*) (((GLubyte*) output) + sizeof(Vertex));
-    }
-}
-
-static void _readVertexData4ubARGB(const GLubyte* input, GLuint count, GLubyte stride, GLubyte* output) {
-    ITERATE(count) {
-        output[R8IDX] = input[0];
-        output[G8IDX] = input[1];
-        output[B8IDX] = input[2];
-        output[A8IDX] = input[3];
-
-        input += stride;
-        output += sizeof(Vertex);
-    }
-}
-
-static void _readVertexData4fARGB(const float* input, GLuint count, GLubyte stride, GLubyte* output) {
-    ITERATE(count) {
-        output[R8IDX] = (GLubyte) clamp(input[0] * 255.0f, 0, 255);
-        output[G8IDX] = (GLubyte) clamp(input[1] * 255.0f, 0, 255);
-        output[B8IDX] = (GLubyte) clamp(input[2] * 255.0f, 0, 255);
-        output[A8IDX] = (GLubyte) clamp(input[3] * 255.0f, 0, 255);
-
-        input = (float*) (((GLubyte*) input) + stride);
-        output += sizeof(Vertex);
-    }
-}
-
-static void _readVertexData3fARGB(const float* input, GLuint count, GLubyte stride, GLubyte* output) {
-    ITERATE(count) {
-        output[R8IDX] = (GLubyte) clamp(input[0] * 255.0f, 0, 255);
-        output[G8IDX] = (GLubyte) clamp(input[1] * 255.0f, 0, 255);
-        output[B8IDX] = (GLubyte) clamp(input[2] * 255.0f, 0, 255);
-        output[A8IDX] = 1.0f;
-
-        input = (float*) (((GLubyte*) input) + stride);
-        output = (GLubyte*) (((GLubyte*) output) + sizeof(Vertex));
-    }
-}
-
-static void _readVertexData3ubARGB(const GLubyte* input, GLuint count, GLubyte stride, GLubyte* output) {
-    ITERATE(count) {
-        output[R8IDX] = input[0];
-        output[G8IDX] = input[1];
-        output[B8IDX] = input[2];
-        output[A8IDX] = 1.0f;
-
-        input = (((GLubyte*) input) + stride);
-        output = (GLubyte*) (((GLubyte*) output) + sizeof(Vertex));
-    }
-}
-
-static void _readVertexData4ubRevARGB(const GLubyte* input, GLuint count, GLubyte stride, GLubyte* output) {
-    ITERATE(count) {
-        output[B8IDX] = input[0];
-        output[G8IDX] = input[1];
-        output[R8IDX] = input[2];
-        output[A8IDX] = input[3];
-
-        input += stride;
-        output += sizeof(Vertex);
-    }
-}
-
-static void _readVertexData4fRevARGB(const float* input, GLuint count, GLubyte stride, GLubyte* output) {
-    ITERATE(count) {
-        output[0] = (GLubyte) clamp(input[0] * 255.0f, 0, 255);
-        output[1] = (GLubyte) clamp(input[1] * 255.0f, 0, 255);
-        output[2] = (GLubyte) clamp(input[2] * 255.0f, 0, 255);
-        output[3] = (GLubyte) clamp(input[3] * 255.0f, 0, 255);
-
-        input = (float*) (((GLubyte*) input) + stride);
-        output += sizeof(Vertex);
-    }
+    output[0] = (GLubyte) clamp(input[0] * 255.0f, 0, 255);
+    output[1] = (GLubyte) clamp(input[1] * 255.0f, 0, 255);
+    output[2] = (GLubyte) clamp(input[2] * 255.0f, 0, 255);
+    output[3] = (GLubyte) clamp(input[3] * 255.0f, 0, 255);
 }
 
 static void _fillWithNegZVE(GLuint count, GLfloat* output) {
@@ -469,50 +328,38 @@ static void _fillZero2fVE(GLuint count, GLfloat* output) {
     }
 }
 
-static void _readVertexData3usARGB(const GLushort* input, GLuint count, GLubyte stride, GLubyte* output) {
+static void _readVertexData3usARGB(const GLubyte* input, GLubyte* output) {
     _GL_UNUSED(input);
-    _GL_UNUSED(count);
-    _GL_UNUSED(stride);
     _GL_UNUSED(output);
     assert(0 && "Not Implemented");
 }
 
-static void _readVertexData3uiARGB(const GLuint* input, GLuint count, GLubyte stride, GLubyte* output) {
+static void _readVertexData3uiARGB(const GLubyte* input, GLubyte* output) {
     _GL_UNUSED(input);
-    _GL_UNUSED(count);
-    _GL_UNUSED(stride);
     _GL_UNUSED(output);
     assert(0 && "Not Implemented");
 }
 
-static void _readVertexData4usARGB(const GLushort* input, GLuint count, GLubyte stride, GLubyte* output) {
+static void _readVertexData4usARGB(const GLubyte* input, GLubyte* output) {
     _GL_UNUSED(input);
-    _GL_UNUSED(count);
-    _GL_UNUSED(stride);
     _GL_UNUSED(output);
     assert(0 && "Not Implemented");
 }
 
-static void _readVertexData4uiARGB(const GLuint* input, GLuint count, GLubyte stride, GLubyte* output) {
+static void _readVertexData4uiARGB(const GLubyte* input, GLubyte* output) {
     _GL_UNUSED(input);
-    _GL_UNUSED(count);
-    _GL_UNUSED(stride);
     _GL_UNUSED(output);
     assert(0 && "Not Implemented");
 }
 
-static void _readVertexData4usRevARGB(const GLushort* input, GLuint count, GLubyte stride, GLubyte* output) {
+static void _readVertexData4usRevARGB(const GLubyte* input, GLubyte* output) {
     _GL_UNUSED(input);
-    _GL_UNUSED(count);
-    _GL_UNUSED(stride);
     _GL_UNUSED(output);
     assert(0 && "Not Implemented");
 }
 
-static void _readVertexData4uiRevARGB(const GLuint* input, GLuint count, GLubyte stride, GLubyte* output) {
+static void _readVertexData4uiRevARGB(const GLubyte* input, GLubyte* output) {
     _GL_UNUSED(input);
-    _GL_UNUSED(count);
-    _GL_UNUSED(stride);
     _GL_UNUSED(output);
     assert(0 && "Not Implemented");
 }
@@ -670,54 +517,131 @@ static void genTriangleFan(Vertex* output, GLuint count) {
     }
 }
 
+typedef void (*ReadPositionFunc)(const GLubyte*, GLubyte*);
+typedef void (*ReadDiffuseFunc)(const GLubyte*, GLubyte*);
+typedef void (*ReadUVFunc)(const GLubyte*, GLubyte*);
+typedef void (*ReadNormalFunc)(const GLubyte*, GLubyte*);
+
+ReadPositionFunc calcReadDiffuseFunc() {
+    switch(DIFFUSE_POINTER.type) {
+        default:
+        case GL_DOUBLE:
+        case GL_FLOAT:
+            return (DIFFUSE_POINTER.size == 3) ? _readVertexData3fARGB:
+                   (DIFFUSE_POINTER.size == 4) ? _readVertexData4fARGB:
+                    _readVertexData4fRevARGB;
+        case GL_BYTE:
+        case GL_UNSIGNED_BYTE:
+            return (DIFFUSE_POINTER.size == 3) ? _readVertexData3ubARGB:
+                   (DIFFUSE_POINTER.size == 4) ? _readVertexData4ubARGB:
+                    _readVertexData4ubRevARGB;
+        case GL_SHORT:
+        case GL_UNSIGNED_SHORT:
+            return (DIFFUSE_POINTER.size == 3) ? _readVertexData3usARGB:
+                   (DIFFUSE_POINTER.size == 4) ? _readVertexData4usARGB:
+                    _readVertexData4usRevARGB;
+        case GL_INT:
+        case GL_UNSIGNED_INT:
+            return (DIFFUSE_POINTER.size == 3) ? _readVertexData3uiARGB:
+                   (DIFFUSE_POINTER.size == 4) ? _readVertexData4uiARGB:
+                    _readVertexData4uiRevARGB;
+    }
+}
+
+ReadPositionFunc calcReadPositionFunc() {
+    switch(VERTEX_POINTER.type) {
+        default:
+        case GL_DOUBLE:
+        case GL_FLOAT:
+            return (VERTEX_POINTER.size == 3) ? _readVertexData3f3f:
+                    _readVertexData2f3f;
+        case GL_BYTE:
+        case GL_UNSIGNED_BYTE:
+            return (VERTEX_POINTER.size == 3) ? _readVertexData3ub3f:
+                    _readVertexData2ub3f;
+        case GL_SHORT:
+        case GL_UNSIGNED_SHORT:
+            return (VERTEX_POINTER.size == 3) ? _readVertexData3us3f:
+                    _readVertexData2us3f;
+        case GL_INT:
+        case GL_UNSIGNED_INT:
+            return (VERTEX_POINTER.size == 3) ? _readVertexData3ui3f:
+                    _readVertexData2ui3f;
+    }
+}
+
+ReadUVFunc calcReadUVFunc() {
+    switch(UV_POINTER.type) {
+        default:
+        case GL_DOUBLE:
+        case GL_FLOAT:
+            return _readVertexData2f2f;
+        case GL_BYTE:
+        case GL_UNSIGNED_BYTE:
+            return _readVertexData2ub2f;
+        case GL_SHORT:
+        case GL_UNSIGNED_SHORT:
+            return _readVertexData2us2f;
+        case GL_INT:
+        case GL_UNSIGNED_INT:
+            return _readVertexData2ui2f;
+    }
+}
+
+ReadUVFunc calcReadSTFunc() {
+    switch(ST_POINTER.type) {
+        default:
+        case GL_DOUBLE:
+        case GL_FLOAT:
+            return _readVertexData2f2f;
+        case GL_BYTE:
+        case GL_UNSIGNED_BYTE:
+            return _readVertexData2ub2f;
+        case GL_SHORT:
+        case GL_UNSIGNED_SHORT:
+            return _readVertexData2us2f;
+        case GL_INT:
+        case GL_UNSIGNED_INT:
+            return _readVertexData2ui2f;
+    }
+}
+
+ReadNormalFunc calcReadNormalFunc() {
+    switch(NORMAL_POINTER.type) {
+        default:
+        case GL_DOUBLE:
+        case GL_FLOAT:
+            return _readVertexData3f3f;
+        break;
+        case GL_BYTE:
+        case GL_UNSIGNED_BYTE:
+            return _readVertexData3ub3f;
+        break;
+        case GL_SHORT:
+        case GL_UNSIGNED_SHORT:
+            return _readVertexData3us3f;
+        break;
+        case GL_INT:
+        case GL_UNSIGNED_INT:
+            return _readVertexData3ui3f;
+        break;
+        case GL_UNSIGNED_INT_2_10_10_10_REV:
+            return _readVertexData1i3f;
+        break;
+    }
+}
+
 GL_FORCE_INLINE void _readPositionData(const GLuint first, const GLuint count, Vertex* output) {
     const GLubyte vstride = (VERTEX_POINTER.stride) ? VERTEX_POINTER.stride : VERTEX_POINTER.size * byte_size(VERTEX_POINTER.type);
     const void* vptr = ((GLubyte*) VERTEX_POINTER.ptr + (first * vstride));
 
-    if(VERTEX_POINTER.size == 3) {
-        switch(VERTEX_POINTER.type) {
-            case GL_DOUBLE:
-            case GL_FLOAT:
-                _readVertexData3f3f(vptr, count, vstride, output[0].xyz);
-            break;
-            case GL_BYTE:
-            case GL_UNSIGNED_BYTE:
-                _readVertexData3ub3f(vptr, count, vstride, output[0].xyz);
-            break;
-            case GL_SHORT:
-            case GL_UNSIGNED_SHORT:
-                _readVertexData3us3f(vptr, count, vstride, output[0].xyz);
-            break;
-            case GL_INT:
-            case GL_UNSIGNED_INT:
-                _readVertexData3ui3f(vptr, count, vstride, output[0].xyz);
-            break;
-        default:
-            assert(0 && "Not Implemented");
-        }
-    } else if(VERTEX_POINTER.size == 2) {
-        switch(VERTEX_POINTER.type) {
-            case GL_DOUBLE:
-            case GL_FLOAT:
-                _readVertexData2f3f(vptr, count, vstride, output[0].xyz);
-            break;
-            case GL_BYTE:
-            case GL_UNSIGNED_BYTE:
-                _readVertexData2ub3f(vptr, count, vstride, output[0].xyz);
-            break;
-            case GL_SHORT:
-            case GL_UNSIGNED_SHORT:
-                _readVertexData2us3f(vptr, count, vstride, output[0].xyz);
-            break;
-            case GL_INT:
-            case GL_UNSIGNED_INT:
-                _readVertexData2ui3f(vptr, count, vstride, output[0].xyz);
-            break;
-        default:
-            assert(0 && "Not Implemented");
-        }
-    } else {
-        assert(0 && "Not Implemented");
+    ReadDiffuseFunc func = calcReadPositionFunc();
+    GLubyte* out = (GLubyte*) output[0].xyz;
+
+    ITERATE(count) {
+        func(vptr, out);
+        vptr += vstride;
+        out += sizeof(Vertex);
     }
 }
 
@@ -730,29 +654,13 @@ GL_FORCE_INLINE void _readUVData(const GLuint first, const GLuint count, Vertex*
     const GLubyte uvstride = (UV_POINTER.stride) ? UV_POINTER.stride : UV_POINTER.size * byte_size(UV_POINTER.type);
     const void* uvptr = ((GLubyte*) UV_POINTER.ptr + (first * uvstride));
 
-    if(UV_POINTER.size == 2) {
-        switch(UV_POINTER.type) {
-            case GL_DOUBLE:
-            case GL_FLOAT:
-                _readVertexData2f2f(uvptr, count, uvstride, output[0].uv);
-            break;
-            case GL_BYTE:
-            case GL_UNSIGNED_BYTE:
-                _readVertexData2ub2f(uvptr, count, uvstride, output[0].uv);
-            break;
-            case GL_SHORT:
-            case GL_UNSIGNED_SHORT:
-                _readVertexData2us2f(uvptr, count, uvstride, output[0].uv);
-            break;
-            case GL_INT:
-            case GL_UNSIGNED_INT:
-                _readVertexData2ui2f(uvptr, count, uvstride, output[0].uv);
-            break;
-        default:
-            assert(0 && "Not Implemented");
-        }
-    } else {
-        assert(0 && "Not Implemented");
+    ReadUVFunc func = calcReadUVFunc();
+    GLubyte* out = (GLubyte*) output[0].uv;
+
+    ITERATE(count) {
+        func(uvptr, out);
+        uvptr += uvstride;
+        out += sizeof(Vertex);
     }
 }
 
@@ -765,29 +673,13 @@ GL_FORCE_INLINE void _readSTData(const GLuint first, const GLuint count, VertexE
     const GLubyte ststride = (ST_POINTER.stride) ? ST_POINTER.stride : ST_POINTER.size * byte_size(ST_POINTER.type);
     const void* stptr = ((GLubyte*) ST_POINTER.ptr + (first * ststride));
 
-    if(ST_POINTER.size == 2) {
-        switch(ST_POINTER.type) {
-            case GL_DOUBLE:
-            case GL_FLOAT:
-                _readVertexData2f2fVE(stptr, count, ststride, extra->st);
-            break;
-            case GL_BYTE:
-            case GL_UNSIGNED_BYTE:
-                _readVertexData2ub2fVE(stptr, count, ststride, extra->st);
-            break;
-            case GL_SHORT:
-            case GL_UNSIGNED_SHORT:
-                _readVertexData2us2fVE(stptr, count, ststride, extra->st);
-            break;
-            case GL_INT:
-            case GL_UNSIGNED_INT:
-                _readVertexData2ui2fVE(stptr, count, ststride, extra->st);
-            break;
-        default:
-            assert(0 && "Not Implemented");
-        }
-    } else {
-        assert(0 && "Not Implemented");
+    ReadUVFunc func = calcReadUVFunc();
+    GLubyte* out = (GLubyte*) extra[0].st;
+
+    ITERATE(count) {
+        func(stptr, out);
+        stptr += ststride;
+        out += sizeof(VertexExtra);
     }
 }
 
@@ -798,37 +690,15 @@ GL_FORCE_INLINE void _readNormalData(const GLuint first, const GLuint count, Ver
     }
 
     const GLuint nstride = (NORMAL_POINTER.stride) ? NORMAL_POINTER.stride : NORMAL_POINTER.size * byte_size(NORMAL_POINTER.type);
-
     const void* nptr = ((GLubyte*) NORMAL_POINTER.ptr + (first * nstride));
 
-    if(NORMAL_POINTER.size == 3 || NORMAL_POINTER.type == GL_UNSIGNED_INT_2_10_10_10_REV) {
-        switch(NORMAL_POINTER.type) {
-            case GL_DOUBLE:
-            case GL_FLOAT:
-                _readVertexData3f3fVE(nptr, count, nstride, extra->nxyz);
-            break;
-            case GL_BYTE:
-            case GL_UNSIGNED_BYTE:
-                _readVertexData3ub3fVE(nptr, count, nstride, extra->nxyz);
-            break;
-            case GL_SHORT:
-            case GL_UNSIGNED_SHORT:
-                _readVertexData3us3fVE(nptr, count, nstride, extra->nxyz);
-            break;
-            case GL_INT:
-            case GL_UNSIGNED_INT:
-                _readVertexData3ui3fVE(nptr, count, nstride, extra->nxyz);
-            break;
-            case GL_UNSIGNED_INT_2_10_10_10_REV:
-                _readVertexData1i3f(nptr, count, nstride, extra->nxyz);
-            break;
-        default:
-            fprintf(stderr, "Invalid normal pointer type: %d\n", NORMAL_POINTER.type);
-            assert(0 && "Not Implemented");
-        }
-    } else {
-        fprintf(stderr, "Invalid normal pointer type or stride (%d or %d)\n", NORMAL_POINTER.type, NORMAL_POINTER.stride);
-        assert(0 && "Not Implemented");
+    ReadNormalFunc func = calcReadNormalFunc();
+    GLubyte* out = (GLubyte*) extra[0].nxyz;
+
+    ITERATE(count) {
+        func(nptr, out);
+        nptr += nstride;
+        out += sizeof(VertexExtra);
     }
 
     if(_glIsNormalizeEnabled()) {
@@ -857,73 +727,60 @@ GL_FORCE_INLINE void _readDiffuseData(const GLuint first, const GLuint count, Ve
     }
 
     const GLuint cstride = (DIFFUSE_POINTER.stride) ? DIFFUSE_POINTER.stride : DIFFUSE_POINTER.size * byte_size(DIFFUSE_POINTER.type);
-    const void* cptr = ((GLubyte*) DIFFUSE_POINTER.ptr) + (first * cstride);
+    const GLubyte* cptr = ((GLubyte*) DIFFUSE_POINTER.ptr) + (first * cstride);
 
-    if(DIFFUSE_POINTER.size == 3) {
-        switch(DIFFUSE_POINTER.type) {
-            case GL_DOUBLE:
-            case GL_FLOAT:
-                _readVertexData3fARGB(cptr, count, cstride, output[0].bgra);
-            break;
-            case GL_BYTE:
-            case GL_UNSIGNED_BYTE:
-                _readVertexData3ubARGB(cptr, count, cstride, output[0].bgra);
-            break;
-            case GL_SHORT:
-            case GL_UNSIGNED_SHORT:
-                _readVertexData3usARGB(cptr, count, cstride, output[0].bgra);
-            break;
-            case GL_INT:
-            case GL_UNSIGNED_INT:
-                _readVertexData3uiARGB(cptr, count, cstride, output[0].bgra);
-            break;
-        default:
-            assert(0 && "Not Implemented");
-        }
-    } else if(DIFFUSE_POINTER.size == 4) {
-        switch(DIFFUSE_POINTER.type) {
-            case GL_DOUBLE:
-            case GL_FLOAT:
-                _readVertexData4fARGB(cptr, count, cstride, output[0].bgra);
-            break;
-            case GL_BYTE:
-            case GL_UNSIGNED_BYTE:
-                _readVertexData4ubARGB(cptr, count, cstride, output[0].bgra);
-            break;
-            case GL_SHORT:
-            case GL_UNSIGNED_SHORT:
-                _readVertexData4usARGB(cptr, count, cstride, output[0].bgra);
-            break;
-            case GL_INT:
-            case GL_UNSIGNED_INT:
-                _readVertexData4uiARGB(cptr, count, cstride, output[0].bgra);
-            break;
-        default:
-            assert(0 && "Not Implemented");
-        }
-    } else if(DIFFUSE_POINTER.size == GL_BGRA) {
-        switch(DIFFUSE_POINTER.type) {
-            case GL_DOUBLE:
-            case GL_FLOAT:
-                _readVertexData4fRevARGB(cptr, count, cstride, output[0].bgra);
-            break;
-            case GL_BYTE:
-            case GL_UNSIGNED_BYTE:
-                _readVertexData4ubRevARGB(cptr, count, cstride, output[0].bgra);
-            break;
-            case GL_SHORT:
-            case GL_UNSIGNED_SHORT:
-                _readVertexData4usRevARGB(cptr, count, cstride, output[0].bgra);
-            break;
-            case GL_INT:
-            case GL_UNSIGNED_INT:
-                _readVertexData4uiRevARGB(cptr, count, cstride, output[0].bgra);
-            break;
-        default:
-            assert(0 && "Not Implemented");
-        }
-    }else {
-        assert(0 && "Not Implemented");
+    ReadDiffuseFunc func = calcReadDiffuseFunc();
+    GLubyte* out = output[0].bgra;
+
+    ITERATE(count) {
+        func(cptr, out);
+        cptr += cstride;
+        out += sizeof(Vertex);
+    }
+}
+
+static void generateElements(
+        SubmissionTarget* target, const GLsizei first, const GLuint count,
+        const GLubyte* indices, const GLenum type, const GLubyte enabledTextureUnits, const GLboolean doLighting) {
+
+    const GLsizei istride = byte_size(type);
+    const IndexParseFunc IndexFunc = _calcParseIndexFunc(type);
+
+    GLubyte* xyz;
+    GLubyte* uv;
+    GLubyte* bgra;
+    GLubyte* st;
+    GLubyte* nxyz;
+
+    Vertex* output = _glSubmissionTargetStart(target);
+    VertexExtra* ve = aligned_vector_at(target->extras, 0);
+
+    uint32_t i = first;
+    uint32_t idx = 0;
+
+    ReadPositionFunc pos_func = calcReadPositionFunc();
+    ReadUVFunc uv_func = calcReadUVFunc();
+    ReadUVFunc st_func = calcReadSTFunc();
+    ReadDiffuseFunc diffuse_func = calcReadDiffuseFunc();
+    ReadNormalFunc normal_func = calcReadNormalFunc();
+
+    for(; i < first + count; ++i) {
+        idx = IndexFunc(indices + (i * istride));
+        xyz = (GLubyte*) VERTEX_POINTER.ptr + (idx * VERTEX_POINTER.stride);
+        uv = (GLubyte*) UV_POINTER.ptr + (idx * UV_POINTER.stride);
+        bgra = (GLubyte*) DIFFUSE_POINTER.ptr + (idx * DIFFUSE_POINTER.stride);
+        st = (GLubyte*) ST_POINTER.ptr + (idx * ST_POINTER.stride);
+        nxyz = (GLubyte*) NORMAL_POINTER.ptr + (idx * NORMAL_POINTER.stride);
+
+        pos_func(xyz, (GLubyte*) output->xyz);
+        uv_func(uv, (GLubyte*) output->uv);
+        diffuse_func(bgra, output->bgra);
+
+        st_func(st, (GLubyte*) ve->st);
+        normal_func(nxyz, (GLubyte*) ve->nxyz);
+
+        output->flags = PVR_CMD_VERTEX;
+        ++output;
     }
 }
 
@@ -933,11 +790,8 @@ static void generate(SubmissionTarget* target, const GLenum mode, const GLsizei 
     TRACE();
 
     static const uint32_t FAST_PATH_BYTE_SIZE = (sizeof(GLfloat) * 3) + (sizeof(GLfloat) * 2) + (sizeof(GLubyte) * 4);
-    const GLsizei istride = byte_size(type);
 
     if(!indices) {
-        profiler_push(__func__);
-
         Vertex* start = _glSubmissionTargetStart(target);
 
         if(FAST_PATH_ENABLED) {
@@ -952,11 +806,7 @@ static void generate(SubmissionTarget* target, const GLenum mode, const GLsizei 
             }
         } else {
             _readPositionData(first, count, start);
-            profiler_checkpoint("positions");
-
             _readDiffuseData(first, count, start);
-            profiler_checkpoint("diffuse");
-
             if(doTexture) _readUVData(first, count, start);
 
             Vertex* it = _glSubmissionTargetStart(target);
@@ -971,99 +821,32 @@ static void generate(SubmissionTarget* target, const GLenum mode, const GLsizei 
 
         if(doLighting) _readNormalData(first, count, ve);
         if(doTexture && doMultitexture) _readSTData(first, count, ve);
-        profiler_checkpoint("others");
 
-        // Drawing arrays
-        switch(mode) {
-        case GL_TRIANGLES:
-            genTriangles(start, count);
-            break;
-        case GL_QUADS:
-            genQuads(start, count);
-            break;
-        case GL_TRIANGLE_FAN:
-            genTriangleFan(start, count);
-            break;
-        case GL_TRIANGLE_STRIP:
-            genTriangleStrip(_glSubmissionTargetStart(target), count);
-            break;
-        default:
-            fprintf(stderr, "Unhandled mode %d\n", (int) mode);
-            assert(0 && "Not Implemented");
-        }
-
-        profiler_checkpoint("quads");
-        profiler_pop();
     } else {
-        const IndexParseFunc indexFunc = _calcParseIndexFunc(type);
-        GLuint j;
-        const GLubyte* idx = indices;
+        generateElements(
+            target, first, count,
+            indices, type, (doMultitexture) ? 2 : (doTexture) ? 1 : 0,
+            doLighting
+        );
+    }
 
-        Vertex* vertices = _glSubmissionTargetStart(target);
-        VertexExtra* extras = aligned_vector_at(target->extras, 0);
-
-        if(FAST_PATH_ENABLED) {
-            typedef struct FastPath {
-                float xyz[3];
-                float uv[2];
-                uint8_t bgra[4];
-            } FastPath;
-
-            GLboolean readST = doTexture && doMultitexture;
-
-            ITERATE(count) {
-                j = indexFunc(idx);
-
-                vertices->flags = PVR_CMD_VERTEX;
-
-                FastPath* srcV = (FastPath*) ((uint8_t*) VERTEX_POINTER.ptr + (VERTEX_POINTER.stride * j));
-                FastPath* dst = (FastPath*) vertices->xyz;
-                *dst = *srcV;
-
-                if(doLighting) _readNormalData(j, 1, extras);
-                if(readST) _readSTData(j, 1, extras);
-
-                ++vertices;
-                ++extras;
-
-                idx += istride;
-            }
-        } else {
-            ITERATE(count) {
-                j = indexFunc(idx);
-                vertices->flags = PVR_CMD_VERTEX;
-
-                _readPositionData(j, 1, vertices);
-                _readDiffuseData(j, 1, vertices);
-                if(doTexture) _readUVData(j, 1, vertices);
-                if(doLighting) _readNormalData(j, 1, extras);
-                if(doTexture && doMultitexture) _readSTData(j, 1, extras);
-
-                ++vertices;
-                ++extras;
-
-                idx += istride;
-            }
-        }
-
-        Vertex* it = _glSubmissionTargetStart(target);
-        // Drawing arrays
-        switch(mode) {
-        case GL_TRIANGLES:
-            genTriangles(it, count);
-            break;
-        case GL_QUADS:
-            genQuads(it, count);
-            break;
-        case GL_TRIANGLE_FAN:
-            genTriangleFan(it, count);
-            break;
-        case GL_TRIANGLE_STRIP:
-            genTriangleStrip(it, count);
-            break;
-        default:
-            assert(0 && "Not Implemented");
-        }
+    Vertex* it = _glSubmissionTargetStart(target);
+    // Drawing arrays
+    switch(mode) {
+    case GL_TRIANGLES:
+        genTriangles(it, count);
+        break;
+    case GL_QUADS:
+        genQuads(it, count);
+        break;
+    case GL_TRIANGLE_FAN:
+        genTriangleFan(it, count);
+        break;
+    case GL_TRIANGLE_STRIP:
+        genTriangleStrip(it, count);
+        break;
+    default:
+        assert(0 && "Not Implemented");
     }
 }
 
