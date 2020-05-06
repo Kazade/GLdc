@@ -129,24 +129,27 @@ static void _readVertexData3f3f(const GLubyte* in, GLubyte* out) {
     output[2] = input[2];
 }
 
-GL_FORCE_INLINE float conv_i10_to_norm_float(int i10) {
-    struct attr_bits_10 {
-        signed int x:10;
-    } val;
-
-    val.x = i10;
-
-    return (2.0F * (float)val.x + 1.0F) * (1.0F  / 1023.0F);
-}
-
 // 10:10:10:2REV format
 static void _readVertexData1i3f(const GLubyte* in, GLubyte* out) {
-    const GLint* input = (const GLint*) in;
+    const static float MULTIPLIER = 1.0f / 1023.0f;
+
     GLfloat* output = (GLfloat*) out;
 
-    output[0] = conv_i10_to_norm_float((*input) & 0x3ff);
-    output[1] = conv_i10_to_norm_float(((*input) >> 10) & 0x3ff);
-    output[2] = conv_i10_to_norm_float(((*input) >> 20) & 0x3ff);
+    union {
+        int value;
+        struct {
+            signed int x: 10;
+            signed int y: 10;
+            signed int z: 10;
+            signed int w: 2;
+        } bits;
+    } input;
+
+    input.value = *((const GLint*) in);
+
+    output[0] = (2.0f * (float) input.bits.x + 1.0f) * MULTIPLIER;
+    output[1] = (2.0f * (float) input.bits.y + 1.0f) * MULTIPLIER;
+    output[2] = (2.0f * (float) input.bits.z + 1.0f) * MULTIPLIER;
 }
 
 static void _readVertexData3us3f(const GLubyte* in, GLubyte* out) {
