@@ -295,37 +295,28 @@ static void _readVertexData4fRevARGB(const GLubyte* in, GLubyte* output) {
     output[3] = (GLubyte) clamp(input[3] * 255.0f, 0, 255);
 }
 
-static void _fillWithNegZVE(GLuint count, GLfloat* output) {
-    ITERATE(count) {
-        output[0] = output[1] = 0.0f;
-        output[2] = -1.0f;
-        output = (GLfloat*) (((GLubyte*) output) + sizeof(VertexExtra));
-    }
+static void _fillWithNegZVE(const GLubyte* input, GLubyte* out) {
+    _GL_UNUSED(input);
+
+    float* output = (float*) out;
+    output[0] = output[1] = 0.0f;
+    output[2] = -1.0f;
 }
 
-GL_FORCE_INLINE void  _fillWhiteARGB(GLuint count, GLubyte* output) {
-    ITERATE(count) {
-        output[R8IDX] = 255;
-        output[G8IDX] = 255;
-        output[B8IDX] = 255;
-        output[A8IDX] = 255;
+static void  _fillWhiteARGB(const GLubyte* input, GLubyte* output) {
+    _GL_UNUSED(input);
 
-        output += sizeof(Vertex);
-    }
+    output[R8IDX] = 255;
+    output[G8IDX] = 255;
+    output[B8IDX] = 255;
+    output[A8IDX] = 255;
 }
 
-static void _fillZero2f(GLuint count, GLfloat* output) {
-    ITERATE(count) {
-        output[0] = output[1] = 0.0f;
-        output = (GLfloat*) (((GLubyte*) output) + sizeof(Vertex));
-    }
-}
+static void _fillZero2f(const GLubyte* input, GLubyte* out) {
+    _GL_UNUSED(input);
 
-static void _fillZero2fVE(GLuint count, GLfloat* output) {
-    ITERATE(count) {
-        output[0] = output[1] = 0.0f;
-        output = (GLfloat*) (((GLubyte*) output) + sizeof(VertexExtra));
-    }
+    float* output = (float*) out;
+    output[0] = output[1] = 0.0f;
 }
 
 static void _readVertexData3usARGB(const GLubyte* input, GLubyte* output) {
@@ -523,6 +514,11 @@ typedef void (*ReadUVFunc)(const GLubyte*, GLubyte*);
 typedef void (*ReadNormalFunc)(const GLubyte*, GLubyte*);
 
 ReadPositionFunc calcReadDiffuseFunc() {
+    if((ENABLED_VERTEX_ATTRIBUTES & DIFFUSE_ENABLED_FLAG) != DIFFUSE_ENABLED_FLAG) {
+        /* Just fill the whole thing white if the attribute is disabled */
+        return _fillWhiteARGB;
+    }
+
     switch(DIFFUSE_POINTER.type) {
         default:
         case GL_DOUBLE:
@@ -571,6 +567,10 @@ ReadPositionFunc calcReadPositionFunc() {
 }
 
 ReadUVFunc calcReadUVFunc() {
+    if((ENABLED_VERTEX_ATTRIBUTES & UV_ENABLED_FLAG) != UV_ENABLED_FLAG) {
+        return _fillZero2f;
+    }
+
     switch(UV_POINTER.type) {
         default:
         case GL_DOUBLE:
@@ -589,6 +589,10 @@ ReadUVFunc calcReadUVFunc() {
 }
 
 ReadUVFunc calcReadSTFunc() {
+    if((ENABLED_VERTEX_ATTRIBUTES & ST_ENABLED_FLAG) != ST_ENABLED_FLAG) {
+        return _fillZero2f;
+    }
+
     switch(ST_POINTER.type) {
         default:
         case GL_DOUBLE:
@@ -607,6 +611,10 @@ ReadUVFunc calcReadSTFunc() {
 }
 
 ReadNormalFunc calcReadNormalFunc() {
+    if((ENABLED_VERTEX_ATTRIBUTES & NORMAL_ENABLED_FLAG) != NORMAL_ENABLED_FLAG) {
+        return _fillWithNegZVE;
+    }
+
     switch(NORMAL_POINTER.type) {
         default:
         case GL_DOUBLE:
@@ -646,11 +654,6 @@ GL_FORCE_INLINE void _readPositionData(const GLuint first, const GLuint count, V
 }
 
 GL_FORCE_INLINE void _readUVData(const GLuint first, const GLuint count, Vertex* output) {
-    if((ENABLED_VERTEX_ATTRIBUTES & UV_ENABLED_FLAG) != UV_ENABLED_FLAG) {
-        _fillZero2f(count, output->uv);
-        return;
-    }
-
     const GLubyte uvstride = (UV_POINTER.stride) ? UV_POINTER.stride : UV_POINTER.size * byte_size(UV_POINTER.type);
     const void* uvptr = ((GLubyte*) UV_POINTER.ptr + (first * uvstride));
 
@@ -665,11 +668,6 @@ GL_FORCE_INLINE void _readUVData(const GLuint first, const GLuint count, Vertex*
 }
 
 GL_FORCE_INLINE void _readSTData(const GLuint first, const GLuint count, VertexExtra* extra) {
-    if((ENABLED_VERTEX_ATTRIBUTES & ST_ENABLED_FLAG) != ST_ENABLED_FLAG) {
-        _fillZero2fVE(count, extra->st);
-        return;
-    }
-
     const GLubyte ststride = (ST_POINTER.stride) ? ST_POINTER.stride : ST_POINTER.size * byte_size(ST_POINTER.type);
     const void* stptr = ((GLubyte*) ST_POINTER.ptr + (first * ststride));
 
@@ -684,11 +682,6 @@ GL_FORCE_INLINE void _readSTData(const GLuint first, const GLuint count, VertexE
 }
 
 GL_FORCE_INLINE void _readNormalData(const GLuint first, const GLuint count, VertexExtra* extra) {
-    if((ENABLED_VERTEX_ATTRIBUTES & NORMAL_ENABLED_FLAG) != NORMAL_ENABLED_FLAG) {
-        _fillWithNegZVE(count, extra->nxyz);
-        return;
-    }
-
     const GLuint nstride = (NORMAL_POINTER.stride) ? NORMAL_POINTER.stride : NORMAL_POINTER.size * byte_size(NORMAL_POINTER.type);
     const void* nptr = ((GLubyte*) NORMAL_POINTER.ptr + (first * nstride));
 
@@ -720,12 +713,6 @@ GL_FORCE_INLINE void _readNormalData(const GLuint first, const GLuint count, Ver
 }
 
 GL_FORCE_INLINE void _readDiffuseData(const GLuint first, const GLuint count, Vertex* output) {
-    if((ENABLED_VERTEX_ATTRIBUTES & DIFFUSE_ENABLED_FLAG) != DIFFUSE_ENABLED_FLAG) {
-        /* Just fill the whole thing white if the attribute is disabled */
-        _fillWhiteARGB(count, output[0].bgra);
-        return;
-    }
-
     const GLuint cstride = (DIFFUSE_POINTER.stride) ? DIFFUSE_POINTER.stride : DIFFUSE_POINTER.size * byte_size(DIFFUSE_POINTER.type);
     const GLubyte* cptr = ((GLubyte*) DIFFUSE_POINTER.ptr) + (first * cstride);
 
@@ -741,7 +728,7 @@ GL_FORCE_INLINE void _readDiffuseData(const GLuint first, const GLuint count, Ve
 
 static void generateElements(
         SubmissionTarget* target, const GLsizei first, const GLuint count,
-        const GLubyte* indices, const GLenum type, const GLubyte enabledTextureUnits, const GLboolean doLighting) {
+        const GLubyte* indices, const GLenum type) {
 
     const GLsizei istride = byte_size(type);
     const IndexParseFunc IndexFunc = _calcParseIndexFunc(type);
@@ -766,6 +753,7 @@ static void generateElements(
 
     for(; i < first + count; ++i) {
         idx = IndexFunc(indices + (i * istride));
+
         xyz = (GLubyte*) VERTEX_POINTER.ptr + (idx * VERTEX_POINTER.stride);
         uv = (GLubyte*) UV_POINTER.ptr + (idx * UV_POINTER.stride);
         bgra = (GLubyte*) DIFFUSE_POINTER.ptr + (idx * DIFFUSE_POINTER.stride);
@@ -781,11 +769,12 @@ static void generateElements(
 
         output->flags = PVR_CMD_VERTEX;
         ++output;
+        ++ve;
     }
 }
 
 static void generate(SubmissionTarget* target, const GLenum mode, const GLsizei first, const GLuint count,
-        const GLubyte* indices, const GLenum type, const GLboolean doTexture, const GLboolean doMultitexture, const GLboolean doLighting) {
+        const GLubyte* indices, const GLenum type) {
     /* Read from the client buffers and generate an array of ClipVertices */
     TRACE();
 
@@ -807,7 +796,7 @@ static void generate(SubmissionTarget* target, const GLenum mode, const GLsizei 
         } else {
             _readPositionData(first, count, start);
             _readDiffuseData(first, count, start);
-            if(doTexture) _readUVData(first, count, start);
+            _readUVData(first, count, start);
 
             Vertex* it = _glSubmissionTargetStart(target);
 
@@ -819,14 +808,12 @@ static void generate(SubmissionTarget* target, const GLenum mode, const GLsizei 
 
         VertexExtra* ve = aligned_vector_at(target->extras, 0);
 
-        if(doLighting) _readNormalData(first, count, ve);
-        if(doTexture && doMultitexture) _readSTData(first, count, ve);
+        _readNormalData(first, count, ve);
+        _readSTData(first, count, ve);
 
     } else {
         generateElements(
-            target, first, count,
-            indices, type, (doMultitexture) ? 2 : (doTexture) ? 1 : 0,
-            doLighting
+            target, first, count, indices, type
         );
     }
 
@@ -1063,8 +1050,6 @@ GL_FORCE_INLINE void submitVertices(GLenum mode, GLsizei first, GLuint count, GL
 
     glActiveTextureARB(activeTexture);
 
-    profiler_push(__func__);
-
     /* Polygons are treated as triangle fans, the only time this would be a
      * problem is if we supported glPolygonMode(..., GL_LINE) but we don't.
      * We optimise the triangle and quad cases.
@@ -1094,22 +1079,13 @@ GL_FORCE_INLINE void submitVertices(GLenum mode, GLsizei first, GLuint count, GL
 
     /* Make room for the vertices and header */
     aligned_vector_extend(&target->output->vector, target->count + 1);
-
-    profiler_checkpoint("allocate");
-
-    generate(target, mode, first, count, (GLubyte*) indices, type, doTexture, doMultitexture, doLighting);
-
-    profiler_checkpoint("generate");
+    generate(target, mode, first, count, (GLubyte*) indices, type);
 
     if(doLighting){
         light(target);
     }
 
-    profiler_checkpoint("light");
-
     transform(target);
-
-    profiler_checkpoint("transform");
 
     if(_glIsClippingEnabled()) {
 #if DEBUG_CLIPPING
@@ -1144,15 +1120,9 @@ GL_FORCE_INLINE void submitVertices(GLenum mode, GLsizei first, GLuint count, GL
 
     }
 
-    profiler_checkpoint("clip");
-
     divide(target);
-
-    profiler_checkpoint("divide");
-
     push(_glSubmissionTargetHeader(target), GL_FALSE, target->output, 0);
 
-    profiler_checkpoint("push");
     /*
        Now, if multitexturing is enabled, we want to send exactly the same vertices again, except:
        - We want to enable blending, and send them to the TR list
@@ -1163,7 +1133,6 @@ GL_FORCE_INLINE void submitVertices(GLenum mode, GLsizei first, GLuint count, GL
 
     if(!doMultitexture) {
         /* Multitexture actively disabled */
-        profiler_pop();
         return;
     }
 
@@ -1172,7 +1141,6 @@ GL_FORCE_INLINE void submitVertices(GLenum mode, GLsizei first, GLuint count, GL
     /* Multitexture implicitly disabled */
     if(!texture1 || ((ENABLED_VERTEX_ATTRIBUTES & ST_ENABLED_FLAG) != ST_ENABLED_FLAG)) {
         /* Multitexture actively disabled */
-        profiler_pop();
         return;
     }
 
@@ -1198,8 +1166,6 @@ GL_FORCE_INLINE void submitVertices(GLenum mode, GLsizei first, GLuint count, GL
 
     /* Send the buffer again to the transparent list */
     push(mtHeader, GL_TRUE, _glTransparentPolyList(), 1);
-
-    profiler_pop();
 }
 
 void APIENTRY glDrawElements(GLenum mode, GLsizei count, GLenum type, const GLvoid* indices) {
