@@ -745,25 +745,39 @@ static void generateElements(
     uint32_t i = first;
     uint32_t idx = 0;
 
-    ReadPositionFunc pos_func = calcReadPositionFunc();
-    ReadUVFunc uv_func = calcReadUVFunc();
-    ReadUVFunc st_func = calcReadSTFunc();
-    ReadDiffuseFunc diffuse_func = calcReadDiffuseFunc();
-    ReadNormalFunc normal_func = calcReadNormalFunc();
+    const ReadPositionFunc pos_func = calcReadPositionFunc();
+    const ReadUVFunc uv_func = calcReadUVFunc();
+    const ReadUVFunc st_func = calcReadSTFunc();
+    const ReadDiffuseFunc diffuse_func = calcReadDiffuseFunc();
+    const ReadNormalFunc normal_func = calcReadNormalFunc();
+
+    const GLuint vstride = (VERTEX_POINTER.stride) ?
+        VERTEX_POINTER.stride : VERTEX_POINTER.size * byte_size(VERTEX_POINTER.type);
+
+    const GLuint uvstride = (UV_POINTER.stride) ?
+        UV_POINTER.stride : UV_POINTER.size * byte_size(UV_POINTER.type);
+
+    const GLuint ststride = (ST_POINTER.stride) ?
+        ST_POINTER.stride : ST_POINTER.size * byte_size(ST_POINTER.type);
+
+    const GLuint dstride = (DIFFUSE_POINTER.stride) ?
+        DIFFUSE_POINTER.stride : DIFFUSE_POINTER.size * byte_size(DIFFUSE_POINTER.type);
+
+    const GLuint nstride = (NORMAL_POINTER.stride) ?
+        NORMAL_POINTER.stride : NORMAL_POINTER.size * byte_size(NORMAL_POINTER.type);
 
     for(; i < first + count; ++i) {
         idx = IndexFunc(indices + (i * istride));
 
-        xyz = (GLubyte*) VERTEX_POINTER.ptr + (idx * VERTEX_POINTER.stride);
-        uv = (GLubyte*) UV_POINTER.ptr + (idx * UV_POINTER.stride);
-        bgra = (GLubyte*) DIFFUSE_POINTER.ptr + (idx * DIFFUSE_POINTER.stride);
-        st = (GLubyte*) ST_POINTER.ptr + (idx * ST_POINTER.stride);
-        nxyz = (GLubyte*) NORMAL_POINTER.ptr + (idx * NORMAL_POINTER.stride);
+        xyz = (GLubyte*) VERTEX_POINTER.ptr + (idx * vstride);
+        uv = (GLubyte*) UV_POINTER.ptr + (idx * uvstride);
+        bgra = (GLubyte*) DIFFUSE_POINTER.ptr + (idx * dstride);
+        st = (GLubyte*) ST_POINTER.ptr + (idx * ststride);
+        nxyz = (GLubyte*) NORMAL_POINTER.ptr + (idx * nstride);
 
         pos_func(xyz, (GLubyte*) output->xyz);
         uv_func(uv, (GLubyte*) output->uv);
         diffuse_func(bgra, output->bgra);
-
         st_func(st, (GLubyte*) ve->st);
         normal_func(nxyz, (GLubyte*) ve->nxyz);
 
