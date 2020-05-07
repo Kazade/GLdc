@@ -163,6 +163,10 @@ typedef struct {
 
     /* Valid values are 0-128 */
     GLfloat exponent;
+
+    /* Base ambient + emission colour for
+     * the current material + light */
+    GLubyte baseColour[4];
 } Material;
 
 typedef struct {
@@ -176,6 +180,15 @@ typedef struct {
     GLfloat diffuse[4];
     GLfloat specular[4];
     GLfloat ambient[4];
+
+    GLboolean isDirectional;
+
+    /* We set these when the material changes
+     * so we don't calculate them per-vertex. They are
+     * light_value * materia_value */
+    GLfloat ambientMaterial[4];
+    GLfloat diffuseMaterial[4];
+    GLfloat specularMaterial[4];
 } LightSource;
 
 typedef struct {
@@ -331,7 +344,7 @@ GLubyte _glKosHasError();
 
 #define PVR_VERTEX_BUF_SIZE 2560 * 256
 #define MAX_TEXTURE_UNITS 2
-#define MAX_LIGHTS 8
+#define MAX_LIGHTS 4
 
 #define MIN(a,b) (((a)<(b))?(a):(b))
 #define MAX(a,b) (((a)>(b))?(a):(b))

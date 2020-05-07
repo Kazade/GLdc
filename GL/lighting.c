@@ -18,8 +18,18 @@ static GLenum COLOR_CONTROL = GL_SINGLE_COLOR;
 
 static GLenum COLOR_MATERIAL_MODE = GL_AMBIENT_AND_DIFFUSE;
 
+#define AMBIENT_MASK 1
+#define DIFFUSE_MASK 2
+#define EMISSION_MASK 4
+#define SPECULAR_MASK 8
+#define SCENE_AMBIENT_MASK 16
+
+static GLenum COLOR_MATERIAL_MASK = AMBIENT_MASK | DIFFUSE_MASK;
+
 static LightSource LIGHTS[MAX_LIGHTS];
 static Material MATERIAL;
+
+GL_FORCE_INLINE void _glPrecalcLightingValues(GLuint mask);
 
 void _glInitLights() {
     static GLfloat ONE [] = {1.0f, 1.0f, 1.0f, 1.0f};
@@ -46,6 +56,7 @@ void _glInitLights() {
 
         LIGHTS[i].position[0] = LIGHTS[i].position[1] = LIGHTS[i].position[3] = 0.0f;
         LIGHTS[i].position[2] = 1.0f;
+        LIGHTS[i].isDirectional = GL_TRUE;
 
         LIGHTS[i].spot_direction[0] = LIGHTS[i].spot_direction[1] = 0.0f;
         LIGHTS[i].spot_direction[2] = -1.0f;
@@ -56,6 +67,43 @@ void _glInitLights() {
         LIGHTS[i].constant_attenuation = 1.0f;
         LIGHTS[i].linear_attenuation = 0.0f;
         LIGHTS[i].quadratic_attenuation = 0.0f;
+    }
+
+    _glPrecalcLightingValues(~0);
+}
+
+GL_FORCE_INLINE void _glPrecalcLightingValues(GLuint mask) {
+    float baseColour[4];
+
+    /* Pre-calculate lighting values */
+    GLubyte i, j;
+
+    for(i = 0; i < MAX_LIGHTS; ++i) {
+        /* Go through rgba */
+        for(j = 0; j < 4; ++j) {
+            if(mask & AMBIENT_MASK)
+                LIGHTS[i].ambientMaterial[j] = LIGHTS[i].ambient[j] * MATERIAL.ambient[j];
+
+            if(mask & DIFFUSE_MASK)
+                LIGHTS[i].diffuseMaterial[j] = LIGHTS[i].diffuse[j] * MATERIAL.diffuse[j];
+
+            if(mask & SPECULAR_MASK)
+                LIGHTS[i].specularMaterial[j] = LIGHTS[i].specular[j] * MATERIAL.specular[j];
+        }
+    }
+
+    /* If ambient or emission are updated, we need to update
+     * the base colour. */
+    if((mask & AMBIENT_MASK) || (mask & EMISSION_MASK) || (mask & SCENE_AMBIENT_MASK)) {
+        baseColour[0] = MATH_fmac(SCENE_AMBIENT[0], MATERIAL.ambient[0], MATERIAL.emissive[0]);
+        baseColour[1] = MATH_fmac(SCENE_AMBIENT[1], MATERIAL.ambient[1], MATERIAL.emissive[1]);
+        baseColour[2] = MATH_fmac(SCENE_AMBIENT[2], MATERIAL.ambient[2], MATERIAL.emissive[2]);
+        baseColour[3] = MATH_fmac(SCENE_AMBIENT[3], MATERIAL.ambient[3], MATERIAL.emissive[3]);
+
+        MATERIAL.baseColour[R8IDX] = (uint8_t)(_MIN(baseColour[0] * 255.0f, 255.0f));
+        MATERIAL.baseColour[G8IDX] = (uint8_t)(_MIN(baseColour[1] * 255.0f, 255.0f));
+        MATERIAL.baseColour[B8IDX] = (uint8_t)(_MIN(baseColour[2] * 255.0f, 255.0f));
+        MATERIAL.baseColour[A8IDX] = (uint8_t)(_MIN(baseColour[3] * 255.0f, 255.0f));
     }
 }
 
@@ -69,9 +117,10 @@ void APIENTRY glLightModeli(GLenum pname, const GLint param) {
 
 void APIENTRY glLightModelfv(GLenum pname, const GLfloat *params) {
     switch(pname) {
-        case GL_LIGHT_MODEL_AMBIENT:
+        case GL_LIGHT_MODEL_AMBIENT: {
             memcpy(SCENE_AMBIENT, params, sizeof(GLfloat) * 4);
-        break;
+            _glPrecalcLightingValues(SCENE_AMBIENT_MASK);
+        } break;
         case GL_LIGHT_MODEL_LOCAL_VIEWER:
             VIEWER_IN_EYE_COORDINATES = (*params) ? GL_TRUE : GL_FALSE;
         break;
@@ -104,6 +153,10 @@ void APIENTRY glLightfv(GLenum light, GLenum pname, const GLfloat *params) {
         return;
     }
 
+    GLuint mask = (pname == GL_AMBIENT) ? AMBIENT_MASK :
+                  (pname == GL_DIFFUSE) ? DIFFUSE_MASK :
+                  (pname == GL_SPECULAR) ? SPECULAR_MASK : 0;
+
     switch(pname) {
         case GL_AMBIENT:
             memcpy(LIGHTS[idx].ambient, params, sizeof(GLfloat) * 4);
@@ -118,7 +171,9 @@ void APIENTRY glLightfv(GLenum light, GLenum pname, const GLfloat *params) {
             _glMatrixLoadModelView();
             memcpy(LIGHTS[idx].position, params, sizeof(GLfloat) * 4);
 
-            if(params[3] == 0.0f) {
+            LIGHTS[idx].isDirectional = params[3] == 0.0f;
+
+            if(LIGHTS[idx].isDirectional) {
                 //FIXME: Do we need to rotate directional lights?
             } else {
                 mat_trans_single4(
@@ -146,6 +201,8 @@ void APIENTRY glLightfv(GLenum light, GLenum pname, const GLfloat *params) {
         _glKosThrowError(GL_INVALID_ENUM, __func__);
         _glKosPrintError();
     }
+
+    _glPrecalcLightingValues(mask);
 }
 
 void APIENTRY glLightf(GLenum light, GLenum pname, GLfloat param) {
@@ -192,11 +249,6 @@ void APIENTRY glMateriali(GLenum face, GLenum pname, const GLint param) {
 }
 
 void APIENTRY glMaterialfv(GLenum face, GLenum pname, const GLfloat *params) {
-    if(pname == GL_SHININESS) {
-        glMaterialf(face, pname, *params);
-        return;
-    }
-
     if(face == GL_BACK) {
         _glKosThrowError(GL_INVALID_ENUM, __func__);
         _glKosPrintError();
@@ -204,6 +256,9 @@ void APIENTRY glMaterialfv(GLenum face, GLenum pname, const GLfloat *params) {
     }
 
     switch(pname) {
+        case GL_SHININESS:
+            glMaterialf(face, pname, *params);
+        break;
         case GL_AMBIENT:
             memcpy(MATERIAL.ambient, params, sizeof(GLfloat) * 4);
         break;
@@ -217,8 +272,8 @@ void APIENTRY glMaterialfv(GLenum face, GLenum pname, const GLfloat *params) {
             memcpy(MATERIAL.emissive, params, sizeof(GLfloat) * 4);
         break;
         case GL_AMBIENT_AND_DIFFUSE: {
-            glMaterialfv(face, GL_AMBIENT, params);
-            glMaterialfv(face, GL_DIFFUSE, params);
+            memcpy(MATERIAL.ambient, params, sizeof(GLfloat) * 4);
+            memcpy(MATERIAL.diffuse, params, sizeof(GLfloat) * 4);
         } break;
         case GL_COLOR_INDEXES:
         default: {
@@ -226,6 +281,14 @@ void APIENTRY glMaterialfv(GLenum face, GLenum pname, const GLfloat *params) {
             _glKosPrintError();
         }
     }
+
+    GLuint updateMask = (pname == GL_AMBIENT) ? AMBIENT_MASK:
+                        (pname == GL_DIFFUSE) ? DIFFUSE_MASK:
+                        (pname == GL_SPECULAR) ? SPECULAR_MASK:
+                        (pname == GL_EMISSION) ? EMISSION_MASK:
+                        (pname == GL_AMBIENT_AND_DIFFUSE) ? AMBIENT_MASK | DIFFUSE_MASK : 0;
+
+    _glPrecalcLightingValues(updateMask);
 }
 
 void APIENTRY glColorMaterial(GLenum face, GLenum mode) {
@@ -241,7 +304,32 @@ void APIENTRY glColorMaterial(GLenum face, GLenum mode) {
         return;
     }
 
+    COLOR_MATERIAL_MASK = (mode == GL_AMBIENT) ? AMBIENT_MASK:
+                          (mode == GL_DIFFUSE) ? DIFFUSE_MASK:
+                          (mode == GL_AMBIENT_AND_DIFFUSE) ? AMBIENT_MASK | DIFFUSE_MASK:
+                          (mode == GL_EMISSION) ? EMISSION_MASK : SPECULAR_MASK;
+
     COLOR_MATERIAL_MODE = mode;
+}
+
+void _glUpdateColourMaterial(GLfloat* colour) {
+    if(!_glIsColorMaterialEnabled()) {
+        return;
+    }
+
+    if(COLOR_MATERIAL_MODE == GL_AMBIENT || COLOR_MATERIAL_MODE == GL_AMBIENT_AND_DIFFUSE) {
+        memcpy4(MATERIAL.ambient, colour, sizeof(GLfloat) * 4);
+    }
+
+    if(COLOR_MATERIAL_MODE == GL_DIFFUSE || COLOR_MATERIAL_MODE == GL_AMBIENT_AND_DIFFUSE) {
+        memcpy4(MATERIAL.diffuse, colour, sizeof(GLfloat) * 4);
+    }
+
+    if(COLOR_MATERIAL_MODE == GL_EMISSION) {
+        memcpy4(MATERIAL.emissive, colour, sizeof(GLfloat) * 4);
+    }
+
+    _glPrecalcLightingValues(COLOR_MATERIAL_MASK);
 }
 
 GL_FORCE_INLINE GLboolean isDiffuseColorMaterial() {
@@ -288,31 +376,20 @@ GL_FORCE_INLINE float faster_pow(const float x, const float p) {
     return faster_pow2(p * faster_log2(x));
 }
 
-GL_FORCE_INLINE float vec3_dot_limited(
-        const float* x1, const float* y1, const float* z1,
-        const float* x2, const float* y2, const float* z2) {
-
-    float ret;
-    vec3f_dot(*x1, *y1, *z1, *x2, *y2, *z2, ret);
-    return (ret < 0) ? 0 : ret;
-}
-
 GL_FORCE_INLINE void _glLightVertexDirectional(
-    uint8_t* final, int8_t lid,
-    float LdotN, float NdotH,
-    const float* ambient, const float* diffuse, const float* specular) {
+    uint8_t* final, uint8_t lid,
+    float LdotN, float NdotH) {
 
-    float F;
-    uint8_t FO;
-    float FI = (LdotN != 0.0f);
-    FI = (MATERIAL.exponent) ? faster_pow(FI * NdotH, MATERIAL.exponent) : 1.0f;
+    float FI = (MATERIAL.exponent) ?
+        faster_pow((LdotN != 0.0f) * NdotH, MATERIAL.exponent) : 1.0f;
 
 #define _PROCESS_COMPONENT(T, X) \
-    F = (ambient[X] * LIGHTS[lid].ambient[X]); \
-    F += (LdotN * diffuse[X] * LIGHTS[lid].diffuse[X]); \
-    F += FI * specular[X] * LIGHTS[lid].specular[X]; \
-    FO = (uint8_t) (_MIN(F * 255.0f, 255.0f)); \
-    final[T] += _MIN(FO, 255 - final[T]);
+    do { \
+        float F = MATH_fmac(LdotN, LIGHTS[lid].diffuseMaterial[X], LIGHTS[lid].ambientMaterial[X]); \
+        F += (FI * LIGHTS[lid].specularMaterial[X]); \
+        uint8_t FO = (uint8_t) (_MIN(F * 255.0f, 255.0f)); \
+        final[T] += _MIN(FO, 255 - final[T]); \
+    } while(0);
 
     _PROCESS_COMPONENT(R8IDX, 0);
     _PROCESS_COMPONENT(G8IDX, 1);
@@ -322,22 +399,19 @@ GL_FORCE_INLINE void _glLightVertexDirectional(
 }
 
 GL_FORCE_INLINE void _glLightVertexPoint(
-    uint8_t* final, int8_t lid,
-    float LdotN, float NdotH, float att,
-    const float* ambient, const float* diffuse, const float* specular) {
+    uint8_t* final, uint8_t lid,
+    float LdotN, float NdotH, float att) {
 
-    float F;
-    uint8_t FO;
-    float FI = (LdotN != 0.0f);
-    FI = (MATERIAL.exponent) ? faster_pow(FI * NdotH, MATERIAL.exponent) : 1.0f;
+    float FI = (MATERIAL.exponent) ?
+        faster_pow((LdotN != 0.0f) * NdotH, MATERIAL.exponent) : 1.0f;
 
 #define _PROCESS_COMPONENT(T, X) \
-    F = (ambient[X] * LIGHTS[lid].ambient[X]); \
-    F += (LdotN * diffuse[X] * LIGHTS[lid].diffuse[X]); \
-    F += FI * specular[X] * LIGHTS[lid].specular[X]; \
-    FO = (uint8_t) (_MIN(F * att * 255.0f, 255.0f)); \
-\
-    final[T] += _MIN(FO, 255 - final[T]); \
+    do { \
+        float F = MATH_fmac(LdotN, LIGHTS[lid].diffuseMaterial[X], LIGHTS[lid].ambientMaterial[X]); \
+        F += (FI * LIGHTS[lid].specularMaterial[X]); \
+        uint8_t FO = (uint8_t) (_MIN(F * att * 255.0f, 255.0f)); \
+        final[T] += _MIN(FO, 255 - final[T]); \
+    } while(0); \
 
     _PROCESS_COMPONENT(R8IDX, 0);
     _PROCESS_COMPONENT(G8IDX, 1);
@@ -356,40 +430,26 @@ GL_FORCE_INLINE void bgra_to_float(const uint8_t* input, GLfloat* output) {
 }
 
 void _glPerformLighting(Vertex* vertices, const EyeSpaceData* es, const int32_t count) {
-    int8_t i;
+    uint8_t i;
     int32_t j;
 
     Vertex* vertex = vertices;
     const EyeSpaceData* data = es;
-    float base;
 
     /* This is the original vertex colour, before we replace it. It's
      * used for colour material */
     float vdiffuse[4];
 
-    unsigned char isCM = _glIsColorMaterialEnabled();
-
-    /* Update pointers as necessary depending on color material */
-    GLfloat* ambient = (isCM && isAmbientColorMaterial()) ? vdiffuse : MATERIAL.ambient;
-    GLfloat* diffuse = (isCM && isDiffuseColorMaterial()) ? vdiffuse : MATERIAL.diffuse;
-    GLfloat* specular = (isCM && isSpecularColorMaterial()) ? vdiffuse : MATERIAL.specular;
-
     for(j = 0; j < count; ++j, ++vertex, ++data) {
+        __builtin_prefetch(vertex + 1, 1, 1);
+        __builtin_prefetch(data + 1, 0, 1);
+
         /* Unpack the colour for use in glColorMaterial */
-        if(isCM) {
-            bgra_to_float(vertex->bgra, vdiffuse);
-        }
+        bgra_to_float(vertex->bgra, vdiffuse);
+        _glUpdateColourMaterial(vdiffuse);
 
-        /* Initial, non-light related values */
-        base = (SCENE_AMBIENT[0] * ambient[0]) + MATERIAL.emissive[0];
-        vertex->bgra[R8IDX] = (uint8_t)(_MIN(base * 255.0f, 255.0f));
-
-        base = (SCENE_AMBIENT[1] * ambient[1]) + MATERIAL.emissive[1];
-        vertex->bgra[G8IDX] = (uint8_t)(_MIN(base * 255.0f, 255.0f));
-
-        base = (SCENE_AMBIENT[2] * ambient[2]) + MATERIAL.emissive[2];
-        vertex->bgra[B8IDX] = (uint8_t)(_MIN(base * 255.0f, 255.0f));
-        vertex->bgra[A8IDX] = (uint8_t)(_MIN(MATERIAL.diffuse[3] * 255.0f, 255.0f));
+        /* Copy the base colour across */
+        memcpy4(vertex->bgra, MATERIAL.baseColour, sizeof(GLubyte) * 4);
 
         /* Direction to vertex in eye space */
         float Vx = -data->xyz[0];
@@ -402,9 +462,11 @@ void _glPerformLighting(Vertex* vertices, const EyeSpaceData* es, const int32_t 
         const float Nz = data->n[2];
 
         for(i = 0; i < MAX_LIGHTS; ++i) {
+            __builtin_prefetch(LIGHTS + i + 1, 0, 1);
+
             if(!_glIsLightEnabled(i)) continue;
 
-            if(LIGHTS[i].position[3] == 0.0f) {
+            if(LIGHTS[i].isDirectional) {
                 float Lx = LIGHTS[i].position[0] - data->xyz[0];
                 float Ly = LIGHTS[i].position[1] - data->xyz[1];
                 float Lz = LIGHTS[i].position[2] - data->xyz[2];
@@ -416,20 +478,22 @@ void _glPerformLighting(Vertex* vertices, const EyeSpaceData* es, const int32_t 
                 vec3f_normalize(Lx, Ly, Lz);
                 vec3f_normalize(Hx, Hy, Hz);
 
-                const float LdotN = vec3_dot_limited(
-                    &Nx, &Ny, &Nz,
-                    &Lx, &Ly, &Lz
+                float LdotN = MATH_fipr(
+                    Nx, Ny, Nz, 1.0f,
+                    Lx, Ly, Lz, 1.0f
                 );
 
-                const float NdotH = vec3_dot_limited(
-                    &Nx, &Ny, &Nz,
-                    &Hx, &Hy, &Hz
+                float NdotH = MATH_fipr(
+                    Nx, Ny, Nz, 1.0f,
+                    Hx, Hy, Hz, 1.0f
                 );
+
+                if(LdotN < 0.0f) LdotN = 0.0f;
+                if(NdotH < 0.0f) NdotH = 0.0f;
 
                 _glLightVertexDirectional(
                     vertex->bgra,
-                    i, LdotN, NdotH,
-                    ambient, diffuse, specular
+                    i, LdotN, NdotH
                 );
             } else {
                 float Lx = LIGHTS[i].position[0] - data->xyz[0];
@@ -445,7 +509,7 @@ void _glPerformLighting(Vertex* vertices, const EyeSpaceData* es, const int32_t 
                     ) + (LIGHTS[i].quadratic_attenuation * D * D)
                 );
 
-                att = MATH_fsrra(att * att);
+                att = MATH_Fast_Invert(att);
 
                 if(att >= ATTENUATION_THRESHOLD) {
                     float Hx = (Lx + Vx);
@@ -455,20 +519,22 @@ void _glPerformLighting(Vertex* vertices, const EyeSpaceData* es, const int32_t 
                     vec3f_normalize(Lx, Ly, Lz);
                     vec3f_normalize(Hx, Hy, Hz);
 
-                    const float LdotN = vec3_dot_limited(
-                        &Nx, &Ny, &Nz,
-                        &Lx, &Ly, &Lz
+                    float LdotN = MATH_fipr(
+                        Nx, Ny, Nz, 1.0f,
+                        Lx, Ly, Lz, 1.0f
                     );
 
-                    const float NdotH = vec3_dot_limited(
-                        &Nx, &Ny, &Nz,
-                        &Hx, &Hy, &Hz
+                    float NdotH = MATH_fipr(
+                        Nx, Ny, Nz, 1.0f,
+                        Hx, Hy, Hz, 1.0f
                     );
+
+                    if(LdotN < 0.0f) LdotN = 0.0f;
+                    if(NdotH < 0.0f) NdotH = 0.0f;
 
                     _glLightVertexPoint(
                         vertex->bgra,
-                        i, LdotN, NdotH, att,
-                        ambient, diffuse, specular
+                        i, LdotN, NdotH, att
                     );
                 }
             }

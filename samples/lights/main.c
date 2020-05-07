@@ -286,7 +286,7 @@ int main(int argc, char **argv)
     GLdcConfig config;
 
     glKosInitConfig(&config);
-    config.fsaa_enabled = GL_TRUE;
+    config.fsaa_enabled = GL_FALSE;
 
     glKosInitEx(&config);
 
