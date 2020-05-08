@@ -404,8 +404,8 @@ GL_FORCE_INLINE void _glLightVertexDirectional(
 
 #define _PROCESS_COMPONENT(T, X) \
     do { \
-        float F = MATH_fmac(LdotN, LIGHTS[lid].diffuseMaterial[X], LIGHTS[lid].ambientMaterial[X]); \
-        F += (FI * LIGHTS[lid].specularMaterial[X]); \
+        float F = (LdotN * LIGHTS[lid].diffuseMaterial[X] + LIGHTS[lid].ambientMaterial[X]) \
+            + (FI * LIGHTS[lid].specularMaterial[X]); \
         uint8_t FO = (uint8_t) (_MIN(F * 255.0f, 255.0f)); \
         final[T] += _MIN(FO, 255 - final[T]); \
     } while(0);
@@ -426,8 +426,8 @@ GL_FORCE_INLINE void _glLightVertexPoint(
 
 #define _PROCESS_COMPONENT(T, X) \
     do { \
-        float F = MATH_fmac(LdotN, LIGHTS[lid].diffuseMaterial[X], LIGHTS[lid].ambientMaterial[X]); \
-        F += (FI * LIGHTS[lid].specularMaterial[X]); \
+        float F = (LdotN * LIGHTS[lid].diffuseMaterial[X] + LIGHTS[lid].ambientMaterial[X]) \
+            + (FI * LIGHTS[lid].specularMaterial[X]); \
         uint8_t FO = (uint8_t) (_MIN(F * att * 255.0f, 255.0f)); \
         final[T] += _MIN(FO, 255 - final[T]); \
     } while(0); \
@@ -460,9 +460,6 @@ void _glPerformLighting(Vertex* vertices, const EyeSpaceData* es, const int32_t 
     float vdiffuse[4];
 
     for(j = 0; j < count; ++j, ++vertex, ++data) {
-        __builtin_prefetch(vertex + 1, 1, 1);
-        __builtin_prefetch(data + 1, 0, 1);
-
         /* Unpack the colour for use in glColorMaterial */
         bgra_to_float(vertex->bgra, vdiffuse);
         _glUpdateColourMaterial(vdiffuse);
@@ -481,8 +478,6 @@ void _glPerformLighting(Vertex* vertices, const EyeSpaceData* es, const int32_t 
         const float Nz = data->n[2];
 
         for(i = 0; i < MAX_LIGHTS; ++i) {
-            __builtin_prefetch(LIGHTS + i + 1, 0, 1);
-
             if(!LIGHTS[i].isEnabled) continue;
 
             if(LIGHTS[i].isDirectional) {

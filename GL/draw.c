@@ -121,12 +121,7 @@ GL_FORCE_INLINE float clamp(float d, float min, float max) {
 }
 
 static void _readVertexData3f3f(const GLubyte* in, GLubyte* out) {
-    const float* input = (const float*) in;
-    float* output = (float*) out;
-
-    output[0] = input[0];
-    output[1] = input[1];
-    output[2] = input[2];
+    memcpy(out, in, sizeof(float) * 12);
 }
 
 // 10:10:10:2REV format
@@ -182,11 +177,7 @@ static void _readVertexData3ub3f(const GLubyte* input, GLubyte* out) {
 }
 
 static void _readVertexData2f2f(const GLubyte* in, GLubyte* out) {
-    const float* input = (const float*) in;
-    float* output = (float*) out;
-
-    output[0] = input[0];
-    output[1] = input[1];
+    memcpy(out, in, sizeof(float) * 2);
 }
 
 static void _readVertexData2f3f(const GLubyte* in, GLubyte* out) {
