@@ -26,6 +26,8 @@ static GLenum FRONT_FACE = GL_CCW;
 static GLboolean CULLING_ENABLED = GL_FALSE;
 static GLboolean COLOR_MATERIAL_ENABLED = GL_FALSE;
 
+static GLboolean LIGHTING_ENABLED = GL_FALSE;
+
 /* Is the shared texture palette enabled? */
 static GLboolean SHARED_PALETTE_ENABLED = GL_FALSE;
 
@@ -249,15 +251,8 @@ void _glUpdatePVRTextureContext(pvr_poly_cxt_t* context, GLshort textureUnit) {
     }
 }
 
-static GLboolean LIGHTING_ENABLED = GL_FALSE;
-static GLboolean LIGHT_ENABLED[MAX_LIGHTS];
-
 GLboolean _glIsLightingEnabled() {
     return LIGHTING_ENABLED;
-}
-
-GLboolean _glIsLightEnabled(unsigned char light) {
-    return LIGHT_ENABLED[light & 0xF];
 }
 
 GLboolean _glIsColorMaterialEnabled() {
@@ -340,7 +335,7 @@ GLAPI void APIENTRY glEnable(GLenum cap) {
         case GL_LIGHT5:
         case GL_LIGHT6:
         case GL_LIGHT7:
-            LIGHT_ENABLED[cap & 0xF] = GL_TRUE;
+            _glEnableLight(cap & 0xF, GL_TRUE);
         break;
         case GL_NEARZ_CLIPPING_KOS:
             _glEnableClipping(GL_TRUE);
@@ -402,7 +397,7 @@ GLAPI void APIENTRY glDisable(GLenum cap) {
         case GL_LIGHT5:
         case GL_LIGHT6:
         case GL_LIGHT7:
-            LIGHT_ENABLED[cap & 0xF] = GL_FALSE;
+            _glEnableLight(cap & 0xF, GL_FALSE);
         break;
         case GL_NEARZ_CLIPPING_KOS:
             _glEnableClipping(GL_FALSE);

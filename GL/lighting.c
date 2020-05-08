@@ -57,6 +57,7 @@ void _glInitLights() {
         LIGHTS[i].position[0] = LIGHTS[i].position[1] = LIGHTS[i].position[3] = 0.0f;
         LIGHTS[i].position[2] = 1.0f;
         LIGHTS[i].isDirectional = GL_TRUE;
+        LIGHTS[i].isEnabled = GL_FALSE;
 
         LIGHTS[i].spot_direction[0] = LIGHTS[i].spot_direction[1] = 0.0f;
         LIGHTS[i].spot_direction[2] = -1.0f;
@@ -70,6 +71,10 @@ void _glInitLights() {
     }
 
     _glPrecalcLightingValues(~0);
+}
+
+void _glEnableLight(GLubyte light, GLboolean value) {
+    LIGHTS[light].isEnabled = value;
 }
 
 GL_FORCE_INLINE void _glPrecalcLightingValues(GLuint mask) {
@@ -464,7 +469,7 @@ void _glPerformLighting(Vertex* vertices, const EyeSpaceData* es, const int32_t 
         for(i = 0; i < MAX_LIGHTS; ++i) {
             __builtin_prefetch(LIGHTS + i + 1, 0, 1);
 
-            if(!_glIsLightEnabled(i)) continue;
+            if(!LIGHTS[i].isEnabled) continue;
 
             if(LIGHTS[i].isDirectional) {
                 float Lx = LIGHTS[i].position[0] - data->xyz[0];

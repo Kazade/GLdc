@@ -182,6 +182,7 @@ typedef struct {
     GLfloat ambient[4];
 
     GLboolean isDirectional;
+    GLboolean isEnabled;
 
     /* We set these when the material changes
      * so we don't calculate them per-vertex. They are
@@ -321,7 +322,7 @@ GLubyte* _glGetMipmapLocation(const TextureObject* obj, GLuint level);
 GLuint _glGetMipmapLevelCount(const TextureObject* obj);
 
 GLboolean _glIsLightingEnabled();
-GLboolean _glIsLightEnabled(GLubyte light);
+void _glEnableLight(GLubyte light, unsigned char value);
 GLboolean _glIsColorMaterialEnabled();
 
 GLboolean _glIsNormalizeEnabled();
