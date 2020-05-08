@@ -359,7 +359,7 @@ GLubyte _glKosHasError();
 
 #define PVR_VERTEX_BUF_SIZE 2560 * 256
 #define MAX_TEXTURE_UNITS 2
-#define MAX_LIGHTS 4
+#define MAX_LIGHTS 8
 
 #define MIN(a,b) (((a)<(b))?(a):(b))
 #define MAX(a,b) (((a)>(b))?(a):(b))
