@@ -147,9 +147,9 @@ static void _readVertexData1i3f(const GLubyte* in, GLubyte* out) {
 
     input.value = *((const GLint*) in);
 
-    output[0] = (MATH_fmac(2.0f, (float) input.bits.x, 1.0f)) * MULTIPLIER;
-    output[1] = (MATH_fmac(2.0f, (float) input.bits.y, 1.0f)) * MULTIPLIER;
-    output[2] = (MATH_fmac(2.0f, (float) input.bits.z, 1.0f)) * MULTIPLIER;
+    output[0] = (2.0f * (float) input.bits.x + 1.0f) * MULTIPLIER;
+    output[1] = (2.0f * (float) input.bits.y + 1.0f) * MULTIPLIER;
+    output[2] = (2.0f * (float) input.bits.z + 1.0f) * MULTIPLIER;
 }
 
 static void _readVertexData3us3f(const GLubyte* in, GLubyte* out) {
