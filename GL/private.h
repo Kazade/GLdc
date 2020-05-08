@@ -205,6 +205,20 @@ typedef struct {
     float w;
 } Vertex;
 
+
+#define argbcpy(src, dst) \
+    *((GLuint*) src) = *((GLuint*) dst) \
+
+
+#define vec4cpy(src, dst) \
+    do { \
+        src[0] = dst[0]; \
+        src[1] = dst[1]; \
+        src[2] = dst[2]; \
+        src[3] = dst[3]; \
+    } while(0) \
+
+
 #define swapVertex(a, b)   \
 do {                 \
     Vertex c = *a;   \

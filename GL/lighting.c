@@ -81,19 +81,28 @@ GL_FORCE_INLINE void _glPrecalcLightingValues(GLuint mask) {
     float baseColour[4];
 
     /* Pre-calculate lighting values */
-    GLubyte i, j;
+    GLubyte i;
 
     for(i = 0; i < MAX_LIGHTS; ++i) {
-        /* Go through rgba */
-        for(j = 0; j < 4; ++j) {
-            if(mask & AMBIENT_MASK)
-                LIGHTS[i].ambientMaterial[j] = LIGHTS[i].ambient[j] * MATERIAL.ambient[j];
+        if(mask & AMBIENT_MASK) {
+            LIGHTS[i].ambientMaterial[0] = LIGHTS[i].ambient[0] * MATERIAL.ambient[0];
+            LIGHTS[i].ambientMaterial[1] = LIGHTS[i].ambient[1] * MATERIAL.ambient[1];
+            LIGHTS[i].ambientMaterial[2] = LIGHTS[i].ambient[2] * MATERIAL.ambient[2];
+            LIGHTS[i].ambientMaterial[3] = LIGHTS[i].ambient[3] * MATERIAL.ambient[3];
+        }
 
-            if(mask & DIFFUSE_MASK)
-                LIGHTS[i].diffuseMaterial[j] = LIGHTS[i].diffuse[j] * MATERIAL.diffuse[j];
+        if(mask & DIFFUSE_MASK) {
+            LIGHTS[i].diffuseMaterial[0] = LIGHTS[i].diffuse[0] * MATERIAL.diffuse[0];
+            LIGHTS[i].diffuseMaterial[1] = LIGHTS[i].diffuse[1] * MATERIAL.diffuse[1];
+            LIGHTS[i].diffuseMaterial[2] = LIGHTS[i].diffuse[2] * MATERIAL.diffuse[2];
+            LIGHTS[i].diffuseMaterial[3] = LIGHTS[i].diffuse[3] * MATERIAL.diffuse[3];
+        }
 
-            if(mask & SPECULAR_MASK)
-                LIGHTS[i].specularMaterial[j] = LIGHTS[i].specular[j] * MATERIAL.specular[j];
+        if(mask & SPECULAR_MASK) {
+            LIGHTS[i].specularMaterial[0] = LIGHTS[i].specular[0] * MATERIAL.specular[0];
+            LIGHTS[i].specularMaterial[1] = LIGHTS[i].specular[1] * MATERIAL.specular[1];
+            LIGHTS[i].specularMaterial[2] = LIGHTS[i].specular[2] * MATERIAL.specular[2];
+            LIGHTS[i].specularMaterial[3] = LIGHTS[i].specular[3] * MATERIAL.specular[3];
         }
     }
 
@@ -265,20 +274,20 @@ void APIENTRY glMaterialfv(GLenum face, GLenum pname, const GLfloat *params) {
             glMaterialf(face, pname, *params);
         break;
         case GL_AMBIENT:
-            memcpy(MATERIAL.ambient, params, sizeof(GLfloat) * 4);
+            vec4cpy(MATERIAL.ambient, params);
         break;
         case GL_DIFFUSE:
-            memcpy(MATERIAL.diffuse, params, sizeof(GLfloat) * 4);
+            vec4cpy(MATERIAL.diffuse, params);
         break;
         case GL_SPECULAR:
-            memcpy(MATERIAL.specular, params, sizeof(GLfloat) * 4);
+            vec4cpy(MATERIAL.specular, params);
         break;
         case GL_EMISSION:
-            memcpy(MATERIAL.emissive, params, sizeof(GLfloat) * 4);
+            vec4cpy(MATERIAL.emissive, params);
         break;
         case GL_AMBIENT_AND_DIFFUSE: {
-            memcpy(MATERIAL.ambient, params, sizeof(GLfloat) * 4);
-            memcpy(MATERIAL.diffuse, params, sizeof(GLfloat) * 4);
+            vec4cpy(MATERIAL.ambient, params);
+            vec4cpy(MATERIAL.diffuse, params);
         } break;
         case GL_COLOR_INDEXES:
         default: {
@@ -322,16 +331,21 @@ void _glUpdateColourMaterial(GLfloat* colour) {
         return;
     }
 
-    if(COLOR_MATERIAL_MODE == GL_AMBIENT || COLOR_MATERIAL_MODE == GL_AMBIENT_AND_DIFFUSE) {
-        memcpy4(MATERIAL.ambient, colour, sizeof(GLfloat) * 4);
-    }
-
-    if(COLOR_MATERIAL_MODE == GL_DIFFUSE || COLOR_MATERIAL_MODE == GL_AMBIENT_AND_DIFFUSE) {
-        memcpy4(MATERIAL.diffuse, colour, sizeof(GLfloat) * 4);
-    }
-
-    if(COLOR_MATERIAL_MODE == GL_EMISSION) {
-        memcpy4(MATERIAL.emissive, colour, sizeof(GLfloat) * 4);
+    switch(COLOR_MATERIAL_MODE) {
+        case GL_AMBIENT:
+            vec4cpy(MATERIAL.ambient, colour);
+        break;
+        case GL_DIFFUSE:
+            vec4cpy(MATERIAL.diffuse, colour);
+        break;
+        case GL_EMISSION:
+            vec4cpy(MATERIAL.emissive, colour);
+        break;
+        case GL_AMBIENT_AND_DIFFUSE:
+        default: {
+            vec4cpy(MATERIAL.ambient, colour);
+            vec4cpy(MATERIAL.diffuse, colour);
+        }
     }
 
     _glPrecalcLightingValues(COLOR_MATERIAL_MASK);
@@ -454,7 +468,7 @@ void _glPerformLighting(Vertex* vertices, const EyeSpaceData* es, const int32_t 
         _glUpdateColourMaterial(vdiffuse);
 
         /* Copy the base colour across */
-        memcpy4(vertex->bgra, MATERIAL.baseColour, sizeof(GLubyte) * 4);
+        argbcpy(vertex->bgra, MATERIAL.baseColour);
 
         /* Direction to vertex in eye space */
         float Vx = -data->xyz[0];
