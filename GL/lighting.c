@@ -109,10 +109,10 @@ GL_FORCE_INLINE void _glPrecalcLightingValues(GLuint mask) {
     /* If ambient or emission are updated, we need to update
      * the base colour. */
     if((mask & AMBIENT_MASK) || (mask & EMISSION_MASK) || (mask & SCENE_AMBIENT_MASK)) {
-        baseColour[0] = MATH_fmac(SCENE_AMBIENT[0], MATERIAL.ambient[0], MATERIAL.emissive[0]);
-        baseColour[1] = MATH_fmac(SCENE_AMBIENT[1], MATERIAL.ambient[1], MATERIAL.emissive[1]);
-        baseColour[2] = MATH_fmac(SCENE_AMBIENT[2], MATERIAL.ambient[2], MATERIAL.emissive[2]);
-        baseColour[3] = MATH_fmac(SCENE_AMBIENT[3], MATERIAL.ambient[3], MATERIAL.emissive[3]);
+        baseColour[0] = SCENE_AMBIENT[0] * MATERIAL.ambient[0] + MATERIAL.emissive[0];
+        baseColour[1] = SCENE_AMBIENT[1] * MATERIAL.ambient[1] + MATERIAL.emissive[1];
+        baseColour[2] = SCENE_AMBIENT[2] * MATERIAL.ambient[2] + MATERIAL.emissive[2];
+        baseColour[3] = SCENE_AMBIENT[3] * MATERIAL.ambient[3] + MATERIAL.emissive[3];
 
         MATERIAL.baseColour[R8IDX] = (uint8_t)(_MIN(baseColour[0] * 255.0f, 255.0f));
         MATERIAL.baseColour[G8IDX] = (uint8_t)(_MIN(baseColour[1] * 255.0f, 255.0f));
@@ -492,14 +492,13 @@ void _glPerformLighting(Vertex* vertices, const EyeSpaceData* es, const int32_t 
                 vec3f_normalize(Lx, Ly, Lz);
                 vec3f_normalize(Hx, Hy, Hz);
 
-                float LdotN = MATH_fipr(
-                    Nx, Ny, Nz, 1.0f,
-                    Lx, Ly, Lz, 1.0f
+                float LdotN, NdotH;
+                vec3f_dot(
+                    Nx, Ny, Nz, Lx, Ly, Lz, LdotN
                 );
 
-                float NdotH = MATH_fipr(
-                    Nx, Ny, Nz, 1.0f,
-                    Hx, Hy, Hz, 1.0f
+                vec3f_dot(
+                    Nx, Ny, Nz, Hx, Hy, Hz, NdotH
                 );
 
                 if(LdotN < 0.0f) LdotN = 0.0f;
@@ -533,14 +532,13 @@ void _glPerformLighting(Vertex* vertices, const EyeSpaceData* es, const int32_t 
                     vec3f_normalize(Lx, Ly, Lz);
                     vec3f_normalize(Hx, Hy, Hz);
 
-                    float LdotN = MATH_fipr(
-                        Nx, Ny, Nz, 1.0f,
-                        Lx, Ly, Lz, 1.0f
+                    float LdotN, NdotH;
+                    vec3f_dot(
+                        Nx, Ny, Nz, Lx, Ly, Lz, LdotN
                     );
 
-                    float NdotH = MATH_fipr(
-                        Nx, Ny, Nz, 1.0f,
-                        Hx, Hy, Hz, 1.0f
+                    vec3f_dot(
+                        Nx, Ny, Nz, Hx, Hy, Hz, NdotH
                     );
 
                     if(LdotN < 0.0f) LdotN = 0.0f;
