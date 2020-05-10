@@ -127,7 +127,7 @@ static int _calcPVRBlendFactor(GLenum factor) {
 }
 
 static void _updatePVRBlend(pvr_poly_cxt_t* context) {
-    if(BLEND_ENABLED) {
+    if(BLEND_ENABLED || ALPHA_TEST_ENABLED) {
         context->gen.alpha = PVR_ALPHA_ENABLE;
     } else {
         context->gen.alpha = PVR_ALPHA_DISABLE;
@@ -170,7 +170,7 @@ void _glUpdatePVRTextureContext(pvr_poly_cxt_t* context, GLshort textureUnit) {
         return;
     }
 
-    context->txr.alpha = (BLEND_ENABLED) ? PVR_TXRALPHA_ENABLE : PVR_TXRALPHA_DISABLE;
+    context->txr.alpha = (BLEND_ENABLED || ALPHA_TEST_ENABLED) ? PVR_TXRALPHA_ENABLE : PVR_TXRALPHA_DISABLE;
 
     GLuint filter = PVR_FILTER_NEAREST;
     GLboolean enableMipmaps = GL_FALSE;
@@ -326,6 +326,7 @@ GLAPI void APIENTRY glEnable(GLenum cap) {
         break;
         case GL_ALPHA_TEST: {
             ALPHA_TEST_ENABLED = GL_TRUE;
+            _updatePVRBlend(&GL_CONTEXT);
         } break;
         case GL_LIGHT0:
         case GL_LIGHT1:
