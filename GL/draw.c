@@ -937,6 +937,9 @@ static void light(SubmissionTarget* target) {
     _glPerformLighting(vertex, ES, target->count);
 }
 
+#define PVR_MIN_Z 0.2f
+#define PVR_MAX_Z 1.0 + PVR_MIN_Z
+
 GL_FORCE_INLINE void divide(SubmissionTarget* target) {
     TRACE();
 
@@ -947,26 +950,8 @@ GL_FORCE_INLINE void divide(SubmissionTarget* target) {
         float f = MATH_Fast_Invert(vertex->w);
         vertex->xyz[0] *= f;
         vertex->xyz[1] *= f;
-
-        /* Unlike normal GL graphics, the PVR takes Z coordinates from +EPSILON to +inf
-         * this is annoying because a traditional Z divide plus shift may end up with
-         * a coordinate of 0 which isn't valid. This is because the PVR
-         * expects invW as the coordinate, but that breaks orthographic projections
-         *
-         * So instead, we do a normal z/w divide, but shift from -1 to +1, and
-         * make it 0.001f to 2.001f, then we divide by 0.5 to bring it to
-         * 0.0005 to 1.0005 and finally we invert by subtracting from 1.001
-         * to just ensure we never end up with a value at 0.0 due to rounding
-         * errors */
-        vertex->xyz[2] = 1.001f - (((vertex->xyz[2] * f) + 1.001f) * 0.5f);
-
-        /* FIXME: Consider taking glDepthRange into account. PVR is designed to use 1/w
-         * which is unlike most GPUs - this apparently provides advantages.
-         *
-         * This can be done (if Z is between -1 and 1) with:
-         *
-         * //((DEPTH_RANGE_MULTIPLIER_L * vertex->xyz[2] * f) + DEPTH_RANGE_MULTIPLIER_H);
-         */
+        vertex->xyz[2] *= f;
+        vertex->xyz[2] = PVR_MAX_Z - ((vertex->xyz[2] + 1.0f) * 0.5f);
         ++vertex;
     }
 }
