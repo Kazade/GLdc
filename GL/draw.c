@@ -114,14 +114,8 @@ typedef void (*FloatParseFunc)(GLfloat* out, const GLubyte* in);
 typedef void (*ByteParseFunc)(GLubyte* out, const GLubyte* in);
 typedef void (*PolyBuildFunc)(Vertex* first, Vertex* previous, Vertex* vertex, Vertex* next, const GLsizei i);
 
-
-GL_FORCE_INLINE float clamp(float d, float min, float max) {
-    const float t = d < min ? min : d;
-    return t > max ? max : t;
-}
-
 static void _readVertexData3f3f(const GLubyte* in, GLubyte* out) {
-    memcpy(out, in, sizeof(float) * 12);
+    vec3cpy(out, in);
 }
 
 // 10:10:10:2REV format
@@ -177,15 +171,14 @@ static void _readVertexData3ub3f(const GLubyte* input, GLubyte* out) {
 }
 
 static void _readVertexData2f2f(const GLubyte* in, GLubyte* out) {
-    memcpy(out, in, sizeof(float) * 2);
+    vec2cpy(out, in);
 }
 
 static void _readVertexData2f3f(const GLubyte* in, GLubyte* out) {
     const float* input = (const float*) in;
     float* output = (float*) out;
 
-    output[0] = input[0];
-    output[1] = input[1];
+    vec2cpy(output, input);
     output[2] = 0.0f;
 }
 

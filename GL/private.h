@@ -166,7 +166,7 @@ typedef struct {
 
     /* Base ambient + emission colour for
      * the current material + light */
-    GLubyte baseColour[4];
+    GLfloat baseColour[4];
 } Material;
 
 typedef struct {
@@ -206,18 +206,34 @@ typedef struct {
 } Vertex;
 
 
-#define argbcpy(src, dst) \
-    *((GLuint*) src) = *((GLuint*) dst) \
+#define argbcpy(dst, src) \
+    *((GLuint*) dst) = *((GLuint*) src) \
 
 
-#define vec4cpy(src, dst) \
-    do { \
-        src[0] = dst[0]; \
-        src[1] = dst[1]; \
-        src[2] = dst[2]; \
-        src[3] = dst[3]; \
-    } while(0) \
+typedef struct {
+    float xy[2];
+} _glvec2;
 
+typedef struct {
+    float xyz[3];
+} _glvec3;
+
+typedef struct {
+    float xyzw[4];
+} _glvec4;
+
+#define vec2cpy(dst, src) \
+    *((_glvec2*) dst) = *((_glvec2*) src)
+
+#define vec3cpy(dst, src) \
+    *((_glvec3*) dst) = *((_glvec3*) src)
+
+#define vec4cpy(dst, src) \
+    *((_glvec4*) dst) = *((_glvec4*) src)
+
+GL_FORCE_INLINE float clamp(float d, float min, float max) {
+    return (d < min) ? min : (d > max) ? max : d;
+}
 
 #define swapVertex(a, b)   \
 do {                 \
