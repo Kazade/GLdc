@@ -412,10 +412,8 @@ GL_FORCE_INLINE void _glLightVertexDirectional(
         faster_pow((LdotN != 0.0f) * NdotH, MATERIAL.exponent) : 1.0f;
 
 #define _PROCESS_COMPONENT(X) \
-    do { \
-        final[X] += (LdotN * LIGHTS[lid].diffuseMaterial[X] + LIGHTS[lid].ambientMaterial[X]) \
-            + (FI * LIGHTS[lid].specularMaterial[X]); \
-    } while(0);
+    final[X] += (LdotN * LIGHTS[lid].diffuseMaterial[X] + LIGHTS[lid].ambientMaterial[X]) \
+        + (FI * LIGHTS[lid].specularMaterial[X]); \
 
     _PROCESS_COMPONENT(0);
     _PROCESS_COMPONENT(1);
@@ -432,10 +430,8 @@ GL_FORCE_INLINE void _glLightVertexPoint(
         faster_pow((LdotN != 0.0f) * NdotH, MATERIAL.exponent) : 1.0f;
 
 #define _PROCESS_COMPONENT(X) \
-    do { \
-        final[X] += ((LdotN * LIGHTS[lid].diffuseMaterial[X] + LIGHTS[lid].ambientMaterial[X]) \
-            + (FI * LIGHTS[lid].specularMaterial[X])) * att; \
-    } while(0); \
+    final[X] += ((LdotN * LIGHTS[lid].diffuseMaterial[X] + LIGHTS[lid].ambientMaterial[X]) \
+        + (FI * LIGHTS[lid].specularMaterial[X])) * att; \
 
     _PROCESS_COMPONENT(0);
     _PROCESS_COMPONENT(1);
