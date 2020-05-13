@@ -114,14 +114,8 @@ typedef void (*FloatParseFunc)(GLfloat* out, const GLubyte* in);
 typedef void (*ByteParseFunc)(GLubyte* out, const GLubyte* in);
 typedef void (*PolyBuildFunc)(Vertex* first, Vertex* previous, Vertex* vertex, Vertex* next, const GLsizei i);
 
-
-GL_FORCE_INLINE float clamp(float d, float min, float max) {
-    const float t = d < min ? min : d;
-    return t > max ? max : t;
-}
-
 static void _readVertexData3f3f(const GLubyte* in, GLubyte* out) {
-    memcpy(out, in, sizeof(float) * 12);
+    vec3cpy(out, in);
 }
 
 // 10:10:10:2REV format
@@ -177,15 +171,14 @@ static void _readVertexData3ub3f(const GLubyte* input, GLubyte* out) {
 }
 
 static void _readVertexData2f2f(const GLubyte* in, GLubyte* out) {
-    memcpy(out, in, sizeof(float) * 2);
+    vec2cpy(out, in);
 }
 
 static void _readVertexData2f3f(const GLubyte* in, GLubyte* out) {
     const float* input = (const float*) in;
     float* output = (float*) out;
 
-    output[0] = input[0];
-    output[1] = input[1];
+    vec2cpy(output, input);
     output[2] = 0.0f;
 }
 
@@ -937,36 +930,34 @@ static void light(SubmissionTarget* target) {
     _glPerformLighting(vertex, ES, target->count);
 }
 
+#define PVR_MIN_Z 0.2f
+#define PVR_MAX_Z 1.0 + PVR_MIN_Z
+
 GL_FORCE_INLINE void divide(SubmissionTarget* target) {
     TRACE();
 
     /* Perform perspective divide on each vertex */
     Vertex* vertex = _glSubmissionTargetStart(target);
 
+    /* PVR expects with invW or invZ as the final depth coordinate,
+     * but there are issues with that. Using invW means that orthographic
+     * projections fail (because W is always 1). invZ fails when stuff is near
+     * the near plane (because it ends up <= 0) so what we do is take invZ
+     * and add the near-plane distance (plus an epsilon value) to take it above 0
+     * then invert that. */
+
+    Matrix4x4* proj = _glGetProjectionMatrix();
+    float m22 = (*proj)[10];
+    float m32 = (*proj)[14];
+    float zNear = MATH_Fast_Divide((2.0f * m32), (2.0f * m22 - 2.0f));
+
     ITERATE(target->count) {
         float f = MATH_Fast_Invert(vertex->w);
         vertex->xyz[0] *= f;
         vertex->xyz[1] *= f;
-
-        /* Unlike normal GL graphics, the PVR takes Z coordinates from +EPSILON to +inf
-         * this is annoying because a traditional Z divide plus shift may end up with
-         * a coordinate of 0 which isn't valid. This is because the PVR
-         * expects invW as the coordinate, but that breaks orthographic projections
-         *
-         * So instead, we do a normal z/w divide, but shift from -1 to +1, and
-         * make it 0.001f to 2.001f, then we divide by 0.5 to bring it to
-         * 0.0005 to 1.0005 and finally we invert by subtracting from 1.001
-         * to just ensure we never end up with a value at 0.0 due to rounding
-         * errors */
-        vertex->xyz[2] = 1.001f - (((vertex->xyz[2] * f) + 1.001f) * 0.5f);
-
-        /* FIXME: Consider taking glDepthRange into account. PVR is designed to use 1/w
-         * which is unlike most GPUs - this apparently provides advantages.
-         *
-         * This can be done (if Z is between -1 and 1) with:
-         *
-         * //((DEPTH_RANGE_MULTIPLIER_L * vertex->xyz[2] * f) + DEPTH_RANGE_MULTIPLIER_H);
-         */
+        vertex->xyz[2] = MATH_Fast_Invert(
+            vertex->xyz[2] + zNear + 0.05f
+        );
         ++vertex;
     }
 }
