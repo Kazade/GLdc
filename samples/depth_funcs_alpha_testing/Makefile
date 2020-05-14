@@ -1,4 +1,4 @@
-TARGET = depth_funcs.elf
+TARGET = depth_funcs_alpha_testing.elf
 OBJS = main.o gl_png.o
 KOS_CFLAGS += -std=c99
 

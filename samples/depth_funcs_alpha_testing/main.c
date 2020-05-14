@@ -21,7 +21,7 @@ void InitGL(int Width, int Height)	        // We call this right after our OpenG
 
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();				// Reset The Projection Matrix
-    gluPerspective(45.0f,(GLfloat)Width/(GLfloat)Height,0.1f,100.0f);	// Calculate The Aspect Ratio Of The Window
+    glOrtho(-3, 3, -3, 3, -10, 10);
     glEnable(GL_TEXTURE_2D);
     glMatrixMode(GL_MODELVIEW);
 }
@@ -37,7 +37,8 @@ void ReSizeGLScene(int Width, int Height)
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
 
-    gluPerspective(45.0f,(GLfloat)Width/(GLfloat)Height,0.1f,100.0f);
+    glOrtho(-3, 3, -3, 3, -10, 10);
+
     glMatrixMode(GL_MODELVIEW);
 }
 
