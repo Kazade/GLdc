@@ -79,12 +79,11 @@ void DrawGLScene()
 
     // RIGHT SECTION
     // This should draw 2 quad, a red first, then and overlapping blue one.
-    // This section uses a LOWER Z VALUE(-0.01f), so the blue quad should be in FRONT of the red quad.
-    // lerabot's note : changing the z value to positive gives the desired output.
+    // This section uses a HIGHER Z VALUE(0.01f), so the blue quad should be in FRONT of the red quad.
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     DrawQuad(RED);
-    glTranslatef(1.0, 0, -0.01);
+    glTranslatef(1.0, 0, 0.01);
     DrawQuad(BLUE);
     glDisable(GL_BLEND);
 
