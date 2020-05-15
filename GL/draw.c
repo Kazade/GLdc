@@ -939,24 +939,12 @@ GL_FORCE_INLINE void divide(SubmissionTarget* target) {
     /* Perform perspective divide on each vertex */
     Vertex* vertex = _glSubmissionTargetStart(target);
 
-    /* PVR expects with invW or invZ as the final depth coordinate,
-     * but there are issues with that. Using invW means that orthographic
-     * projections fail (because W is always 1). invZ fails when stuff is near
-     * the near plane (because it ends up <= 0) so what we do is take invZ
-     * and add the near-plane distance (plus an epsilon value) to take it above 0
-     * then invert that. */
-
-    Matrix4x4* proj = _glGetProjectionMatrix();
-    float m22 = (*proj)[10];
-    float m32 = (*proj)[14];
-    float zNear = MATH_Fast_Divide((2.0f * m32), (2.0f * m22 - 2.0f));
-
     ITERATE(target->count) {
         float f = MATH_Fast_Invert(vertex->w);
         vertex->xyz[0] *= f;
         vertex->xyz[1] *= f;
         vertex->xyz[2] = MATH_Fast_Invert(
-            vertex->xyz[2] + zNear + 0.05f
+            (vertex->xyz[2] * f) * 0.5f + 0.55f
         );
         ++vertex;
     }

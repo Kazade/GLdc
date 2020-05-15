@@ -30,7 +30,8 @@ void ReSizeGLScene(int Width, int Height)
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
 
-    //gluPerspective(45.0f,(GLfloat)Width/(GLfloat)Height,0.1f,100.0f);
+    glOrtho(0.0, 640.0, 0.0, 480.0, 0.0, 1.0);
+
     glMatrixMode(GL_MODELVIEW);
 }
 
