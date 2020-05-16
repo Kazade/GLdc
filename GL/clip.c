@@ -250,10 +250,14 @@ void _glClipTriangleStrip(SubmissionTarget* target, uint8_t fladeShade) {
          * A vertex is visible if it's in front of the camera (W > 0)
          * and it's in front of the near plane (Z > -W)
          */
+
+#define _VERT_VISIBLE(v) \
+    (v->w >= 0 && v->xyz[2] >= -v->w) \
+
         uint8_t visible = (
-            ((v1->w >= 0 && v1->xyz[2] >= -v1->w) ? 4 : 0) |
-            ((v2->w >= 0 && v2->xyz[2] >= -v2->w) ? 2 : 0) |
-            ((v3->w >= 0 && v3->xyz[2] >= -v3->w) ? 1 : 0)
+            (_VERT_VISIBLE(v1) ? 4 : 0) |
+            (_VERT_VISIBLE(v2) ? 2 : 0) |
+            (_VERT_VISIBLE(v3) ? 1 : 0)
         );
 
         switch(visible) {
@@ -347,7 +351,7 @@ void _glClipTriangleStrip(SubmissionTarget* target, uint8_t fladeShade) {
                     v3->flags = VERTEX_CMD;
 
                     triangle = -1;
-                } else {                    
+                } else {
                     Vertex* v4 = v3 + 1;
                     uint32_t vi4 = v4 - start;
 
@@ -360,7 +364,9 @@ void _glClipTriangleStrip(SubmissionTarget* target, uint8_t fladeShade) {
                     TO_CLIP[CLIP_COUNT].extra[1] = *(VertexExtra*) aligned_vector_at(target->extras, vi2);
                     TO_CLIP[CLIP_COUNT].extra[2] = *ve4;
 
-                    visible = ((v3->w > 0) ? 4 : 0) | ((v2->w > 0) ? 2 : 0) | ((v4->w > 0) ? 1 : 0);
+                    visible = (_VERT_VISIBLE(v3) ? 4 : 0) |
+                              (_VERT_VISIBLE(v2) ? 2 : 0) |
+                              (_VERT_VISIBLE(v4) ? 1 : 0);
 
                     TO_CLIP[CLIP_COUNT].visible = visible;
                     ++CLIP_COUNT;
