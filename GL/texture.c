@@ -162,7 +162,7 @@ static GLuint _glGetMipmapDataOffset(const TextureObject* obj, GLuint level) {
         fprintf(stderr, "ERROR: Accessing memory location of mipmaps on non-square texture\n");
         return obj->baseDataOffset;
     }
-    
+
     if(obj->isPaletted){
         switch(size >> level){
             case 1024:
@@ -206,7 +206,7 @@ static GLuint _glGetMipmapDataOffset(const TextureObject* obj, GLuint level) {
             break;
             case 512:
             offset = 0x05556;
-            break;        
+            break;
             case 256:
             offset = 0x01556;
             break;
@@ -345,7 +345,7 @@ static void _glInitializeTextureObject(TextureObject* txr, unsigned int id) {
     txr->width = txr->height = 0;
     txr->mipmap = 0;
     txr->uv_clamp = 0;
-    txr->env = PVR_TXRENV_MODULATE;
+    txr->env = PVR_TXRENV_MODULATEALPHA;
     txr->data = NULL;
     txr->mipmapCount = 0;
     txr->minFilter = GL_NEAREST;
@@ -445,7 +445,7 @@ void APIENTRY glTexEnvi(GLenum target, GLenum pname, GLint param) {
     failures += _glCheckValidEnum(target, target_values, __func__);
 
     TextureObject* active = TEXTURE_UNITS[ACTIVE_TEXTURE];
-    
+
     if(!active) {
         return;
     }
@@ -460,7 +460,7 @@ void APIENTRY glTexEnvi(GLenum target, GLenum pname, GLint param) {
             GLint param_values [] = {GL_MODULATE, GL_DECAL, GL_REPLACE, 0};
             failures += _glCheckValidEnum(pname, pname_values, __func__);
             failures += _glCheckValidEnum(param, param_values, __func__);
-            
+
             if(failures) {
                 return;
             }
@@ -485,7 +485,7 @@ void APIENTRY glTexEnvi(GLenum target, GLenum pname, GLint param) {
             {
             GLint pname_values [] = {GL_TEXTURE_LOD_BIAS_EXT, 0};
             failures += _glCheckValidEnum(pname, pname_values, __func__);
-            failures += (param > GL_MAX_TEXTURE_LOD_BIAS_DEFAULT || param < -GL_MAX_TEXTURE_LOD_BIAS_DEFAULT); 
+            failures += (param > GL_MAX_TEXTURE_LOD_BIAS_DEFAULT || param < -GL_MAX_TEXTURE_LOD_BIAS_DEFAULT);
             if(failures) {
                 return;
             }
@@ -992,7 +992,7 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
             _glKosThrowError(GL_INVALID_VALUE, __func__);
         }
 
-        
+
         if((h < 8 || (h & -h) != h)) {
             /* height is not a power of two. Must be!*/
             INFO_MSG("");
@@ -1464,11 +1464,11 @@ GLAPI void APIENTRY glTexSubImage2D(
     _GL_UNUSED(level);
     _GL_UNUSED(xoffset);
     _GL_UNUSED(yoffset);
-    _GL_UNUSED(width);    
-    _GL_UNUSED(height);      
-    _GL_UNUSED(format);      
-    _GL_UNUSED(type);      
-    _GL_UNUSED(pixels);      
+    _GL_UNUSED(width);
+    _GL_UNUSED(height);
+    _GL_UNUSED(format);
+    _GL_UNUSED(type);
+    _GL_UNUSED(pixels);
     assert(0 && "Not Implemented");
 }
 
@@ -1477,10 +1477,10 @@ GLAPI void APIENTRY glCopyTexSubImage2D(GLenum target, GLint level, GLint xoffse
     _GL_UNUSED(level);
     _GL_UNUSED(xoffset);
     _GL_UNUSED(yoffset);
-    _GL_UNUSED(x);    
-    _GL_UNUSED(y);    
-    _GL_UNUSED(width);    
-    _GL_UNUSED(height);      
+    _GL_UNUSED(x);
+    _GL_UNUSED(y);
+    _GL_UNUSED(width);
+    _GL_UNUSED(height);
     assert(0 && "Not Implemented");
 }
 
@@ -1490,7 +1490,7 @@ GLAPI void APIENTRY glCopyTexSubImage1D(GLenum target, GLint level, GLint xoffse
     _GL_UNUSED(xoffset);
     _GL_UNUSED(x);
     _GL_UNUSED(y);
-    _GL_UNUSED(width); 
+    _GL_UNUSED(width);
     assert(0 && "Not Implemented");
 }
 
@@ -1498,11 +1498,11 @@ GLAPI void APIENTRY glCopyTexImage2D(GLenum target, GLint level, GLenum internal
     _GL_UNUSED(target);
     _GL_UNUSED(level);
     _GL_UNUSED(internalformat);
-    _GL_UNUSED(x);    
-    _GL_UNUSED(y);    
-    _GL_UNUSED(width);    
-    _GL_UNUSED(height);    
-    _GL_UNUSED(border);    
+    _GL_UNUSED(x);
+    _GL_UNUSED(y);
+    _GL_UNUSED(width);
+    _GL_UNUSED(height);
+    _GL_UNUSED(border);
     assert(0 && "Not Implemented");
 }
 
@@ -1510,20 +1510,20 @@ GLAPI void APIENTRY glCopyTexImage1D(GLenum target, GLint level, GLenum internal
     _GL_UNUSED(target);
     _GL_UNUSED(level);
     _GL_UNUSED(internalformat);
-    _GL_UNUSED(x);    
-    _GL_UNUSED(y);    
-    _GL_UNUSED(width);    
-    _GL_UNUSED(border);    
+    _GL_UNUSED(x);
+    _GL_UNUSED(y);
+    _GL_UNUSED(width);
+    _GL_UNUSED(border);
     assert(0 && "Not Implemented");
 }
 
 GLAPI void APIENTRY glReadPixels(GLint x, GLint y, GLsizei width, GLsizei height, GLenum format, GLenum type, GLvoid *pixels) {
-    _GL_UNUSED(x);    
-    _GL_UNUSED(y);    
-    _GL_UNUSED(width);    
-    _GL_UNUSED(height);    
-    _GL_UNUSED(format);    
-    _GL_UNUSED(type);    
-    _GL_UNUSED(pixels);    
+    _GL_UNUSED(x);
+    _GL_UNUSED(y);
+    _GL_UNUSED(width);
+    _GL_UNUSED(height);
+    _GL_UNUSED(format);
+    _GL_UNUSED(type);
+    _GL_UNUSED(pixels);
     assert(0 && "Not Implemented");
 }
