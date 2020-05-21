@@ -332,31 +332,32 @@ GL_FORCE_INLINE void bgra_to_float(const uint8_t* input, GLfloat* output) {
     output[3] = ((float) input[A8IDX]) * scale;
 }
 
-void _glUpdateColourMaterial(const GLubyte* argb) {
-    if(!_glIsColorMaterialEnabled()) {
-        return;
-    }
-
+void _glUpdateColourMaterialA(const GLubyte* argb) {
     float colour[4];
     bgra_to_float(argb, colour);
+    vec4cpy(MATERIAL.ambient, colour);
+    _glPrecalcLightingValues(COLOR_MATERIAL_MASK);
+}
 
-    switch(COLOR_MATERIAL_MODE) {
-        case GL_AMBIENT:
-            vec4cpy(MATERIAL.ambient, colour);
-        break;
-        case GL_DIFFUSE:
-            vec4cpy(MATERIAL.diffuse, colour);
-        break;
-        case GL_EMISSION:
-            vec4cpy(MATERIAL.emissive, colour);
-        break;
-        case GL_AMBIENT_AND_DIFFUSE:
-        default: {
-            vec4cpy(MATERIAL.ambient, colour);
-            vec4cpy(MATERIAL.diffuse, colour);
-        }
-    }
+void _glUpdateColourMaterialD(const GLubyte* argb) {
+    float colour[4];
+    bgra_to_float(argb, colour);
+    vec4cpy(MATERIAL.diffuse, colour);
+    _glPrecalcLightingValues(COLOR_MATERIAL_MASK);
+}
 
+void _glUpdateColourMaterialE(const GLubyte* argb) {
+    float colour[4];
+    bgra_to_float(argb, colour);
+    vec4cpy(MATERIAL.emissive, colour);
+    _glPrecalcLightingValues(COLOR_MATERIAL_MASK);
+}
+
+void _glUpdateColourMaterialAD(const GLubyte* argb) {
+    float colour[4];
+    bgra_to_float(argb, colour);
+    vec4cpy(MATERIAL.ambient, colour);
+    vec4cpy(MATERIAL.diffuse, colour);
     _glPrecalcLightingValues(COLOR_MATERIAL_MASK);
 }
 
@@ -450,12 +451,38 @@ void _glPerformLighting(Vertex* vertices, const EyeSpaceData* es, const int32_t 
     /* Final colour of lighting output (will be clamped to argb) */
     float final[4];
 
-    for(j = 0; j < count; ++j, ++vertex, ++data) {
-        _glUpdateColourMaterial(vertex->bgra);
+    /* Calculate the colour material function once */
+    void (*updateColourMaterial)(const GLubyte*) = NULL;
+
+    if(_glIsColorMaterialEnabled()) {
+        switch(COLOR_MATERIAL_MODE) {
+            case GL_AMBIENT:
+                updateColourMaterial = _glUpdateColourMaterialA;
+            break;
+            case GL_DIFFUSE:
+                updateColourMaterial = _glUpdateColourMaterialD;
+            break;
+            case GL_EMISSION:
+                updateColourMaterial = _glUpdateColourMaterialE;
+            break;
+            case GL_AMBIENT_AND_DIFFUSE:
+                updateColourMaterial = _glUpdateColourMaterialAD;
+            break;
+        }
+    }
+
+    /* Calculate the ambient lighting and set up colour material */
+    for(j = 0; j < count; ++j, ++vertex) {
+        if(updateColourMaterial) {
+            updateColourMaterial(vertex->bgra);
+        }
 
         /* Copy the base colour across */
         vec4cpy(final, MATERIAL.baseColour);
+    }
 
+    vertex = vertices;
+    for(j = 0; j < count; ++j, ++vertex, ++data) {
         /* Direction to vertex in eye space */
         float Vx = -data->xyz[0];
         float Vy = -data->xyz[1];
