@@ -360,11 +360,12 @@ GLboolean _glIsNormalizeEnabled();
 GLboolean _glRecalcFastPath();
 
 typedef struct {
-    float xyz[3];
-    float n[3];
+    float xyz[3]; // 12 bytes
+    float n[3]; // 12 bytes
+    float finalColour[4]; //16 bytes (to 40)
 } EyeSpaceData;
 
-extern void _glPerformLighting(Vertex* vertices, const EyeSpaceData* es, const int32_t count);
+extern void _glPerformLighting(Vertex* vertices, EyeSpaceData *es, const int32_t count);
 
 unsigned char _glIsClippingEnabled();
 void _glEnableClipping(unsigned char v);

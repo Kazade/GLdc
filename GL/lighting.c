@@ -27,9 +27,21 @@ static GLenum COLOR_MATERIAL_MODE = GL_AMBIENT_AND_DIFFUSE;
 static GLenum COLOR_MATERIAL_MASK = AMBIENT_MASK | DIFFUSE_MASK;
 
 static LightSource LIGHTS[MAX_LIGHTS];
+static GLuint ENABLED_LIGHT_COUNT = 0;
 static Material MATERIAL;
 
 GL_FORCE_INLINE void _glPrecalcLightingValues(GLuint mask);
+
+static void recalcEnabledLights() {
+    GLubyte i;
+
+    ENABLED_LIGHT_COUNT = 0;
+    for(i = 0; i < MAX_LIGHTS; ++i) {
+        if(LIGHTS[i].isEnabled) {
+            ENABLED_LIGHT_COUNT++;
+        }
+    }
+}
 
 void _glInitLights() {
     static GLfloat ONE [] = {1.0f, 1.0f, 1.0f, 1.0f};
@@ -71,10 +83,12 @@ void _glInitLights() {
     }
 
     _glPrecalcLightingValues(~0);
+    recalcEnabledLights();
 }
 
 void _glEnableLight(GLubyte light, GLboolean value) {
     LIGHTS[light].isEnabled = value;
+    recalcEnabledLights();
 }
 
 GL_FORCE_INLINE void _glPrecalcLightingValues(GLuint mask) {
@@ -441,15 +455,12 @@ GL_FORCE_INLINE void _glLightVertexPoint(
 #undef _PROCESS_COMPONENT
 }
 
-void _glPerformLighting(Vertex* vertices, const EyeSpaceData* es, const int32_t count) {
-    int16_t i;
-    int32_t j;
+void _glPerformLighting(Vertex* vertices, EyeSpaceData* es, const int32_t count) {
+    GLubyte i;
+    GLuint j;
 
     Vertex* vertex = vertices;
-    const EyeSpaceData* data = es;
-
-    /* Final colour of lighting output (will be clamped to argb) */
-    float final[4];
+    EyeSpaceData* data = es;
 
     /* Calculate the colour material function once */
     void (*updateColourMaterial)(const GLubyte*) = NULL;
@@ -472,16 +483,21 @@ void _glPerformLighting(Vertex* vertices, const EyeSpaceData* es, const int32_t 
     }
 
     /* Calculate the ambient lighting and set up colour material */
-    for(j = 0; j < count; ++j, ++vertex) {
+    for(j = 0; j < count; ++j, ++vertex, ++data) {
         if(updateColourMaterial) {
             updateColourMaterial(vertex->bgra);
         }
 
         /* Copy the base colour across */
-        vec4cpy(final, MATERIAL.baseColour);
+        vec4cpy(data->finalColour, MATERIAL.baseColour);
+    }
+
+    if(!ENABLED_LIGHT_COUNT) {
+        return;
     }
 
     vertex = vertices;
+    data = es;
     for(j = 0; j < count; ++j, ++vertex, ++data) {
         /* Direction to vertex in eye space */
         float Vx = -data->xyz[0];
@@ -494,13 +510,15 @@ void _glPerformLighting(Vertex* vertices, const EyeSpaceData* es, const int32_t 
         const float Nz = data->n[2];
 
         for(i = 0; i < MAX_LIGHTS; ++i) {
-            if(!LIGHTS[i].isEnabled) continue;
+            if(!LIGHTS[i].isEnabled) {
+                continue;
+            }
+
+            float Lx = LIGHTS[i].position[0] - data->xyz[0];
+            float Ly = LIGHTS[i].position[1] - data->xyz[1];
+            float Lz = LIGHTS[i].position[2] - data->xyz[2];
 
             if(LIGHTS[i].isDirectional) {
-                float Lx = LIGHTS[i].position[0] - data->xyz[0];
-                float Ly = LIGHTS[i].position[1] - data->xyz[1];
-                float Lz = LIGHTS[i].position[2] - data->xyz[2];
-
                 float Hx = (Lx + 0);
                 float Hy = (Ly + 0);
                 float Hz = (Lz + 1);
@@ -521,13 +539,10 @@ void _glPerformLighting(Vertex* vertices, const EyeSpaceData* es, const int32_t 
                 if(NdotH < 0.0f) NdotH = 0.0f;
 
                 _glLightVertexDirectional(
-                    final,
+                    data->finalColour,
                     i, LdotN, NdotH
                 );
             } else {
-                float Lx = LIGHTS[i].position[0] - data->xyz[0];
-                float Ly = LIGHTS[i].position[1] - data->xyz[1];
-                float Lz = LIGHTS[i].position[2] - data->xyz[2];
                 float D;
 
                 vec3f_length(Lx, Ly, Lz, D);
@@ -561,17 +576,17 @@ void _glPerformLighting(Vertex* vertices, const EyeSpaceData* es, const int32_t 
                     if(NdotH < 0.0f) NdotH = 0.0f;
 
                     _glLightVertexPoint(
-                        final,
+                        data->finalColour,
                         i, LdotN, NdotH, att
                     );
                 }
             }
         }
 
-        vertex->bgra[R8IDX] = clamp(final[0] * 255.0f, 0, 255);
-        vertex->bgra[G8IDX] = clamp(final[1] * 255.0f, 0, 255);
-        vertex->bgra[B8IDX] = clamp(final[2] * 255.0f, 0, 255);
-        vertex->bgra[A8IDX] = clamp(final[3] * 255.0f, 0, 255);
+        vertex->bgra[R8IDX] = clamp(data->finalColour[0] * 255.0f, 0, 255);
+        vertex->bgra[G8IDX] = clamp(data->finalColour[1] * 255.0f, 0, 255);
+        vertex->bgra[B8IDX] = clamp(data->finalColour[2] * 255.0f, 0, 255);
+        vertex->bgra[A8IDX] = clamp(data->finalColour[3] * 255.0f, 0, 255);
     }
 }
 
