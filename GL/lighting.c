@@ -10,7 +10,7 @@
 
 /* Lighting will not be calculated if the attenuation
  * multiplier ends up less than this value */
-#define ATTENUATION_THRESHOLD 0.01f
+#define ATTENUATION_THRESHOLD 100.0f
 
 static GLfloat SCENE_AMBIENT [] = {0.2f, 0.2f, 0.2f, 1.0f};
 static GLboolean VIEWER_IN_EYE_COORDINATES = GL_TRUE;
@@ -553,9 +553,12 @@ void _glPerformLighting(Vertex* vertices, EyeSpaceData* es, const int32_t count)
                     ) + (LIGHTS[i].quadratic_attenuation * D * D)
                 );
 
-                att = MATH_Fast_Invert(att);
+                /* Anything over the attenuation threshold will
+                 * be a tiny value after inversion (< 0.01f) so
+                 * let's just skip the lighting at that point */
+                if(att < ATTENUATION_THRESHOLD) {
+                    att = MATH_Fast_Invert(att);
 
-                if(att >= ATTENUATION_THRESHOLD) {
                     float Hx = (Lx + Vx);
                     float Hy = (Ly + Vy);
                     float Hz = (Lz + Vz);
