@@ -944,9 +944,7 @@ GL_FORCE_INLINE void divide(SubmissionTarget* target) {
         vertex->xyz[0] *= f;
         vertex->xyz[1] *= f;
         vertex->xyz[2] *= f;
-        vertex->xyz[2] = MATH_Fast_Invert(
-            vertex->xyz[2] * 0.5f + 0.525f
-        );
+        vertex->xyz[2] = MAX(1.0f - (vertex->xyz[2] * 0.5f + 0.5f), 0.0001f);
         ++vertex;
     }
 }
