@@ -186,11 +186,12 @@ void APIENTRY glRotatef(GLfloat angle, GLfloat x, GLfloat  y, GLfloat z) {
         0.0f, 0.0f, 0.0f, 1.0f
     };
 
-    vec3f_normalize(x, y, z);
-
     float r = DEG2RAD * angle;
     float c = cos(r);
     float s = sin(r);
+
+    vec3f_normalize(x, y, z);
+
     float invc = 1.0f - c;
     float xs = x * s;
     float zs = z * s;
