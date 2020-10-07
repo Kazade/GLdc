@@ -416,19 +416,15 @@ void APIENTRY glViewport(GLint x, GLint y, GLsizei width, GLsizei height) {
     gl_viewport_width = width;
     gl_viewport_height = height;
 
-    GLfloat rw = x + width;
-    GLfloat lw = x;
-    GLfloat tw = y + height;
-    GLfloat bw = y;
-
     GLfloat hw = ((GLfloat) width) / 2.0f;
     GLfloat hh = ((GLfloat) height) / 2.0f;
+    y *= -1; // Flip
 
     SCREENVIEW_MATRIX[M0] = hw;
     SCREENVIEW_MATRIX[M5] = -hh;
     SCREENVIEW_MATRIX[M10] = 1;
-    SCREENVIEW_MATRIX[M12] = (rw + lw) / 2.0f;
-    SCREENVIEW_MATRIX[M13] = (tw + bw) / 2.0f;
+    SCREENVIEW_MATRIX[M12] = hw + x;
+    SCREENVIEW_MATRIX[M13] = vid_mode->height - hh + y;
 }
 
 /* Set the depth range */
