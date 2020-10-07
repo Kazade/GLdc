@@ -418,6 +418,7 @@ void APIENTRY glViewport(GLint x, GLint y, GLsizei width, GLsizei height) {
 
     GLfloat hw = ((GLfloat) width) / 2.0f;
     GLfloat hh = ((GLfloat) height) / 2.0f;
+    y *= -1; // Flip
 
     SCREENVIEW_MATRIX[M0] = hw;
     SCREENVIEW_MATRIX[M5] = -hh;
