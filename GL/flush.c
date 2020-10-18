@@ -15,13 +15,15 @@ static PolyList OP_LIST;
 static PolyList PT_LIST;
 static PolyList TR_LIST;
 
+static const int STRIDE = sizeof(Vertex) / sizeof(GLuint);
+
 static void pvr_list_submit(void *src, int n) {
     GLuint *d = TA_SQ_ADDR;
     GLuint *s = src;
 
     /* fill/write queues as many times necessary */
     while(n--) {
-        __asm__("pref @%0" : : "r"(s + 8));  /* prefetch 32 bytes for next loop */
+        __asm__("pref @%0" : : "r"(s + STRIDE));  /* prefetch 64 bytes for next loop */
         d[0] = *(s++);
         d[1] = *(s++);
         d[2] = *(s++);
@@ -32,6 +34,7 @@ static void pvr_list_submit(void *src, int n) {
         d[7] = *(s++);
         __asm__("pref @%0" : : "r"(d));
         d += 8;
+        s += (STRIDE - 8);
     }
 
     /* Wait for both store queues to complete */

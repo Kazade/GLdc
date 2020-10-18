@@ -198,11 +198,23 @@ typedef struct {
     float xyz[3];
     float uv[2];
     uint8_t bgra[4];
+    uint8_t obgra[4];
+    /* End 32 pvr_vertex_t */
 
-    /* In the pvr_vertex_t structure, this next 4 bytes is oargb
-     * but we're not using that for now, so having W here makes the code
-     * simpler */
-    float w;
+    /*
+     * The following are necessary for our purposes
+     * W - W coordinate - for clipping
+     * ST - ST coordinate for multitexture
+     * NXYZ - Normal
+     */
+
+    float w; // 4
+    float st[2]; // +8 (12)
+    float nxyz[3]; // +12 (24)
+    uint8_t visible; // +1 (25)
+
+    uint8_t padding0[3]; // +3 (28)
+    uint32_t padding1; // +4 (32)
 } Vertex;
 
 
@@ -241,13 +253,6 @@ do {                 \
     *a = *b;         \
     *b = c;          \
 } while(0)
-
-/* ClipVertex doesn't have room for these, so we need to parse them
- * out separately. Potentially 'w' will be housed here if we support oargb */
-typedef struct {
-    float nxyz[3];
-    float st[2];
-} VertexExtra;
 
 /* Generating PVR vertices from the user-submitted data gets complicated, particularly
  * when a realloc could invalidate pointers. This structure holds all the information

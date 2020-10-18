@@ -85,16 +85,12 @@ const uint32_t VERTEX_CMD = 0xe0000000;
 
 typedef struct {
     Vertex vertex[3];
-    VertexExtra extra[3];
     uint8_t visible;
 } Triangle;
 
 void _glClipTriangle(const Triangle* triangle, const uint8_t visible, SubmissionTarget* target, const uint8_t flatShade) {
     Vertex* last = NULL;
-    VertexExtra* veLast = NULL;
-
     const Vertex* vertices = triangle->vertex;
-    const VertexExtra* extras = triangle->extra;
 
     char* bgra = (char*) vertices[2].bgra;
 
@@ -102,25 +98,22 @@ void _glClipTriangle(const Triangle* triangle, const uint8_t visible, Submission
     uint32_t finalColour = *((uint32_t*) bgra);
 
     Vertex tmp;
-    VertexExtra veTmp;
-
     uint8_t pushedCount = 0;
 
 #define IS_VISIBLE(x) (visible & (1 << (2 - (x)))) > 0
 
-#define PUSH_VERT(vert, ve) \
+#define PUSH_VERT(vert) \
     last = aligned_vector_push_back(&target->output->vector, vert, 1); \
     last->flags = VERTEX_CMD; \
-    veLast = aligned_vector_push_back(target->extras, ve, 1); \
     ++pushedCount;
 
-#define CLIP_TO_PLANE(vert1, ve1, vert2, ve2) \
+#define CLIP_TO_PLANE(vert1, vert2) \
     do { \
         float t = _glClipLineToNearZ((vert1), (vert2), &tmp); \
         interpolateFloat((vert1)->w, (vert2)->w, t, &tmp.w); \
         interpolateVec2((vert1)->uv, (vert2)->uv, t, tmp.uv); \
-        interpolateVec3((ve1)->nxyz, (ve2)->nxyz, t, veTmp.nxyz); \
-        interpolateVec2((ve1)->st, (ve2)->st, t, veTmp.st); \
+        interpolateVec3((vert1)->nxyz, (vert2)->nxyz, t, tmp.nxyz); \
+        interpolateVec2((vert1)->st, (vert2)->st, t, tmp.st); \
         if(flatShade) { \
             interpolateColour((const uint8_t*) &finalColour, (const uint8_t*) &finalColour, t, tmp.bgra); \
         } else { interpolateColour((vert1)->bgra, (vert2)->bgra, t, tmp.bgra); } \
@@ -130,44 +123,38 @@ void _glClipTriangle(const Triangle* triangle, const uint8_t visible, Submission
     uint8_t v1 = IS_VISIBLE(1);
     uint8_t v2 = IS_VISIBLE(2);
     if(v0) {
-        PUSH_VERT(&vertices[0], &extras[0]);
+        PUSH_VERT(&vertices[0]);
     }
 
     if(v0 != v1) {
-        CLIP_TO_PLANE(&vertices[0], &extras[0], &vertices[1], &extras[1]);
-        PUSH_VERT(&tmp, &veTmp);
+        CLIP_TO_PLANE(&vertices[0], &vertices[1]);
+        PUSH_VERT(&tmp);
     }
 
     if(v1) {
-        PUSH_VERT(&vertices[1], &extras[1]);
+        PUSH_VERT(&vertices[1]);
     }
 
     if(v1 != v2) {
-        CLIP_TO_PLANE(&vertices[1], &extras[1], &vertices[2], &extras[2]);
-        PUSH_VERT(&tmp, &veTmp);
+        CLIP_TO_PLANE(&vertices[1], &vertices[2]);
+        PUSH_VERT(&tmp);
     }
 
     if(v2) {
-        PUSH_VERT(&vertices[2], &extras[2]);
+        PUSH_VERT(&vertices[2]);
     }
 
     if(v2 != v0) {
-        CLIP_TO_PLANE(&vertices[2], &extras[2], &vertices[0], &extras[0]);
-        PUSH_VERT(&tmp, &veTmp);
+        CLIP_TO_PLANE(&vertices[2], &vertices[0]);
+        PUSH_VERT(&tmp);
     }
 
     if(pushedCount == 4) {
         Vertex* prev = last - 1;
-        VertexExtra* prevVe = veLast - 1;
-
         tmp = *prev;
-        veTmp = *prevVe;
 
         *prev = *last;
-        *prevVe = *veLast;
-
         *last = tmp;
-        *veLast = veTmp;
 
         prev->flags = VERTEX_CMD;
         last->flags = VERTEX_CMD_EOL;
@@ -309,15 +296,6 @@ void _glClipTriangleStrip(SubmissionTarget* target, uint8_t fladeShade) {
                 TO_CLIP[CLIP_COUNT].vertex[0] = *v1;
                 TO_CLIP[CLIP_COUNT].vertex[1] = *v2;
                 TO_CLIP[CLIP_COUNT].vertex[2] = *v3;
-
-                VertexExtra* ve1 = (VertexExtra*) aligned_vector_at(target->extras, vi1);
-                VertexExtra* ve2 = (VertexExtra*) aligned_vector_at(target->extras, vi2);
-                VertexExtra* ve3 = (VertexExtra*) aligned_vector_at(target->extras, vi3);
-
-                TO_CLIP[CLIP_COUNT].extra[0] = *ve1;
-                TO_CLIP[CLIP_COUNT].extra[1] = *ve2;
-                TO_CLIP[CLIP_COUNT].extra[2] = *ve3;
-
                 TO_CLIP[CLIP_COUNT].visible = visible;
                 ++CLIP_COUNT;
 
@@ -359,11 +337,6 @@ void _glClipTriangleStrip(SubmissionTarget* target, uint8_t fladeShade) {
                     TO_CLIP[CLIP_COUNT].vertex[1] = *v2;
                     TO_CLIP[CLIP_COUNT].vertex[2] = *v4;
 
-                    VertexExtra* ve4 = (VertexExtra*) aligned_vector_at(target->extras, vi4);
-                    TO_CLIP[CLIP_COUNT].extra[0] = *(VertexExtra*) aligned_vector_at(target->extras, vi3);
-                    TO_CLIP[CLIP_COUNT].extra[1] = *(VertexExtra*) aligned_vector_at(target->extras, vi2);
-                    TO_CLIP[CLIP_COUNT].extra[2] = *ve4;
-
                     visible = (_VERT_VISIBLE(v3) ? 4 : 0) |
                               (_VERT_VISIBLE(v2) ? 2 : 0) |
                               (_VERT_VISIBLE(v4) ? 1 : 0);
@@ -385,11 +358,6 @@ void _glClipTriangleStrip(SubmissionTarget* target, uint8_t fladeShade) {
                         swapVertex(v3, v4);
                         v3->flags = VERTEX_CMD;
                         v4->flags = VERTEX_CMD;
-
-                        /* Swap the extra data too */
-                        VertexExtra t = *ve4;
-                        *ve3 = *ve4;
-                        *ve4 = t;
                     }
                 }
             break;

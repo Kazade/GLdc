@@ -651,35 +651,35 @@ GL_FORCE_INLINE void _readUVData(const GLuint first, const GLuint count, Vertex*
     }
 }
 
-GL_FORCE_INLINE void _readSTData(const GLuint first, const GLuint count, VertexExtra* extra) {
+GL_FORCE_INLINE void _readSTData(const GLuint first, const GLuint count, Vertex* outpu) {
     const GLubyte ststride = (ST_POINTER.stride) ? ST_POINTER.stride : ST_POINTER.size * byte_size(ST_POINTER.type);
     const void* stptr = ((GLubyte*) ST_POINTER.ptr + (first * ststride));
 
     ReadUVFunc func = calcReadUVFunc();
-    GLubyte* out = (GLubyte*) extra[0].st;
+    GLubyte* out = (GLubyte*) outpu[0].st;
 
     ITERATE(count) {
         func(stptr, out);
         stptr += ststride;
-        out += sizeof(VertexExtra);
+        out += sizeof(Vertex);
     }
 }
 
-GL_FORCE_INLINE void _readNormalData(const GLuint first, const GLuint count, VertexExtra* extra) {
+GL_FORCE_INLINE void _readNormalData(const GLuint first, const GLuint count, Vertex* output) {
     const GLuint nstride = (NORMAL_POINTER.stride) ? NORMAL_POINTER.stride : NORMAL_POINTER.size * byte_size(NORMAL_POINTER.type);
     const void* nptr = ((GLubyte*) NORMAL_POINTER.ptr + (first * nstride));
 
     ReadNormalFunc func = calcReadNormalFunc();
-    GLubyte* out = (GLubyte*) extra[0].nxyz;
+    GLubyte* out = (GLubyte*) output[0].nxyz;
 
     ITERATE(count) {
         func(nptr, out);
         nptr += nstride;
-        out += sizeof(VertexExtra);
+        out += sizeof(Vertex);
     }
 
     if(_glIsNormalizeEnabled()) {
-        GLubyte* ptr = (GLubyte*) extra->nxyz;
+        GLubyte* ptr = (GLubyte*) output->nxyz;
         ITERATE(count) {
             GLfloat* n = (GLfloat*) ptr;
             float temp = n[0] * n[0];
@@ -691,7 +691,7 @@ GL_FORCE_INLINE void _readNormalData(const GLuint first, const GLuint count, Ver
             n[1] *= ilength;
             n[2] *= ilength;
 
-            ptr += sizeof(VertexExtra);
+            ptr += sizeof(Vertex);
         }
     }
 }
@@ -724,7 +724,6 @@ static void generateElements(
     GLubyte* nxyz;
 
     Vertex* output = _glSubmissionTargetStart(target);
-    VertexExtra* ve = aligned_vector_at(target->extras, 0);
 
     uint32_t i = first;
     uint32_t idx = 0;
@@ -762,12 +761,11 @@ static void generateElements(
         pos_func(xyz, (GLubyte*) output->xyz);
         uv_func(uv, (GLubyte*) output->uv);
         diffuse_func(bgra, output->bgra);
-        st_func(st, (GLubyte*) ve->st);
-        normal_func(nxyz, (GLubyte*) ve->nxyz);
+        st_func(st, (GLubyte*) output->st);
+        normal_func(nxyz, (GLubyte*) output->nxyz);
 
         output->flags = PVR_CMD_VERTEX;
         ++output;
-        ++ve;
     }
 }
 
@@ -804,10 +802,8 @@ static void generate(SubmissionTarget* target, const GLenum mode, const GLsizei 
             }
         }
 
-        VertexExtra* ve = aligned_vector_at(target->extras, 0);
-
-        _readNormalData(first, count, ve);
-        _readSTData(first, count, ve);
+        _readNormalData(first, count, start);
+        _readSTData(first, count, start);
 
     } else {
         generateElements(
@@ -917,14 +913,13 @@ static void light(SubmissionTarget* target) {
 
     /* Perform lighting calculations and manipulate the colour */
     Vertex* vertex = _glSubmissionTargetStart(target);
-    VertexExtra* extra = aligned_vector_at(target->extras, 0);
     EyeSpaceData* eye_space = (EyeSpaceData*) eye_space_data->data;
 
     _glMatrixLoadModelView();
     mat_transform3(vertex->xyz, eye_space->xyz, target->count, sizeof(Vertex), sizeof(EyeSpaceData));
 
     _glMatrixLoadNormal();
-    mat_transform_normal3(extra->nxyz, eye_space->n, target->count, sizeof(VertexExtra), sizeof(EyeSpaceData));
+    mat_transform_normal3(vertex->nxyz, eye_space->n, target->count, sizeof(Vertex), sizeof(EyeSpaceData));
 
     EyeSpaceData* ES = aligned_vector_at(eye_space_data, 0);
     _glPerformLighting(vertex, ES, target->count);
@@ -1005,18 +1000,13 @@ GL_FORCE_INLINE void submitVertices(GLenum mode, GLsizei first, GLuint count, GL
     }
 
     static SubmissionTarget* target = NULL;
-    static AlignedVector extras;
 
-    /* Initialization of the target and extras */
+    /* Initialization of the target */
     if(!target) {
         target = (SubmissionTarget*) malloc(sizeof(SubmissionTarget));
-        target->extras = NULL;
         target->count = 0;
         target->output = NULL;
         target->header_offset = target->start_offset = 0;
-
-        aligned_vector_init(&extras, sizeof(VertexExtra));
-        target->extras = &extras;
     }
 
     GLboolean doMultitexture, doTexture, doLighting;
@@ -1057,9 +1047,6 @@ GL_FORCE_INLINE void submitVertices(GLenum mode, GLsizei first, GLuint count, GL
 
     assert(target->count);
 
-    /* Make sure we have enough room for all the "extra" data */
-    aligned_vector_resize(&extras, target->count);
-
     /* Make room for the vertices and header */
     aligned_vector_extend(&target->output->vector, target->count + 1);
     generate(target, mode, first, count, (GLubyte*) indices, type);
@@ -1086,8 +1073,6 @@ GL_FORCE_INLINE void submitVertices(GLenum mode, GLsizei first, GLuint count, GL
 #endif
 
         clip(target);
-
-        assert(extras.size == target->count);
 
 #if DEBUG_CLIPPING
         fprintf(stderr, "--------\n");
@@ -1139,12 +1124,10 @@ GL_FORCE_INLINE void submitVertices(GLenum mode, GLsizei first, GLuint count, GL
     PVRHeader* mtHeader = (PVRHeader*) vertex++;
 
     /* Replace the UV coordinates with the ST ones */
-    VertexExtra* ve = aligned_vector_at(target->extras, 0);
     ITERATE(target->count) {
-        vertex->uv[0] = ve->st[0];
-        vertex->uv[1] = ve->st[1];
+        vertex->uv[0] = vertex->st[0];
+        vertex->uv[1] = vertex->st[1];
         ++vertex;
-        ++ve;
     }
 
     /* Send the buffer again to the transparent list */
