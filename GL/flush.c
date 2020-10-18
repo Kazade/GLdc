@@ -24,17 +24,22 @@ static void pvr_list_submit(void *src, int n) {
     /* fill/write queues as many times necessary */
     while(n--) {
         __asm__("pref @%0" : : "r"(s + STRIDE));  /* prefetch 64 bytes for next loop */
-        d[0] = *(s++);
-        d[1] = *(s++);
-        d[2] = *(s++);
-        d[3] = *(s++);
-        d[4] = *(s++);
-        d[5] = *(s++);
-        d[6] = *(s++);
-        d[7] = *(s++);
-        __asm__("pref @%0" : : "r"(d));
-        d += 8;
-        s += (STRIDE - 8);
+        if(*s != DEAD) {
+            d[0] = *(s++);
+            d[1] = *(s++);
+            d[2] = *(s++);
+            d[3] = *(s++);
+            d[4] = *(s++);
+            d[5] = *(s++);
+            d[6] = *(s++);
+            d[7] = *(s++);
+
+            __asm__("pref @%0" : : "r"(d));
+            d += 8;
+            s += (STRIDE - 8);
+        } else {
+            s += 16;
+        }
     }
 
     /* Wait for both store queues to complete */

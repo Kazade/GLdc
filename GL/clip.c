@@ -165,7 +165,7 @@ void _glClipTriangle(const Triangle* triangle, const uint8_t visible, Submission
 }
 
 static inline void markDead(Vertex* vert) {
-    vert->flags = VERTEX_CMD_EOL;
+    vert->flags = DEAD; //VERTEX_CMD_EOL;
 
     // If we're debugging, wipe out the xyz
 #ifndef NDEBUG
@@ -331,7 +331,6 @@ void _glClipTriangleStrip(SubmissionTarget* target, uint8_t fladeShade) {
                     triangle = -1;
                 } else {
                     Vertex* v4 = v3 + 1;
-                    uint32_t vi4 = v4 - start;
 
                     TO_CLIP[CLIP_COUNT].vertex[0] = *v3;
                     TO_CLIP[CLIP_COUNT].vertex[1] = *v2;

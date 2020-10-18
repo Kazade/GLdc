@@ -192,6 +192,8 @@ typedef struct {
     GLfloat specularMaterial[4];
 } LightSource;
 
+#define DEAD 0xDEADBEEF
+
 typedef struct {
     /* Same 32 byte layout as pvr_vertex_t */
     uint32_t flags;
