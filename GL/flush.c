@@ -1,6 +1,7 @@
 
 
 #include <kos.h>
+#include <stdlib.h>
 
 #include "../include/glkos.h"
 #include "../containers/aligned_vector.h"
@@ -17,14 +18,43 @@ static PolyList TR_LIST;
 
 static const int STRIDE = sizeof(Vertex) / sizeof(GLuint);
 
+typedef struct {
+    int count;
+    Vertex* current;
+} ListIterator;
+
+
+static inline ListIterator* next(ListIterator* it) {
+    /* Move the list iterator to the next vertex to
+     * submit. Takes care of clipping the triangle strip
+     * and perspective dividing the vertex before
+     * returning */
+
+    if(--it->count) {
+        it->current++;
+        return it;
+    } else {
+        return NULL;
+    }
+}
+
+static inline ListIterator* begin(void* src, int n) {
+    ListIterator* it = (ListIterator*) malloc(sizeof(ListIterator));
+    it->count = n;
+    it->current = (Vertex*) src;
+    return (n) ? it : NULL;
+}
+
 static void pvr_list_submit(void *src, int n) {
     GLuint *d = TA_SQ_ADDR;
-    GLuint *s = src;
 
+    ListIterator* it = begin(src, n);
     /* fill/write queues as many times necessary */
-    while(n--) {
-        __asm__("pref @%0" : : "r"(s + STRIDE));  /* prefetch 64 bytes for next loop */
-        if(*s != DEAD) {
+    while(it) {
+        __asm__("pref @%0" : : "r"(it->current + 1));  /* prefetch 64 bytes for next loop */
+        if(it->current->flags != DEAD) {
+            GLuint* s = (GLuint*) it->current;
+
             d[0] = *(s++);
             d[1] = *(s++);
             d[2] = *(s++);
@@ -34,17 +64,20 @@ static void pvr_list_submit(void *src, int n) {
             d[6] = *(s++);
             d[7] = *(s++);
 
+            /* This prefetch actually commits 32 bytes to the SQ */
             __asm__("pref @%0" : : "r"(d));
-            d += 8;
-            s += (STRIDE - 8);
-        } else {
-            s += 16;
+
+            d += 8; /* Move to the next SQ address */
         }
+
+        it = next(it);
     }
 
     /* Wait for both store queues to complete */
     d = (GLuint *)0xe0000000;
     d[0] = d[8] = 0;
+
+    free(it);
 }
 
 static void _glInitPVR(GLboolean autosort, GLboolean fsaa) {
@@ -53,8 +86,8 @@ static void _glInitPVR(GLboolean autosort, GLboolean fsaa) {
         {PVR_BINSIZE_32, PVR_BINSIZE_0, PVR_BINSIZE_32, PVR_BINSIZE_0, PVR_BINSIZE_32},
         PVR_VERTEX_BUF_SIZE, /* Vertex buffer size */
         0, /* No DMA */
-        fsaa, /* No FSAA */
-        (autosort) ? 0 : 1 /* Disable translucent auto-sorting to match traditional GL */
+        fsaa,
+        (autosort) ? 0 : 1
     };
 
     pvr_init(&params);
