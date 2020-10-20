@@ -21,8 +21,20 @@ static const int STRIDE = sizeof(Vertex) / sizeof(GLuint);
 typedef struct {
     int count;
     Vertex* current;
+    GLboolean current_is_vertex;
 } ListIterator;
 
+
+GL_FORCE_INLINE GLboolean isVertex(const Vertex* vertex) {
+    return (
+        vertex->flags == PVR_CMD_VERTEX ||
+        vertex->flags == PVR_CMD_VERTEX_EOL
+    );
+}
+
+GL_FORCE_INLINE GLboolean isVisible(const Vertex* vertex) {
+    return vertex->w >= 0 && vertex->xyz[2] >= -vertex->w;
+}
 
 static inline ListIterator* next(ListIterator* it) {
     /* Move the list iterator to the next vertex to
@@ -30,26 +42,34 @@ static inline ListIterator* next(ListIterator* it) {
      * and perspective dividing the vertex before
      * returning */
 
-    if(--it->count) {
+    while(--it->count) {
         it->current++;
+
+        /* Ignore dead vertices */
+        if(it->current->flags == DEAD) {
+            continue;
+        }
+
+        /* If this is a header, then we submit! */
+        it->current_is_vertex = isVertex(it->current);
+
+        if(it->current_is_vertex) {
+            return it;
+        }
+
+        /* All other vertices are fine */
         return it;
-    } else {
-        return NULL;
     }
+
+    return NULL;
 }
 
 static inline ListIterator* begin(void* src, int n) {
     ListIterator* it = (ListIterator*) malloc(sizeof(ListIterator));
     it->count = n;
     it->current = (Vertex*) src;
+    it->current_is_vertex = GL_FALSE;
     return (n) ? it : NULL;
-}
-
-GL_FORCE_INLINE isVertex(const Vertex* vertex) {
-    return (
-        vertex->flags == PVR_CMD_VERTEX ||
-        vertex->flags == PVR_CMD_VERTEX_EOL
-    );
 }
 
 static inline void perspective_divide(Vertex* vertex) {
@@ -63,31 +83,33 @@ static inline void perspective_divide(Vertex* vertex) {
 static void pvr_list_submit(void *src, int n) {
     GLuint *d = TA_SQ_ADDR;
 
+    /* First entry is assumed to always be a header and therefore
+     * always submitted (e.g. not clipped) */
+
     ListIterator* it = begin(src, n);
     /* fill/write queues as many times necessary */
     while(it) {
         __asm__("pref @%0" : : "r"(it->current + 1));  /* prefetch 64 bytes for next loop */
-        if(it->current->flags != DEAD) {
-            if(isVertex(it->current)) {
-                perspective_divide(it->current);
-            }
 
-            GLuint* s = (GLuint*) it->current;
-
-            d[0] = *(s++);
-            d[1] = *(s++);
-            d[2] = *(s++);
-            d[3] = *(s++);
-            d[4] = *(s++);
-            d[5] = *(s++);
-            d[6] = *(s++);
-            d[7] = *(s++);
-
-            /* This prefetch actually commits 32 bytes to the SQ */
-            __asm__("pref @%0" : : "r"(d));
-
-            d += 8; /* Move to the next SQ address */
+        if(it->current_is_vertex) {
+            perspective_divide(it->current);
         }
+
+        GLuint* s = (GLuint*) it->current;
+
+        d[0] = *(s++);
+        d[1] = *(s++);
+        d[2] = *(s++);
+        d[3] = *(s++);
+        d[4] = *(s++);
+        d[5] = *(s++);
+        d[6] = *(s++);
+        d[7] = *(s++);
+
+        /* This prefetch actually commits 32 bytes to the SQ */
+        __asm__("pref @%0" : : "r"(d));
+
+        d += 8; /* Move to the next SQ address */
 
         it = next(it);
     }
