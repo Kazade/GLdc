@@ -45,6 +45,21 @@ static inline ListIterator* begin(void* src, int n) {
     return (n) ? it : NULL;
 }
 
+GL_FORCE_INLINE isVertex(const Vertex* vertex) {
+    return (
+        vertex->flags == PVR_CMD_VERTEX ||
+        vertex->flags == PVR_CMD_VERTEX_EOL
+    );
+}
+
+static inline void perspective_divide(Vertex* vertex) {
+    float f = MATH_Fast_Invert(vertex->w);
+    vertex->xyz[0] *= f;
+    vertex->xyz[1] *= f;
+    vertex->xyz[2] *= f;
+    vertex->xyz[2] = MAX(1.0f - (vertex->xyz[2] * 0.5f + 0.5f), 0.0001f);
+}
+
 static void pvr_list_submit(void *src, int n) {
     GLuint *d = TA_SQ_ADDR;
 
@@ -53,6 +68,10 @@ static void pvr_list_submit(void *src, int n) {
     while(it) {
         __asm__("pref @%0" : : "r"(it->current + 1));  /* prefetch 64 bytes for next loop */
         if(it->current->flags != DEAD) {
+            if(isVertex(it->current)) {
+                perspective_divide(it->current);
+            }
+
             GLuint* s = (GLuint*) it->current;
 
             d[0] = *(s++);

@@ -925,25 +925,6 @@ static void light(SubmissionTarget* target) {
     _glPerformLighting(vertex, ES, target->count);
 }
 
-#define PVR_MIN_Z 0.2f
-#define PVR_MAX_Z 1.0 + PVR_MIN_Z
-
-GL_FORCE_INLINE void divide(SubmissionTarget* target) {
-    TRACE();
-
-    /* Perform perspective divide on each vertex */
-    Vertex* vertex = _glSubmissionTargetStart(target);
-
-    ITERATE(target->count) {
-        float f = MATH_Fast_Invert(vertex->w);
-        vertex->xyz[0] *= f;
-        vertex->xyz[1] *= f;
-        vertex->xyz[2] *= f;
-        vertex->xyz[2] = MAX(1.0f - (vertex->xyz[2] * 0.5f + 0.5f), 0.0001f);
-        ++vertex;
-    }
-}
-
 GL_FORCE_INLINE void push(PVRHeader* header, GLboolean multiTextureHeader, PolyList* activePolyList, GLshort textureUnit) {
     TRACE();
 
@@ -1088,7 +1069,6 @@ GL_FORCE_INLINE void submitVertices(GLenum mode, GLsizei first, GLuint count, GL
 
     }
 
-    divide(target);
     push(_glSubmissionTargetHeader(target), GL_FALSE, target->output, 0);
 
     /*
