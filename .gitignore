@@ -7,3 +7,4 @@
 dc-build.sh
 .buildconfig
 GL/version.h
+tests/test_runner.cpp
