@@ -22,6 +22,8 @@ link:
 
 build: GL/version.h $(OBJS) link
 
+test: build
+	$(KOS_MAKE) -C tests all
 
 samples: build
 	$(KOS_MAKE) -C samples all
