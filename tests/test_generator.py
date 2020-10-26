@@ -86,7 +86,7 @@ int main(int argc, char* argv[]) {
 
 """
 
-VERBOSE = False
+VERBOSE = True
 
 def log_verbose(message):
     if VERBOSE:
@@ -165,7 +165,7 @@ def find_tests(files):
 
         # If this subclasses TestCase, or it subclasses any of the already found testcase subclasses
         # then add it to the list
-        if "TestCase" in subclass_names or "SimulantTestCase" in subclass_names or any(x[1] in subclasses[i][2] for x in test_case_subclasses):
+        if "TestCase" in subclass_names or "GLdcTestCase" in subclass_names or any(x[1] in subclasses[i][2] for x in test_case_subclasses):
             if subclasses[i] not in test_case_subclasses:
                 test_case_subclasses.append(subclasses[i])
 

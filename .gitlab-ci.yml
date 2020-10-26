@@ -1,5 +1,6 @@
 stages:
   - build
+  - test
 
 build:sh4-gcc:
   stage: build
@@ -8,3 +9,13 @@ build:sh4-gcc:
     - source /etc/bash.bashrc
     - make clean
     - make samples
+    
+test:sh4-gcc:
+  stage: test
+  image: kazade/dreamcast-sdk
+  script:
+    - source /etc/bash.bashrc
+    - make test
+    - lxdream -H -b -e tests/tests.elf | python3 utils/test_parser.py
+    
+  
