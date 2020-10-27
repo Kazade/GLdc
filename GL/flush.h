@@ -28,22 +28,25 @@ typedef struct {
     Vertex* it;
 
     /* < 8. Bitmask of the last 3 vertices */
-    uint8_t visibility;
-    uint8_t triangle_count;
     Vertex* triangle[3];
 
     /* Stack of temporary vertices */
     Vertex stack[MAX_STACK];
     int8_t stack_idx;
+    uint8_t visibility;
+    uint8_t triangle_count;
+    uint8_t padding;
 } ListIterator;
 
 inline ListIterator* _glIteratorBegin(void* src, int n) {
     ListIterator* it = (ListIterator*) malloc(sizeof(ListIterator));
-    it->remaining = n;
-    it->current = (Vertex*) src;
+    it->remaining = n - 1;
+    it->it = (Vertex*) src;
+    it->current = it->it + 1;
     it->stack_idx = -1;
     it->triangle_count = 0;
     it->visibility = 0;
+    it->triangle[0] = it->triangle[1] = it->triangle[2] = NULL;
     return (n) ? it : NULL;
 }
 
@@ -56,6 +59,7 @@ GL_FORCE_INLINE GLboolean isVertex(const Vertex* vertex) {
 
 GL_FORCE_INLINE GLboolean isVisible(const Vertex* vertex) {
     if(!vertex) return GL_FALSE;
+    printf("Z: %f, W: %f\n", vertex->xyz[2], vertex->w);
     return vertex->w >= 0 && vertex->xyz[2] >= -vertex->w;
 }
 

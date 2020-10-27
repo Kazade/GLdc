@@ -11,6 +11,8 @@
 
 #include "flush.h"
 
+#define CLIP_DEBUG 1
+
 #define TA_SQ_ADDR (unsigned int *)(void *) \
     (0xe0000000 | (((unsigned long)0x10000000) & 0x03ffffe0))
 
@@ -20,10 +22,85 @@ static PolyList TR_LIST;
 
 static const int STRIDE = sizeof(Vertex) / sizeof(GLuint);
 
+#define CLIP_TO_PLANE(vert1, vert2) \
+    do { \
+        float t = _glClipLineToNearZ((vert1), (vert2), out); \
+        interpolateVec2((vert1)->uv, (vert2)->uv, t, out->uv); \
+        interpolateVec3((vert1)->nxyz, (vert2)->nxyz, t, out->nxyz); \
+        interpolateVec2((vert1)->st, (vert2)->st, t, out->st); \
+        interpolateColour((vert1)->bgra, (vert2)->bgra, t, out->bgra); \
+    } while(0); \
+
+
+GL_FORCE_INLINE float _glClipLineToNearZ(const Vertex* v1, const Vertex* v2, Vertex* vout) {
+    const float d0 = v1->w;
+    const float d1 = v2->w;
+
+    assert(isVisible(v1) ^ isVisible(v2));
+
+#if 0
+    /* FIXME: Disabled until determined necessary */
+
+    /* We need to shift 't' a little, to avoid the possibility that a
+     * rounding error leaves the new vertex behind the near plane. We shift
+     * according to the direction we're clipping across the plane */
+    const float epsilon = (d0 < d1) ? 0.000001 : -0.000001;
+#else
+    const float epsilon = 0;
+#endif
+
+    float t = MATH_Fast_Divide(d0, (d0 - d1))+ epsilon;
+
+    vout->xyz[0] = MATH_fmac(v2->xyz[0] - v1->xyz[0], t, v1->xyz[0]);
+    vout->xyz[1] = MATH_fmac(v2->xyz[1] - v1->xyz[1], t, v1->xyz[1]);
+    vout->xyz[2] = MATH_fmac(v2->xyz[2] - v1->xyz[2], t, v1->xyz[2]);
+    vout->w = MATH_fmac(v2->w - v1->w, t, v1->w);
+
+#if CLIP_DEBUG
+    printf(
+        "(%f, %f, %f, %f) -> %f -> (%f, %f, %f, %f) = (%f, %f, %f, %f)\n",
+        v1->xyz[0], v1->xyz[1], v1->xyz[2], v1->w, t,
+        v2->xyz[0], v2->xyz[1], v2->xyz[2], v2->w,
+        vout->xyz[0], vout->xyz[1], vout->xyz[2], vout->w
+    );
+#endif
+
+    return t;
+}
+
+GL_FORCE_INLINE void interpolateFloat(const float v1, const float v2, const float t, float* out) {
+    *out = MATH_fmac(v2 - v1,t, v1);
+}
+
+GL_FORCE_INLINE void interpolateVec2(const float* v1, const float* v2, const float t, float* out) {
+    interpolateFloat(v1[0], v2[0], t, &out[0]);
+    interpolateFloat(v1[1], v2[1], t, &out[1]);
+}
+
+GL_FORCE_INLINE void interpolateVec3(const float* v1, const float* v2, const float t, float* out) {
+    interpolateFloat(v1[0], v2[0], t, &out[0]);
+    interpolateFloat(v1[1], v2[1], t, &out[1]);
+    interpolateFloat(v1[2], v2[2], t, &out[2]);
+}
+
+GL_FORCE_INLINE void interpolateVec4(const float* v1, const float* v2, const float t, float* out) {
+    interpolateFloat(v1[0], v2[0], t, &out[0]);
+    interpolateFloat(v1[1], v2[1], t, &out[1]);
+    interpolateFloat(v1[2], v2[2], t, &out[2]);
+    interpolateFloat(v1[3], v2[3], t, &out[3]);
+}
+
+GL_FORCE_INLINE void interpolateColour(const uint8_t* v1, const uint8_t* v2, const float t, uint8_t* out) {
+    out[0] = v1[0] + (uint32_t) (((float) (v2[0] - v1[0])) * t);
+    out[1] = v1[1] + (uint32_t) (((float) (v2[1] - v1[1])) * t);
+    out[2] = v1[2] + (uint32_t) (((float) (v2[2] - v1[2])) * t);
+    out[3] = v1[3] + (uint32_t) (((float) (v2[3] - v1[3])) * t);
+}
+
 static Vertex* interpolate_vertex(const Vertex* v0, const Vertex* v1, Vertex* out) {
     /* If v0 is in front of the near plane, and v1 is behind the near plane, this
      * generates a vertex *on* the near plane */
-
+    CLIP_TO_PLANE(v0, v1);
     return out;
 }
 
@@ -31,6 +108,7 @@ GL_FORCE_INLINE ListIterator* header_reset(ListIterator* it, Vertex* header) {
     it->it = header;
     it->visibility = 0;
     it->triangle_count = 0;
+    it->stack_idx = -1;
     return it;
 }
 
@@ -40,11 +118,19 @@ GL_FORCE_INLINE Vertex* current_postinc(ListIterator* it) {
     }
 
     it->remaining--;
-    return it->current++;
+    Vertex* current = it->current;
+    it->current++;
+    return current;
 }
 
 GL_FORCE_INLINE Vertex* push_stack(ListIterator* it) {
-    return &it->stack[it->stack_idx++];
+#if CLIP_DEBUG
+    printf("Using stack: %d\n", it->stack_idx + 1);
+#endif
+
+    assert(it->stack_idx + 1 < MAX_STACK);
+
+    return &it->stack[++it->stack_idx];
 }
 
 GL_FORCE_INLINE GLboolean shift(ListIterator* it, Vertex* new_vertex) {
@@ -67,6 +153,21 @@ GL_FORCE_INLINE GLboolean shift(ListIterator* it, Vertex* new_vertex) {
 }
 
 ListIterator* _glIteratorNext(ListIterator* it) {
+    /* None remaining in the list, and the stack is empty */
+    if(!it->remaining && it->stack_idx == -1) {
+        return NULL;
+    }
+
+    /* Return any vertices we generated */
+    if(it->stack_idx > -1) {
+#if CLIP_DEBUG
+        printf("Yielding stack: %d\n", it->stack_idx);
+#endif
+
+        it->it = &it->stack[it->stack_idx--];
+        return it;
+    }
+
     if(!isVertex(it->current)) {
         return header_reset(it, current_postinc(it));
     } else {
@@ -80,6 +181,7 @@ ListIterator* _glIteratorNext(ListIterator* it) {
                 /* We reached the end so just
                  * return the oldest until they're gone */
                 it->it = it->triangle[0];
+                printf("Bailing early!\n");
                 return (it->it) ? it : NULL;
             }
         }
@@ -92,18 +194,34 @@ ListIterator* _glIteratorNext(ListIterator* it) {
                 it->it = it->triangle[0];
                 return it;
             break;
-            case B100:
+            case B100: {
                 /* First visible only */
-                it->triangle[1] = interpolate_vertex(it->triangle[0], it->triangle[1], push_stack(it));
-                it->triangle[2] = interpolate_vertex(it->triangle[0], it->triangle[2], push_stack(it));
+                Vertex* gen2 = push_stack(it);
+                Vertex* gen1 = push_stack(it);
+
+                /* Make sure we transfer the flags.. we don't
+                 * want to disrupt the strip */
+                gen1->flags = it->triangle[1]->flags;
+                gen2->flags = it->triangle[2]->flags;
+
+                interpolate_vertex(it->triangle[0], it->triangle[1], gen1);
+                interpolate_vertex(it->triangle[0], it->triangle[2], gen2);
                 it->visibility = B111; /* All visible now, yay! */
 
-                assert(isVisible(it->triangle[1]));
-                assert(isVisible(it->triangle[2]));
+                assert(isVisible(gen1));
+                assert(isVisible(gen2));
+                assert(isVertex(gen1));
+                assert(isVertex(gen2));
 
                 it->it = it->triangle[0];
+
+                /* We're returning v0, and we've pushed
+                 * v1 and v2 to the stack, so next time
+                 * around we'll need to consume and shift
+                 * the next vertex from the source list */
+                it->triangle_count--;
                 return it;
-            break;
+            } break;
         }
     }
 
