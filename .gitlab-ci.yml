@@ -17,10 +17,12 @@ test:sh4-gcc:
     - dnf install -y wget findutils && dnf clean all
     - wget https://download1.rpmfusion.org/free/fedora/rpmfusion-free-release-$(rpm -E %fedora).noarch.rpm
     - rpm -i rpmfusion-free-release-$(rpm -E %fedora).noarch.rpm
+    - dnf update -y
     - dnf install -y lxdream
   script:
     - source /etc/bash.bashrc
     - make test
+    - lxdream --help
     - lxdream -H tests/tests.elf | python3 utils/test_parser.py
     
   
