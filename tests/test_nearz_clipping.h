@@ -33,6 +33,10 @@ private:
 class NearZClippingTests : public gldc::test::GLdcTestCase {
 public:
     void test_clipping_100() {
+        /* When only the first vertex is visible, we still
+         * end up with 4 elements (3 vertices + 1 header). The
+         * first vertex should be the same */
+
         VertexBuilder builder;
 
         std::vector<Vertex> list = builder.
@@ -42,13 +46,27 @@ public:
             add(0, 1, 2, -1).done();
 
         ListIterator* it = _glIteratorBegin(&list[0], list.size());
-
         Vertex* v0 = it->current;
         assert_is_not_null(v0);
-        it = _glIteratorNext(it);
+        assert_false(isVertex(v0)); // Should be a header
 
+        it = _glIteratorNext(it);
+        assert_is_not_null(it);
         Vertex* v1 = it->current;
         assert_is_not_null(v1);
+
+        it = _glIteratorNext(it);
+        assert_is_not_null(it);
+        Vertex* v2 = it->current;
+        assert_is_not_null(v2);
+
+        it = _glIteratorNext(it);
+        assert_is_not_null(it);
+        Vertex* v3 = it->current;
+        assert_is_not_null(v3);
+
+        it = _glIteratorNext(it);
+        assert_is_null(it);
     }
 
     void test_clipping_110() {

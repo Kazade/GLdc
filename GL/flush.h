@@ -47,6 +47,18 @@ inline ListIterator* _glIteratorBegin(void* src, int n) {
     return (n) ? it : NULL;
 }
 
+GL_FORCE_INLINE GLboolean isVertex(const Vertex* vertex) {
+    return (
+        vertex->flags == PVR_CMD_VERTEX ||
+        vertex->flags == PVR_CMD_VERTEX_EOL
+    );
+}
+
+GL_FORCE_INLINE GLboolean isVisible(const Vertex* vertex) {
+    if(!vertex) return GL_FALSE;
+    return vertex->w >= 0 && vertex->xyz[2] >= -vertex->w;
+}
+
 ListIterator* _glIteratorNext(ListIterator* it);
 
 #ifdef __cplusplus

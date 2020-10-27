@@ -8,8 +8,10 @@ all: rm-elf $(TARGET)
 
 include $(KOS_BASE)/Makefile.rules
 
+.FORCE:
+
 clean:
-	-rm -f $(TARGET) $(OBJS) romdisk.* test_runner.o test_runner.cpp
+	-rm -f $(TARGET) $(OBJS) romdisk.* test_runner.*
 
 rm-elf:
 	-rm -f $(TARGET) romdisk.*
@@ -17,7 +19,7 @@ rm-elf:
 test_runner.cpp:
 	$(shell python3 test_generator.py --output=test_runner.cpp $(TESTS))
 
-test_runner.o: test_runner.cpp
+test_runner.o: .FORCE test_runner.cpp
 
 $(TARGET): $(OBJS) romdisk.o
 	kos-c++ -o $(TARGET) $(OBJS) ../libGLdc.a romdisk.o

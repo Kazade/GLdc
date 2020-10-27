@@ -20,18 +20,6 @@ static PolyList TR_LIST;
 
 static const int STRIDE = sizeof(Vertex) / sizeof(GLuint);
 
-GL_FORCE_INLINE GLboolean isVertex(const Vertex* vertex) {
-    return (
-        vertex->flags == PVR_CMD_VERTEX ||
-        vertex->flags == PVR_CMD_VERTEX_EOL
-    );
-}
-
-GL_FORCE_INLINE GLboolean isVisible(const Vertex* vertex) {
-    if(!vertex) return GL_FALSE;
-    return vertex->w >= 0 && vertex->xyz[2] >= -vertex->w;
-}
-
 static Vertex* interpolate_vertex(const Vertex* v0, const Vertex* v1, Vertex* out) {
     /* If v0 is in front of the near plane, and v1 is behind the near plane, this
      * generates a vertex *on* the near plane */
