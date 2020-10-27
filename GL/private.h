@@ -13,11 +13,20 @@
 #include "../containers/named_array.h"
 #include "sh4_math.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 extern void* memcpy4 (void *dest, const void *src, size_t count);
 
+#ifdef __cplusplus
+#define GL_FORCE_INLINE inline
+#else
 #define GL_NO_INSTRUMENT inline __attribute__((no_instrument_function))
 #define GL_INLINE_DEBUG GL_NO_INSTRUMENT __attribute__((always_inline))
 #define GL_FORCE_INLINE static GL_INLINE_DEBUG
+#endif
+
 #define _GL_UNUSED(x) (void)(x)
 
 #define FASTCPY(dst, src, bytes) \
@@ -288,8 +297,6 @@ typedef enum {
 #define G8IDX 1
 #define B8IDX 0
 
-struct SubmissionTarget;
-
 float _glClipLineToNearZ(const Vertex* v1, const Vertex* v2, Vertex* vout);
 void _glClipTriangleStrip(SubmissionTarget* target, uint8_t fladeShade);
 
@@ -388,5 +395,9 @@ GLubyte _glKosHasError();
 #define MIN(a,b) (((a)<(b))?(a):(b))
 #define MAX(a,b) (((a)>(b))?(a):(b))
 #define CLAMP( X, _MIN, _MAX )  ( (X)<(_MIN) ? (_MIN) : ((X)>(_MAX) ? (_MAX) : (X)) )
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif // PRIVATE_H

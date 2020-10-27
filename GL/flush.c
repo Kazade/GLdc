@@ -78,7 +78,7 @@ GL_FORCE_INLINE GLboolean shift(ListIterator* it, Vertex* new_vertex) {
     return new_vertex != NULL;
 }
 
-ListIterator* next(ListIterator* it) {
+ListIterator* _glIteratorNext(ListIterator* it) {
     if(!isVertex(it->current)) {
         return header_reset(it, current_postinc(it));
     } else {
@@ -136,7 +136,7 @@ static void pvr_list_submit(void *src, int n) {
     /* First entry is assumed to always be a header and therefore
      * always submitted (e.g. not clipped) */
 
-    ListIterator* it = begin(src, n);
+    ListIterator* it = _glIteratorBegin(src, n);
     /* fill/write queues as many times necessary */
     while(it) {
         __asm__("pref @%0" : : "r"(it->current + 1));  /* prefetch 64 bytes for next loop */
@@ -161,7 +161,7 @@ static void pvr_list_submit(void *src, int n) {
 
         d += 8; /* Move to the next SQ address */
 
-        it = next(it);
+        it = _glIteratorNext(it);
     }
 
     /* Wait for both store queues to complete */

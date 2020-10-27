@@ -2,6 +2,10 @@
 
 #include "private.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #define MAX_STACK 3
 
 #define B000 0
@@ -33,7 +37,7 @@ typedef struct {
     int8_t stack_idx;
 } ListIterator;
 
-GL_FORCE_INLINE ListIterator* begin(void* src, int n) {
+inline ListIterator* _glIteratorBegin(void* src, int n) {
     ListIterator* it = (ListIterator*) malloc(sizeof(ListIterator));
     it->remaining = n;
     it->current = (Vertex*) src;
@@ -43,6 +47,8 @@ GL_FORCE_INLINE ListIterator* begin(void* src, int n) {
     return (n) ? it : NULL;
 }
 
-extern ListIterator* next(ListIterator* it);
+ListIterator* _glIteratorNext(ListIterator* it);
 
-
+#ifdef __cplusplus
+}
+#endif

@@ -10,6 +10,7 @@ struct VertexBuilder {
         Vertex v;
         v.flags = 100; // I dunno what this bit of memory would be
         list_.push_back(std::move(v));
+        return *this;
     }
 
     VertexBuilder& add(float x, float y, float z, float w) {
@@ -18,6 +19,7 @@ struct VertexBuilder {
         v.xyz[1] = y;
         v.xyz[2] = z;
         v.w = w;
+        return *this;
     }
 
     std::vector<Vertex> done() {
@@ -39,11 +41,11 @@ public:
             add(1, 0, 2, -1).
             add(0, 1, 2, -1).done();
 
-        ListIterator* it = begin(&list[0], list.size());
+        ListIterator* it = _glIteratorBegin(&list[0], list.size());
 
         Vertex* v0 = it->current;
         assert_is_not_null(v0);
-        it = next(it);
+        it = _glIteratorNext(it);
 
         Vertex* v1 = it->current;
         assert_is_not_null(v1);
