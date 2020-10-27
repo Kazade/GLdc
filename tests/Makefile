@@ -16,7 +16,6 @@ rm-elf:
 
 test_runner.cpp: 
 	$(shell python3 test_generator.py --output=test_runner.cpp $(TESTS))
-	@echo MY_VAR IS $(TESTS)
 
 test_runner.o: test_runner.cpp
 

@@ -9,6 +9,8 @@
 #include "profiler.h"
 #include "version.h"
 
+#include "flush.h"
+
 #define TA_SQ_ADDR (unsigned int *)(void *) \
     (0xe0000000 | (((unsigned long)0x10000000) & 0x03ffffe0))
 
@@ -18,13 +20,6 @@ static PolyList TR_LIST;
 
 static const int STRIDE = sizeof(Vertex) / sizeof(GLuint);
 
-typedef struct {
-    int count;
-    Vertex* current;
-    GLboolean current_is_vertex;
-} ListIterator;
-
-
 GL_FORCE_INLINE GLboolean isVertex(const Vertex* vertex) {
     return (
         vertex->flags == PVR_CMD_VERTEX ||
@@ -33,46 +28,101 @@ GL_FORCE_INLINE GLboolean isVertex(const Vertex* vertex) {
 }
 
 GL_FORCE_INLINE GLboolean isVisible(const Vertex* vertex) {
+    if(!vertex) return GL_FALSE;
     return vertex->w >= 0 && vertex->xyz[2] >= -vertex->w;
 }
 
-static inline ListIterator* next(ListIterator* it) {
-    /* Move the list iterator to the next vertex to
-     * submit. Takes care of clipping the triangle strip
-     * and perspective dividing the vertex before
-     * returning */
+static Vertex* interpolate_vertex(const Vertex* v0, const Vertex* v1, Vertex* out) {
+    /* If v0 is in front of the near plane, and v1 is behind the near plane, this
+     * generates a vertex *on* the near plane */
 
-    while(--it->count) {
-        it->current++;
+    return out;
+}
 
-        /* Ignore dead vertices */
-        if(it->current->flags == DEAD) {
-            continue;
+GL_FORCE_INLINE ListIterator* header_reset(ListIterator* it, Vertex* header) {
+    it->it = header;
+    it->visibility = 0;
+    it->triangle_count = 0;
+    return it;
+}
+
+GL_FORCE_INLINE Vertex* current_postinc(ListIterator* it) {
+    if(it->remaining == 0) {
+        return NULL;
+    }
+
+    it->remaining--;
+    return it->current++;
+}
+
+GL_FORCE_INLINE Vertex* push_stack(ListIterator* it) {
+    return &it->stack[it->stack_idx++];
+}
+
+GL_FORCE_INLINE GLboolean shift(ListIterator* it, Vertex* new_vertex) {
+    /*
+     * Shifts in a new vertex, dropping the oldest. If
+     * new_vertex is NULL it will return GL_FALSE (but still
+     * shift) */
+    it->triangle_count++;
+    if(it->triangle_count > 3) it->triangle_count = 3;
+
+    it->triangle[0] = it->triangle[1];
+    it->triangle[1] = it->triangle[2];
+    it->triangle[2] = new_vertex;
+
+    it->visibility <<= 1;
+    it->visibility &= 7;
+    it->visibility += isVisible(new_vertex);
+
+    return new_vertex != NULL;
+}
+
+ListIterator* next(ListIterator* it) {
+    if(!isVertex(it->current)) {
+        return header_reset(it, current_postinc(it));
+    } else {
+        /* Make sure we have a full triangle of vertices */
+        while(it->triangle_count < 3) {
+            if(!isVertex(it->current)) {
+                return header_reset(it, current_postinc(it));
+            }
+
+            if(!shift(it, current_postinc(it))) {
+                /* We reached the end so just
+                 * return the oldest until they're gone */
+                it->it = it->triangle[0];
+                return (it->it) ? it : NULL;
+            }
         }
 
-        /* If this is a header, then we submit! */
-        it->current_is_vertex = isVertex(it->current);
+        /* OK, by this point we should have info for a complete triangle
+         * including visibility */
+        switch(it->visibility) {
+            case B111:
+                /* Totally visible, return the first vertex */
+                it->it = it->triangle[0];
+                return it;
+            break;
+            case B100:
+                /* First visible only */
+                it->triangle[1] = interpolate_vertex(it->triangle[0], it->triangle[1], push_stack(it));
+                it->triangle[2] = interpolate_vertex(it->triangle[0], it->triangle[2], push_stack(it));
+                it->visibility = B111; /* All visible now, yay! */
 
-        if(it->current_is_vertex) {
-            return it;
+                assert(isVisible(it->triangle[1]));
+                assert(isVisible(it->triangle[2]));
+
+                it->it = it->triangle[0];
+                return it;
+            break;
         }
-
-        /* All other vertices are fine */
-        return it;
     }
 
     return NULL;
 }
 
-static inline ListIterator* begin(void* src, int n) {
-    ListIterator* it = (ListIterator*) malloc(sizeof(ListIterator));
-    it->count = n;
-    it->current = (Vertex*) src;
-    it->current_is_vertex = GL_FALSE;
-    return (n) ? it : NULL;
-}
-
-static inline void perspective_divide(Vertex* vertex) {
+GL_FORCE_INLINE void perspective_divide(Vertex* vertex) {
     float f = MATH_Fast_Invert(vertex->w);
     vertex->xyz[0] *= f;
     vertex->xyz[1] *= f;
@@ -91,7 +141,7 @@ static void pvr_list_submit(void *src, int n) {
     while(it) {
         __asm__("pref @%0" : : "r"(it->current + 1));  /* prefetch 64 bytes for next loop */
 
-        if(it->current_is_vertex) {
+        if(isVertex(it->current)) {
             perspective_divide(it->current);
         }
 
