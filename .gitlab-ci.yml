@@ -21,6 +21,6 @@ test:sh4-gcc:
   script:
     - source /etc/bash.bashrc
     - make test
-    - lxdream -H -e tests/tests.elf | python3 utils/test_parser.py
+    - lxdream -H tests/tests.elf | python3 utils/test_parser.py
     
   
