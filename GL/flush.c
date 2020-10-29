@@ -138,8 +138,17 @@ GL_FORCE_INLINE GLboolean shift(ListIterator* it, Vertex* new_vertex) {
      * Shifts in a new vertex, dropping the oldest. If
      * new_vertex is NULL it will return GL_FALSE (but still
      * shift) */
-    it->triangle_count++;
-    if(it->triangle_count > 3) it->triangle_count = 3;
+    if(new_vertex) {
+        it->triangle_count++;
+    } else {
+        // We shifted a NULL, so we're reducing
+        // the available count rather than increasing
+        it->triangle_count--;
+    }
+
+    if(it->triangle_count > 3) {
+        it->triangle_count = 3;
+    }
 
     it->triangle[0] = it->triangle[1];
     it->triangle[1] = it->triangle[2];
@@ -153,10 +162,7 @@ GL_FORCE_INLINE GLboolean shift(ListIterator* it, Vertex* new_vertex) {
 }
 
 ListIterator* _glIteratorNext(ListIterator* it) {
-    /* None remaining in the list, and the stack is empty */
-    if(!it->remaining && it->stack_idx == -1) {
-        return NULL;
-    }
+    printf("R: %d\n", it->remaining);
 
     /* Return any vertices we generated */
     if(it->stack_idx > -1) {
@@ -168,63 +174,102 @@ ListIterator* _glIteratorNext(ListIterator* it) {
         return it;
     }
 
-    if(!isVertex(it->current)) {
-        return header_reset(it, current_postinc(it));
-    } else {
-        /* Make sure we have a full triangle of vertices */
-        while(it->triangle_count < 3) {
-            if(!isVertex(it->current)) {
-                return header_reset(it, current_postinc(it));
-            }
-
-            if(!shift(it, current_postinc(it))) {
-                /* We reached the end so just
-                 * return the oldest until they're gone */
-                it->it = it->triangle[0];
-                printf("Bailing early!\n");
-                return (it->it) ? it : NULL;
-            }
-        }
-
-        /* OK, by this point we should have info for a complete triangle
-         * including visibility */
-        switch(it->visibility) {
-            case B111:
-                /* Totally visible, return the first vertex */
-                it->it = it->triangle[0];
-                return it;
-            break;
-            case B100: {
-                /* First visible only */
-                Vertex* gen2 = push_stack(it);
-                Vertex* gen1 = push_stack(it);
-
-                /* Make sure we transfer the flags.. we don't
-                 * want to disrupt the strip */
-                gen1->flags = it->triangle[1]->flags;
-                gen2->flags = it->triangle[2]->flags;
-
-                interpolate_vertex(it->triangle[0], it->triangle[1], gen1);
-                interpolate_vertex(it->triangle[0], it->triangle[2], gen2);
-                it->visibility = B111; /* All visible now, yay! */
-
-                assert(isVisible(gen1));
-                assert(isVisible(gen2));
-                assert(isVertex(gen1));
-                assert(isVertex(gen2));
-
-                it->it = it->triangle[0];
-
-                /* We're returning v0, and we've pushed
-                 * v1 and v2 to the stack, so next time
-                 * around we'll need to consume and shift
-                 * the next vertex from the source list */
-                it->triangle_count--;
-                return it;
-            } break;
-        }
+    /* None remaining in the list, and the stack is empty */
+    if(!it->remaining && !it->triangle_count) {
+        printf("None left\n");
+        return NULL;
     }
 
+    _Bool retry = 1;
+    while(retry) {
+        retry = 0;
+
+        _Bool is_header = !isVertex(it->current);
+
+        /* If we hit a header, and we have vertices still
+         * not returned, shift them out and return them */
+        if(is_header && it->triangle_count) {
+            shift(it, NULL);
+            it->it = it->triangle[0];
+            printf("Returning before header\n");
+            return it;
+        } else if(is_header) {
+            printf("Header\n");
+            return header_reset(it, current_postinc(it));
+        } else {
+            /* Make sure we have a full triangle of vertices */
+            while(it->triangle_count < 3) {
+                if(!shift(it, current_postinc(it))) {
+                    printf("List end!\n");
+                    return NULL;
+                } else {
+                    printf("Shifted\n");
+                }
+            }
+
+            /* OK, by this point we should have info for a complete triangle
+             * including visibility */
+            switch(it->visibility) {
+                case B111:
+                    /* Totally visible, return the first vertex */
+                    it->it = it->triangle[0];
+                    it->triangle_count--;
+                    printf("All here!\n");
+                    return it;
+                break;
+                case B100: {
+                    /* First visible only */
+                    Vertex* gen2 = push_stack(it);
+                    Vertex* gen1 = push_stack(it);
+
+                    /* Make sure we transfer the flags.. we don't
+                     * want to disrupt the strip */
+                    gen1->flags = it->triangle[1]->flags;
+                    gen2->flags = it->triangle[2]->flags;
+
+                    interpolate_vertex(it->triangle[0], it->triangle[1], gen1);
+                    interpolate_vertex(it->triangle[0], it->triangle[2], gen2);
+                    it->visibility = B111; /* All visible now, yay! */
+
+                    assert(isVisible(gen1));
+                    assert(isVisible(gen2));
+                    assert(isVertex(gen1));
+                    assert(isVertex(gen2));
+
+                    it->it = it->triangle[0];
+
+                    /* We're returning v0, and we've pushed
+                     * v1 and v2 to the stack, so next time
+                     * around we'll need to consume and shift
+                     * the next vertex from the source list */
+                    while(it->triangle_count) {
+                        shift(it, NULL);
+                    }
+
+                    return it;
+                } break;
+                case B000: {
+                    /* If a triangle is invisible, there are 3 situations:
+                     *
+                     * 1. It's the last triangle, so we end here
+                     * 2. It was the last triangle before a header, in which
+                     * case we return the header
+                     * 3. It was not the last triangle in the strip, so we just
+                     * go around again to shift the next vertex (we don't return
+                     * anything because it's invisible...) */
+                    if(!it->remaining) {
+                        return NULL;
+                    } else if(!isVertex(it->current)) {
+                        return header_reset(it, current_postinc(it));
+                    } else {
+                        it->triangle_count--;
+                        retry = 1;
+                    }
+                } break;
+            }
+        }
+    }
+    printf("Fall through\n");
     return NULL;
 }
 
