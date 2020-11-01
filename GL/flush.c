@@ -11,7 +11,7 @@
 
 #include "flush.h"
 
-#define CLIP_DEBUG 1
+#define CLIP_DEBUG 0
 
 #define TA_SQ_ADDR (unsigned int *)(void *) \
     (0xe0000000 | (((unsigned long)0x10000000) & 0x03ffffe0))
@@ -33,22 +33,17 @@ static const int STRIDE = sizeof(Vertex) / sizeof(GLuint);
 
 
 GL_FORCE_INLINE float _glClipLineToNearZ(const Vertex* v1, const Vertex* v2, Vertex* vout) {
+    TRACE();
+
     const float d0 = v1->w;
     const float d1 = v2->w;
 
     assert(isVisible(v1) ^ isVisible(v2));
 
-#if 0
-    /* FIXME: Disabled until determined necessary */
-
     /* We need to shift 't' a little, to avoid the possibility that a
      * rounding error leaves the new vertex behind the near plane. We shift
      * according to the direction we're clipping across the plane */
-    const float epsilon = (d0 < d1) ? 0.000001 : -0.000001;
-#else
-    const float epsilon = 0;
-#endif
-
+    const float epsilon = (d0 < d1) ? 0.0000001 : -0.0000001;
     float t = MATH_Fast_Divide(d0, (d0 - d1))+ epsilon;
 
     vout->xyz[0] = MATH_fmac(v2->xyz[0] - v1->xyz[0], t, v1->xyz[0]);
@@ -129,11 +124,12 @@ GL_FORCE_INLINE Vertex* push_stack(ListIterator* it) {
 #endif
 
     assert(it->stack_idx + 1 < MAX_STACK);
-
     return &it->stack[++it->stack_idx];
 }
 
 GL_FORCE_INLINE GLboolean shift(ListIterator* it, Vertex* new_vertex) {
+    TRACE();
+
     /*
      * Shifts in a new vertex, dropping the oldest. If
      * new_vertex is NULL it will return GL_FALSE (but still
@@ -156,7 +152,7 @@ GL_FORCE_INLINE GLboolean shift(ListIterator* it, Vertex* new_vertex) {
 
     it->visibility <<= 1;
     it->visibility &= 7;
-    it->visibility += isVisible(new_vertex);
+    it->visibility += (new_vertex) ? isVisible(new_vertex) : 0;
 
     return new_vertex != NULL;
 }
@@ -182,27 +178,54 @@ static ListIterator* finish_clip(ListIterator* it) {
 }
 
 static ListIterator* clip100(ListIterator* it) {
+#if CLIP_DEBUG
+    printf("clip100\n");
+#endif
+
+    TRACE();
+
     /* First visible only */
+    Vertex* gen3 = push_stack(it);
     Vertex* gen2 = push_stack(it);
     Vertex* gen1 = push_stack(it);
 
-    interpolate_vertex(it->triangle[0], it->triangle[1], gen1);
-    interpolate_vertex(it->triangle[0], it->triangle[2], gen2);
+    assert(gen1);
+    assert(gen2);
+    assert(gen3);
+
+    *gen1 = *it->triangle[0];
+
+    interpolate_vertex(it->triangle[0], it->triangle[1], gen2);
+    interpolate_vertex(it->triangle[0], it->triangle[2], gen3);
 
     gen1->flags = PVR_CMD_VERTEX;
-    gen2->flags = PVR_CMD_VERTEX_EOL;
+    gen2->flags = PVR_CMD_VERTEX;
+    gen3->flags = PVR_CMD_VERTEX_EOL;
+
+    assert(gen1);
+    assert(gen2);
+    assert(gen3);
 
     assert(isVisible(gen1));
     assert(isVisible(gen2));
+    assert(isVisible(gen3));
+
     assert(isVertex(gen1));
     assert(isVertex(gen2));
+    assert(isVertex(gen3));
 
-    it->active = it->triangle[0];
+    it->active = gen1;
 
     return finish_clip(it);
 }
 
 static ListIterator* clip110(ListIterator* it) {
+#if CLIP_DEBUG
+    printf("clip110\n");
+#endif
+
+    TRACE();
+
     /* First two visible. so we need to create 2 new vertices from
      * A -> C, and B -> C. */
     Vertex* gen2 = push_stack(it);
@@ -230,14 +253,119 @@ static ListIterator* clip110(ListIterator* it) {
 }
 
 static ListIterator* clip101(ListIterator* it) {
+#if CLIP_DEBUG
+    printf("clip101\n");
+#endif
+
+    TRACE();
     /* First visible and last visible. Need to create two
      * vertices in between first and last! */
+
+    Vertex* gen4 = push_stack(it);
+    Vertex* gen3 = push_stack(it);
+    Vertex* gen2 = push_stack(it);
+    Vertex* gen1 = push_stack(it);
+
+    /* First and last need to be the same*/
+    *gen1 = *it->triangle[0];
+    *gen4 = *it->triangle[2];
+
+    gen1->flags = PVR_CMD_VERTEX;
+    gen2->flags = PVR_CMD_VERTEX;
+    gen3->flags = PVR_CMD_VERTEX;
+    gen4->flags = PVR_CMD_VERTEX_EOL; /* 4 is now last in the list */
+
+    interpolate_vertex(it->triangle[0], it->triangle[1], gen2);
+    interpolate_vertex(it->triangle[1], it->triangle[2], gen3);
+
+    it->active = it->triangle[0];
+
+    return finish_clip(it);
+}
+
+static ListIterator* clip011(ListIterator* it) {
+#if CLIP_DEBUG
+    printf("clip011\n");
+#endif
+
+    TRACE();
+    /* Last two visible, we need to create two new vertices */
+
+    Vertex* gen4 = push_stack(it);
+    Vertex* gen3 = push_stack(it);
+    Vertex* gen2 = push_stack(it);
+    Vertex* gen1 = push_stack(it);
+
+    *gen3 = *it->triangle[1];
+    *gen4 = *it->triangle[2];
+
+    gen1->flags = PVR_CMD_VERTEX;
+    gen2->flags = PVR_CMD_VERTEX;
+    gen3->flags = PVR_CMD_VERTEX;
+    gen4->flags = PVR_CMD_VERTEX_EOL; /* 4 is now last in the list */
+
+    interpolate_vertex(it->triangle[0], it->triangle[1], gen1);
+    interpolate_vertex(it->triangle[2], it->triangle[0], gen2);
+
+    it->active = it->triangle[0];
+
+    return finish_clip(it);
+}
+
+static ListIterator* clip001(ListIterator* it) {
+#if CLIP_DEBUG
+    printf("clip001\n");
+#endif
+
+    TRACE();
+    /* Last visible? Just replace the first two vertices */
+
+    Vertex* gen3 = push_stack(it);
+    Vertex* gen2 = push_stack(it);
+    Vertex* gen1 = push_stack(it);
+
+    *gen3 = *it->triangle[2];
+
+    gen1->flags = PVR_CMD_VERTEX;
+    gen2->flags = PVR_CMD_VERTEX;
+    gen3->flags = PVR_CMD_VERTEX_EOL;
+
+    interpolate_vertex(it->triangle[0], it->triangle[2], gen1);
+    interpolate_vertex(it->triangle[2], it->triangle[1], gen2);
+
+    it->active = it->triangle[0];
+
+    return finish_clip(it);
+}
+
+static ListIterator* clip010(ListIterator* it) {
+#if CLIP_DEBUG
+    printf("clip010\n");
+#endif
+
+    TRACE();
+    /* First and last need replacing */
+
+    Vertex* gen3 = push_stack(it);
+    Vertex* gen2 = push_stack(it);
+    Vertex* gen1 = push_stack(it);
+
+    *gen2 = *it->triangle[1];
+
+    gen1->flags = PVR_CMD_VERTEX;
+    gen2->flags = PVR_CMD_VERTEX;
+    gen3->flags = PVR_CMD_VERTEX_EOL;
+
+    interpolate_vertex(it->triangle[0], it->triangle[1], gen1);
+    interpolate_vertex(it->triangle[1], it->triangle[2], gen3);
+
+    it->active = it->triangle[0];
 
     return finish_clip(it);
 }
 
 ListIterator* _glIteratorNext(ListIterator* it) {
-    printf("R: %d\n", it->remaining);
+    TRACE();
 
     /* Return any vertices we generated */
     if(it->stack_idx > -1) {
@@ -251,7 +379,6 @@ ListIterator* _glIteratorNext(ListIterator* it) {
 
     /* None remaining in the list, and the stack is empty */
     if(!it->remaining && !it->triangle_count) {
-        printf("None left\n");
         return NULL;
     }
 
@@ -266,19 +393,14 @@ ListIterator* _glIteratorNext(ListIterator* it) {
         if(is_header && it->triangle_count) {
             shift(it, NULL);
             it->active = it->triangle[0];
-            printf("Returning before header (%d)\n", it->triangle_count);
             return it;
         } else if(is_header) {
-            printf("Header\n");
             return header_reset(it, current_postinc(it));
         } else {
             /* Make sure we have a full triangle of vertices */
             while(it->triangle_count < 3) {
                 if(!shift(it, current_postinc(it))) {
-                    printf("List end!\n");
                     return NULL;
-                } else {
-                    printf("Shifted\n");
                 }
             }
 
@@ -286,19 +408,38 @@ ListIterator* _glIteratorNext(ListIterator* it) {
              * including visibility */
             switch(it->visibility) {
                 case B111:
+#if CLIP_DEBUG
+    printf("111\n");
+#endif
+
                     /* Totally visible, return the first vertex */
                     it->active = it->triangle[0];
                     it->triangle_count--;
-                    printf("All here!\n");
                     return it;
                 break;
                 case B100: {
                     return clip100(it);
                 } break;
+                case B101: {
+                    return clip101(it);
+                } break;
                 case B110: {
                     return clip110(it);
                 } break;
+                case B011: {
+                    return clip011(it);
+                } break;
+                case B001: {
+                    return clip001(it);
+                } break;
+                case B010: {
+                    return clip010(it);
+                } break;
                 case B000: {
+#if CLIP_DEBUG
+    printf("000\n");
+#endif
+
                     /* If a triangle  is invisible, there are 3 situations:
                      *
                      * 1. It's the last triangle, so we end here
@@ -316,10 +457,11 @@ ListIterator* _glIteratorNext(ListIterator* it) {
                         retry = 1;
                     }
                 } break;
+                default:
+                break; // Impossible
             }
         }
     }
-    printf("Fall through\n");
     return NULL;
 }
 

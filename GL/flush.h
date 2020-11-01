@@ -6,7 +6,7 @@
 extern "C" {
 #endif
 
-#define MAX_STACK 3
+#define MAX_STACK 4
 
 #define B000 0
 #define B111 7
@@ -54,6 +54,8 @@ inline ListIterator* _glIteratorBegin(void* src, int n) {
 }
 
 GL_FORCE_INLINE GLboolean isVertex(const Vertex* vertex) {
+    assert(vertex);
+
     return (
         vertex->flags == PVR_CMD_VERTEX ||
         vertex->flags == PVR_CMD_VERTEX_EOL
@@ -61,9 +63,10 @@ GL_FORCE_INLINE GLboolean isVertex(const Vertex* vertex) {
 }
 
 GL_FORCE_INLINE GLboolean isVisible(const Vertex* vertex) {
-    if(!vertex) return GL_FALSE;
-    printf("Z: %f, W: %f\n", vertex->xyz[2], vertex->w);
-    return vertex->w >= 0 && vertex->xyz[2] >= -vertex->w;
+    TRACE();
+
+    assert(vertex != NULL);
+    return vertex->w >= -0.00001f; // && vertex->xyz[2] >= -vertex->w;
 }
 
 ListIterator* _glIteratorNext(ListIterator* it);
