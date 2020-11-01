@@ -19,13 +19,14 @@ extern "C" {
 
 
 typedef struct {
+    /* Remaining vertices in the source list */
     int remaining;
 
     /* Current position in the source list */
-    Vertex* current;
+    Vertex* src;
 
     /* Vertex to read from (this may not exist in the source list) */
-    Vertex* it;
+    Vertex* active;
 
     /* Sliding window into the source view */
     Vertex* triangle[3];
@@ -43,8 +44,8 @@ typedef struct {
 inline ListIterator* _glIteratorBegin(void* src, int n) {
     ListIterator* it = (ListIterator*) malloc(sizeof(ListIterator));
     it->remaining = n - 1;
-    it->it = (Vertex*) src;
-    it->current = it->it + 1;
+    it->active = (Vertex*) src;
+    it->src = it->active + 1;
     it->stack_idx = -1;
     it->triangle_count = 0;
     it->visibility = 0;

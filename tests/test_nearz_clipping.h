@@ -77,25 +77,25 @@ public:
             add_last(0, 1, 2, -1).done();
 
         ListIterator* it = _glIteratorBegin(list.first, list.second);
-        Vertex* v0 = it->it;
+        Vertex* v0 = it->active;
         assert_is_not_null(v0);
         assert_false(isVertex(v0)); // Should be a header
 
         it = _glIteratorNext(it);
         assert_is_not_null(it);
-        Vertex* v1 = it->it;
+        Vertex* v1 = it->active;
         assert_is_not_null(v1);
         assert_true(isVertex(v1));
 
         it = _glIteratorNext(it);
         assert_is_not_null(it);
-        Vertex* v2 = it->it;
+        Vertex* v2 = it->active;
         assert_is_not_null(v2);
         assert_true(isVertex(v2));
 
         it = _glIteratorNext(it);
         assert_is_not_null(it);
-        Vertex* v3 = it->it;
+        Vertex* v3 = it->active;
         assert_is_not_null(v3);
         assert_true(isVertex(v3));
 
@@ -116,31 +116,31 @@ public:
             add_last(0, 1, 2, -1).done();
 
         ListIterator* it = _glIteratorBegin(list.first, list.second);
-        Vertex* v0 = it->it;
+        Vertex* v0 = it->active;
         assert_is_not_null(v0);
         assert_false(isVertex(v0)); // Should be a header
 
         it = _glIteratorNext(it);
         assert_is_not_null(it);
-        Vertex* v1 = it->it;
+        Vertex* v1 = it->active;
         assert_is_not_null(v1);
         assert_true(isVertex(v1));
 
         it = _glIteratorNext(it);
         assert_is_not_null(it);
-        Vertex* v2 = it->it;
+        Vertex* v2 = it->active;
         assert_is_not_null(v2);
         assert_true(isVertex(v2));
 
         it = _glIteratorNext(it);
         assert_is_not_null(it);
-        Vertex* v3 = it->it;
+        Vertex* v3 = it->active;
         assert_is_not_null(v3);
         assert_true(isVertex(v3));
 
         it = _glIteratorNext(it);
         assert_is_not_null(it);
-        Vertex* v4 = it->it;
+        Vertex* v4 = it->active;
         assert_is_not_null(v4);
         assert_true(isVertex(v4));
 
@@ -167,35 +167,35 @@ public:
 
         ListIterator* it = _glIteratorBegin(list.first, list.second);
         assert_is_not_null(it);
-        assert_is_header(it->it);
+        assert_is_header(it->active);
 
         it = _glIteratorNext(it);
         assert_is_not_null(it);
-        assert_vertex_equal(it->it, 1, 1, 2);
+        assert_vertex_equal(it->active, 1, 1, 2);
 
         it = _glIteratorNext(it);
         assert_is_not_null(it);
-        assert_vertex_equal(it->it, 1, 0, 2);
+        assert_vertex_equal(it->active, 1, 0, 2);
 
         it = _glIteratorNext(it);
         assert_is_not_null(it);
-        assert_vertex_equal(it->it, 0, 1, 2);
+        assert_vertex_equal(it->active, 0, 1, 2);
 
         it = _glIteratorNext(it);
         assert_is_not_null(it);
-        assert_is_header(it->it);
+        assert_is_header(it->active);
 
         it = _glIteratorNext(it);
         assert_is_not_null(it);
-        assert_vertex_equal(it->it, 1, 1, 2);
+        assert_vertex_equal(it->active, 1, 1, 2);
 
         it = _glIteratorNext(it);
         assert_is_not_null(it);
-        assert_vertex_equal(it->it, 1, 0, 2);
+        assert_vertex_equal(it->active, 1, 0, 2);
 
         it = _glIteratorNext(it);
         assert_is_not_null(it);
-        assert_vertex_equal(it->it, 0, 1, 2);
+        assert_vertex_equal(it->active, 0, 1, 2);
 
         it = _glIteratorNext(it);
         assert_is_null(it);
@@ -233,11 +233,11 @@ public:
 
         ListIterator* it = _glIteratorBegin(list.first, list.second);
         assert_is_not_null(it);
-        assert_is_header(it->it);
+        assert_is_header(it->active);
 
         it = _glIteratorNext(it);
         assert_is_not_null(it);
-        assert_is_header(it->it);
+        assert_is_header(it->active);
 
         // Done!
         it = _glIteratorNext(it);

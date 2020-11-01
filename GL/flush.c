@@ -105,7 +105,7 @@ static Vertex* interpolate_vertex(const Vertex* v0, const Vertex* v1, Vertex* ou
 }
 
 GL_FORCE_INLINE ListIterator* header_reset(ListIterator* it, Vertex* header) {
-    it->it = header;
+    it->active = header;
     it->visibility = 0;
     it->triangle_count = 0;
     it->stack_idx = -1;
@@ -118,8 +118,8 @@ GL_FORCE_INLINE Vertex* current_postinc(ListIterator* it) {
     }
 
     it->remaining--;
-    Vertex* current = it->current;
-    it->current++;
+    Vertex* current = it->src;
+    it->src++;
     return current;
 }
 
@@ -168,7 +168,7 @@ static ListIterator* finish_clip(ListIterator* it) {
      * buffer entirely so next iteration starts a new strip.
      * FIXME: Do we need to swap the verts in the triangle buffer for winding? */
 
-    if(it->current && isVertex(it->current)) {
+    if(it->src && isVertex(it->src)) {
         /* Continue */
         it->triangle_count--;
     } else {
@@ -197,7 +197,7 @@ static ListIterator* clip100(ListIterator* it) {
     assert(isVertex(gen1));
     assert(isVertex(gen2));
 
-    it->it = it->triangle[0];
+    it->active = it->triangle[0];
 
     return finish_clip(it);
 }
@@ -224,7 +224,7 @@ static ListIterator* clip110(ListIterator* it) {
     *cpy = *it->triangle[1];
 
     /* Return A */
-    it->it = it->triangle[0];
+    it->active = it->triangle[0];
 
     return finish_clip(it);
 }
@@ -245,7 +245,7 @@ ListIterator* _glIteratorNext(ListIterator* it) {
         printf("Yielding stack: %d\n", it->stack_idx);
 #endif
 
-        it->it = &it->stack[it->stack_idx--];
+        it->active = &it->stack[it->stack_idx--];
         return it;
     }
 
@@ -259,13 +259,13 @@ ListIterator* _glIteratorNext(ListIterator* it) {
     while(retry) {
         retry = 0;
 
-        _Bool is_header = !isVertex(it->current);
+        _Bool is_header = !isVertex(it->src);
 
         /* If we hit a header, and we have vertices still
          * not returned, shift them out and return them */
         if(is_header && it->triangle_count) {
             shift(it, NULL);
-            it->it = it->triangle[0];
+            it->active = it->triangle[0];
             printf("Returning before header (%d)\n", it->triangle_count);
             return it;
         } else if(is_header) {
@@ -287,7 +287,7 @@ ListIterator* _glIteratorNext(ListIterator* it) {
             switch(it->visibility) {
                 case B111:
                     /* Totally visible, return the first vertex */
-                    it->it = it->triangle[0];
+                    it->active = it->triangle[0];
                     it->triangle_count--;
                     printf("All here!\n");
                     return it;
@@ -309,7 +309,7 @@ ListIterator* _glIteratorNext(ListIterator* it) {
                      * anything because it's invisible...) */
                     if(!it->remaining) {
                         return NULL;
-                    } else if(!isVertex(it->current)) {
+                    } else if(!isVertex(it->src)) {
                         return header_reset(it, current_postinc(it));
                     } else {
                         it->triangle_count--;
@@ -341,13 +341,13 @@ static void pvr_list_submit(void *src, int n) {
 
     /* fill/write queues as many times necessary */
     while(it) {
-        __asm__("pref @%0" : : "r"(it->it + 1));  /* prefetch 64 bytes for next loop */
+        __asm__("pref @%0" : : "r"(it->active + 1));  /* prefetch 64 bytes for next loop */
 
-        if(isVertex(it->it)) {
-            perspective_divide(it->it);
+        if(isVertex(it->active)) {
+            perspective_divide(it->active);
         }
 
-        GLuint* s = (GLuint*) it->it;
+        GLuint* s = (GLuint*) it->active;
 
         d[0] = *(s++);
         d[1] = *(s++);
