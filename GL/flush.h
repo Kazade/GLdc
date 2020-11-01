@@ -27,12 +27,14 @@ typedef struct {
     /* Vertex to read from (this may not exist in the source list) */
     Vertex* it;
 
-    /* < 8. Bitmask of the last 3 vertices */
+    /* Sliding window into the source view */
     Vertex* triangle[3];
 
     /* Stack of temporary vertices */
     Vertex stack[MAX_STACK];
     int8_t stack_idx;
+
+    /* < 8. Bitmask of the last 3 vertices */
     uint8_t visibility;
     uint8_t triangle_count;
     uint8_t padding;

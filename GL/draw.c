@@ -1027,7 +1027,6 @@ GL_FORCE_INLINE void submitVertices(GLenum mode, GLsizei first, GLuint count, GL
     }
 
     transform(target);
-
     push(_glSubmissionTargetHeader(target), GL_FALSE, target->output, 0);
 
     /*

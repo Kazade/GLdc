@@ -161,6 +161,81 @@ GL_FORCE_INLINE GLboolean shift(ListIterator* it, Vertex* new_vertex) {
     return new_vertex != NULL;
 }
 
+static ListIterator* finish_clip(ListIterator* it) {
+    /* When we've clipped a triangle, we either need to reduce
+     * the triangle_count so that next iteration we move to the next
+     * triangle OR we need to shift away the vertices in the triangle
+     * buffer entirely so next iteration starts a new strip.
+     * FIXME: Do we need to swap the verts in the triangle buffer for winding? */
+
+    if(it->current && isVertex(it->current)) {
+        /* Continue */
+        it->triangle_count--;
+    } else {
+        /* Restart strip */
+        while(it->triangle_count) {
+            shift(it, NULL);
+        }
+    }
+
+    return it;
+}
+
+static ListIterator* clip100(ListIterator* it) {
+    /* First visible only */
+    Vertex* gen2 = push_stack(it);
+    Vertex* gen1 = push_stack(it);
+
+    interpolate_vertex(it->triangle[0], it->triangle[1], gen1);
+    interpolate_vertex(it->triangle[0], it->triangle[2], gen2);
+
+    gen1->flags = PVR_CMD_VERTEX;
+    gen2->flags = PVR_CMD_VERTEX_EOL;
+
+    assert(isVisible(gen1));
+    assert(isVisible(gen2));
+    assert(isVertex(gen1));
+    assert(isVertex(gen2));
+
+    it->it = it->triangle[0];
+
+    return finish_clip(it);
+}
+
+static ListIterator* clip110(ListIterator* it) {
+    /* First two visible. so we need to create 2 new vertices from
+     * A -> C, and B -> C. */
+    Vertex* gen2 = push_stack(it);
+    Vertex* gen1 = push_stack(it);
+    Vertex* cpy = push_stack(it);
+
+    gen1->flags = PVR_CMD_VERTEX;
+    gen2->flags = PVR_CMD_VERTEX_EOL;
+
+    interpolate_vertex(it->triangle[0], it->triangle[2], gen1);
+    interpolate_vertex(it->triangle[1], it->triangle[2], gen2);
+
+    assert(isVisible(gen1));
+    assert(isVisible(gen2));
+    assert(isVertex(gen1));
+    assert(isVertex(gen2));
+
+    /* We copy vertex B, so that things are returned in order */
+    *cpy = *it->triangle[1];
+
+    /* Return A */
+    it->it = it->triangle[0];
+
+    return finish_clip(it);
+}
+
+static ListIterator* clip101(ListIterator* it) {
+    /* First visible and last visible. Need to create two
+     * vertices in between first and last! */
+
+    return finish_clip(it);
+}
+
 ListIterator* _glIteratorNext(ListIterator* it) {
     printf("R: %d\n", it->remaining);
 
@@ -191,7 +266,7 @@ ListIterator* _glIteratorNext(ListIterator* it) {
         if(is_header && it->triangle_count) {
             shift(it, NULL);
             it->it = it->triangle[0];
-            printf("Returning before header\n");
+            printf("Returning before header (%d)\n", it->triangle_count);
             return it;
         } else if(is_header) {
             printf("Header\n");
@@ -218,38 +293,13 @@ ListIterator* _glIteratorNext(ListIterator* it) {
                     return it;
                 break;
                 case B100: {
-                    /* First visible only */
-                    Vertex* gen2 = push_stack(it);
-                    Vertex* gen1 = push_stack(it);
-
-                    /* Make sure we transfer the flags.. we don't
-                     * want to disrupt the strip */
-                    gen1->flags = it->triangle[1]->flags;
-                    gen2->flags = it->triangle[2]->flags;
-
-                    interpolate_vertex(it->triangle[0], it->triangle[1], gen1);
-                    interpolate_vertex(it->triangle[0], it->triangle[2], gen2);
-                    it->visibility = B111; /* All visible now, yay! */
-
-                    assert(isVisible(gen1));
-                    assert(isVisible(gen2));
-                    assert(isVertex(gen1));
-                    assert(isVertex(gen2));
-
-                    it->it = it->triangle[0];
-
-                    /* We're returning v0, and we've pushed
-                     * v1 and v2 to the stack, so next time
-                     * around we'll need to consume and shift
-                     * the next vertex from the source list */
-                    while(it->triangle_count) {
-                        shift(it, NULL);
-                    }
-
-                    return it;
+                    return clip100(it);
+                } break;
+                case B110: {
+                    return clip110(it);
                 } break;
                 case B000: {
-                    /* If a triangle is invisible, there are 3 situations:
+                    /* If a triangle  is invisible, there are 3 situations:
                      *
                      * 1. It's the last triangle, so we end here
                      * 2. It was the last triangle before a header, in which
@@ -288,15 +338,16 @@ static void pvr_list_submit(void *src, int n) {
      * always submitted (e.g. not clipped) */
 
     ListIterator* it = _glIteratorBegin(src, n);
+
     /* fill/write queues as many times necessary */
     while(it) {
-        __asm__("pref @%0" : : "r"(it->current + 1));  /* prefetch 64 bytes for next loop */
+        __asm__("pref @%0" : : "r"(it->it + 1));  /* prefetch 64 bytes for next loop */
 
-        if(isVertex(it->current)) {
-            perspective_divide(it->current);
+        if(isVertex(it->it)) {
+            perspective_divide(it->it);
         }
 
-        GLuint* s = (GLuint*) it->current;
+        GLuint* s = (GLuint*) it->it;
 
         d[0] = *(s++);
         d[1] = *(s++);
