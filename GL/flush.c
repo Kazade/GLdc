@@ -43,8 +43,8 @@ GL_FORCE_INLINE float _glClipLineToNearZ(const Vertex* v1, const Vertex* v2, Ver
     /* We need to shift 't' a little, to avoid the possibility that a
      * rounding error leaves the new vertex behind the near plane. We shift
      * according to the direction we're clipping across the plane */
-    const float epsilon = (d0 < d1) ? 0.0000001 : -0.0000001;
-    float t = MATH_Fast_Divide(d0, (d0 - d1))+ epsilon;
+    const float epsilon = (d0 < d1) ? 0.000001 : -0.000001;
+    float t = MATH_Fast_Divide(d0, (d0 - d1)) + epsilon;
 
     vout->xyz[0] = MATH_fmac(v2->xyz[0] - v1->xyz[0], t, v1->xyz[0]);
     vout->xyz[1] = MATH_fmac(v2->xyz[1] - v1->xyz[1], t, v1->xyz[1]);
@@ -96,6 +96,11 @@ static Vertex* interpolate_vertex(const Vertex* v0, const Vertex* v1, Vertex* ou
     /* If v0 is in front of the near plane, and v1 is behind the near plane, this
      * generates a vertex *on* the near plane */
     CLIP_TO_PLANE(v0, v1);
+
+    /* We can't have a W == 0, or we'll get a divide by zero. If we have a W < 0
+     * then our clipping has gone wrong! */
+    assert(out->w > 0.0f);
+
     return out;
 }
 
@@ -179,7 +184,7 @@ static ListIterator* finish_clip(ListIterator* it) {
 
 static ListIterator* clip100(ListIterator* it) {
 #if CLIP_DEBUG
-    printf("clip100\n");
+    printf(">> clip100\n");
 #endif
 
     TRACE();
@@ -215,46 +220,51 @@ static ListIterator* clip100(ListIterator* it) {
     assert(isVertex(gen3));
 
     it->active = gen1;
+    it->stack_idx--;
 
     return finish_clip(it);
 }
 
 static ListIterator* clip110(ListIterator* it) {
 #if CLIP_DEBUG
-    printf("clip110\n");
+    printf(">> clip110\n");
 #endif
 
     TRACE();
 
     /* First two visible. so we need to create 2 new vertices from
      * A -> C, and B -> C. */
+    Vertex* gen4 = push_stack(it);
+    Vertex* gen3 = push_stack(it);
     Vertex* gen2 = push_stack(it);
     Vertex* gen1 = push_stack(it);
-    Vertex* cpy = push_stack(it);
 
     gen1->flags = PVR_CMD_VERTEX;
-    gen2->flags = PVR_CMD_VERTEX_EOL;
+    gen2->flags = PVR_CMD_VERTEX;
+    gen3->flags = PVR_CMD_VERTEX;
+    gen4->flags = PVR_CMD_VERTEX_EOL;
 
-    interpolate_vertex(it->triangle[0], it->triangle[2], gen1);
-    interpolate_vertex(it->triangle[1], it->triangle[2], gen2);
+    *gen1 = *it->triangle[0];
+    *gen2 = *it->triangle[1];
+
+    interpolate_vertex(it->triangle[0], it->triangle[2], gen3);
+    interpolate_vertex(it->triangle[1], it->triangle[2], gen4);
 
     assert(isVisible(gen1));
     assert(isVisible(gen2));
     assert(isVertex(gen1));
     assert(isVertex(gen2));
 
-    /* We copy vertex B, so that things are returned in order */
-    *cpy = *it->triangle[1];
-
     /* Return A */
-    it->active = it->triangle[0];
+    it->active = gen1;
+    it->stack_idx--;
 
     return finish_clip(it);
 }
 
 static ListIterator* clip101(ListIterator* it) {
 #if CLIP_DEBUG
-    printf("clip101\n");
+    printf(">> clip101\n");
 #endif
 
     TRACE();
@@ -268,7 +278,7 @@ static ListIterator* clip101(ListIterator* it) {
 
     /* First and last need to be the same*/
     *gen1 = *it->triangle[0];
-    *gen4 = *it->triangle[2];
+    *gen3 = *it->triangle[2];
 
     gen1->flags = PVR_CMD_VERTEX;
     gen2->flags = PVR_CMD_VERTEX;
@@ -276,16 +286,17 @@ static ListIterator* clip101(ListIterator* it) {
     gen4->flags = PVR_CMD_VERTEX_EOL; /* 4 is now last in the list */
 
     interpolate_vertex(it->triangle[0], it->triangle[1], gen2);
-    interpolate_vertex(it->triangle[1], it->triangle[2], gen3);
+    interpolate_vertex(it->triangle[1], it->triangle[2], gen4);
 
-    it->active = it->triangle[0];
+    it->active = gen1;
+    it->stack_idx--;
 
     return finish_clip(it);
 }
 
 static ListIterator* clip011(ListIterator* it) {
 #if CLIP_DEBUG
-    printf("clip011\n");
+    printf(">> clip011\n");
 #endif
 
     TRACE();
@@ -305,16 +316,17 @@ static ListIterator* clip011(ListIterator* it) {
     gen4->flags = PVR_CMD_VERTEX_EOL; /* 4 is now last in the list */
 
     interpolate_vertex(it->triangle[0], it->triangle[1], gen1);
-    interpolate_vertex(it->triangle[2], it->triangle[0], gen2);
+    interpolate_vertex(it->triangle[0], it->triangle[2], gen2);
 
-    it->active = it->triangle[0];
+    it->active = gen1;
+    it->stack_idx--;
 
     return finish_clip(it);
 }
 
 static ListIterator* clip001(ListIterator* it) {
 #if CLIP_DEBUG
-    printf("clip001\n");
+    printf(">> clip001\n");
 #endif
 
     TRACE();
@@ -331,16 +343,17 @@ static ListIterator* clip001(ListIterator* it) {
     gen3->flags = PVR_CMD_VERTEX_EOL;
 
     interpolate_vertex(it->triangle[0], it->triangle[2], gen1);
-    interpolate_vertex(it->triangle[2], it->triangle[1], gen2);
+    interpolate_vertex(it->triangle[1], it->triangle[2], gen2);
 
-    it->active = it->triangle[0];
+    it->active = gen1;
+    it->stack_idx--;
 
     return finish_clip(it);
 }
 
 static ListIterator* clip010(ListIterator* it) {
 #if CLIP_DEBUG
-    printf("clip010\n");
+    printf(">> clip010\n");
 #endif
 
     TRACE();
@@ -359,7 +372,8 @@ static ListIterator* clip010(ListIterator* it) {
     interpolate_vertex(it->triangle[0], it->triangle[1], gen1);
     interpolate_vertex(it->triangle[1], it->triangle[2], gen3);
 
-    it->active = it->triangle[0];
+    it->active = gen1;
+    it->stack_idx--;
 
     return finish_clip(it);
 }
