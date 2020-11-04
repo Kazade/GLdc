@@ -53,9 +53,9 @@ private:
 #define assert_vertex_equal(v, x, y, z) \
     assert_is_not_null(v); \
     printf("> %f, %f, %f\n", v->xyz[0], v->xyz[1], v->xyz[2]); \
-    assert_equal(v->xyz[0], x); \
-    assert_equal(v->xyz[1], y); \
-    assert_equal(v->xyz[2], z); \
+    assert_close(v->xyz[0], x, 0.0001f); \
+    assert_close(v->xyz[1], y, 0.0001f); \
+    assert_close(v->xyz[2], z, 0.0001f); \
 
 #define assert_is_header(v) \
     assert_false(isVertex(v)); \
@@ -202,6 +202,30 @@ public:
     }
 
     void test_clipping_101() {
+        VertexBuilder builder;
+
+        auto list = builder.
+            add_header().
+            add(1, 1, 2, 1).
+            add(1, 0, 2, -1).
+            add_last(0, 1, 2, 1).done();
+
+        ListIterator* it = _glIteratorBegin(list.first, list.second);
+        Vertex* v0 = it->active;
+        assert_is_not_null(v0);
+        assert_false(isVertex(v0)); // Should be a header
+
+        it = _glIteratorNext(it);
+        assert_is_not_null(it);
+        assert_vertex_equal(it->active, 1, 1, 2);
+
+        it = _glIteratorNext(it);
+        assert_is_not_null(it);
+        assert_vertex_equal(it->active, 0, 1, 2);
+
+        it = _glIteratorNext(it);
+        assert_is_not_null(it);
+        assert_vertex_equal(it->active, 1, 0.5f, 2);
 
     }
 

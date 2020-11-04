@@ -41,17 +41,7 @@ typedef struct {
     uint8_t padding;
 } ListIterator;
 
-inline ListIterator* _glIteratorBegin(void* src, int n) {
-    ListIterator* it = (ListIterator*) malloc(sizeof(ListIterator));
-    it->remaining = n - 1;
-    it->active = (Vertex*) src;
-    it->src = it->active + 1;
-    it->stack_idx = -1;
-    it->triangle_count = 0;
-    it->visibility = 0;
-    it->triangle[0] = it->triangle[1] = it->triangle[2] = NULL;
-    return (n) ? it : NULL;
-}
+ListIterator* _glIteratorBegin(void* src, int n);
 
 GL_FORCE_INLINE GLboolean isVertex(const Vertex* vertex) {
     assert(vertex);
@@ -66,7 +56,7 @@ GL_FORCE_INLINE GLboolean isVisible(const Vertex* vertex) {
     TRACE();
 
     assert(vertex != NULL);
-    return vertex->w >= -0.00001f; // && vertex->xyz[2] >= -vertex->w;
+    return vertex->w > 0.0000f; // && vertex->xyz[2] >= -vertex->w;
 }
 
 ListIterator* _glIteratorNext(ListIterator* it);

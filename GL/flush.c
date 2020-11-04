@@ -250,14 +250,18 @@ static ListIterator* clip110(ListIterator* it) {
     interpolate_vertex(it->triangle[0], it->triangle[2], gen3);
     interpolate_vertex(it->triangle[1], it->triangle[2], gen4);
 
-    assert(isVisible(gen1));
-    assert(isVisible(gen2));
-    assert(isVertex(gen1));
-    assert(isVertex(gen2));
-
     /* Return A */
     it->active = gen1;
     it->stack_idx--;
+
+    assert(isVisible(gen1));
+    assert(isVisible(gen2));
+    assert(isVisible(gen3));
+    assert(isVisible(gen4));
+    assert(isVertex(gen1));
+    assert(isVertex(gen2));
+    assert(isVertex(gen3));
+    assert(isVertex(gen4));
 
     return finish_clip(it);
 }
@@ -278,14 +282,14 @@ static ListIterator* clip101(ListIterator* it) {
 
     /* First and last need to be the same*/
     *gen1 = *it->triangle[0];
-    *gen3 = *it->triangle[2];
+    *gen2 = *it->triangle[2];
 
     gen1->flags = PVR_CMD_VERTEX;
     gen2->flags = PVR_CMD_VERTEX;
     gen3->flags = PVR_CMD_VERTEX;
     gen4->flags = PVR_CMD_VERTEX_EOL; /* 4 is now last in the list */
 
-    interpolate_vertex(it->triangle[0], it->triangle[1], gen2);
+    interpolate_vertex(it->triangle[0], it->triangle[1], gen3);
     interpolate_vertex(it->triangle[1], it->triangle[2], gen4);
 
     it->active = gen1;
@@ -343,7 +347,7 @@ static ListIterator* clip001(ListIterator* it) {
     gen3->flags = PVR_CMD_VERTEX_EOL;
 
     interpolate_vertex(it->triangle[0], it->triangle[2], gen1);
-    interpolate_vertex(it->triangle[1], it->triangle[2], gen2);
+    interpolate_vertex(it->triangle[2], it->triangle[1], gen2);
 
     it->active = gen1;
     it->stack_idx--;
@@ -376,6 +380,20 @@ static ListIterator* clip010(ListIterator* it) {
     it->stack_idx--;
 
     return finish_clip(it);
+}
+
+ListIterator* _glIteratorBegin(void* src, int n) {
+    TRACE();
+
+    ListIterator* it = (ListIterator*) malloc(sizeof(ListIterator));
+    it->remaining = n - 1;
+    it->active = (Vertex*) src;
+    it->src = it->active + 1;
+    it->stack_idx = -1;
+    it->triangle_count = 0;
+    it->visibility = 0;
+    it->triangle[0] = it->triangle[1] = it->triangle[2] = NULL;
+    return (n) ? it : NULL;
 }
 
 ListIterator* _glIteratorNext(ListIterator* it) {
