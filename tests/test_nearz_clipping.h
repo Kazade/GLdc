@@ -294,71 +294,88 @@ public:
 
         it = _glIteratorNext(it);
         assert_is_not_null(it);
-        assert_vertex_equal(it->active, 5, 0, -8);
+        assert_vertex_equal(it->active, 5, 0, -8); // A
+        assert_equal(it->active->flags, PVR_CMD_VERTEX);
 
         it = _glIteratorNext(it);
         assert_is_not_null(it);
-        assert_vertex_equal(it->active, 2, 0, -4);
+        assert_vertex_equal(it->active, 2, 0, -4);  // B
+        assert_equal(it->active->flags, PVR_CMD_VERTEX);
 
         it = _glIteratorNext(it);
         assert_is_not_null(it);
-        assert_vertex_equal(it->active, 6, 0, -3);
+        assert_vertex_equal(it->active, 6, 0, -3);  // C
+        assert_equal(it->active->flags, PVR_CMD_VERTEX);
 
         it = _glIteratorNext(it);
         assert_is_not_null(it);
-        assert_vertex_equal(it->active, 2.88888f, 0, 0);
+        assert_vertex_equal(it->active, 2.88888f, 0, 0); // BD
+        assert_equal(it->active->flags, PVR_CMD_VERTEX);
 
         it = _glIteratorNext(it);
         assert_is_not_null(it);
-        assert_vertex_equal(it->active, 5.25f, 0, 0);
+        assert_vertex_equal(it->active, 5.25f, 0, 0);  // CD
+        assert_equal(it->active->flags, PVR_CMD_VERTEX_EOL);
 
         it = _glIteratorNext(it);
         assert_is_not_null(it);
-        assert_vertex_equal(it->active, 6, 0, -3);
+        assert_vertex_equal(it->active, 6, 0, -3); // C
+        assert_equal(it->active->flags, PVR_CMD_VERTEX);
 
         it = _glIteratorNext(it);
         assert_is_not_null(it);
-        assert_vertex_equal(it->active, 5.25f, 0, 0);
+        assert_vertex_equal(it->active, 5.25f, 0, 0); // CD
+        assert_equal(it->active->flags, PVR_CMD_VERTEX);
 
         it = _glIteratorNext(it);
         assert_is_not_null(it);
-        assert_vertex_equal(it->active, 8.0f, 0, 0);
+        assert_vertex_equal(it->active, 8.0f, 0, 0); // CE
+        assert_equal(it->active->flags, PVR_CMD_VERTEX_EOL);
 
         it = _glIteratorNext(it);
         assert_is_not_null(it);
         assert_vertex_equal(it->active, 14.0f, 0, 0);
+        assert_equal(it->active->flags, PVR_CMD_VERTEX);
 
         it = _glIteratorNext(it);
         assert_is_not_null(it);
         assert_vertex_equal(it->active, 16.375f, 0, 0);
+        assert_equal(it->active->flags, PVR_CMD_VERTEX);
 
         it = _glIteratorNext(it);
         assert_is_not_null(it);
         assert_vertex_equal(it->active, 16.0f, 0, -3); // 8
+        assert_equal(it->active->flags, PVR_CMD_VERTEX_EOL);
 
         it = _glIteratorNext(it);
         assert_is_not_null(it);
         assert_vertex_equal(it->active, 16.375f, 0, 0);
+        assert_equal(it->active->flags, PVR_CMD_VERTEX);
 
         it = _glIteratorNext(it);
         assert_is_not_null(it);
         assert_vertex_equal(it->active, 18.4286f, 0, 0);
+        assert_equal(it->active->flags, PVR_CMD_VERTEX);
 
         it = _glIteratorNext(it);
         assert_is_not_null(it);
         assert_vertex_equal(it->active, 16.0f, 0, -3);
+        assert_equal(it->active->flags, PVR_CMD_VERTEX);
 
         it = _glIteratorNext(it);
         assert_is_not_null(it);
         assert_vertex_equal(it->active, 19.0f, 0, -2);
+        assert_equal(it->active->flags, PVR_CMD_VERTEX_EOL);
 
         it = _glIteratorNext(it);
         assert_is_not_null(it);
         assert_vertex_equal(it->active, 16.0f, 0, -3);
+        assert_equal(it->active->flags, PVR_CMD_VERTEX);
 
         it = _glIteratorNext(it);
         assert_is_not_null(it);
         assert_vertex_equal(it->active, 19.0f, 0, -2);
+        assert_equal(it->active->flags, PVR_CMD_VERTEX);
 
         it = _glIteratorNext(it);
         assert_is_not_null(it);
