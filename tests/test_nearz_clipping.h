@@ -52,7 +52,6 @@ private:
 
 #define assert_vertex_equal(v, x, y, z) \
     assert_is_not_null(v); \
-    printf("> %f, %f, %f\n", v->xyz[0], v->xyz[1], v->xyz[2]); \
     assert_close(v->xyz[0], x, 0.0001f); \
     assert_close(v->xyz[1], y, 0.0001f); \
     assert_close(v->xyz[2], z, 0.0001f); \
@@ -270,6 +269,104 @@ public:
 
     void test_clipping_011() {
 
+    }
+
+    void test_complex_strip() {
+        VertexBuilder builder;
+
+        auto list = builder.
+            add_header().
+            add(5, 0, -8, 8).
+            add(2, 0, -4, 4).
+            add(6, 0, -3, 3).
+            add(4, 0, 5, -5).
+            add(10, 0, 3, -3).
+            add(11, 0, 5, -5).
+            add(12, 0, 3, -3).
+            add(17, 0, 5, -5).
+            add(16, 0, -3, 3).
+            add(19, 0, -2, 2).
+            add_last(17, 0, -7, 7).done();
+
+        ListIterator* it = _glIteratorBegin(list.first, list.second);
+        assert_is_not_null(it);
+        assert_is_header(it->active);
+
+        it = _glIteratorNext(it);
+        assert_is_not_null(it);
+        assert_vertex_equal(it->active, 5, 0, -8);
+
+        it = _glIteratorNext(it);
+        assert_is_not_null(it);
+        assert_vertex_equal(it->active, 2, 0, -4);
+
+        it = _glIteratorNext(it);
+        assert_is_not_null(it);
+        assert_vertex_equal(it->active, 6, 0, -3);
+
+        it = _glIteratorNext(it);
+        assert_is_not_null(it);
+        assert_vertex_equal(it->active, 2.88888f, 0, 0);
+
+        it = _glIteratorNext(it);
+        assert_is_not_null(it);
+        assert_vertex_equal(it->active, 5.25f, 0, 0);
+
+        it = _glIteratorNext(it);
+        assert_is_not_null(it);
+        assert_vertex_equal(it->active, 6, 0, -3);
+
+        it = _glIteratorNext(it);
+        assert_is_not_null(it);
+        assert_vertex_equal(it->active, 5.25f, 0, 0);
+
+        it = _glIteratorNext(it);
+        assert_is_not_null(it);
+        assert_vertex_equal(it->active, 8.0f, 0, 0);
+
+        it = _glIteratorNext(it);
+        assert_is_not_null(it);
+        assert_vertex_equal(it->active, 14.0f, 0, 0);
+
+        it = _glIteratorNext(it);
+        assert_is_not_null(it);
+        assert_vertex_equal(it->active, 16.375f, 0, 0);
+
+        it = _glIteratorNext(it);
+        assert_is_not_null(it);
+        assert_vertex_equal(it->active, 16.0f, 0, -3); // 8
+
+        it = _glIteratorNext(it);
+        assert_is_not_null(it);
+        assert_vertex_equal(it->active, 16.375f, 0, 0);
+
+        it = _glIteratorNext(it);
+        assert_is_not_null(it);
+        assert_vertex_equal(it->active, 18.4286f, 0, 0);
+
+        it = _glIteratorNext(it);
+        assert_is_not_null(it);
+        assert_vertex_equal(it->active, 16.0f, 0, -3);
+
+        it = _glIteratorNext(it);
+        assert_is_not_null(it);
+        assert_vertex_equal(it->active, 19.0f, 0, -2);
+
+        it = _glIteratorNext(it);
+        assert_is_not_null(it);
+        assert_vertex_equal(it->active, 16.0f, 0, -3);
+
+        it = _glIteratorNext(it);
+        assert_is_not_null(it);
+        assert_vertex_equal(it->active, 19.0f, 0, -2);
+
+        it = _glIteratorNext(it);
+        assert_is_not_null(it);
+        assert_vertex_equal(it->active, 17.0f, 0, -7);
+        assert_equal(it->active->flags, PVR_CMD_VERTEX_EOL);
+
+        it = _glIteratorNext(it);
+        assert_is_null(it);
     }
 };
 
