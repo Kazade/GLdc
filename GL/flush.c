@@ -417,6 +417,8 @@ ListIterator* _glIteratorNext(ListIterator* it) {
     _Bool retry = 1;
     while(retry) {
         retry = 0;
+        assert(it);
+        assert(it->src);
 
         _Bool is_header = !isVertex(it->src);
 
@@ -480,6 +482,9 @@ ListIterator* _glIteratorNext(ListIterator* it) {
                      * 3. It was not the last triangle in the strip, so we just
                      * go around again to shift the next vertex (we don't return
                      * anything because it's invisible...) */
+                    assert(it);
+                    assert(it->src);
+
                     if(!it->remaining) {
                         return NULL;
                     } else if(!isVertex(it->src)) {
@@ -494,6 +499,8 @@ ListIterator* _glIteratorNext(ListIterator* it) {
             }
         }
     }
+
+    assert(0 && "Fell threw!");
     return NULL;
 }
 
