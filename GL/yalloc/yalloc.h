@@ -12,7 +12,7 @@ API of the yalloc allocator.
 /**
 Maximum supported pool size. yalloc_init() will fail for larger pools.
 */
-#define MAX_POOL_SIZE ((2 << 16) - 4)
+#define MAX_POOL_SIZE ((2 << 24) - 4)
 
 /**
 Creates a pool inside a given buffer.
@@ -76,6 +76,14 @@ After defragmentation the first allocation with the returned size is guaranteed 
 @return Number of bytes that can be allocated (assuming the pool is defragmented).
 */
 size_t yalloc_count_free(void * pool);
+
+/**
+Returns the maximum continuous free area.
+
+@param pool The starting address of an initialized pool.
+@return Number of free bytes that exist continuously.
+*/
+size_t yalloc_count_continuous(void * pool_);
 
 /**
 Queries the usable size of an allocated block.

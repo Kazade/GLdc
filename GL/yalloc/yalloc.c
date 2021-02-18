@@ -3,6 +3,7 @@
 #include <assert.h>
 #include <string.h>
 
+#define ALIGN(num, align) (((num) + ((align) - 1)) & ~((align) - 1))
 
 #if defined(YALLOC_VALGRIND) && !defined(NVALGRIND)
 # define USE_VALGRIND 1
@@ -323,8 +324,8 @@ void * yalloc_alloc(void * pool, size_t size)
     return NULL; /* no free block, no chance to allocate anything */ // TODO: Just read up which C standard supports single line comments and then fucking use them!
   }
 
-  while (size % 4)
-    ++size; /* round up to alignment TODO: do it the clever way */
+  /* round up to alignment */
+  size = ALIGN(size, 64);
 
   size_t bruttoSize = size + sizeof(Header);
   Header * prev = NULL;
@@ -373,7 +374,7 @@ void * yalloc_alloc(void * pool, size_t size)
         prev[1].next = cur[1].next;
       else
       {
-        uint16_t freeBit = isFree(root);
+        uint32_t freeBit = isFree(root);
         root->prev = (cur[1].next & NIL) | freeBit;
       }
 
@@ -405,7 +406,7 @@ static void unlink_from_free_list(Header * pool, Header * blk)
   if (isNil(blk[1].prev))
   { // the block is the first in the free-list
     // make the pools first-free-pointer point to the next in the free list
-    uint16_t freeBit = isFree(pool);
+    uint32_t freeBit = isFree(pool);
     pool->prev = (blk[1].next & NIL) | freeBit;
   }
   else
@@ -528,7 +529,7 @@ void yalloc_free(void * pool_, void * p)
   // now the freed block is the first in the free-list
 
   // update the offset to the first element of the free list
-  uint16_t freeBit = isFree(pool); // remember the free-bit of the offset
+  uint32_t freeBit = isFree(pool); // remember the free-bit of the offset
   pool->prev = HDR_OFFSET(cur) | freeBit; // update the offset and restore the free-bit
   _yalloc_validate(pool);
   _protect_pool(pool);
@@ -574,6 +575,43 @@ size_t yalloc_count_free(void * pool_)
   }
 
   return bruttoFree - sizeof(Header);
+}
+
+size_t yalloc_count_continuous(void * pool_)
+{
+  assert_is_pool(pool_);
+  _unprotect_pool(pool_);
+  assert(!_yalloc_defrag_in_progress(pool_));
+  Header * pool = (Header*)pool_;
+  size_t largestFree = 0;
+  Header * cur = pool;
+
+  _yalloc_validate(pool);
+
+  for (;;)
+  {
+    if (isFree(cur))
+    { // it is a free block
+      size_t temp = (uintptr_t)HDR_PTR(cur->next) - (uintptr_t)cur;
+      if(temp > largestFree)
+        largestFree = temp;
+    }
+
+    if (isNil(cur->next))
+      break;
+
+    cur = HDR_PTR(cur->next);
+  }
+
+  _protect_pool(pool);
+
+  if (largestFree < sizeof(Header))
+  {
+    internal_assert(!largestFree); // free space should always be a multiple of sizeof(Header)
+    return 0;
+  }
+
+  return largestFree - sizeof(Header);
 }
 
 void * yalloc_first_used(void * pool)
@@ -654,7 +692,7 @@ void yalloc_defrag_start(void * pool_)
   internal_assert(!isFree(blk));
 
   // mark the pool as "defragementation in progress"
-  uint16_t freeBit = isFree(pool);
+  uint32_t freeBit = isFree(pool);
   pool->prev = (HDR_OFFSET(blk) & NIL) | freeBit;
 
   _yalloc_validate(pool);
