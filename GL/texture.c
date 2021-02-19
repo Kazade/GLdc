@@ -9,7 +9,14 @@
 #include "config.h"
 #include "../include/glext.h"
 #include "../include/glkos.h"
+
+#include "yalloc/yalloc.h"
+
 #include <kos/string.h>
+
+/* We always leave this amount of vram unallocated to prevent
+ * issues with the allocator */
+#define PVR_MEM_BUFFER_SIZE (64 * 1024)
 
 #define CLAMP_U (1<<1)
 #define CLAMP_V (1<<0)
@@ -25,6 +32,9 @@ static GLuint _determinePVRFormat(GLint internalFormat, GLenum type);
 static GLboolean BANKS_USED[4];  // Each time a 256 colour bank is used, this is set to true
 static GLboolean SUBBANKS_USED[4][16]; // 4 counts of the used 16 colour banks within the 256 ones
 static GLenum INTERNAL_PALETTE_FORMAT = GL_RGBA4;
+
+static void* YALLOC_BASE = NULL;
+static size_t YALLOC_SIZE = 0;
 
 static TexturePalette* _initTexturePalette() {
     TexturePalette* palette = (TexturePalette*) malloc(sizeof(TexturePalette));
@@ -307,6 +317,11 @@ GLubyte _glInitTextures() {
 
     memset((void*) BANKS_USED, 0x0, sizeof(BANKS_USED));
     memset((void*) SUBBANKS_USED, 0x0, sizeof(SUBBANKS_USED));
+
+    size_t vram_free = pvr_mem_available();
+    YALLOC_SIZE = vram_free - PVR_MEM_BUFFER_SIZE; /* Take all but 64kb VRAM */
+    YALLOC_BASE = pvr_mem_malloc(YALLOC_SIZE);
+    yalloc_init(YALLOC_BASE, YALLOC_SIZE);
     return 1;
 }
 
@@ -393,7 +408,7 @@ void APIENTRY glDeleteTextures(GLsizei n, GLuint *textures) {
         }
 
         if(txr->data) {
-            pvr_mem_free(txr->data);
+            yalloc_free(YALLOC_BASE, txr->data);
             txr->data = NULL;
         }
 
@@ -594,13 +609,15 @@ void APIENTRY glCompressedTexImage2DARB(GLenum target,
     active->isCompressed = GL_TRUE;
 
     /* Odds are slim new data is same size as old, so free always */
-    if(active->data)
-        pvr_mem_free(active->data);
+    if(active->data) {
+        yalloc_free(YALLOC_BASE, active->data);
+    }
 
-    active->data = pvr_mem_malloc(imageSize);
+    active->data = yalloc_alloc(YALLOC_BASE, imageSize);
 
-    if(data)
+    if(data) {
         sq_cpy(active->data, data, imageSize);
+    }
 }
 
 static GLint _cleanInternalFormat(GLint internalFormat) {
@@ -897,7 +914,7 @@ GLboolean _glIsMipmapComplete(const TextureObject* obj) {
     }
 
     GLsizei i = 0;
-    for(; i < obj->mipmapCount; ++i) {
+    for(; i < (GLubyte) obj->mipmapCount; ++i) {
         if((obj->mipmap & (1 << i)) == 0) {
             return GL_FALSE;
         }
@@ -924,13 +941,13 @@ void _glAllocateSpaceForMipmaps(TextureObject* active) {
     memcpy(temp, active->data, size);
 
     /* Free the PVR data */
-    pvr_mem_free(active->data);
+    yalloc_free(YALLOC_BASE, active->data);
     active->data = NULL;
 
     /* Figure out how much room to allocate for mipmaps */
     GLuint bytes = _glGetMipmapDataSize(active);
 
-    active->data = pvr_mem_malloc(bytes);
+    active->data = yalloc_alloc(YALLOC_BASE, bytes);
 
     /* If there was existing data, then copy it where it should go */
     memcpy(_glGetMipmapLocation(active, 0), temp, size);
