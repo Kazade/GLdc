@@ -8,6 +8,7 @@
 TARGET = libGLdc.a
 OBJS = GL/draw.o GL/flush.o GL/framebuffer.o GL/immediate.o GL/lighting.o GL/state.o GL/texture.o GL/glu.o GL/version.h
 OBJS += GL/matrix.o GL/fog.o GL/error.o GL/clip.o containers/stack.o containers/named_array.o containers/aligned_vector.o GL/profiler.o
+OBJS += GL/yalloc/yalloc.o
 
 SUBDIRS =
 

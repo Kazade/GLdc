@@ -1065,7 +1065,7 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
            active->height != height ||
            active->color != pvr_format) {
             /* changed - free old texture memory */
-            pvr_mem_free(active->data);
+            yalloc_free(YALLOC_BASE, active->data);
             active->data = NULL;
             active->mipmap = 0;
             active->mipmapCount = 0;
@@ -1104,7 +1104,7 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
             /* If we're uploading a mipmap level, we need to allocate the full amount of space */
             _glAllocateSpaceForMipmaps(active);
         } else {
-            active->data = pvr_mem_malloc(active->baseDataSize);
+            active->data = yalloc_alloc(YALLOC_BASE, active->baseDataSize);
         }
 
         assert(active->data);
@@ -1543,4 +1543,32 @@ GLAPI void APIENTRY glReadPixels(GLint x, GLint y, GLsizei width, GLsizei height
     _GL_UNUSED(type);
     _GL_UNUSED(pixels);
     assert(0 && "Not Implemented");
+}
+
+GLuint _glFreeTextureMemory() {
+    return yalloc_count_free(YALLOC_BASE);
+}
+
+GLuint _glUsedTextureMemory() {
+    return YALLOC_SIZE - _glFreeTextureMemory();
+}
+
+GLuint _glFreeContiguousTextureMemory() {
+    return yalloc_count_continuous(YALLOC_BASE);
+}
+
+GLAPI GLvoid APIENTRY glDefragmentTextureMemory_KOS(void) {
+    yalloc_defrag_start(YALLOC_BASE);
+
+    GLuint id;
+
+    /* Replace all texture pointers */
+    for(id = 0; id < MAX_TEXTURE_COUNT; id++){
+        if(glIsTexture(id)){
+            TextureObject* txr = (TextureObject*) named_array_get(&TEXTURE_OBJECTS, id);
+            txr->data = yalloc_defrag_address(YALLOC_BASE, txr->data);
+        }
+    }
+
+    yalloc_defrag_commit(YALLOC_BASE);
 }
