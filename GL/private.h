@@ -374,6 +374,10 @@ void _glKosThrowError(GLenum error, const char *function);
 void _glKosPrintError();
 GLubyte _glKosHasError();
 
+GLuint _glFreeTextureMemory();
+GLuint _glUsedTextureMemory();
+GLuint _glFreeContiguousTextureMemory();
+
 #define PVR_VERTEX_BUF_SIZE 2560 * 256
 #define MAX_TEXTURE_UNITS 2
 #define MAX_LIGHTS 8

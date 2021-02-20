@@ -205,6 +205,11 @@ GLAPI void APIENTRY glCompressedTexImage2DARB(GLenum target,
 #define GL_TEXTURE_LOD_BIAS_EXT           0x8501
 #endif /* GL_EXT_texture_lod_bias */
 
+/* ATI_meminfo */
+#define GL_VBO_FREE_MEMORY_ATI               0x87FB
+#define GL_TEXTURE_FREE_MEMORY_ATI           0x87FC
+#define GL_RENDERBUFFER_FREE_MEMORY_ATI      0x87FD
+
 __END_DECLS
 
 #endif /* !__GL_GLEXT_H */

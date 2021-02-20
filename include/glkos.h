@@ -111,5 +111,12 @@ GLAPI void APIENTRY glKosSwapBuffers();
 /* Pass to glTexParameteri to set the shared bank */
 #define GL_SHARED_TEXTURE_BANK_KOS                  0xEF00
 
+/* Memory allocation extension (GL_KOS_texture_memory_management) */
+GLAPI GLvoid APIENTRY glDefragmentTextureMemory_KOS(void);
+
+#define GL_FREE_TEXTURE_MEMORY_KOS                  0xEF01
+#define GL_USED_TEXTURE_MEMORY_KOS                  0xEF02
+#define GL_FREE_CONTIGUOUS_TEXTURE_MEMORY_KOS       0xEF03
+
 __END_DECLS
 
