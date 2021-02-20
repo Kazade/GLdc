@@ -36,6 +36,21 @@ static GLenum INTERNAL_PALETTE_FORMAT = GL_RGBA4;
 static void* YALLOC_BASE = NULL;
 static size_t YALLOC_SIZE = 0;
 
+static void* yalloc_alloc_and_defrag(size_t size) {
+    void* ret = yalloc_alloc(YALLOC_BASE, size);
+
+    if(!ret) {
+        /* Tried to allocate, but out of room, let's try defragging
+         * and repeating the alloc */
+        glDefragmentTextureMemory_KOS();
+        ret = yalloc_alloc(YALLOC_BASE, size);
+    }
+
+    assert(ret && "Out of PVR memory!");
+
+    return ret;
+}
+
 static TexturePalette* _initTexturePalette() {
     TexturePalette* palette = (TexturePalette*) malloc(sizeof(TexturePalette));
     assert(palette);
@@ -613,7 +628,7 @@ void APIENTRY glCompressedTexImage2DARB(GLenum target,
         yalloc_free(YALLOC_BASE, active->data);
     }
 
-    active->data = yalloc_alloc(YALLOC_BASE, imageSize);
+    active->data = yalloc_alloc_and_defrag(imageSize);
 
     if(data) {
         sq_cpy(active->data, data, imageSize);
@@ -947,7 +962,7 @@ void _glAllocateSpaceForMipmaps(TextureObject* active) {
     /* Figure out how much room to allocate for mipmaps */
     GLuint bytes = _glGetMipmapDataSize(active);
 
-    active->data = yalloc_alloc(YALLOC_BASE, bytes);
+    active->data = yalloc_alloc_and_defrag(bytes);
 
     /* If there was existing data, then copy it where it should go */
     memcpy(_glGetMipmapLocation(active, 0), temp, size);
@@ -1104,7 +1119,7 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
             /* If we're uploading a mipmap level, we need to allocate the full amount of space */
             _glAllocateSpaceForMipmaps(active);
         } else {
-            active->data = yalloc_alloc(YALLOC_BASE, active->baseDataSize);
+            active->data = yalloc_alloc_and_defrag(active->baseDataSize);
         }
 
         assert(active->data);
