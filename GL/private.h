@@ -2,16 +2,12 @@
 #define PRIVATE_H
 
 #include <stdint.h>
-#include <dc/matrix.h>
-#include <dc/pvr.h>
-#include <dc/vec3f.h>
-#include <dc/fmath.h>
-#include <dc/matrix3d.h>
+
+#include "platform.h"
 
 #include "../include/gl.h"
 #include "../containers/aligned_vector.h"
 #include "../containers/named_array.h"
-#include "sh4_math.h"
 
 extern void* memcpy4 (void *dest, const void *src, size_t count);
 
@@ -90,8 +86,98 @@ typedef float Matrix4x4[16];
 #endif
 
 typedef struct {
-    pvr_poly_hdr_t hdr;
+    uint32_t cmd;
+    uint32_t mode1;
+    uint32_t mode2;
+    uint32_t mode3;
+    uint32_t d1;
+    uint32_t d2;
+    uint32_t d3;
+    uint32_t d4;
 } PVRHeader;
+
+typedef struct {
+    int     list_type;          /**< \brief Primitive list
+                                     \see   pvr_lists */
+    struct {
+        int     alpha;          /**< \brief Enable or disable alpha outside modifier
+                                     \see   pvr_alpha_switch */
+        int     shading;        /**< \brief Shading type
+                                     \see   pvr_shading_types */
+        int     fog_type;       /**< \brief Fog type outside modifier
+                                     \see   pvr_fog_types */
+        int     culling;        /**< \brief Culling mode
+                                     \see   pvr_cull_modes */
+        int     color_clamp;    /**< \brief Color clamp enable/disable outside modifier
+                                     \see   pvr_colclamp_switch */
+        int     clip_mode;      /**< \brief Clipping mode
+                                     \see   pvr_clip_modes */
+        int     modifier_mode;  /**< \brief Modifier mode */
+        int     specular;       /**< \brief Offset color enable/disable outside modifier
+                                     \see   pvr_offset_switch */
+        int     alpha2;         /**< \brief Enable/disable alpha inside modifier
+                                     \see   pvr_alpha_switch */
+        int     fog_type2;      /**< \brief Fog type inside modifier
+                                     \see   pvr_fog_types */
+        int     color_clamp2;   /**< \brief Color clamp enable/disable inside modifier
+                                     \see   pvr_colclamp_switch */
+    } gen;                      /**< \brief General parameters */
+    struct {
+        int     src;            /**< \brief Source blending mode outside modifier
+                                     \see   pvr_blend_modes */
+        int     dst;            /**< \brief Dest blending mode outside modifier
+                                     \see   pvr_blend_modes */
+        int     src_enable;     /**< \brief Source blending enable outside modifier
+                                     \see   pvr_blend_switch */
+        int     dst_enable;     /**< \brief Dest blending enable outside modifier
+                                     \see   pvr_blend_switch */
+        int     src2;           /**< \brief Source blending mode inside modifier
+                                     \see   pvr_blend_modes */
+        int     dst2;           /**< \brief Dest blending mode inside modifier
+                                     \see   pvr_blend_modes */
+        int     src_enable2;    /**< \brief Source blending mode inside modifier
+                                     \see   pvr_blend_switch */
+        int     dst_enable2;    /**< \brief Dest blending mode inside modifier
+                                     \see   pvr_blend_switch */
+    } blend;                    /**< \brief Blending parameters */
+    struct {
+        int     color;
+        int     uv;
+        int     modifier;
+    } fmt;
+    struct {
+        int     comparison;
+        int     write;
+    } depth;
+    struct {
+        int enable;
+        int filter;
+        int mipmap;
+        int mipmap_bias;
+        int uv_flip;
+        int uv_clamp;
+        int alpha;
+        int env;
+        int width;
+        int height;
+        int format;
+        void* base;
+    } txr;
+    struct {
+        int enable;
+        int filter;
+        int mipmap;
+        int mipmap_bias;
+        int uv_flip;
+        int uv_clamp;
+        int alpha;
+        int env;
+        int width;
+        int height;
+        int format;
+        void* base;
+    } txr2;
+} PVRState;
 
 typedef struct {
     unsigned int flags;      /* Constant PVR_CMD_USERCLIP */
