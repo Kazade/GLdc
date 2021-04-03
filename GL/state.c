@@ -12,9 +12,9 @@
 
 #include "private.h"
 
-static pvr_poly_cxt_t GL_CONTEXT;
+static PolyContext GL_CONTEXT;
 
-pvr_poly_cxt_t* _glGetPVRContext() {
+PolyContext *_glGetPVRContext() {
     return &GL_CONTEXT;
 }
 
@@ -158,7 +158,7 @@ GLboolean _glCheckValidEnum(GLint param, GLint* values, const char* func) {
 
 GLboolean TEXTURES_ENABLED [] = {GL_FALSE, GL_FALSE};
 
-void _glUpdatePVRTextureContext(pvr_poly_cxt_t* context, GLshort textureUnit) {
+void _glUpdatePVRTextureContext(PolyContext *context, GLshort textureUnit) {
     const TextureObject *tx1 = (textureUnit == 0) ? _glGetTexture0() : _glGetTexture1();
 
     /* Disable all texturing to start with */

@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 3.0)
 project(GLdc)
 
+include_directories(include)
+
 set(
     SOURCES
     GL/clip.c

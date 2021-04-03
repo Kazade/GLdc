@@ -501,26 +501,26 @@ void gluLookAt(GLfloat eyex, GLfloat eyey, GLfloat eyez, GLfloat centerx,
     trn[M14] = -eyez;
 
     // Does not modify internal Modelview matrix
-    upload_matrix(&m);
-    multiply_matrix(&trn);
-    multiply_matrix(stack_top(MATRIX_STACKS + (GL_MODELVIEW & 0xF)));
-    download_matrix(stack_top(MATRIX_STACKS + (GL_MODELVIEW & 0xF)));
+    UploadMatrix4x4(&m);
+    MultiplyMatrix4x4(&trn);
+    MultiplyMatrix4x4(stack_top(MATRIX_STACKS + (GL_MODELVIEW & 0xF)));
+    DownloadMatrix4x4(stack_top(MATRIX_STACKS + (GL_MODELVIEW & 0xF)));
 }
 
 void _glApplyRenderMatrix() {
-    upload_matrix(&SCREENVIEW_MATRIX);
-    multiply_matrix(stack_top(MATRIX_STACKS + (GL_PROJECTION & 0xF)));
-    multiply_matrix(stack_top(MATRIX_STACKS + (GL_MODELVIEW & 0xF)));
+    UploadMatrix4x4(&SCREENVIEW_MATRIX);
+    MultiplyMatrix4x4(stack_top(MATRIX_STACKS + (GL_PROJECTION & 0xF)));
+    MultiplyMatrix4x4(stack_top(MATRIX_STACKS + (GL_MODELVIEW & 0xF)));
 }
 
 void _glMatrixLoadTexture() {
-    upload_matrix(stack_top(MATRIX_STACKS + (GL_TEXTURE & 0xF)));
+    UploadMatrix4x4(stack_top(MATRIX_STACKS + (GL_TEXTURE & 0xF)));
 }
 
 void _glMatrixLoadModelView() {
-    upload_matrix(stack_top(MATRIX_STACKS + (GL_MODELVIEW & 0xF)));
+    UploadMatrix4x4(stack_top(MATRIX_STACKS + (GL_MODELVIEW & 0xF)));
 }
 
 void _glMatrixLoadNormal() {
-    upload_matrix(&NORMAL_MATRIX);
+    UploadMatrix4x4(&NORMAL_MATRIX);
 }
