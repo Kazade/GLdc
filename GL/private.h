@@ -2,6 +2,7 @@
 #define PRIVATE_H
 
 #include <stdint.h>
+#include <stdio.h>
 
 #include "platform.h"
 #include "types.h"

@@ -1,10 +1,6 @@
 #include <string.h>
 
 #include <stdio.h>
-#include <dc/fmath.h>
-#include <dc/matrix.h>
-#include <dc/matrix3d.h>
-#include <dc/vec3f.h>
 
 #include "private.h"
 #include "../include/gl.h"
@@ -453,40 +449,40 @@ static inline void vec3f_cross(const GLfloat* v1, const GLfloat* v2, GLfloat* re
 GL_FORCE_INLINE void vec3f_normalize_sh4(float *v){
     float length, ilength;
 
-	ilength = MATH_fsrra(v[0]*v[0] + v[1]*v[1] + v[2]*v[2]);
+    ilength = MATH_fsrra(v[0]*v[0] + v[1]*v[1] + v[2]*v[2]);
     length = MATH_Fast_Invert(ilength);
-	if (length)
-	{
-		v[0] *= ilength;
-		v[1] *= ilength;
-		v[2] *= ilength;
-	}
+    if (length)
+    {
+        v[0] *= ilength;
+        v[1] *= ilength;
+        v[2] *= ilength;
+    }
 }
 
 void gluLookAt(GLfloat eyex, GLfloat eyey, GLfloat eyez, GLfloat centerx,
                GLfloat centery, GLfloat centerz, GLfloat upx, GLfloat upy,
                GLfloat upz) {
     GLfloat m [16];
-   	GLfloat f [3];
-	GLfloat u [3];
-	GLfloat s [3];
+    GLfloat f [3];
+    GLfloat u [3];
+    GLfloat s [3];
 
-	f[0] = centerx - eyex;
-	f[1] = centery - eyey;
-	f[2] = centerz - eyez;
+    f[0] = centerx - eyex;
+    f[1] = centery - eyey;
+    f[2] = centerz - eyez;
 
-	u[0] = upx;
-	u[1] = upy;
-	u[2] = upz;
+    u[0] = upx;
+    u[1] = upy;
+    u[2] = upz;
 
     vec3f_normalize_sh4(f);
-	vec3f_cross(f, u, s);
+    vec3f_cross(f, u, s);
     vec3f_normalize_sh4(s);
-	vec3f_cross(s, f, u);
+    vec3f_cross(s, f, u);
 
-	m[0] =  s[0]; m[4] =  s[1]; m[8] =   s[2]; m[12] = 0.0f;
-	m[1] =  u[0]; m[5] =  u[1]; m[9] =   u[2]; m[13] = 0.0f;
-	m[2] = -f[0]; m[6] = -f[1]; m[10] = -f[2]; m[14] = 0.0f;
+    m[0] =  s[0]; m[4] =  s[1]; m[8] =   s[2]; m[12] = 0.0f;
+    m[1] =  u[0]; m[5] =  u[1]; m[9] =   u[2]; m[13] = 0.0f;
+    m[2] = -f[0]; m[6] = -f[1]; m[10] = -f[2]; m[14] = 0.0f;
     m[3] =  0.0f; m[7] =  0.0f; m[11] =  0.0f; m[15] = 1.0f;
 
     static Matrix4x4 trn __attribute__((aligned(32))) = {

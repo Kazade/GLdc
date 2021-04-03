@@ -3,7 +3,7 @@
 #include <string.h>
 #include <math.h>
 #include <limits.h>
-#include <dc/vec3f.h>
+
 #include "private.h"
 
 #define _MIN(x, y) (x < y) ? x : y

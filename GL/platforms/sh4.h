@@ -46,3 +46,5 @@ inline void TransformVertices(const Vertex* vertices, const int count) {
         it->w = __w;
     }
 }
+
+void InitGPU(_Bool autosort, _Bool fsaa);

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <stdint.h>
+#include <stdbool.h>
 
 typedef enum GPUAlpha {
     GPU_ALPHA_DISABLE = 0,
@@ -130,6 +131,15 @@ enum GPUCommand {
     GPU_CMD_MODIFIER = 0x80000000,
     GPU_CMD_SPRITE = 0xA0000000
 };
+
+void SceneBegin();
+
+void SceneListBegin(GPUList list);
+void SceneListSubmit(void* src, int n);
+void SceneListFinish();
+
+void SceneFinish();
+
 
 
 #ifdef __DREAMCAST__
