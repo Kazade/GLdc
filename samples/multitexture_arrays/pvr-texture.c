@@ -9,10 +9,10 @@
 
 #include <kos.h>
 
-#include "gl.h"
-#include "glu.h"
-#include "glkos.h"
-#include "glext.h"
+#include "../include/gl.h"
+#include "../include/glu.h"
+#include "../include/glkos.h"
+#include "../include/glext.h"
 
 #define PVR_HDR_SIZE 0x20
 #define MAX(x, y) ((x > y) ? x : y)
@@ -92,12 +92,12 @@ GLuint glTextureLoadPVR(char *fname, unsigned char isMipMapped, unsigned char gl
     if(texFormat != GL_UNSIGNED_SHORT_5_6_5)
         glCompressedTexImage2DARB(GL_TEXTURE_2D,
                            0,
- 	                       texFormat,
- 	                       texW,
- 	                       texH,
- 	                       0,
- 	                       texSize,
- 	                       TEX0);
+                           texFormat,
+                           texW,
+                           texH,
+                           0,
+                           texSize,
+                           TEX0);
     else {
         fprintf(stderr, "%x\n", texFormat);
         glTexImage2D(GL_TEXTURE_2D,
