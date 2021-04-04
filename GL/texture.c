@@ -12,8 +12,6 @@
 
 #include "yalloc/yalloc.h"
 
-#include <kos/string.h>
-
 /* We always leave this amount of vram unallocated to prevent
  * issues with the allocator */
 #define PVR_MEM_BUFFER_SIZE (64 * 1024)
@@ -124,10 +122,10 @@ void _glSetInternalPaletteFormat(GLenum val) {
     INTERNAL_PALETTE_FORMAT = val;
 
     if(INTERNAL_PALETTE_FORMAT == GL_RGBA4) {
-        pvr_set_pal_format(PVR_PAL_ARGB4444);
+        pvr_set_pal_format(GPU_PAL_ARGB4444);
     } else {
         assert(INTERNAL_PALETTE_FORMAT == GL_RGBA8);
-        pvr_set_pal_format(PVR_PAL_ARGB8888);
+        pvr_set_pal_format(GPU_PAL_ARGB8888);
     }
 }
 
@@ -375,7 +373,7 @@ static void _glInitializeTextureObject(TextureObject* txr, unsigned int id) {
     txr->width = txr->height = 0;
     txr->mipmap = 0;
     txr->uv_clamp = 0;
-    txr->env = PVR_TXRENV_MODULATEALPHA;
+    txr->env = GPU_TXRENV_MODULATEALPHA;
     txr->data = NULL;
     txr->mipmapCount = 0;
     txr->minFilter = GL_NEAREST;
@@ -497,13 +495,13 @@ void APIENTRY glTexEnvi(GLenum target, GLenum pname, GLint param) {
 
             switch(param) {
                 case GL_MODULATE:
-                    active->env = PVR_TXRENV_MODULATEALPHA;
+                    active->env = GPU_TXRENV_MODULATEALPHA;
                 break;
                 case GL_DECAL:
-                    active->env = PVR_TXRENV_DECAL;
+                    active->env = GPU_TXRENV_DECAL;
                 break;
                 case GL_REPLACE:
-                    active->env = PVR_TXRENV_REPLACE;
+                    active->env = GPU_TXRENV_REPLACE;
                 break;
                 default:
                     break;
@@ -722,47 +720,47 @@ static GLint _cleanInternalFormat(GLint internalFormat) {
          * the type was already 1555 (1-bit alpha) in which case we return that
          */
             if(type == GL_UNSIGNED_SHORT_1_5_5_5_REV) {
-                return PVR_TXRFMT_ARGB1555 | PVR_TXRFMT_NONTWIDDLED;
+                return GPU_TXRFMT_ARGB1555 | GPU_TXRFMT_NONTWIDDLED;
             } else if(type == GL_UNSIGNED_SHORT_1_5_5_5_REV_TWID_KOS) {
-                return PVR_TXRFMT_ARGB1555 | PVR_TXRFMT_TWIDDLED;
+                return GPU_TXRFMT_ARGB1555 | GPU_TXRFMT_TWIDDLED;
             } else if(type == GL_UNSIGNED_SHORT_4_4_4_4_REV_TWID_KOS) {
-                return PVR_TXRFMT_ARGB4444 | PVR_TXRFMT_TWIDDLED;
+                return GPU_TXRFMT_ARGB4444 | GPU_TXRFMT_TWIDDLED;
             } else {
-                return PVR_TXRFMT_ARGB4444 | PVR_TXRFMT_NONTWIDDLED;
+                return GPU_TXRFMT_ARGB4444 | GPU_TXRFMT_NONTWIDDLED;
             }
         case GL_RED:
         case GL_RGB:
             /* No alpha? Return RGB565 which is the best we can do without using palettes */
-            return PVR_TXRFMT_RGB565 | PVR_TXRFMT_NONTWIDDLED;
+            return GPU_TXRFMT_RGB565 | GPU_TXRFMT_NONTWIDDLED;
         /* Compressed and twiddled versions */
         case GL_UNSIGNED_SHORT_5_6_5_TWID_KOS:
-            return PVR_TXRFMT_RGB565 | PVR_TXRFMT_TWIDDLED;
+            return GPU_TXRFMT_RGB565 | GPU_TXRFMT_TWIDDLED;
         case GL_UNSIGNED_SHORT_4_4_4_4_REV_TWID_KOS:
-            return PVR_TXRFMT_ARGB4444 | PVR_TXRFMT_TWIDDLED;
+            return GPU_TXRFMT_ARGB4444 | GPU_TXRFMT_TWIDDLED;
         case GL_UNSIGNED_SHORT_1_5_5_5_REV_TWID_KOS:
-            return PVR_TXRFMT_ARGB1555 | PVR_TXRFMT_TWIDDLED;
+            return GPU_TXRFMT_ARGB1555 | GPU_TXRFMT_TWIDDLED;
         case GL_COMPRESSED_RGB_565_VQ_KOS:
         case GL_COMPRESSED_RGB_565_VQ_MIPMAP_KOS:
-            return PVR_TXRFMT_RGB565 | PVR_TXRFMT_NONTWIDDLED | PVR_TXRFMT_VQ_ENABLE;
+            return GPU_TXRFMT_RGB565 | GPU_TXRFMT_NONTWIDDLED | GPU_TXRFMT_VQ_ENABLE;
         case GL_COMPRESSED_RGB_565_VQ_TWID_KOS:
         case GL_COMPRESSED_RGB_565_VQ_MIPMAP_TWID_KOS:
-            return PVR_TXRFMT_RGB565 | PVR_TXRFMT_TWIDDLED | PVR_TXRFMT_VQ_ENABLE;
+            return GPU_TXRFMT_RGB565 | GPU_TXRFMT_TWIDDLED | GPU_TXRFMT_VQ_ENABLE;
         case GL_COMPRESSED_ARGB_4444_VQ_TWID_KOS:
         case GL_COMPRESSED_ARGB_4444_VQ_MIPMAP_TWID_KOS:
-            return PVR_TXRFMT_ARGB4444 | PVR_TXRFMT_TWIDDLED | PVR_TXRFMT_VQ_ENABLE;
+            return GPU_TXRFMT_ARGB4444 | GPU_TXRFMT_TWIDDLED | GPU_TXRFMT_VQ_ENABLE;
         case GL_COMPRESSED_ARGB_4444_VQ_KOS:
         case GL_COMPRESSED_ARGB_4444_VQ_MIPMAP_KOS:
-            return PVR_TXRFMT_ARGB4444 | PVR_TXRFMT_NONTWIDDLED | PVR_TXRFMT_VQ_ENABLE;
+            return GPU_TXRFMT_ARGB4444 | GPU_TXRFMT_NONTWIDDLED | GPU_TXRFMT_VQ_ENABLE;
         case GL_COMPRESSED_ARGB_1555_VQ_KOS:
         case GL_COMPRESSED_ARGB_1555_VQ_MIPMAP_KOS:
-            return PVR_TXRFMT_ARGB1555 | PVR_TXRFMT_NONTWIDDLED | PVR_TXRFMT_VQ_ENABLE;
+            return GPU_TXRFMT_ARGB1555 | GPU_TXRFMT_NONTWIDDLED | GPU_TXRFMT_VQ_ENABLE;
         case GL_COMPRESSED_ARGB_1555_VQ_TWID_KOS:
         case GL_COMPRESSED_ARGB_1555_VQ_MIPMAP_TWID_KOS:
-            return PVR_TXRFMT_ARGB1555 | PVR_TXRFMT_TWIDDLED | PVR_TXRFMT_VQ_ENABLE;
+            return GPU_TXRFMT_ARGB1555 | GPU_TXRFMT_TWIDDLED | GPU_TXRFMT_VQ_ENABLE;
         case GL_COLOR_INDEX8_EXT:
-            return PVR_TXRFMT_PAL8BPP | PVR_TXRFMT_TWIDDLED;
+            return GPU_TXRFMT_PAL8BPP | GPU_TXRFMT_TWIDDLED;
         case GL_COLOR_INDEX4_EXT:
-            return PVR_TXRFMT_PAL4BPP | PVR_TXRFMT_TWIDDLED;
+            return GPU_TXRFMT_PAL4BPP | GPU_TXRFMT_TWIDDLED;
         default:
             return 0;
     }
@@ -1228,9 +1226,9 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
         const GLubyte *pixels = (GLubyte*) (conversionBuffer) ? conversionBuffer : data;
 
         if(internalFormat == GL_COLOR_INDEX8_EXT) {
-            pvr_txr_load_ex((void*) pixels, targetData, width, height, PVR_TXRLOAD_8BPP);
+            pvr_txr_load_ex((void*) pixels, targetData, width, height, GPU_TXRLOAD_8BPP);
         } else {
-            pvr_txr_load_ex((void*) pixels, targetData, width, height, PVR_TXRLOAD_16BPP);
+            pvr_txr_load_ex((void*) pixels, targetData, width, height, GPU_TXRLOAD_16BPP);
         }
 
         /* We make sure we remove nontwiddled and add twiddled. We could always

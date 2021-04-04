@@ -2,10 +2,6 @@
 #include <string.h>
 #include <stdio.h>
 
-#include <dc/pvr.h>
-#include <dc/vec3f.h>
-#include <dc/video.h>
-
 #include "../include/gl.h"
 #include "../include/glext.h"
 #include "../include/glkos.h"
@@ -43,12 +39,12 @@ GLboolean _glIsSharedTexturePaletteEnabled() {
 
 static int _calc_pvr_face_culling() {
     if(!CULLING_ENABLED) {
-        return PVR_CULLING_NONE;
+        return GPU_CULLING_NONE;
     } else {
         if(CULL_FACE == GL_BACK) {
-            return (FRONT_FACE == GL_CW) ? PVR_CULLING_CCW : PVR_CULLING_CW;
+            return (FRONT_FACE == GL_CW) ? GPU_CULLING_CCW : GPU_CULLING_CW;
         } else {
-            return (FRONT_FACE == GL_CCW) ? PVR_CULLING_CCW : PVR_CULLING_CW;
+            return (FRONT_FACE == GL_CCW) ? GPU_CULLING_CCW : GPU_CULLING_CW;
         }
     }
 }
@@ -58,28 +54,28 @@ static GLboolean DEPTH_TEST_ENABLED = GL_FALSE;
 
 static int _calc_pvr_depth_test() {
     if(!DEPTH_TEST_ENABLED) {
-        return PVR_DEPTHCMP_ALWAYS;
+        return GPU_DEPTHCMP_ALWAYS;
     }
 
     switch(DEPTH_FUNC) {
         case GL_NEVER:
-            return PVR_DEPTHCMP_NEVER;
+            return GPU_DEPTHCMP_NEVER;
         case GL_LESS:
-            return PVR_DEPTHCMP_GREATER;
+            return GPU_DEPTHCMP_GREATER;
         case GL_EQUAL:
-            return PVR_DEPTHCMP_EQUAL;
+            return GPU_DEPTHCMP_EQUAL;
         case GL_LEQUAL:
-            return PVR_DEPTHCMP_GEQUAL;
+            return GPU_DEPTHCMP_GEQUAL;
         case GL_GREATER:
-            return PVR_DEPTHCMP_LESS;
+            return GPU_DEPTHCMP_LESS;
         case GL_NOTEQUAL:
-            return PVR_DEPTHCMP_NOTEQUAL;
+            return GPU_DEPTHCMP_NOTEQUAL;
         case GL_GEQUAL:
-            return PVR_DEPTHCMP_LEQUAL;
+            return GPU_DEPTHCMP_LEQUAL;
         break;
         case GL_ALWAYS:
         default:
-            return PVR_DEPTHCMP_ALWAYS;
+            return GPU_DEPTHCMP_ALWAYS;
     }
 }
 
@@ -105,32 +101,32 @@ GLboolean _glIsAlphaTestEnabled() {
 static int _calcPVRBlendFactor(GLenum factor) {
     switch(factor) {
     case GL_ZERO:
-        return PVR_BLEND_ZERO;
+        return GPU_BLEND_ZERO;
     case GL_SRC_ALPHA:
-        return PVR_BLEND_SRCALPHA;
+        return GPU_BLEND_SRCALPHA;
     case GL_DST_COLOR:
-        return PVR_BLEND_DESTCOLOR;
+        return GPU_BLEND_DESTCOLOR;
     case GL_DST_ALPHA:
-        return PVR_BLEND_DESTALPHA;
+        return GPU_BLEND_DESTALPHA;
     case GL_ONE_MINUS_DST_COLOR:
-        return PVR_BLEND_INVDESTCOLOR;
+        return GPU_BLEND_INVDESTCOLOR;
     case GL_ONE_MINUS_SRC_ALPHA:
-        return PVR_BLEND_INVSRCALPHA;
+        return GPU_BLEND_INVSRCALPHA;
     case GL_ONE_MINUS_DST_ALPHA:
-        return PVR_BLEND_INVDESTALPHA;
+        return GPU_BLEND_INVDESTALPHA;
     case GL_ONE:
-        return PVR_BLEND_ONE;
+        return GPU_BLEND_ONE;
     default:
         fprintf(stderr, "Invalid blend mode: %u\n", (unsigned int) factor);
-        return PVR_BLEND_ONE;
+        return GPU_BLEND_ONE;
     }
 }
 
-static void _updatePVRBlend(pvr_poly_cxt_t* context) {
+static void _updatePVRBlend(PolyContext* context) {
     if(BLEND_ENABLED || ALPHA_TEST_ENABLED) {
-        context->gen.alpha = PVR_ALPHA_ENABLE;
+        context->gen.alpha = GPU_ALPHA_ENABLE;
     } else {
-        context->gen.alpha = PVR_ALPHA_DISABLE;
+        context->gen.alpha = GPU_ALPHA_DISABLE;
     }
 
     context->blend.src = _calcPVRBlendFactor(BLEND_SFACTOR);
@@ -162,17 +158,17 @@ void _glUpdatePVRTextureContext(PolyContext *context, GLshort textureUnit) {
     const TextureObject *tx1 = (textureUnit == 0) ? _glGetTexture0() : _glGetTexture1();
 
     /* Disable all texturing to start with */
-    context->txr.enable = PVR_TEXTURE_DISABLE;
-    context->txr2.enable = PVR_TEXTURE_DISABLE;
-    context->txr2.alpha = PVR_TXRALPHA_DISABLE;
+    context->txr.enable = GPU_TEXTURE_DISABLE;
+    context->txr2.enable = GPU_TEXTURE_DISABLE;
+    context->txr2.alpha = GPU_TXRALPHA_DISABLE;
 
     if(!TEXTURES_ENABLED[textureUnit] || !tx1) {
         return;
     }
 
-    context->txr.alpha = (BLEND_ENABLED || ALPHA_TEST_ENABLED) ? PVR_TXRALPHA_ENABLE : PVR_TXRALPHA_DISABLE;
+    context->txr.alpha = (BLEND_ENABLED || ALPHA_TEST_ENABLED) ? GPU_TXRALPHA_ENABLE : GPU_TXRALPHA_DISABLE;
 
-    GLuint filter = PVR_FILTER_NEAREST;
+    GLuint filter = GPU_FILTER_NEAREST;
     GLboolean enableMipmaps = GL_FALSE;
 
     switch(tx1->minFilter) {
@@ -199,17 +195,17 @@ void _glUpdatePVRTextureContext(PolyContext *context, GLshort textureUnit) {
 
     if(enableMipmaps) {
         if(tx1->minFilter == GL_LINEAR_MIPMAP_NEAREST) {
-            filter = PVR_FILTER_TRILINEAR1;
+            filter = GPU_FILTER_TRILINEAR1;
         } else if(tx1->minFilter == GL_LINEAR_MIPMAP_LINEAR) {
-            filter = PVR_FILTER_TRILINEAR2;
+            filter = GPU_FILTER_TRILINEAR2;
         } else if(tx1->minFilter == GL_NEAREST_MIPMAP_LINEAR) {
-            filter = PVR_FILTER_BILINEAR;
+            filter = GPU_FILTER_BILINEAR;
         } else {
-            filter = PVR_FILTER_NEAREST;
+            filter = GPU_FILTER_NEAREST;
         }
     } else {
         if(tx1->minFilter == GL_LINEAR && tx1->magFilter == GL_LINEAR) {
-            filter = PVR_FILTER_BILINEAR;
+            filter = GPU_FILTER_BILINEAR;
         }
     }
 
@@ -221,7 +217,7 @@ void _glUpdatePVRTextureContext(PolyContext *context, GLshort textureUnit) {
     }
 
     if(tx1->data) {
-        context->txr.enable = PVR_TEXTURE_ENABLE;
+        context->txr.enable = GPU_TEXTURE_ENABLE;
         context->txr.filter = filter;
         context->txr.width = tx1->width;
         context->txr.height = tx1->height;
@@ -246,7 +242,7 @@ void _glUpdatePVRTextureContext(PolyContext *context, GLshort textureUnit) {
         }
 
         context->txr.env = tx1->env;
-        context->txr.uv_flip = PVR_UVFLIP_NONE;
+        context->txr.uv_flip = GPU_UVFLIP_NONE;
         context->txr.uv_clamp = tx1->uv_clamp;
     }
 }
@@ -262,12 +258,12 @@ GLboolean _glIsColorMaterialEnabled() {
 static GLfloat CLEAR_COLOUR[3];
 
 void _glInitContext() {
-    memset(&GL_CONTEXT, 0, sizeof(pvr_poly_cxt_t));
+    memset(&GL_CONTEXT, 0, sizeof(PolyContext));
 
-    GL_CONTEXT.list_type = PVR_LIST_OP_POLY;
-    GL_CONTEXT.fmt.color = PVR_CLRFMT_ARGBPACKED;
-    GL_CONTEXT.fmt.uv = PVR_UVFMT_32BIT;
-    GL_CONTEXT.gen.color_clamp = PVR_CLRCLAMP_DISABLE;
+    GL_CONTEXT.list_type = GPU_LIST_OP_POLY;
+    GL_CONTEXT.fmt.color = GPU_CLRFMT_ARGBPACKED;
+    GL_CONTEXT.fmt.uv = GPU_UVFMT_32BIT;
+    GL_CONTEXT.gen.color_clamp = GPU_CLRCLAMP_DISABLE;
 
     glClearDepth(1.0f);
     glDepthFunc(GL_LESS);
@@ -309,13 +305,13 @@ GLAPI void APIENTRY glEnable(GLenum cap) {
             _updatePVRBlend(&GL_CONTEXT);
         } break;
         case GL_SCISSOR_TEST: {
-            GL_CONTEXT.gen.clip_mode = PVR_USERCLIP_INSIDE;
+            GL_CONTEXT.gen.clip_mode = GPU_USERCLIP_INSIDE;
         } break;
         case GL_LIGHTING: {
             LIGHTING_ENABLED = GL_TRUE;
         } break;
         case GL_FOG:
-            GL_CONTEXT.gen.fog_type = PVR_FOG_TABLE;
+            GL_CONTEXT.gen.fog_type = GPU_FOG_TABLE;
         break;
         case GL_COLOR_MATERIAL:
             COLOR_MATERIAL_ENABLED = GL_TRUE;
@@ -372,13 +368,13 @@ GLAPI void APIENTRY glDisable(GLenum cap) {
             _updatePVRBlend(&GL_CONTEXT);
         break;
         case GL_SCISSOR_TEST: {
-            GL_CONTEXT.gen.clip_mode = PVR_USERCLIP_DISABLE;
+            GL_CONTEXT.gen.clip_mode = GPU_USERCLIP_DISABLE;
         } break;
         case GL_LIGHTING: {
             LIGHTING_ENABLED = GL_FALSE;
         } break;
         case GL_FOG:
-            GL_CONTEXT.gen.fog_type = PVR_FOG_DISABLE;
+            GL_CONTEXT.gen.fog_type = GPU_FOG_DISABLE;
         break;
         case GL_COLOR_MATERIAL:
             COLOR_MATERIAL_ENABLED = GL_FALSE;
@@ -455,7 +451,7 @@ GLAPI void APIENTRY glReadBuffer(GLenum mode) {
 }
 
 GLAPI void APIENTRY glDepthMask(GLboolean flag) {
-    GL_CONTEXT.depth.write = (flag == GL_TRUE) ? PVR_DEPTHWRITE_ENABLE : PVR_DEPTHWRITE_DISABLE;
+    GL_CONTEXT.depth.write = (flag == GL_TRUE) ? GPU_DEPTHWRITE_ENABLE : GPU_DEPTHWRITE_DISABLE;
 }
 
 GLAPI void APIENTRY glDepthFunc(GLenum func) {
@@ -484,12 +480,12 @@ GLAPI void APIENTRY glCullFace(GLenum mode) {
 }
 
 GLenum _glGetShadeModel() {
-    return (GL_CONTEXT.gen.shading == PVR_SHADE_FLAT) ? GL_FLAT : GL_SMOOTH;
+    return (GL_CONTEXT.gen.shading == GPU_SHADE_FLAT) ? GL_FLAT : GL_SMOOTH;
 }
 
 /* Shading - Flat or Goraud */
 GLAPI void APIENTRY glShadeModel(GLenum mode) {
-    GL_CONTEXT.gen.shading = (mode == GL_SMOOTH) ? PVR_SHADE_GOURAUD : PVR_SHADE_FLAT;
+    GL_CONTEXT.gen.shading = (mode == GL_SMOOTH) ? GPU_SHADE_GOURAUD : GPU_SHADE_FLAT;
 }
 
 /* Blending */
@@ -570,7 +566,7 @@ void APIENTRY glScissor(GLint x, GLint y, GLsizei width, GLsizei height) {
     maxy = (gl_scissor_height + miny);
 
     /* load command structure while mapping screen coords to TA tiles */
-    c->flags = PVR_CMD_USERCLIP;
+    c->flags = GPU_CMD_USERCLIP;
     c->d1 = c->d2 = c->d3 = 0;
     c->sx = CLAMP(x / 32, 0, vid_mode->width / 32);
     c->sy = CLAMP(miny / 32, 0, vid_mode->height / 32);
@@ -583,7 +579,7 @@ GLboolean APIENTRY glIsEnabled(GLenum cap) {
     case GL_DEPTH_TEST:
         return DEPTH_TEST_ENABLED;
     case GL_SCISSOR_TEST:
-        return GL_CONTEXT.gen.clip_mode == PVR_USERCLIP_INSIDE;
+        return GL_CONTEXT.gen.clip_mode == GPU_USERCLIP_INSIDE;
     case GL_CULL_FACE:
         return CULLING_ENABLED;
     case GL_LIGHTING:

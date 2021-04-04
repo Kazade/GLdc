@@ -160,7 +160,7 @@ static GL_NO_INSTRUMENT GLboolean _glCalculateAverageTexel(GLuint pvrFormat, con
     const GLubyte ARGB4444 = 1;
     const GLubyte RGB565 = 2;
 
-    if((pvrFormat & PVR_TXRFMT_PAL8BPP) == PVR_TXRFMT_PAL8BPP) {
+    if((pvrFormat & GPU_TXRFMT_PAL8BPP) == GPU_TXRFMT_PAL8BPP) {
         /* Paletted... all we can do really is just pick one of the
          * 4 texels.. unless we want to change the palette (bad) or
          * pick the closest available colour (slow, and probably bad)
@@ -232,7 +232,7 @@ GLboolean _glGenerateMipmapTwiddled(const GLuint pvrFormat, const GLubyte* prevD
     uint32_t i, j;
     uint32_t stride = 0;
 
-    if((pvrFormat & PVR_TXRFMT_PAL8BPP) == PVR_TXRFMT_PAL8BPP) {
+    if((pvrFormat & GPU_TXRFMT_PAL8BPP) == GPU_TXRFMT_PAL8BPP) {
         stride = 1;
     } else {
         stride = 2;
@@ -281,7 +281,7 @@ void APIENTRY glGenerateMipmapEXT(GLenum target) {
         return;
     }
 
-    if((tex->color & PVR_TXRFMT_NONTWIDDLED) == PVR_TXRFMT_NONTWIDDLED) {
+    if((tex->color & GPU_TXRFMT_NONTWIDDLED) == GPU_TXRFMT_NONTWIDDLED) {
         /* glTexImage2D should twiddle internally textures in nearly all cases
          * so this error is unlikely */
 
