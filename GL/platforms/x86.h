@@ -14,21 +14,31 @@
 #define FASTCPY(dst, src, bytes) memcpy(dst, src, bytes)
 #define FASTCPY4(dst, src, bytes) memcpy(dst, src, bytes)
 #define MEMSET4(dst, v, size) memset((dst), (v), (size))
+#define NORMALIZEVEC3(x, y, z) \
+    do { \
+        float l = MATH_fsrra((x) * (x) + (y) * (y) + (z) * (z)); \
+        x *= l; \
+        y *= l; \
+        z *= l; \
+    while(0); \
+
+struct PolyHeader;
+struct PolyContext;
 
 inline void CompilePolyHeader(PolyHeader* out, const PolyContext* in) {
     (void) out;
     (void) in;
 }
 
-inline void UploadMatrix4x4(const float* mat) {
+inline void UploadMatrix4x4(const Matrix4x4* mat) {
     (void) mat;
 }
 
-inline void MultiplyMatrix4x4(const float* mat) {
+inline void MultiplyMatrix4x4(const Matrix4x4* mat) {
     (void) mat;
 }
 
-inline void DownloadMatrix4x4(float* mat) {
+inline void DownloadMatrix4x4(Matrix4x4* mat) {
     (void) mat;
 }
 

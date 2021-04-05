@@ -1,5 +1,5 @@
 #include <string.h>
-
+#include <math.h>
 #include <stdio.h>
 
 #include "private.h"

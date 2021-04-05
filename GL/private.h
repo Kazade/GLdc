@@ -38,7 +38,6 @@ extern void* memcpy4 (void *dest, const void *src, size_t count);
 
 #define MAX_TEXTURE_SIZE 1024
 
-typedef float Matrix4x4[16];
 
 /* This gives us an easy way to switch
  * internal matrix order if necessary */
@@ -341,7 +340,7 @@ typedef struct {
     float finalColour[4]; //16 bytes (to 40)
 } EyeSpaceData;
 
-extern void _glPerformLighting(Vertex* vertices, EyeSpaceData *es, const int32_t count);
+extern void _glPerformLighting(Vertex* vertices, EyeSpaceData *es, const uint32_t count);
 
 unsigned char _glIsClippingEnabled();
 void _glEnableClipping(unsigned char v);

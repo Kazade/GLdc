@@ -5,6 +5,7 @@
 #include <limits.h>
 
 #include "private.h"
+#include "platform.h"
 
 #define _MIN(x, y) (x < y) ? x : y
 
@@ -455,7 +456,7 @@ GL_FORCE_INLINE void _glLightVertexPoint(
 #undef _PROCESS_COMPONENT
 }
 
-void _glPerformLighting(Vertex* vertices, EyeSpaceData* es, const int32_t count) {
+void _glPerformLighting(Vertex* vertices, EyeSpaceData* es, const uint32_t count) {
     GLubyte i;
     GLuint j;
 
@@ -503,7 +504,7 @@ void _glPerformLighting(Vertex* vertices, EyeSpaceData* es, const int32_t count)
         float Vx = -data->xyz[0];
         float Vy = -data->xyz[1];
         float Vz = -data->xyz[2];
-        vec3f_normalize(Vx, Vy, Vz);
+        VEC3_NORMALIZE(Vx, Vy, Vz);
 
         const float Nx = data->n[0];
         const float Ny = data->n[1];
@@ -523,15 +524,15 @@ void _glPerformLighting(Vertex* vertices, EyeSpaceData* es, const int32_t count)
                 float Hy = (Ly + 0);
                 float Hz = (Lz + 1);
 
-                vec3f_normalize(Lx, Ly, Lz);
-                vec3f_normalize(Hx, Hy, Hz);
+                VEC3_NORMALIZE(Lx, Ly, Lz);
+                VEC3_NORMALIZE(Hx, Hy, Hz);
 
                 float LdotN, NdotH;
-                vec3f_dot(
+                VEC3_DOT(
                     Nx, Ny, Nz, Lx, Ly, Lz, LdotN
                 );
 
-                vec3f_dot(
+                VEC3_DOT(
                     Nx, Ny, Nz, Hx, Hy, Hz, NdotH
                 );
 
@@ -544,8 +545,7 @@ void _glPerformLighting(Vertex* vertices, EyeSpaceData* es, const int32_t count)
                 );
             } else {
                 float D;
-
-                vec3f_length(Lx, Ly, Lz, D);
+                VEC3_LENGTH(Lx, Ly, Lz, D);
 
                 float att = (
                     LIGHTS[i].constant_attenuation + (
@@ -563,15 +563,15 @@ void _glPerformLighting(Vertex* vertices, EyeSpaceData* es, const int32_t count)
                     float Hy = (Ly + Vy);
                     float Hz = (Lz + Vz);
 
-                    vec3f_normalize(Lx, Ly, Lz);
-                    vec3f_normalize(Hx, Hy, Hz);
+                    VEC3_NORMALIZE(Lx, Ly, Lz);
+                    VEC3_NORMALIZE(Hx, Hy, Hz);
 
                     float LdotN, NdotH;
-                    vec3f_dot(
+                    VEC3_DOT(
                         Nx, Ny, Nz, Lx, Ly, Lz, LdotN
                     );
 
-                    vec3f_dot(
+                    VEC3_DOT(
                         Nx, Ny, Nz, Hx, Hy, Hz, NdotH
                     );
 
