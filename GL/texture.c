@@ -114,6 +114,54 @@ static void _glReleasePaletteSlot(GLshort slot, GLushort size) {
     }
 }
 
+/* Linear/iterative twiddling algorithm from Marcus' tatest */
+#define TWIDTAB(x) ( (x&1)|((x&2)<<1)|((x&4)<<2)|((x&8)<<3)|((x&16)<<4)| \
+                     ((x&32)<<5)|((x&64)<<6)|((x&128)<<7)|((x&256)<<8)|((x&512)<<9) )
+#define TWIDOUT(x, y) ( TWIDTAB((y)) | (TWIDTAB((x)) << 1) )
+
+
+static void GPUTextureTwiddle8PPP(void* src, void* dst, uint32_t w, uint32_t h) {
+    uint32_t x, y, yout, min, mask;
+
+    min = MIN(w, h);
+    mask = min - 1;
+
+    uint8_t* pixels;
+    uint16_t* vtex;
+    pixels = (uint8_t*) src;
+    vtex = (uint16_t*) dst;
+
+    for(y = 0; y < h; y += 2) {
+        yout = y;
+        for(x = 0; x < w; x++) {
+            vtex[TWIDOUT((yout & mask) / 2, x & mask) +
+                 (x / min + yout / min)*min * min / 2] =
+                     pixels[y * w + x] | (pixels[(y + 1) * w + x] << 8);
+        }
+    }
+}
+
+static void GPUTextureTwiddle16BPP(void * src, void* dst, uint32_t w, uint32_t h) {
+    uint32_t x, y, yout, min, mask;
+
+    min = MIN(w, h);
+    mask = min - 1;
+
+    uint16_t* pixels;
+    uint16_t* vtex;
+    pixels = (uint16_t*) src;
+    vtex = (uint16_t*) dst;
+
+    for(y = 0; y < h; y++) {
+        yout = y;
+
+        for(x = 0; x < w; x++) {
+            vtex[TWIDOUT(x & mask, yout & mask) +
+                 (x / min + yout / min)*min * min] = pixels[y * w + x];
+        }
+    }
+}
+
 TexturePalette* _glGetSharedPalette(GLshort bank) {
     assert(bank >= 0 && bank < 4);
     return SHARED_PALETTES[bank];
@@ -1227,9 +1275,9 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
         const GLubyte *pixels = (GLubyte*) (conversionBuffer) ? conversionBuffer : data;
 
         if(internalFormat == GL_COLOR_INDEX8_EXT) {
-            pvr_txr_load_ex((void*) pixels, targetData, width, height, GPU_TXRLOAD_8BPP);
+            GPUTextureTwiddle8PPP((void*) pixels, targetData, width, height);
         } else {
-            pvr_txr_load_ex((void*) pixels, targetData, width, height, GPU_TXRLOAD_16BPP);
+            GPUTextureTwiddle16BPP((void*) pixels, targetData, width, height);
         }
 
         /* We make sure we remove nontwiddled and add twiddled. We could always
