@@ -9,6 +9,15 @@
 #include "../types.h"
 #include "sh4_math.h"
 
+#define FASTCPY(dst, src, bytes) \
+    (bytes % 32 == 0) ? sq_cpy(dst, src, bytes) : memcpy(dst, src, bytes)
+
+#define FASTCPY4(dst, src, bytes) \
+    (bytes % 32 == 0) ? sq_cpy(dst, src, bytes) : memcpy4(dst, src, bytes)
+
+#define MEMSET4(dst, v, size) memset4((dst), (v), (size))
+#define NORMALIZEVEC3(x, y, z) vec3f_normalize((x), (y), (z))
+
 inline void CompilePolyHeader(PolyHeader* out, const PolyContext* in) {
     pvr_poly_compile((pvr_poly_hdr_t*) out, (pvr_poly_cxt_t*) in);
 }

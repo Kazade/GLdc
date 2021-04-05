@@ -32,18 +32,6 @@ static const Matrix4x4 IDENTITY = {
 
 GLfloat NEAR_PLANE_DISTANCE = 0.0f;
 
-static inline void upload_matrix(Matrix4x4* m) {
-    mat_load((matrix_t*) m);
-}
-
-static inline void multiply_matrix(Matrix4x4* m) {
-    mat_apply((matrix_t*) m);
-}
-
-static inline void download_matrix(Matrix4x4* m) {
-    mat_store((matrix_t*) m);
-}
-
 Matrix4x4* _glGetProjectionMatrix() {
     return (Matrix4x4*) stack_top(&MATRIX_STACKS[1]);
 }
@@ -63,6 +51,8 @@ void _glInitMatrices() {
 
     memcpy4(NORMAL_MATRIX, IDENTITY, sizeof(Matrix4x4));
     memcpy4(SCREENVIEW_MATRIX, IDENTITY, sizeof(Matrix4x4));
+
+    const VideoMode* vid_mode = GetVideoMode();
 
     glDepthRange(0.0f, 1.0f);
     glViewport(0, 0, vid_mode->width, vid_mode->height);
@@ -143,9 +133,9 @@ void APIENTRY glTranslatef(GLfloat x, GLfloat y, GLfloat z) {
     trn[M13] = y;
     trn[M14] = z;
 
-    upload_matrix(stack_top(MATRIX_STACKS + MATRIX_IDX));
-    multiply_matrix(&trn);
-    download_matrix(stack_top(MATRIX_STACKS + MATRIX_IDX));
+    UploadMatrix4x4(stack_top(MATRIX_STACKS + MATRIX_IDX));
+    MultiplyMatrix4x4(&trn);
+    DownloadMatrix4x4(stack_top(MATRIX_STACKS + MATRIX_IDX));
 
     if(MATRIX_MODE == GL_MODELVIEW) {
         recalculateNormalMatrix();
@@ -165,9 +155,9 @@ void APIENTRY glScalef(GLfloat x, GLfloat y, GLfloat z) {
     scale[M5] = y;
     scale[M10] = z;
 
-    upload_matrix(stack_top(MATRIX_STACKS + MATRIX_IDX));
-    multiply_matrix(&scale);
-    download_matrix(stack_top(MATRIX_STACKS + MATRIX_IDX));
+    UploadMatrix4x4(stack_top(MATRIX_STACKS + MATRIX_IDX));
+    MultiplyMatrix4x4(&scale);
+    DownloadMatrix4x4(stack_top(MATRIX_STACKS + MATRIX_IDX));
 
     if(MATRIX_MODE == GL_MODELVIEW) {
         recalculateNormalMatrix();
@@ -208,9 +198,9 @@ void APIENTRY glRotatef(GLfloat angle, GLfloat x, GLfloat  y, GLfloat z) {
     rotate[M9] = yz * invc - xs;
     rotate[M10] = (z * z) * invc + c;
 
-    upload_matrix(stack_top(MATRIX_STACKS + MATRIX_IDX));
-    multiply_matrix(&rotate);
-    download_matrix(stack_top(MATRIX_STACKS + MATRIX_IDX));
+    UploadMatrix4x4(stack_top(MATRIX_STACKS + MATRIX_IDX));
+    MultiplyMatrix4x4(&rotate);
+    DownloadMatrix4x4(stack_top(MATRIX_STACKS + MATRIX_IDX));
 
     if(MATRIX_MODE == GL_MODELVIEW) {
         recalculateNormalMatrix();
@@ -268,9 +258,9 @@ void APIENTRY glOrtho(GLfloat left, GLfloat right,
     OrthoMatrix[M13] = -(top + bottom) / (top - bottom);
     OrthoMatrix[M14] = -(zfar + znear) / (zfar - znear);
 
-    upload_matrix(stack_top(MATRIX_STACKS + MATRIX_IDX));
-    multiply_matrix(&OrthoMatrix);
-    download_matrix(stack_top(MATRIX_STACKS + MATRIX_IDX));
+    UploadMatrix4x4(stack_top(MATRIX_STACKS + MATRIX_IDX));
+    MultiplyMatrix4x4(&OrthoMatrix);
+    DownloadMatrix4x4(stack_top(MATRIX_STACKS + MATRIX_IDX));
 }
 
 
@@ -282,7 +272,7 @@ void APIENTRY glFrustum(GLfloat left, GLfloat right,
     /* Frustum Matrix */
     static Matrix4x4 FrustumMatrix __attribute__((aligned(32)));
 
-    memset(FrustumMatrix, 0, sizeof(float) * 16);
+    MEMSET(FrustumMatrix, 0, sizeof(float) * 16);
 
     const float near2 = 2.0f * znear;
     const float A = (right + left) / (right - left);
@@ -299,9 +289,9 @@ void APIENTRY glFrustum(GLfloat left, GLfloat right,
     FrustumMatrix[M11] = -1.0f;
     FrustumMatrix[M14] = D;
 
-    upload_matrix(stack_top(MATRIX_STACKS + MATRIX_IDX));
-    multiply_matrix(&FrustumMatrix);
-    download_matrix(stack_top(MATRIX_STACKS + MATRIX_IDX));
+    UploadMatrix4x4(stack_top(MATRIX_STACKS + MATRIX_IDX));
+    MultiplyMatrix4x4(&FrustumMatrix);
+    DownloadMatrix4x4(stack_top(MATRIX_STACKS + MATRIX_IDX));
 }
 
 
@@ -329,9 +319,9 @@ void glMultMatrixf(const GLfloat *m) {
     TEMP[M14] = m[14];
     TEMP[M15] = m[15];
 
-    upload_matrix(stack_top(MATRIX_STACKS + MATRIX_IDX));
-    multiply_matrix((Matrix4x4*) &TEMP);
-    download_matrix(stack_top(MATRIX_STACKS + MATRIX_IDX));
+    UploadMatrix4x4(stack_top(MATRIX_STACKS + MATRIX_IDX));
+    MultiplyMatrix4x4((Matrix4x4*) &TEMP);
+    DownloadMatrix4x4(stack_top(MATRIX_STACKS + MATRIX_IDX));
 
     if(MATRIX_MODE == GL_MODELVIEW) {
         recalculateNormalMatrix();
@@ -396,9 +386,9 @@ void glMultTransposeMatrixf(const GLfloat *m) {
     TEMP[M14] = m[11];
     TEMP[M15] = m[15];
 
-    upload_matrix(stack_top(MATRIX_STACKS + MATRIX_IDX));
-    multiply_matrix(&TEMP);
-    download_matrix(stack_top(MATRIX_STACKS + MATRIX_IDX));
+    UploadMatrix4x4(stack_top(MATRIX_STACKS + MATRIX_IDX));
+    MultiplyMatrix4x4(&TEMP);
+    DownloadMatrix4x4(stack_top(MATRIX_STACKS + MATRIX_IDX));
 
     if(MATRIX_MODE == GL_MODELVIEW) {
         recalculateNormalMatrix();
@@ -407,6 +397,8 @@ void glMultTransposeMatrixf(const GLfloat *m) {
 
 /* Set the GL viewport */
 void APIENTRY glViewport(GLint x, GLint y, GLsizei width, GLsizei height) {
+    const VideoMode* vid_mode = GetVideoMode();
+
     gl_viewport_x1 = x;
     gl_viewport_y1 = y;
     gl_viewport_width = width;

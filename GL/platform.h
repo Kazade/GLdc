@@ -3,6 +3,8 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+#define MEMSET(dst, v, size) memset((dst), (v), (size))
+
 typedef enum GPUAlpha {
     GPU_ALPHA_DISABLE = 0,
     GPU_ALPHA_ENABLE = 1
@@ -146,6 +148,13 @@ typedef enum GPUTextureEnv {
     GPU_TXRENV_DECAL = 2,
     GPU_TXRENV_MODULATEALPHA = 3
 } GPUTextureEnv;
+
+typedef struct VideoMode {
+    uint16_t width;
+    uint16_t height;
+} VideoMode;
+
+const VideoMode* GetVideoMode();
 
 /* Duplication of pvr_poly_cxt_t from KOS so that we can
  * compile on non-KOS platforms for testing */

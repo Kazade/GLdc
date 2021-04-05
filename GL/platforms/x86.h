@@ -1,13 +1,19 @@
 #pragma once
 
 #include <math.h>
+#include <memory.h>
+
 #include "../types.h"
 
 #define MATH_Fast_Divide(n, d) (n / d)
 #define MATH_fmac(a, b, c) (a * b + c)
-#define MATH_Fast_Sqrt(x) sqrt((x))
-#define MATH_fsrra(x) (1.0f / sqrt((x)))
+#define MATH_Fast_Sqrt(x) sqrtf((x))
+#define MATH_fsrra(x) (1.0f / sqrtf((x)))
 #define MATH_Fast_Invert(x) (1.0f / (x))
+
+#define FASTCPY(dst, src, bytes) memcpy(dst, src, bytes)
+#define FASTCPY4(dst, src, bytes) memcpy(dst, src, bytes)
+#define MEMSET4(dst, v, size) memset((dst), (v), (size))
 
 inline void CompilePolyHeader(PolyHeader* out, const PolyContext* in) {
     (void) out;

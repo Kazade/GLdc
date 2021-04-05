@@ -7,6 +7,7 @@
 #include <string.h>
 
 #include "config.h"
+#include "platform.h"
 #include "../include/glext.h"
 #include "../include/glkos.h"
 
@@ -53,7 +54,7 @@ static TexturePalette* _initTexturePalette() {
     TexturePalette* palette = (TexturePalette*) malloc(sizeof(TexturePalette));
     assert(palette);
 
-    memset4(palette, 0x0, sizeof(TexturePalette));
+    MEMSET4(palette, 0x0, sizeof(TexturePalette));
     palette->bank = -1;
     return palette;
 }
@@ -629,7 +630,7 @@ void APIENTRY glCompressedTexImage2DARB(GLenum target,
     active->data = yalloc_alloc_and_defrag(imageSize);
 
     if(data) {
-        sq_cpy(active->data, data, imageSize);
+        FASTCPY(active->data, data, imageSize);
     }
 }
 

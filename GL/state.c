@@ -557,6 +557,9 @@ void APIENTRY glScissor(GLint x, GLint y, GLsizei width, GLsizei height) {
     PVRTileClipCommand *c = aligned_vector_extend(&_glActivePolyList()->vector, 1);
 
     GLint miny, maxx, maxy;
+
+    const VideoMode* vid_mode = GetVideoMode();
+
     GLsizei gl_scissor_width = MAX( MIN(width, vid_mode->width), 0 );
     GLsizei gl_scissor_height = MAX( MIN(height, vid_mode->height), 0 );
 

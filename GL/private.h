@@ -18,12 +18,6 @@ extern void* memcpy4 (void *dest, const void *src, size_t count);
 #define GL_FORCE_INLINE static GL_INLINE_DEBUG
 #define _GL_UNUSED(x) (void)(x)
 
-#define FASTCPY(dst, src, bytes) \
-    (bytes % 32 == 0) ? sq_cpy(dst, src, bytes) : memcpy(dst, src, bytes);
-
-#define FASTCPY4(dst, src, bytes) \
-    (bytes % 32 == 0) ? sq_cpy(dst, src, bytes) : memcpy4(dst, src, bytes);
-
 #define _PACK4(v) ((v * 0xF) / 0xFF)
 #define PACK_ARGB4444(a,r,g,b) (_PACK4(a) << 12) | (_PACK4(r) << 8) | (_PACK4(g) << 4) | (_PACK4(b))
 #define PACK_ARGB8888(a,r,g,b) ( ((a & 0xFF) << 24) | ((r & 0xFF) << 16) | ((g & 0xFF) << 8) | (b & 0xFF) )
