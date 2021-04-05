@@ -67,11 +67,11 @@ typedef enum GPUTextureFormat {
     GPU_TXRFMT_STRIDE = (1 << 21)
 } GPUTextureFormat;
 
-inline uint32_t GPUPaletteSelect8BPP(uint32_t x) {
+static inline uint32_t GPUPaletteSelect8BPP(uint32_t x) {
     return x << 25;
 }
 
-inline uint32_t GPUPaletteSelect4BPP(uint32_t x) {
+static inline uint32_t GPUPaletteSelect4BPP(uint32_t x) {
     return x << 21;
 }
 

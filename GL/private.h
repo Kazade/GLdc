@@ -7,7 +7,10 @@
 #include "platform.h"
 #include "types.h"
 
-#include "../include/gl.h"
+#include "../include/GL/gl.h"
+#include "../include/GL/glext.h"
+#include "../include/GL/glkos.h"
+
 #include "../containers/aligned_vector.h"
 #include "../containers/named_array.h"
 

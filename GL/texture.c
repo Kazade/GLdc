@@ -8,8 +8,6 @@
 
 #include "config.h"
 #include "platform.h"
-#include "../include/glext.h"
-#include "../include/glkos.h"
 
 #include "yalloc/yalloc.h"
 

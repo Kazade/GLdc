@@ -3,7 +3,7 @@
 #include <stdio.h>
 
 #include "private.h"
-#include "../include/gl.h"
+
 #include "../containers/stack.h"
 
 #define DEG2RAD (0.01745329251994329576923690768489)
@@ -49,8 +49,8 @@ void _glInitMatrices() {
     stack_push(&MATRIX_STACKS[1], IDENTITY);
     stack_push(&MATRIX_STACKS[2], IDENTITY);
 
-    memcpy4(NORMAL_MATRIX, IDENTITY, sizeof(Matrix4x4));
-    memcpy4(SCREENVIEW_MATRIX, IDENTITY, sizeof(Matrix4x4));
+    FASTCPY4(NORMAL_MATRIX, IDENTITY, sizeof(Matrix4x4));
+    FASTCPY4(SCREENVIEW_MATRIX, IDENTITY, sizeof(Matrix4x4));
 
     const VideoMode* vid_mode = GetVideoMode();
 
@@ -96,7 +96,7 @@ static void transpose(GLfloat* m) {
 }
 
 static void recalculateNormalMatrix() {
-    memcpy4(NORMAL_MATRIX, stack_top(MATRIX_STACKS + (GL_MODELVIEW & 0xF)), sizeof(Matrix4x4));
+    FASTCPY4(NORMAL_MATRIX, stack_top(MATRIX_STACKS + (GL_MODELVIEW & 0xF)), sizeof(Matrix4x4));
     inverse((GLfloat*) NORMAL_MATRIX);
     transpose((GLfloat*) NORMAL_MATRIX);
 }

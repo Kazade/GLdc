@@ -1,4 +1,4 @@
-#include "../include/glkos.h"
+#include "private.h"
 
 void APIENTRY glVertexPackColor3fKOS(GLVertexKOS* vertex, float r, float g, float b) {
     vertex->bgra[3] = 255;

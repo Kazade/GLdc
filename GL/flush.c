@@ -1,6 +1,4 @@
 
-
-#include "../include/glkos.h"
 #include "../containers/aligned_vector.h"
 #include "private.h"
 #include "profiler.h"

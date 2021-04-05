@@ -2,10 +2,6 @@
 #include <string.h>
 #include <stdio.h>
 
-#include "../include/gl.h"
-#include "../include/glext.h"
-#include "../include/glkos.h"
-
 #include "private.h"
 
 static PolyContext GL_CONTEXT;
@@ -641,10 +637,10 @@ void APIENTRY glGetBooleanv(GLenum pname, GLboolean* params) {
 void APIENTRY glGetFloatv(GLenum pname, GLfloat* params) {
     switch(pname) {
         case GL_PROJECTION_MATRIX:
-            memcpy4(params, _glGetProjectionMatrix(), sizeof(float) * 16);
+            FASTCPY4(params, _glGetProjectionMatrix(), sizeof(float) * 16);
         break;
         case GL_MODELVIEW_MATRIX:
-            memcpy4(params, _glGetModelViewMatrix(), sizeof(float) * 16);
+            FASTCPY4(params, _glGetModelViewMatrix(), sizeof(float) * 16);
         break;
         case GL_POLYGON_OFFSET_FACTOR:
             *params = OFFSET_FACTOR;

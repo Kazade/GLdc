@@ -5,9 +5,6 @@
 #include <math.h>
 #include <assert.h>
 
-#include "../include/gl.h"
-#include "../include/glext.h"
-
 #include "private.h"
 #include "profiler.h"
 #include "platform.h"

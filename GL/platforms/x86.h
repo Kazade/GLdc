@@ -14,6 +14,7 @@
 #define FASTCPY(dst, src, bytes) memcpy(dst, src, bytes)
 #define FASTCPY4(dst, src, bytes) memcpy(dst, src, bytes)
 #define MEMSET4(dst, v, size) memset((dst), (v), (size))
+
 #define VEC3_NORMALIZE(x, y, z) \
     do { \
         float l = MATH_fsrra((x) * (x) + (y) * (y) + (z) * (z)); \
@@ -31,55 +32,46 @@
 struct PolyHeader;
 struct PolyContext;
 
-inline void CompilePolyHeader(PolyHeader* out, const PolyContext* in) {
+static inline void CompilePolyHeader(PolyHeader* out, const PolyContext* in) {
     (void) out;
     (void) in;
 }
 
-inline void UploadMatrix4x4(const Matrix4x4* mat) {
-    (void) mat;
-}
-
-inline void MultiplyMatrix4x4(const Matrix4x4* mat) {
-    (void) mat;
-}
-
-inline void DownloadMatrix4x4(Matrix4x4* mat) {
-    (void) mat;
-}
+void UploadMatrix4x4(const Matrix4x4* mat);
+void MultiplyMatrix4x4(const Matrix4x4* mat);
+void DownloadMatrix4x4(Matrix4x4* mat);
 
 /* Transform a 3-element vector in-place using the stored matrix (w == 1) */
-inline void TransformVec3(float* x) {
+static inline void TransformVec3(float* x) {
 
 }
 
 /* Transform a 3-element vector using the stored matrix (w == 1) */
-inline void TransformVec3NoMod(const float* xIn, float* xOut) {
+static inline void TransformVec3NoMod(const float* xIn, float* xOut) {
 
 }
 
 /* Transform a 3-element normal using the stored matrix (w == 0)*/
-inline void TransformNormalNoMod(const float* xIn, float* xOut) {
+static inline void TransformNormalNoMod(const float* xIn, float* xOut) {
 
 }
 
 /* Transform a 4-element vector in-place by the stored matrix */
-inline void TransformVec4(float* x) {
+static inline void TransformVec4(float* x) {
 
 }
 
-inline void TransformVertices(const Vertex* vertices, const int count) {
+static inline void TransformVertices(const Vertex* vertices, const int count) {
     (void) vertices;
     (void) count;
 }
 
 void InitGPU(_Bool autosort, _Bool fsaa);
 
-size_t GPUMemoryAvailable();
-void* GPUMemoryAlloc(size_t size);
-
 enum GPUPaletteFormat;
 
+size_t GPUMemoryAvailable();
+void* GPUMemoryAlloc(size_t size);
 void GPUSetPaletteFormat(GPUPaletteFormat format);
 void GPUSetPaletteEntry(uint32_t idx, uint32_t value);
 
