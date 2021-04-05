@@ -856,14 +856,17 @@ static void clip(SubmissionTarget* target) {
 }
 
 static void mat_transform3(const float* xyz, const float* xyzOut, const uint32_t count, const uint32_t inStride, const uint32_t outStride) {
-    uint8_t* dataIn = (uint8_t*) xyz;
+    const uint8_t* dataIn = (const uint8_t*) xyz;
     uint8_t* dataOut = (uint8_t*) xyzOut;
 
     ITERATE(count) {
-        float* in = (float*) dataIn;
+        const float* in = (const float*) dataIn;
         float* out = (float*) dataOut;
 
-        mat_trans_single3_nodiv_nomod(in[0], in[1], in[2], out[0], out[1], out[2]);
+        TransformVec3NoMod(
+            in,
+            out
+        );
 
         dataIn += inStride;
         dataOut += outStride;
@@ -871,14 +874,14 @@ static void mat_transform3(const float* xyz, const float* xyzOut, const uint32_t
 }
 
 static void mat_transform_normal3(const float* xyz, const float* xyzOut, const uint32_t count, const uint32_t inStride, const uint32_t outStride) {
-    uint8_t* dataIn = (uint8_t*) xyz;
+    const uint8_t* dataIn = (const uint8_t*) xyz;
     uint8_t* dataOut = (uint8_t*) xyzOut;
 
     ITERATE(count) {
-        float* in = (float*) dataIn;
+        const float* in = (const float*) dataIn;
         float* out = (float*) dataOut;
 
-        mat_trans_normal3_nomod(in[0], in[1], in[2], out[0], out[1], out[2]);
+        TransformNormalNoMod(in, out);
 
         dataIn += inStride;
         dataOut += outStride;

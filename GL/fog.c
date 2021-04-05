@@ -10,13 +10,13 @@ static GLfloat FOG_COLOR [] = {0.0f, 0.0f, 0.0f, 0.0f};
 
 static void updatePVRFog() {
     if(FOG_MODE == GL_LINEAR) {
-        pvr_fog_table_linear(FOG_START, FOG_END);
+        GPUSetFogLinear(FOG_START, FOG_END);
     } else if(FOG_MODE == GL_EXP) {
-        pvr_fog_table_exp(FOG_DENSITY);
+        GPUSetFogExp(FOG_DENSITY);
     } else if(FOG_MODE == GL_EXP2) {
-        pvr_fog_table_exp2(FOG_DENSITY);
+        GPUSetFogExp2(FOG_DENSITY);
     }
-    pvr_fog_table_color(FOG_COLOR[3], FOG_COLOR[0], FOG_COLOR[1], FOG_COLOR[2]);
+    GPUSetFogColor(FOG_COLOR[3], FOG_COLOR[0], FOG_COLOR[1], FOG_COLOR[2]);
 }
 
 void APIENTRY glFogf(GLenum pname,  GLfloat param) {

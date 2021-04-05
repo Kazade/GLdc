@@ -235,9 +235,9 @@ void _glUpdatePVRTextureContext(PolyContext *context, GLshort textureUnit) {
         if(tx1->isPaletted) {
             if(_glIsSharedTexturePaletteEnabled()) {
                 TexturePalette* palette = _glGetSharedPalette(tx1->shared_bank);
-                context->txr.format |= PVR_TXRFMT_8BPP_PAL(palette->bank);
+                context->txr.format |= GPUPaletteSelect8BPP(palette->bank);
             } else {
-                context->txr.format |= PVR_TXRFMT_8BPP_PAL((tx1->palette) ? tx1->palette->bank : 0);
+                context->txr.format |= GPUPaletteSelect8BPP((tx1->palette) ? tx1->palette->bank : 0);
             }
         }
 
@@ -415,7 +415,7 @@ GLAPI void APIENTRY glDisable(GLenum cap) {
 /* Clear Caps */
 GLAPI void APIENTRY glClear(GLuint mode) {
     if(mode & GL_COLOR_BUFFER_BIT) {
-        pvr_set_bg_color(CLEAR_COLOUR[0], CLEAR_COLOUR[1], CLEAR_COLOUR[2]);
+        GPUSetBackgroundColour(CLEAR_COLOUR[0], CLEAR_COLOUR[1], CLEAR_COLOUR[2]);
     }
 }
 
@@ -437,7 +437,7 @@ GLAPI void APIENTRY glClearDepthf(GLfloat depth) {
 
 GLAPI void APIENTRY glClearDepth(GLfloat depth) {
     /* We reverse because using invW means that farther Z == lower number */
-    pvr_set_zclip(1.0f - depth);
+    GPUSetClearDepth(1.0f - depth);
 }
 
 GLAPI void APIENTRY glDrawBuffer(GLenum mode) {
@@ -495,7 +495,6 @@ GLAPI void APIENTRY glBlendFunc(GLenum sfactor, GLenum dfactor) {
     _updatePVRBlend(&GL_CONTEXT);
 }
 
-#define PT_ALPHA_REF 0x011c
 
 GLAPI void APIENTRY glAlphaFunc(GLenum func, GLclampf ref) {
     GLint validFuncs[] = {
@@ -508,7 +507,7 @@ GLAPI void APIENTRY glAlphaFunc(GLenum func, GLclampf ref) {
     }
 
     GLubyte val = (GLubyte)(ref * 255.0f);
-    PVR_SET(PT_ALPHA_REF, val);
+    GPUSetAlphaCutOff(val);
 }
 
 void glLineWidth(GLfloat width) {

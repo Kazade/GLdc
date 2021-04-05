@@ -123,10 +123,10 @@ void _glSetInternalPaletteFormat(GLenum val) {
     INTERNAL_PALETTE_FORMAT = val;
 
     if(INTERNAL_PALETTE_FORMAT == GL_RGBA4) {
-        pvr_set_pal_format(GPU_PAL_ARGB4444);
+        GPUSetPaletteFormat(GPU_PAL_ARGB4444);
     } else {
         assert(INTERNAL_PALETTE_FORMAT == GL_RGBA8);
-        pvr_set_pal_format(GPU_PAL_ARGB8888);
+        GPUSetPaletteFormat(GPU_PAL_ARGB8888);
     }
 }
 
@@ -145,9 +145,9 @@ void _glApplyColorTable(TexturePalette* src) {
     for(i = 0; i < src->width; ++i) {
         GLubyte* entry = &src->data[i * 4];
         if(INTERNAL_PALETTE_FORMAT == GL_RGBA8) {
-            pvr_set_pal_entry(offset + i, PACK_ARGB8888(entry[3], entry[0], entry[1], entry[2]));
+            GPUSetPaletteEntry(offset + i, PACK_ARGB8888(entry[3], entry[0], entry[1], entry[2]));
         } else {
-            pvr_set_pal_entry(offset + i, PACK_ARGB4444(entry[3], entry[0], entry[1], entry[2]));
+            GPUSetPaletteEntry(offset + i, PACK_ARGB4444(entry[3], entry[0], entry[1], entry[2]));
         }
     }
 }
@@ -332,9 +332,9 @@ GLubyte _glInitTextures() {
     memset((void*) BANKS_USED, 0x0, sizeof(BANKS_USED));
     memset((void*) SUBBANKS_USED, 0x0, sizeof(SUBBANKS_USED));
 
-    size_t vram_free = pvr_mem_available();
+    size_t vram_free = GPUMemoryAvailable();
     YALLOC_SIZE = vram_free - PVR_MEM_BUFFER_SIZE; /* Take all but 64kb VRAM */
-    YALLOC_BASE = pvr_mem_malloc(YALLOC_SIZE);
+    YALLOC_BASE = GPUMemoryAlloc(YALLOC_SIZE);
     yalloc_init(YALLOC_BASE, YALLOC_SIZE);
     return 1;
 }

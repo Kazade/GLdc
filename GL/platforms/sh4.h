@@ -34,6 +34,25 @@ inline void MultiplyMatrix4x4(const float* mat) {
     mat_apply((matrix_t*) mat);
 }
 
+inline void TransformVec3(float* x) {
+    mat_trans_single4(x[0], x[1], x[2], x[3]);
+}
+
+/* Transform a 3-element vector using the stored matrix (w == 1) */
+inline void TransformVec3NoMod(const float* xIn, float* xOut) {
+    mat_trans_single3_nodiv_nomod(xIn[0], xIn[1], xIn[2], xOut[0], xOut[1], xOut[2]);
+}
+
+/* Transform a 3-element normal using the stored matrix (w == 0)*/
+inline void TransformNormalNoMod(const float* in, float* out) {
+    mat_trans_normal3_nomod(in[0], in[1], in[2], out[0], out[1], out[2]);
+}
+
+/* Transform a 4-element vector in-place by the stored matrix */
+inline void TransformVec4(float* x) {
+
+}
+
 inline void TransformVertices(const Vertex* vertices, const int count) {
     Vertex* it = vertices;
     for(int i = 0; i < count; ++i, ++it) {
@@ -57,3 +76,41 @@ inline void TransformVertices(const Vertex* vertices, const int count) {
 }
 
 void InitGPU(_Bool autosort, _Bool fsaa);
+
+inline void GPUSetPaletteFormat(GPUPaletteFormat format) {
+
+}
+
+inline void GPUSetPaletteEntry(uint32_t idx, uint32_t value) {
+
+}
+
+inline void GPUSetBackgroundColour(float r, float g, float b) {
+    pvr_set_bg_color(r, g, b);
+}
+
+#define PT_ALPHA_REF 0x011c
+
+inline void GPUSetAlphaCutOff(uint8_t val) {
+    PVR_SET(PT_ALPHA_REF, val);
+}
+
+inline void GPUSetClearDepth(float v) {
+    pvr_set_zclip(v);
+}
+
+inline void GPUSetFogLinear(float start, float end) {
+    pvr_fog_table_linear(start, end);
+}
+
+inline void GPUSetFogExp(float density) {
+    pvr_fog_table_exp(density);
+}
+
+inline void GPUSetFogExp2(float density) {
+    pvr_fog_table_exp2(density);
+}
+
+inline void GPUSetFogColor(float r, float g, float b, float a) {
+    pvr_fog_table_color(r, g, b, a);
+}

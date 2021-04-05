@@ -176,7 +176,7 @@ void APIENTRY glRotatef(GLfloat angle, GLfloat x, GLfloat  y, GLfloat z) {
     float c = cos(r);
     float s = sin(r);
 
-    vec3f_normalize(x, y, z);
+    VEC3_NORMALIZE(x, y, z);
 
     float invc = 1.0f - c;
     float xs = x * s;

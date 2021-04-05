@@ -202,12 +202,7 @@ void APIENTRY glLightfv(GLenum light, GLenum pname, const GLfloat *params) {
             if(LIGHTS[idx].isDirectional) {
                 //FIXME: Do we need to rotate directional lights?
             } else {
-                mat_trans_single4(
-                    LIGHTS[idx].position[0],
-                    LIGHTS[idx].position[1],
-                    LIGHTS[idx].position[2],
-                    LIGHTS[idx].position[3]
-                );
+                TransformVec3(LIGHTS[idx].position);
             }
         }
         break;
@@ -386,10 +381,6 @@ GL_FORCE_INLINE GLboolean isAmbientColorMaterial() {
 
 GL_FORCE_INLINE GLboolean isSpecularColorMaterial() {
     return (COLOR_MATERIAL_MODE == GL_SPECULAR);
-}
-
-GL_FORCE_INLINE void initVec3(struct vec3f* v, const GLfloat* src) {
-    memcpy(v, src, sizeof(GLfloat) * 3);
 }
 
 /*
