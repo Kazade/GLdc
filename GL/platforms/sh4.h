@@ -16,7 +16,10 @@
     (bytes % 32 == 0) ? sq_cpy(dst, src, bytes) : memcpy4(dst, src, bytes)
 
 #define MEMSET4(dst, v, size) memset4((dst), (v), (size))
-#define NORMALIZEVEC3(x, y, z) vec3f_normalize((x), (y), (z))
+
+#define VEC3_NORMALIZE(x, y, z) vec3f_normalize((x), (y), (z))
+#define VEC3_LENGTH(x, y, z, l) vec3f_length((x), (y), (z), (l))
+#define VEC3_DOT(x1, y1, z1, x2, y2, z2, d) vec3f_dot((x1), (y1), (z1), (x2), (y2), (z2), (d))
 
 inline void CompilePolyHeader(PolyHeader* out, const PolyContext* in) {
     pvr_poly_compile((pvr_poly_hdr_t*) out, (pvr_poly_cxt_t*) in);
