@@ -78,11 +78,11 @@ inline void TransformVertices(const Vertex* vertices, const int count) {
 void InitGPU(_Bool autosort, _Bool fsaa);
 
 inline void GPUSetPaletteFormat(GPUPaletteFormat format) {
-
+    pvr_set_pal_format(format);
 }
 
 inline void GPUSetPaletteEntry(uint32_t idx, uint32_t value) {
-
+    pvr_set_pal_entry(idx, value);
 }
 
 inline void GPUSetBackgroundColour(float r, float g, float b) {
