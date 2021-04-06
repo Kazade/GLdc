@@ -1,5 +1,6 @@
 #pragma once
 
+#include <kos.h>
 #include <dc/matrix.h>
 #include <dc/pvr.h>
 #include <dc/vec3f.h>
@@ -21,33 +22,33 @@
 #define VEC3_LENGTH(x, y, z, l) vec3f_length((x), (y), (z), (l))
 #define VEC3_DOT(x1, y1, z1, x2, y2, z2, d) vec3f_dot((x1), (y1), (z1), (x2), (y2), (z2), (d))
 
-inline void CompilePolyHeader(PolyHeader* out, const PolyContext* in) {
+static inline void CompilePolyHeader(PolyHeader* out, const PolyContext* in) {
     pvr_poly_compile((pvr_poly_hdr_t*) out, (pvr_poly_cxt_t*) in);
 }
 
-inline void UploadMatrix4x4(const float* mat) {
+static inline void UploadMatrix4x4(const Matrix4x4* mat) {
     mat_load((matrix_t*) mat);
 }
 
-inline void DownloadMatrix4x4(float* mat) {
+static inline void DownloadMatrix4x4(Matrix4x4* mat) {
     mat_store((matrix_t*) mat);
 }
 
-inline void MultiplyMatrix4x4(const float* mat) {
+static inline void MultiplyMatrix4x4(const Matrix4x4* mat) {
     mat_apply((matrix_t*) mat);
 }
 
-inline void TransformVec3(float* x) {
+static inline void TransformVec3(float* x) {
     mat_trans_single4(x[0], x[1], x[2], x[3]);
 }
 
 /* Transform a 3-element vector using the stored matrix (w == 1) */
-inline void TransformVec3NoMod(const float* xIn, float* xOut) {
+static inline void TransformVec3NoMod(const float* xIn, float* xOut) {
     mat_trans_single3_nodiv_nomod(xIn[0], xIn[1], xIn[2], xOut[0], xOut[1], xOut[2]);
 }
 
 /* Transform a 3-element normal using the stored matrix (w == 0)*/
-inline void TransformNormalNoMod(const float* in, float* out) {
+static inline void TransformNormalNoMod(const float* in, float* out) {
     mat_trans_normal3_nomod(in[0], in[1], in[2], out[0], out[1], out[2]);
 }
 
@@ -56,7 +57,7 @@ inline void TransformVec4(float* x) {
 
 }
 
-inline void TransformVertices(const Vertex* vertices, const int count) {
+static inline void TransformVertices(Vertex* vertices, const int count) {
     Vertex* it = vertices;
     for(int i = 0; i < count; ++i, ++it) {
         register float __x __asm__("fr12") = (it->xyz[0]);
@@ -80,40 +81,48 @@ inline void TransformVertices(const Vertex* vertices, const int count) {
 
 void InitGPU(_Bool autosort, _Bool fsaa);
 
-inline void GPUSetPaletteFormat(GPUPaletteFormat format) {
+static inline size_t GPUMemoryAvailable() {
+    return pvr_mem_available();
+}
+
+static inline void* GPUMemoryAlloc(size_t size) {
+    return pvr_mem_malloc(size);
+}
+
+static inline void GPUSetPaletteFormat(GPUPaletteFormat format) {
     pvr_set_pal_format(format);
 }
 
-inline void GPUSetPaletteEntry(uint32_t idx, uint32_t value) {
+static inline void GPUSetPaletteEntry(uint32_t idx, uint32_t value) {
     pvr_set_pal_entry(idx, value);
 }
 
-inline void GPUSetBackgroundColour(float r, float g, float b) {
+static inline void GPUSetBackgroundColour(float r, float g, float b) {
     pvr_set_bg_color(r, g, b);
 }
 
 #define PT_ALPHA_REF 0x011c
 
-inline void GPUSetAlphaCutOff(uint8_t val) {
+static inline void GPUSetAlphaCutOff(uint8_t val) {
     PVR_SET(PT_ALPHA_REF, val);
 }
 
-inline void GPUSetClearDepth(float v) {
+static inline void GPUSetClearDepth(float v) {
     pvr_set_zclip(v);
 }
 
-inline void GPUSetFogLinear(float start, float end) {
+static inline void GPUSetFogLinear(float start, float end) {
     pvr_fog_table_linear(start, end);
 }
 
-inline void GPUSetFogExp(float density) {
+static inline void GPUSetFogExp(float density) {
     pvr_fog_table_exp(density);
 }
 
-inline void GPUSetFogExp2(float density) {
+static inline void GPUSetFogExp2(float density) {
     pvr_fog_table_exp2(density);
 }
 
-inline void GPUSetFogColor(float r, float g, float b, float a) {
+static inline void GPUSetFogColor(float r, float g, float b, float a) {
     pvr_fog_table_color(r, g, b, a);
 }

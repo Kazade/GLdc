@@ -33,7 +33,7 @@ else()
 find_package(SDL2 REQUIRED)
 include_directories(${SDL2_INCLUDE_DIRS})
 link_libraries(${SDL2_LIBRARIES})
-set(SOURCES ${SOURCES} GL/platforms/software.c)
+set(SOURCES ${SOURCES} GL/platforms/software.c GL/platforms/software/edge_equation.c GL/platforms/software/parameter_equation.c)
 endif()
 
 add_library(GLdc ${SOURCES})

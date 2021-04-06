@@ -1,13 +1,11 @@
 #pragma once
 
-#ifndef ALIGNED_VECTOR_H
-#define ALIGNED_VECTOR_H
+#include <assert.h>
+#include <stdlib.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-#include <assert.h>
 
 typedef struct {
     unsigned int size;
@@ -39,5 +37,3 @@ static inline void* aligned_vector_back(AlignedVector* vector){
 #ifdef __cplusplus
 }
 #endif
-
-#endif // ALIGNED_VECTOR_H

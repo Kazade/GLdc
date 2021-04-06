@@ -6,6 +6,7 @@
 
 #define QACRTA ((((unsigned int)0x10000000)>>26)<<2)&0x1c
 
+#define PVR_VERTEX_BUF_SIZE 2560 * 256
 
 void InitGPU(_Bool autosort, _Bool fsaa) {
     pvr_init_params_t params = {
@@ -32,8 +33,8 @@ void SceneListBegin(GPUList list) {
 }
 
 void SceneListSubmit(void* src, int n) {
-    GLuint *d = TA_SQ_ADDR;
-    GLuint *s = src;
+    uint32_t *d = (uint32_t*) TA_SQ_ADDR;
+    uint32_t *s = src;
 
     /* fill/write queues as many times necessary */
     while(n--) {
@@ -51,7 +52,7 @@ void SceneListSubmit(void* src, int n) {
     }
 
     /* Wait for both store queues to complete */
-    d = (GLuint *)0xe0000000;
+    d = (uint32_t *)0xe0000000;
     d[0] = d[8] = 0;
 }
 

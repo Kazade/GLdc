@@ -122,16 +122,12 @@ void APIENTRY glLoadIdentity() {
 }
 
 void APIENTRY glTranslatef(GLfloat x, GLfloat y, GLfloat z) {
-    static Matrix4x4 trn __attribute__((aligned(32))) = {
+    const Matrix4x4 trn __attribute__((aligned(32))) = {
         1.0f, 0.0f, 0.0f, 0.0f,
         0.0f, 1.0f, 0.0f, 0.0f,
         0.0f, 0.0f, 1.0f, 0.0f,
-        0.0f, 0.0f, 0.0f, 1.0f
+        x, y, z, 1.0f
     };
-
-    trn[M12] = x;
-    trn[M13] = y;
-    trn[M14] = z;
 
     UploadMatrix4x4(stack_top(MATRIX_STACKS + MATRIX_IDX));
     MultiplyMatrix4x4(&trn);
@@ -144,16 +140,12 @@ void APIENTRY glTranslatef(GLfloat x, GLfloat y, GLfloat z) {
 
 
 void APIENTRY glScalef(GLfloat x, GLfloat y, GLfloat z) {
-    static Matrix4x4 scale __attribute__((aligned(32))) = {
-        1.0f, 0.0f, 0.0f, 0.0f,
-        0.0f, 1.0f, 0.0f, 0.0f,
-        0.0f, 0.0f, 1.0f, 0.0f,
+    const Matrix4x4 scale __attribute__((aligned(32))) = {
+        x, 0.0f, 0.0f, 0.0f,
+        0.0f, y, 0.0f, 0.0f,
+        0.0f, 0.0f, z, 0.0f,
         0.0f, 0.0f, 0.0f, 1.0f
     };
-
-    scale[M0] = x;
-    scale[M5] = y;
-    scale[M10] = z;
 
     UploadMatrix4x4(stack_top(MATRIX_STACKS + MATRIX_IDX));
     MultiplyMatrix4x4(&scale);
@@ -165,7 +157,7 @@ void APIENTRY glScalef(GLfloat x, GLfloat y, GLfloat z) {
 }
 
 void APIENTRY glRotatef(GLfloat angle, GLfloat x, GLfloat  y, GLfloat z) {
-    static Matrix4x4 rotate __attribute__((aligned(32))) = {
+    Matrix4x4 rotate __attribute__((aligned(32))) = {
         1.0f, 0.0f, 0.0f, 0.0f,
         0.0f, 1.0f, 0.0f, 0.0f,
         0.0f, 0.0f, 1.0f, 0.0f,
@@ -199,7 +191,7 @@ void APIENTRY glRotatef(GLfloat angle, GLfloat x, GLfloat  y, GLfloat z) {
     rotate[M10] = (z * z) * invc + c;
 
     UploadMatrix4x4(stack_top(MATRIX_STACKS + MATRIX_IDX));
-    MultiplyMatrix4x4(&rotate);
+    MultiplyMatrix4x4((const Matrix4x4*) &rotate);
     DownloadMatrix4x4(stack_top(MATRIX_STACKS + MATRIX_IDX));
 
     if(MATRIX_MODE == GL_MODELVIEW) {
@@ -244,7 +236,7 @@ void APIENTRY glOrtho(GLfloat left, GLfloat right,
              GLfloat znear, GLfloat zfar) {
 
     /* Ortho Matrix */
-    static Matrix4x4 OrthoMatrix __attribute__((aligned(32))) = {
+    Matrix4x4 OrthoMatrix __attribute__((aligned(32))) = {
         1.0f, 0.0f, 0.0f, 0.0f,
         0.0f, 1.0f, 0.0f, 0.0f,
         0.0f, 0.0f, 1.0f, 0.0f,
@@ -259,7 +251,7 @@ void APIENTRY glOrtho(GLfloat left, GLfloat right,
     OrthoMatrix[M14] = -(zfar + znear) / (zfar - znear);
 
     UploadMatrix4x4(stack_top(MATRIX_STACKS + MATRIX_IDX));
-    MultiplyMatrix4x4(&OrthoMatrix);
+    MultiplyMatrix4x4((const Matrix4x4*) &OrthoMatrix);
     DownloadMatrix4x4(stack_top(MATRIX_STACKS + MATRIX_IDX));
 }
 
@@ -270,7 +262,7 @@ void APIENTRY glFrustum(GLfloat left, GLfloat right,
                GLfloat znear, GLfloat zfar) {
 
     /* Frustum Matrix */
-    static Matrix4x4 FrustumMatrix __attribute__((aligned(32)));
+    Matrix4x4 FrustumMatrix __attribute__((aligned(32)));
 
     MEMSET(FrustumMatrix, 0, sizeof(float) * 16);
 
@@ -290,37 +282,18 @@ void APIENTRY glFrustum(GLfloat left, GLfloat right,
     FrustumMatrix[M14] = D;
 
     UploadMatrix4x4(stack_top(MATRIX_STACKS + MATRIX_IDX));
-    MultiplyMatrix4x4(&FrustumMatrix);
+    MultiplyMatrix4x4((const Matrix4x4*) &FrustumMatrix);
     DownloadMatrix4x4(stack_top(MATRIX_STACKS + MATRIX_IDX));
 }
 
 
 /* Multiply the current matrix by an arbitrary matrix */
 void glMultMatrixf(const GLfloat *m) {
-    static Matrix4x4 TEMP;
-
-    TEMP[M0] = m[0];
-    TEMP[M1] = m[1];
-    TEMP[M2] = m[2];
-    TEMP[M3] = m[3];
-
-    TEMP[M4] = m[4];
-    TEMP[M5] = m[5];
-    TEMP[M6] = m[6];
-    TEMP[M7] = m[7];
-
-    TEMP[M8] = m[8];
-    TEMP[M9] = m[9];
-    TEMP[M10] = m[10];
-    TEMP[M11] = m[11];
-
-    TEMP[M12] = m[12];
-    TEMP[M13] = m[13];
-    TEMP[M14] = m[14];
-    TEMP[M15] = m[15];
+    Matrix4x4 TEMP;
+    FASTCPY4(TEMP, m, sizeof(Matrix4x4));
 
     UploadMatrix4x4(stack_top(MATRIX_STACKS + MATRIX_IDX));
-    MultiplyMatrix4x4((Matrix4x4*) &TEMP);
+    MultiplyMatrix4x4((const Matrix4x4*) &TEMP);
     DownloadMatrix4x4(stack_top(MATRIX_STACKS + MATRIX_IDX));
 
     if(MATRIX_MODE == GL_MODELVIEW) {
@@ -387,7 +360,7 @@ void glMultTransposeMatrixf(const GLfloat *m) {
     TEMP[M15] = m[15];
 
     UploadMatrix4x4(stack_top(MATRIX_STACKS + MATRIX_IDX));
-    MultiplyMatrix4x4(&TEMP);
+    MultiplyMatrix4x4((const Matrix4x4*) &TEMP);
     DownloadMatrix4x4(stack_top(MATRIX_STACKS + MATRIX_IDX));
 
     if(MATRIX_MODE == GL_MODELVIEW) {
@@ -489,26 +462,26 @@ void gluLookAt(GLfloat eyex, GLfloat eyey, GLfloat eyez, GLfloat centerx,
     trn[M14] = -eyez;
 
     // Does not modify internal Modelview matrix
-    UploadMatrix4x4(&m);
-    MultiplyMatrix4x4(&trn);
+    UploadMatrix4x4((const Matrix4x4*) &m);
+    MultiplyMatrix4x4((const Matrix4x4*) &trn);
     MultiplyMatrix4x4(stack_top(MATRIX_STACKS + (GL_MODELVIEW & 0xF)));
     DownloadMatrix4x4(stack_top(MATRIX_STACKS + (GL_MODELVIEW & 0xF)));
 }
 
 void _glApplyRenderMatrix() {
-    UploadMatrix4x4(&SCREENVIEW_MATRIX);
-    MultiplyMatrix4x4(stack_top(MATRIX_STACKS + (GL_PROJECTION & 0xF)));
-    MultiplyMatrix4x4(stack_top(MATRIX_STACKS + (GL_MODELVIEW & 0xF)));
+    UploadMatrix4x4((const Matrix4x4*) &SCREENVIEW_MATRIX);
+    MultiplyMatrix4x4((const Matrix4x4*) stack_top(MATRIX_STACKS + (GL_PROJECTION & 0xF)));
+    MultiplyMatrix4x4((const Matrix4x4*) stack_top(MATRIX_STACKS + (GL_MODELVIEW & 0xF)));
 }
 
 void _glMatrixLoadTexture() {
-    UploadMatrix4x4(stack_top(MATRIX_STACKS + (GL_TEXTURE & 0xF)));
+    UploadMatrix4x4((const Matrix4x4*) stack_top(MATRIX_STACKS + (GL_TEXTURE & 0xF)));
 }
 
 void _glMatrixLoadModelView() {
-    UploadMatrix4x4(stack_top(MATRIX_STACKS + (GL_MODELVIEW & 0xF)));
+    UploadMatrix4x4((const Matrix4x4*) stack_top(MATRIX_STACKS + (GL_MODELVIEW & 0xF)));
 }
 
 void _glMatrixLoadNormal() {
-    UploadMatrix4x4(&NORMAL_MATRIX);
+    UploadMatrix4x4((const Matrix4x4*) &NORMAL_MATRIX);
 }

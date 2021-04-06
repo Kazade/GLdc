@@ -61,7 +61,7 @@ static inline void TransformVec4(float* x) {
 
 }
 
-static inline void TransformVertices(const Vertex* vertices, const int count) {
+static inline void TransformVertices(Vertex* vertices, const int count) {
     (void) vertices;
     (void) count;
 }
