@@ -2,6 +2,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include <assert.h>
 
 #define MEMSET(dst, v, size) memset((dst), (v), (size))
 
@@ -262,7 +263,233 @@ void SceneListFinish();
 
 void SceneFinish();
 
+#define GPU_TA_CMD_TYPE_SHIFT       24
+#define GPU_TA_CMD_TYPE_MASK        (7 << GPU_TA_CMD_TYPE_SHIFT)
 
+#define GPU_TA_CMD_USERCLIP_SHIFT   16
+#define GPU_TA_CMD_USERCLIP_MASK    (3 << GPU_TA_CMD_USERCLIP_SHIFT)
+
+#define GPU_TA_CMD_CLRFMT_SHIFT     4
+#define GPU_TA_CMD_CLRFMT_MASK      (7 << GPU_TA_CMD_CLRFMT_SHIFT)
+
+#define GPU_TA_CMD_SPECULAR_SHIFT   2
+#define GPU_TA_CMD_SPECULAR_MASK    (1 << GPU_TA_CMD_SPECULAR_SHIFT)
+
+#define GPU_TA_CMD_SHADE_SHIFT      1
+#define GPU_TA_CMD_SHADE_MASK       (1 << GPU_TA_CMD_SHADE_SHIFT)
+
+#define GPU_TA_CMD_UVFMT_SHIFT      0
+#define GPU_TA_CMD_UVFMT_MASK       (1 << GPU_TA_CMD_UVFMT_SHIFT)
+
+#define GPU_TA_CMD_MODIFIER_SHIFT   7
+#define GPU_TA_CMD_MODIFIER_MASK    (1 <<  GPU_TA_CMD_MODIFIER_SHIFT)
+
+#define GPU_TA_CMD_MODIFIERMODE_SHIFT   6
+#define GPU_TA_CMD_MODIFIERMODE_MASK    (1 <<  GPU_TA_CMD_MODIFIERMODE_SHIFT)
+
+#define GPU_TA_PM1_DEPTHCMP_SHIFT   29
+#define GPU_TA_PM1_DEPTHCMP_MASK    (7 << GPU_TA_PM1_DEPTHCMP_SHIFT)
+
+#define GPU_TA_PM1_CULLING_SHIFT    27
+#define GPU_TA_PM1_CULLING_MASK     (3 << GPU_TA_PM1_CULLING_SHIFT)
+
+#define GPU_TA_PM1_DEPTHWRITE_SHIFT 26
+#define GPU_TA_PM1_DEPTHWRITE_MASK  (1 << GPU_TA_PM1_DEPTHWRITE_SHIFT)
+
+#define GPU_TA_PM1_TXRENABLE_SHIFT  25
+#define GPU_TA_PM1_TXRENABLE_MASK   (1 << GPU_TA_PM1_TXRENABLE_SHIFT)
+
+#define GPU_TA_PM1_MODIFIERINST_SHIFT   29
+#define GPU_TA_PM1_MODIFIERINST_MASK    (3 <<  GPU_TA_PM1_MODIFIERINST_SHIFT)
+
+#define GPU_TA_PM2_SRCBLEND_SHIFT   29
+#define GPU_TA_PM2_SRCBLEND_MASK    (7 << GPU_TA_PM2_SRCBLEND_SHIFT)
+
+#define GPU_TA_PM2_DSTBLEND_SHIFT   26
+#define GPU_TA_PM2_DSTBLEND_MASK    (7 << GPU_TA_PM2_DSTBLEND_SHIFT)
+
+#define GPU_TA_PM2_SRCENABLE_SHIFT  25
+#define GPU_TA_PM2_SRCENABLE_MASK   (1 << GPU_TA_PM2_SRCENABLE_SHIFT)
+
+#define GPU_TA_PM2_DSTENABLE_SHIFT  24
+#define GPU_TA_PM2_DSTENABLE_MASK   (1 << GPU_TA_PM2_DSTENABLE_SHIFT)
+
+#define GPU_TA_PM2_FOG_SHIFT        22
+#define GPU_TA_PM2_FOG_MASK     (3 << GPU_TA_PM2_FOG_SHIFT)
+
+#define GPU_TA_PM2_CLAMP_SHIFT      21
+#define GPU_TA_PM2_CLAMP_MASK       (1 << GPU_TA_PM2_CLAMP_SHIFT)
+
+#define GPU_TA_PM2_ALPHA_SHIFT      20
+#define GPU_TA_PM2_ALPHA_MASK       (1 << GPU_TA_PM2_ALPHA_SHIFT)
+
+#define GPU_TA_PM2_TXRALPHA_SHIFT   19
+#define GPU_TA_PM2_TXRALPHA_MASK    (1 << GPU_TA_PM2_TXRALPHA_SHIFT)
+
+#define GPU_TA_PM2_UVFLIP_SHIFT     17
+#define GPU_TA_PM2_UVFLIP_MASK      (3 << GPU_TA_PM2_UVFLIP_SHIFT)
+
+#define GPU_TA_PM2_UVCLAMP_SHIFT    15
+#define GPU_TA_PM2_UVCLAMP_MASK     (3 << GPU_TA_PM2_UVCLAMP_SHIFT)
+
+#define GPU_TA_PM2_FILTER_SHIFT     12
+#define GPU_TA_PM2_FILTER_MASK      (7 << GPU_TA_PM2_FILTER_SHIFT)
+
+#define GPU_TA_PM2_MIPBIAS_SHIFT    8
+#define GPU_TA_PM2_MIPBIAS_MASK     (15 << GPU_TA_PM2_MIPBIAS_SHIFT)
+
+#define GPU_TA_PM2_TXRENV_SHIFT     6
+#define GPU_TA_PM2_TXRENV_MASK      (3 << GPU_TA_PM2_TXRENV_SHIFT)
+
+#define GPU_TA_PM2_USIZE_SHIFT      3
+#define GPU_TA_PM2_USIZE_MASK       (7 << GPU_TA_PM2_USIZE_SHIFT)
+
+#define GPU_TA_PM2_VSIZE_SHIFT      0
+#define GPU_TA_PM2_VSIZE_MASK       (7 << GPU_TA_PM2_VSIZE_SHIFT)
+
+#define GPU_TA_PM3_MIPMAP_SHIFT     31
+#define GPU_TA_PM3_MIPMAP_MASK      (1 << GPU_TA_PM3_MIPMAP_SHIFT)
+
+#define GPU_TA_PM3_TXRFMT_SHIFT     0
+#define GPU_TA_PM3_TXRFMT_MASK      0xffffffff
+
+/* Compile a polygon context into a polygon header */
+static inline void CompilePolyHeader(PolyHeader *dst, const PolyContext *src) {
+    int u, v;
+    uint32_t  txr_base;
+
+    /* Basically we just take each parameter, clip it, shift it
+       into place, and OR it into the final result. */
+
+    /* The base values for CMD */
+    dst->cmd = GPU_CMD_POLYHDR;
+
+    if(src->txr.enable == GPU_TEXTURE_ENABLE)
+        dst->cmd |= 8;
+
+    /* Or in the list type, shading type, color and UV formats */
+    dst->cmd |= (src->list_type << GPU_TA_CMD_TYPE_SHIFT) & GPU_TA_CMD_TYPE_MASK;
+    dst->cmd |= (src->fmt.color << GPU_TA_CMD_CLRFMT_SHIFT) & GPU_TA_CMD_CLRFMT_MASK;
+    dst->cmd |= (src->gen.shading << GPU_TA_CMD_SHADE_SHIFT) & GPU_TA_CMD_SHADE_MASK;
+    dst->cmd |= (src->fmt.uv << GPU_TA_CMD_UVFMT_SHIFT) & GPU_TA_CMD_UVFMT_MASK;
+    dst->cmd |= (src->gen.clip_mode << GPU_TA_CMD_USERCLIP_SHIFT) & GPU_TA_CMD_USERCLIP_MASK;
+    dst->cmd |= (src->fmt.modifier << GPU_TA_CMD_MODIFIER_SHIFT) & GPU_TA_CMD_MODIFIER_MASK;
+    dst->cmd |= (src->gen.modifier_mode << GPU_TA_CMD_MODIFIERMODE_SHIFT) & GPU_TA_CMD_MODIFIERMODE_MASK;
+    dst->cmd |= (src->gen.specular << GPU_TA_CMD_SPECULAR_SHIFT) & GPU_TA_CMD_SPECULAR_MASK;
+
+    /* Polygon mode 1 */
+    dst->mode1  = (src->depth.comparison << GPU_TA_PM1_DEPTHCMP_SHIFT) & GPU_TA_PM1_DEPTHCMP_MASK;
+    dst->mode1 |= (src->gen.culling << GPU_TA_PM1_CULLING_SHIFT) & GPU_TA_PM1_CULLING_MASK;
+    dst->mode1 |= (src->depth.write << GPU_TA_PM1_DEPTHWRITE_SHIFT) & GPU_TA_PM1_DEPTHWRITE_MASK;
+    dst->mode1 |= (src->txr.enable << GPU_TA_PM1_TXRENABLE_SHIFT) & GPU_TA_PM1_TXRENABLE_MASK;
+
+    /* Polygon mode 2 */
+    dst->mode2  = (src->blend.src << GPU_TA_PM2_SRCBLEND_SHIFT) & GPU_TA_PM2_SRCBLEND_MASK;
+    dst->mode2 |= (src->blend.dst << GPU_TA_PM2_DSTBLEND_SHIFT) & GPU_TA_PM2_DSTBLEND_MASK;
+    dst->mode2 |= (src->blend.src_enable << GPU_TA_PM2_SRCENABLE_SHIFT) & GPU_TA_PM2_SRCENABLE_MASK;
+    dst->mode2 |= (src->blend.dst_enable << GPU_TA_PM2_DSTENABLE_SHIFT) & GPU_TA_PM2_DSTENABLE_MASK;
+    dst->mode2 |= (src->gen.fog_type << GPU_TA_PM2_FOG_SHIFT) & GPU_TA_PM2_FOG_MASK;
+    dst->mode2 |= (src->gen.color_clamp << GPU_TA_PM2_CLAMP_SHIFT) & GPU_TA_PM2_CLAMP_MASK;
+    dst->mode2 |= (src->gen.alpha << GPU_TA_PM2_ALPHA_SHIFT) & GPU_TA_PM2_ALPHA_MASK;
+
+    if(src->txr.enable == GPU_TEXTURE_DISABLE) {
+        dst->mode3 = 0;
+    }
+    else {
+        dst->mode2 |= (src->txr.alpha << GPU_TA_PM2_TXRALPHA_SHIFT) & GPU_TA_PM2_TXRALPHA_MASK;
+        dst->mode2 |= (src->txr.uv_flip << GPU_TA_PM2_UVFLIP_SHIFT) & GPU_TA_PM2_UVFLIP_MASK;
+        dst->mode2 |= (src->txr.uv_clamp << GPU_TA_PM2_UVCLAMP_SHIFT) & GPU_TA_PM2_UVCLAMP_MASK;
+        dst->mode2 |= (src->txr.filter << GPU_TA_PM2_FILTER_SHIFT) & GPU_TA_PM2_FILTER_MASK;
+        dst->mode2 |= (src->txr.mipmap_bias << GPU_TA_PM2_MIPBIAS_SHIFT) & GPU_TA_PM2_MIPBIAS_MASK;
+        dst->mode2 |= (src->txr.env << GPU_TA_PM2_TXRENV_SHIFT) & GPU_TA_PM2_TXRENV_MASK;
+
+        switch(src->txr.width) {
+            case 8:
+                u = 0;
+                break;
+            case 16:
+                u = 1;
+                break;
+            case 32:
+                u = 2;
+                break;
+            case 64:
+                u = 3;
+                break;
+            case 128:
+                u = 4;
+                break;
+            case 256:
+                u = 5;
+                break;
+            case 512:
+                u = 6;
+                break;
+            case 1024:
+                u = 7;
+                break;
+            default:
+                assert(0 && "Invalid texture U size");
+                u = 0;
+                break;
+        }
+
+        switch(src->txr.height) {
+            case 8:
+                v = 0;
+                break;
+            case 16:
+                v = 1;
+                break;
+            case 32:
+                v = 2;
+                break;
+            case 64:
+                v = 3;
+                break;
+            case 128:
+                v = 4;
+                break;
+            case 256:
+                v = 5;
+                break;
+            case 512:
+                v = 6;
+                break;
+            case 1024:
+                v = 7;
+                break;
+            default:
+                assert(0 && "Invalid texture V size");
+                v = 0;
+                break;
+        }
+
+        dst->mode2 |= (u << GPU_TA_PM2_USIZE_SHIFT) & GPU_TA_PM2_USIZE_MASK;
+        dst->mode2 |= (v << GPU_TA_PM2_VSIZE_SHIFT) & GPU_TA_PM2_VSIZE_MASK;
+
+        /* Polygon mode 3 */
+        dst->mode3  = (src->txr.mipmap << GPU_TA_PM3_MIPMAP_SHIFT) & GPU_TA_PM3_MIPMAP_MASK;
+        dst->mode3 |= (src->txr.format << GPU_TA_PM3_TXRFMT_SHIFT) & GPU_TA_PM3_TXRFMT_MASK;
+
+        /* Convert the texture address */
+        txr_base = (uint32_t) src->txr.base;
+        txr_base = (txr_base & 0x00fffff8) >> 3;
+        dst->mode3 |= txr_base;
+    }
+
+    if(src->fmt.modifier && src->gen.modifier_mode) {
+        /* If we're affected by a modifier volume, silently promote the header
+           to the one that is affected by a modifier volume. */
+        dst->d1 = dst->mode2;
+        dst->d2 = dst->mode3;
+    }
+    else {
+        dst->d1 = dst->d2 = 0xffffffff;
+    }
+
+    dst->d3 = dst->d4 = 0xffffffff;
+}
 
 #ifdef __DREAMCAST__
 #include "platforms/sh4.h"

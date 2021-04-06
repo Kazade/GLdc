@@ -22,10 +22,6 @@
 #define VEC3_LENGTH(x, y, z, l) vec3f_length((x), (y), (z), (l))
 #define VEC3_DOT(x1, y1, z1, x2, y2, z2, d) vec3f_dot((x1), (y1), (z1), (x2), (y2), (z2), (d))
 
-static inline void CompilePolyHeader(PolyHeader* out, const PolyContext* in) {
-    pvr_poly_compile((pvr_poly_hdr_t*) out, (pvr_poly_cxt_t*) in);
-}
-
 static inline void UploadMatrix4x4(const Matrix4x4* mat) {
     mat_load((matrix_t*) mat);
 }

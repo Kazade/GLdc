@@ -32,11 +32,6 @@
 struct PolyHeader;
 struct PolyContext;
 
-static inline void CompilePolyHeader(PolyHeader* out, const PolyContext* in) {
-    (void) out;
-    (void) in;
-}
-
 void UploadMatrix4x4(const Matrix4x4* mat);
 void MultiplyMatrix4x4(const Matrix4x4* mat);
 void DownloadMatrix4x4(Matrix4x4* mat);
