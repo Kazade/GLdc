@@ -1,3 +1,5 @@
+#include <SDL.h>
+
 #include <stdlib.h>
 #include <string.h>
 
@@ -7,8 +9,25 @@
 static size_t AVAILABLE_VRAM = 16 * 1024 * 1024;
 static Matrix4x4 MATRIX;
 
-void InitGPU(_Bool autosort, _Bool fsaa) {
+static VideoMode vid_mode = {
+    640, 480
+};
 
+void InitGPU(_Bool autosort, _Bool fsaa) {
+    SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS);
+
+    SDL_Window *window = SDL_CreateWindow(
+        "GLdc",
+        SDL_WINDOWPOS_UNDEFINED,
+        SDL_WINDOWPOS_UNDEFINED,
+        vid_mode.width, vid_mode.height,
+        SDL_WINDOW_SHOWN
+    );
+
+
+    SDL_Renderer *renderer = SDL_CreateRenderer(
+        window, -1, SDL_RENDERER_ACCELERATED
+    );
 }
 
 void SceneBegin() {
@@ -29,6 +48,18 @@ void SceneListFinish() {
 
 void SceneFinish() {
 
+    /* Only sensible place to hook the quit signal */
+
+    SDL_Event e = {0};
+
+    while (SDL_PollEvent(&e))
+      switch (e.type) {
+        case SDL_QUIT:
+          exit(0);
+          break;
+        default:
+          break;
+    }
 }
 
 void UploadMatrix4x4(const Matrix4x4* mat) {
@@ -43,10 +74,6 @@ void DownloadMatrix4x4(Matrix4x4* mat) {
     memcpy(mat, &MATRIX, sizeof(Matrix4x4));
 }
 
-static VideoMode vid_mode = {
-    640, 480
-};
-
 const VideoMode* GetVideoMode() {
     return &vid_mode;
 }
@@ -59,6 +86,7 @@ void* GPUMemoryAlloc(size_t size) {
     if(size > AVAILABLE_VRAM) {
         return NULL;
     } else {
+        AVAILABLE_VRAM -= size;
         return malloc(size);
     }
 }
