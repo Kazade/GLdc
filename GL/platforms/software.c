@@ -4,7 +4,7 @@
 #include <string.h>
 
 #include "../platform.h"
-#include "x86.h"
+#include "software.h"
 
 static size_t AVAILABLE_VRAM = 16 * 1024 * 1024;
 static Matrix4x4 MATRIX;

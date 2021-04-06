@@ -33,7 +33,7 @@ else()
 find_package(SDL2 REQUIRED)
 include_directories(${SDL2_INCLUDE_DIRS})
 link_libraries(${SDL2_LIBRARIES})
-set(SOURCES ${SOURCES} GL/platforms/x86.c)
+set(SOURCES ${SOURCES} GL/platforms/software.c)
 endif()
 
 add_library(GLdc ${SOURCES})

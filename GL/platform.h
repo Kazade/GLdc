@@ -267,5 +267,5 @@ void SceneFinish();
 #ifdef __DREAMCAST__
 #include "platforms/sh4.h"
 #else
-#include "platforms/x86.h"
+#include "platforms/software.h"
 #endif
