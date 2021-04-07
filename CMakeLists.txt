@@ -5,6 +5,9 @@ set(CMAKE_C_STANDARD 99)
 
 include_directories(include)
 
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -m32")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -m32")
+
 set(
     SOURCES
     containers/aligned_vector.c

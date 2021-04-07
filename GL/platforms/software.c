@@ -57,17 +57,16 @@ static void DrawTriangle(const GPUVertex* v0, const GPUVertex* v1, const GPUVert
 
     float area = 0.5 * (e0.c + e1.c + e2.c);
 
+    // Check if triangle is backfacing.
+    if (area < 0) {
+        return;
+    }
+
     ParameterEquation r, g, b;
 
     ParameterEquationInit(&r, v0->bgra[2], v1->bgra[2], v2->bgra[2], &e0, &e1, &e2, area);
     ParameterEquationInit(&g, v0->bgra[1], v1->bgra[1], v2->bgra[1], &e0, &e1, &e2, area);
     ParameterEquationInit(&b, v0->bgra[0], v1->bgra[0], v2->bgra[0], &e0, &e1, &e2, area);
-
-    // Check if triangle is backfacing.
-
-    if (area < 0) {
-        return;
-    }
 
     // Add 0.5 to sample at pixel centers.
     for (float x = minX + 0.5f, xm = maxX + 0.5f; x <= xm; x += 1.0f)
@@ -115,30 +114,28 @@ void SceneListSubmit(void* src, int n) {
     uint32_t step = sizeof(GPUVertex) / sizeof(uint32_t);
 
     for(int i = 0; i < n; ++i, flags += step) {
-        bool draw_triangle = false;
-        switch(*flags) {
-            case GPU_CMD_POLYHDR:
-                break;
+        if((*flags & GPU_CMD_POLYHDR) == GPU_CMD_POLYHDR) {
+            vertex_counter = 0;
+        } else {
+            switch(*flags) {
             case GPU_CMD_VERTEX_EOL:
-                draw_triangle = (++vertex_counter == 3);
-                vertex_counter = 0;
-            break;
             case GPU_CMD_VERTEX: // Fallthrough
                 vertex_counter++;
-                draw_triangle = (vertex_counter == 3);
-                if(draw_triangle) {
-                    vertex_counter--;
-                }
             break;
             default:
                 break;
+            }
         }
 
-        if(draw_triangle) {
+        if(vertex_counter > 2) {
             const GPUVertex* v0 = (const GPUVertex*) (flags - step - step);
             const GPUVertex* v1 = (const GPUVertex*) (flags - step);
             const GPUVertex* v2 = (const GPUVertex*) (flags);
-            DrawTriangle(v0, v1, v2);
+            (vertex_counter % 2 == 0) ? DrawTriangle(v0, v1, v2) : DrawTriangle(v1, v0, v2);
+        }
+
+        if((*flags) == GPU_CMD_VERTEX_EOL) {
+            vertex_counter = 0;
         }
     }
 }
@@ -171,14 +168,25 @@ void UploadMatrix4x4(const Matrix4x4* mat) {
 void MultiplyMatrix4x4(const Matrix4x4* mat) {
     Matrix4x4 product;
 
-    for(int i = 0; i < 4; i++) {
-        for (int j = 0; j < 4; j++) {
-            product[j + i * 4] = 0;
-            for (int k = 0; k < 4; k++) {
-                product[j + i * 4] += MATRIX[k + i * 4] * (*mat)[j + k * 4];
-            }
-        }
-    }
+    product[0] = MATRIX[0] * (*mat)[0] + MATRIX[4] * (*mat)[1] + MATRIX[8] * (*mat)[2] + MATRIX[12] * (*mat)[3];
+    product[1] = MATRIX[1] * (*mat)[0] + MATRIX[5] * (*mat)[1] + MATRIX[9] * (*mat)[2] + MATRIX[13] * (*mat)[3];
+    product[2] = MATRIX[2] * (*mat)[0] + MATRIX[6] * (*mat)[1] + MATRIX[10] * (*mat)[2] + MATRIX[14] * (*mat)[3];
+    product[3] = MATRIX[3] * (*mat)[0] + MATRIX[7] * (*mat)[1] + MATRIX[11] * (*mat)[2] + MATRIX[15] * (*mat)[3];
+
+    product[4] = MATRIX[0] * (*mat)[4] + MATRIX[4] * (*mat)[5] + MATRIX[8] * (*mat)[6] + MATRIX[12] * (*mat)[7];
+    product[5] = MATRIX[1] * (*mat)[4] + MATRIX[5] * (*mat)[5] + MATRIX[9] * (*mat)[6] + MATRIX[13] * (*mat)[7];
+    product[6] = MATRIX[2] * (*mat)[4] + MATRIX[6] * (*mat)[5] + MATRIX[10] * (*mat)[6] + MATRIX[14] * (*mat)[7];
+    product[7] = MATRIX[3] * (*mat)[4] + MATRIX[7] * (*mat)[5] + MATRIX[11] * (*mat)[6] + MATRIX[15] * (*mat)[7];
+
+    product[8] = MATRIX[0] * (*mat)[8] + MATRIX[4] * (*mat)[9] + MATRIX[8] * (*mat)[10] + MATRIX[12] * (*mat)[11];
+    product[9] = MATRIX[1] * (*mat)[8] + MATRIX[5] * (*mat)[9] + MATRIX[9] * (*mat)[10] + MATRIX[13] * (*mat)[11];
+    product[10] = MATRIX[2] * (*mat)[8] + MATRIX[6] * (*mat)[9] + MATRIX[10] * (*mat)[10] + MATRIX[14] * (*mat)[11];
+    product[11] = MATRIX[3] * (*mat)[8] + MATRIX[7] * (*mat)[9] + MATRIX[11] * (*mat)[10] + MATRIX[15] * (*mat)[11];
+
+    product[12] = MATRIX[0] * (*mat)[12] + MATRIX[4] * (*mat)[13] + MATRIX[8] * (*mat)[14] + MATRIX[12] * (*mat)[15];
+    product[13] = MATRIX[1] * (*mat)[12] + MATRIX[5] * (*mat)[13] + MATRIX[9] * (*mat)[14] + MATRIX[13] * (*mat)[15];
+    product[14] = MATRIX[2] * (*mat)[12] + MATRIX[6] * (*mat)[13] + MATRIX[10] * (*mat)[14] + MATRIX[14] * (*mat)[15];
+    product[15] = MATRIX[3] * (*mat)[12] + MATRIX[7] * (*mat)[13] + MATRIX[11] * (*mat)[14] + MATRIX[15] * (*mat)[15];
 
     UploadMatrix4x4(&product);
 }
@@ -238,4 +246,46 @@ void GPUSetFogExp2(float density) {
 
 void GPUSetFogColor(float r, float g, float b, float a) {
 
+}
+
+void TransformVec3NoMod(const float* v, float* ret) {
+    ret[0] = v[0] * MATRIX[0] + v[1] * MATRIX[4] + v[2] * MATRIX[8] + 1.0f * MATRIX[12];
+    ret[1] = v[0] * MATRIX[1] + v[1] * MATRIX[5] + v[2] * MATRIX[9] + 1.0f * MATRIX[13];
+    ret[2] = v[0] * MATRIX[2] + v[1] * MATRIX[6] + v[2] * MATRIX[10] + 1.0f * MATRIX[14];
+}
+
+void TransformVec4NoMod(const float* v, float* ret) {
+    ret[0] = v[0] * MATRIX[0] + v[1] * MATRIX[4] + v[2] * MATRIX[8] + v[3] * MATRIX[12];
+    ret[1] = v[0] * MATRIX[1] + v[1] * MATRIX[5] + v[2] * MATRIX[9] + v[3] * MATRIX[13];
+    ret[2] = v[0] * MATRIX[2] + v[1] * MATRIX[6] + v[2] * MATRIX[10] + v[3] * MATRIX[14];
+    ret[3] = v[0] * MATRIX[3] + v[1] * MATRIX[7] + v[2] * MATRIX[11] + v[3] * MATRIX[15];
+}
+
+void TransformVec3(float* v) {
+    float ret[3];
+    TransformVec3NoMod(v, ret);
+    FASTCPY(v, ret, sizeof(float) * 3);
+}
+
+void TransformVec4(float* v) {
+    float ret[4];
+    TransformVec4NoMod(v, ret);
+    FASTCPY(v, ret, sizeof(float) * 4);
+}
+
+void TransformVertices(Vertex* vertices, const int count) {
+    float ret[4];
+    for(int i = 0; i < count; ++i, ++vertices) {
+        ret[0] = vertices->xyz[0];
+        ret[1] = vertices->xyz[1];
+        ret[2] = vertices->xyz[2];
+        ret[3] = 1.0f;
+
+        TransformVec4(ret);
+
+        vertices->xyz[0] = ret[0];
+        vertices->xyz[1] = ret[1];
+        vertices->xyz[2] = ret[2];
+        vertices->w = ret[3];
+    }
 }

@@ -37,29 +37,17 @@ void MultiplyMatrix4x4(const Matrix4x4* mat);
 void DownloadMatrix4x4(Matrix4x4* mat);
 
 /* Transform a 3-element vector in-place using the stored matrix (w == 1) */
-static inline void TransformVec3(float* x) {
-
-}
+void TransformVec3(float* v);
 
 /* Transform a 3-element vector using the stored matrix (w == 1) */
-static inline void TransformVec3NoMod(const float* xIn, float* xOut) {
-
-}
+void TransformVec3NoMod(const float* v, float* ret);
 
 /* Transform a 3-element normal using the stored matrix (w == 0)*/
 static inline void TransformNormalNoMod(const float* xIn, float* xOut) {
 
 }
 
-/* Transform a 4-element vector in-place by the stored matrix */
-static inline void TransformVec4(float* x) {
-
-}
-
-static inline void TransformVertices(Vertex* vertices, const int count) {
-    (void) vertices;
-    (void) count;
-}
+void TransformVertices(Vertex* vertices, const int count);
 
 void InitGPU(_Bool autosort, _Bool fsaa);
 
