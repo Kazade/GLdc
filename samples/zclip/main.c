@@ -8,9 +8,11 @@
 #include "GL/glext.h"
 #include "GL/glkos.h"
 
-extern uint8_t romdisk[];
+#ifdef __DREAMCAST__
+#include <kos.h>
+extern uint8 romdisk[];
 KOS_INIT_ROMDISK(romdisk);
-
+#endif
 
 /* Image type - contains height, width, and data */
 typedef struct                                      // Create A Structure

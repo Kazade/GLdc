@@ -63,3 +63,10 @@ void SceneListFinish() {
 void SceneFinish() {
     pvr_scene_finish();
 }
+
+const VideoMode* GetVideoMode() {
+    static VideoMode mode;
+    mode.width = vid_mode->width;
+    mode.height = vid_mode->height;
+    return &mode;
+}

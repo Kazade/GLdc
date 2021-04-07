@@ -5,8 +5,10 @@ set(CMAKE_C_STANDARD 99)
 
 include_directories(include)
 
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -m32")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -m32")
+if(NOT PLATFORM_DREAMCAST)
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -m32")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -m32")
+endif()
 
 set(
     SOURCES
@@ -31,15 +33,21 @@ set(
 )
 
 if(PLATFORM_DREAMCAST)
-set(SOURCES ${SOURCES} GL/platforms/sh4.c)
+    set(SOURCES ${SOURCES} GL/platforms/sh4.c)
 else()
-find_package(SDL2 REQUIRED)
-include_directories(${SDL2_INCLUDE_DIRS})
-link_libraries(${SDL2_LIBRARIES})
-set(SOURCES ${SOURCES} GL/platforms/software.c GL/platforms/software/edge_equation.c GL/platforms/software/parameter_equation.c)
+    find_package(SDL2 REQUIRED)
+    include_directories(${SDL2_INCLUDE_DIRS})
+    link_libraries(${SDL2_LIBRARIES})
+    set(
+        SOURCES
+        ${SOURCES}
+        GL/platforms/software.c
+        GL/platforms/software/edge_equation.c
+        GL/platforms/software/parameter_equation.c
+    )
 endif()
 
-add_library(GLdc ${SOURCES})
+add_library(GLdc STATIC ${SOURCES})
 link_libraries(m)
 
 include_directories(include)
