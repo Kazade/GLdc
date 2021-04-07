@@ -4,12 +4,12 @@
 #include <stdint.h>
 #include <assert.h>
 
-#include "gl.h"
-#include "glext.h"
-#include "glu.h"
-#include "glkos.h"
+#include "GL/gl.h"
+#include "GL/glu.h"
+#include "GL/glext.h"
+#include "GL/glkos.h"
 
-extern uint8 romdisk[];
+extern uint8_t romdisk[];
 KOS_INIT_ROMDISK(romdisk);
 
 /* floats for x rotation, y rotation, z rotation */

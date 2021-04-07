@@ -1,12 +1,13 @@
-#include <kos.h>
+
 typedef enum
 {
     false,
     true
 } bool;
-#include "gl.h"
-#include "glu.h"
-#include "glkos.h"
+
+#include "GL/gl.h"
+#include "GL/glu.h"
+#include "GL/glkos.h"
 
 /* A general OpenGL initialization function.  Sets all of the initial parameters. */
 void InitGL(int Width, int Height) // We call this right after our OpenGL window is created.
@@ -96,6 +97,7 @@ void drawPolygon()
 int frames = 0;
 void check_input()
 {
+#ifdef __DREAMCAST__
     maple_device_t *cont;
     cont_state_t *state;
 
@@ -117,6 +119,7 @@ void check_input()
             }
         }
     }
+#endif
 }
 
 /* The main drawing function. */

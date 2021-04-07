@@ -2,9 +2,9 @@
 #include <string.h>
 #include <stdlib.h>
 
-#include "gl.h"
-#include "glu.h"
-#include "glkos.h"
+#include "GL/gl.h"
+#include "GL/glu.h"
+#include "GL/glkos.h"
 
 
 /* A general OpenGL initialization function.  Sets all of the initial parameters. */
