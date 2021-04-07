@@ -6,13 +6,14 @@
 
    Load A PVR Texture to the PVR using Open GL
 */
+#include <stdlib.h>
+#include <stdio.h>
+#include <stdint.h>
 
-#include <kos.h>
-
-#include "gl.h"
-#include "glu.h"
-#include "glkos.h"
-#include "glext.h"
+#include "GL/gl.h"
+#include "GL/glu.h"
+#include "GL/glkos.h"
+#include "GL/glext.h"
 
 #define PVR_HDR_SIZE 0x20
 #define MAX(x, y) ((x > y) ? x : y)
@@ -51,8 +52,8 @@ static GLuint _glGetMipmapDataSize(GLuint width, GLuint height) {
    glMipMap should be passed as 1 if Open GL should calculate the Mipmap levels, 0 otherwise */
 GLuint glTextureLoadPVR(char *fname, unsigned char isMipMapped, unsigned char glMipMap) {
     FILE *tex = NULL;
-    uint16 *TEX0 = NULL;
-    uint8 HDR[PVR_HDR_SIZE];
+    uint16_t *TEX0 = NULL;
+    uint8_t HDR[PVR_HDR_SIZE];
     GLuint texID, texSize, texW, texH, texFormat;
 
     /* Open the PVR texture file, and get its file size */

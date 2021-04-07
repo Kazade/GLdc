@@ -53,4 +53,5 @@ add_executable(depth_funcs_alpha_testing samples/depth_funcs_alpha_testing/main.
 add_executable(depth_funcs_ortho samples/depth_funcs_ortho/main.c)
 add_executable(lights samples/lights/main.c)
 add_executable(mipmap samples/mipmap/main.c)
+add_executable(multitexture_arrays samples/multitexture_arrays/main.c samples/multitexture_arrays/pvr-texture.c)
 
