@@ -47,11 +47,11 @@ static void DrawTriangle(GPUVertex* v0, GPUVertex* v1, GPUVertex* v2) {
     int maxY = MAX(MAX(v0->y, v1->y), v2->y);
 
     // Clip to scissor rect.
-/*
-    minX = MAX(minX, m_minX);
-    maxX = MIN(maxX, m_maxX);
-    minY = MAX(minY, m_minY);
-    maxY = MIN(maxY, m_maxY); */
+
+    minX = MAX(minX, 0);
+    maxX = MIN(maxX, vid_mode.width);
+    minY = MAX(minY, 0);
+    maxY = MIN(maxY, vid_mode.height);
 
     // Compute edge equations.
 

@@ -39,7 +39,7 @@ GLfloat TEXCOORD_ARRAY[4 * 2] = { 0, 0,
                                   0, 1
                                 };
 
-GLuint ARGB_ARRAY[4 * 1] = { 0xFFFF0000, 0xFF0000FF, 0xFF00FF00, 0xFFFFFF00 };
+GLuint ARGB_ARRAY[4] = { 0xFFFF0000, 0xFF0000FF, 0xFF00FF00, 0xFFFFFF00 };
 
 
 /* Multi-Texture Example using Open GL Vertex Buffer Submission. */
