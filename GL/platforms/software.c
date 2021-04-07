@@ -14,6 +14,8 @@ static Matrix4x4 MATRIX;
 static SDL_Window* WINDOW = NULL;
 static SDL_Renderer* RENDERER = NULL;
 
+static uint8_t BACKGROUND_COLOR[3] = {0, 0, 0};
+
 GPUCulling CULL_MODE = GPU_CULLING_CCW;
 
 
@@ -129,7 +131,7 @@ void InitGPU(_Bool autosort, _Bool fsaa) {
 }
 
 void SceneBegin() {
-    SDL_SetRenderDrawColor(RENDERER, 0, 0, 0, 0);
+    SDL_SetRenderDrawColor(RENDERER, BACKGROUND_COLOR[0], BACKGROUND_COLOR[1], BACKGROUND_COLOR[2], 0);
     SDL_RenderClear(RENDERER);
 }
 
@@ -256,7 +258,9 @@ void GPUSetPaletteEntry(uint32_t idx, uint32_t value) {
 }
 
 void GPUSetBackgroundColour(float r, float g, float b) {
-
+    BACKGROUND_COLOR[0] = r * 255.0f;
+    BACKGROUND_COLOR[1] = g * 255.0f;
+    BACKGROUND_COLOR[2] = b * 255.0f;
 }
 
 void GPUSetAlphaCutOff(uint8_t v) {

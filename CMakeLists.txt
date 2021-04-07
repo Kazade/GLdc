@@ -44,5 +44,11 @@ link_libraries(m)
 
 include_directories(include)
 
+link_libraries(GLdc)
+
 add_executable(nehe02 samples/nehe02/main.c)
-target_link_libraries(nehe02 GLdc)
+add_executable(blend_test samples/blend_test/main.c)
+add_executable(depth_funcs samples/depth_funcs/main.c)
+add_executable(depth_funcs_alpha_testing samples/depth_funcs_alpha_testing/main.c samples/depth_funcs_alpha_testing/gl_png.c)
+
+

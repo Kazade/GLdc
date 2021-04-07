@@ -421,9 +421,12 @@ GLAPI void APIENTRY glClearColor(GLfloat r, GLfloat g, GLfloat b, GLfloat a) {
     if(b > 1) b = 1;
     if(a > 1) a = 1;
 
-    CLEAR_COLOUR[0] = r * a;
-    CLEAR_COLOUR[1] = g * a;
-    CLEAR_COLOUR[2] = b * a;
+    /* FIXME: The background-poly doesn't take an alpha value */
+    _GL_UNUSED(a);
+
+    CLEAR_COLOUR[0] = r;
+    CLEAR_COLOUR[1] = g;
+    CLEAR_COLOUR[2] = b;
 }
 
 /* Depth Testing */
