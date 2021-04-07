@@ -651,7 +651,7 @@ GL_FORCE_INLINE void _readSTData(const GLuint first, const GLuint count, VertexE
     const GLubyte ststride = (ST_POINTER.stride) ? ST_POINTER.stride : ST_POINTER.size * byte_size(ST_POINTER.type);
     const void* stptr = ((GLubyte*) ST_POINTER.ptr + (first * ststride));
 
-    ReadUVFunc func = calcReadUVFunc();
+    ReadUVFunc func = calcReadSTFunc();
     GLubyte* out = (GLubyte*) extra[0].st;
 
     ITERATE(count) {
