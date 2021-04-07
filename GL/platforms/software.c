@@ -14,6 +14,9 @@ static Matrix4x4 MATRIX;
 static SDL_Window* WINDOW = NULL;
 static SDL_Renderer* RENDERER = NULL;
 
+GPUCulling CULL_MODE = GPU_CULLING_CCW;
+
+
 static VideoMode vid_mode = {
     640, 480
 };
@@ -33,7 +36,7 @@ typedef struct GPUVertex {
 #define MIN(x, y) ((x) < (y) ? (x) : (y))
 #define MAX(x, y) ((x) > (y) ? (x) : (y))
 
-static void DrawTriangle(const GPUVertex* v0, const GPUVertex* v1, const GPUVertex* v2) {
+static void DrawTriangle(GPUVertex* v0, GPUVertex* v1, GPUVertex* v2) {
     // Compute triangle bounding box.
 
     int minX = MIN(MIN(v0->x, v1->x), v2->x);
@@ -57,9 +60,35 @@ static void DrawTriangle(const GPUVertex* v0, const GPUVertex* v1, const GPUVert
 
     float area = 0.5 * (e0.c + e1.c + e2.c);
 
+    /* This is very ugly. I don't understand the math properly
+     * so I just swap the vertex order if something is back-facing
+     * and we want to render it. Patches welcome! */
+#define REVERSE_WINDING() \
+    GPUVertex* tv = v0; \
+    v0 = v1; \
+    v1 = tv; \
+    EdgeEquationInit(&e0, &v0->x, &v1->x); \
+    EdgeEquationInit(&e1, &v1->x, &v2->x); \
+    EdgeEquationInit(&e2, &v2->x, &v0->x); \
+    area = 0.5f * (e0.c + e1.c + e2.c) \
+
     // Check if triangle is backfacing.
-    if (area < 0) {
-        return;
+    if(CULL_MODE == GPU_CULLING_CCW) {
+        if(area < 0) {
+            return;
+        }
+    } else if(CULL_MODE == GPU_CULLING_CW) {
+        if(area < 0) {
+            // We only draw front-facing polygons, so swap
+            // the back to front and draw
+            REVERSE_WINDING();
+        } else {
+            // Front facing, so bail
+            return;
+        }
+    } else if(area < 0) {
+        /* We're not culling, but this is backfacing, so swap vertices and edges */
+        REVERSE_WINDING();
     }
 
     ParameterEquation r, g, b;
@@ -116,6 +145,12 @@ void SceneListSubmit(void* src, int n) {
     for(int i = 0; i < n; ++i, flags += step) {
         if((*flags & GPU_CMD_POLYHDR) == GPU_CMD_POLYHDR) {
             vertex_counter = 0;
+
+            uint32_t mode1 = *(flags + 1);
+            // Extract culling mode
+            uint32_t mask = mode1 & GPU_TA_PM1_CULLING_MASK;
+            CULL_MODE = mask >> GPU_TA_PM1_CULLING_SHIFT;
+
         } else {
             switch(*flags) {
             case GPU_CMD_VERTEX_EOL:
@@ -128,9 +163,9 @@ void SceneListSubmit(void* src, int n) {
         }
 
         if(vertex_counter > 2) {
-            const GPUVertex* v0 = (const GPUVertex*) (flags - step - step);
-            const GPUVertex* v1 = (const GPUVertex*) (flags - step);
-            const GPUVertex* v2 = (const GPUVertex*) (flags);
+            GPUVertex* v0 = (GPUVertex*) (flags - step - step);
+            GPUVertex* v1 = (GPUVertex*) (flags - step);
+            GPUVertex* v2 = (GPUVertex*) (flags);
             (vertex_counter % 2 == 0) ? DrawTriangle(v0, v1, v2) : DrawTriangle(v1, v0, v2);
         }
 
