@@ -73,26 +73,28 @@ function(gen_sample sample)
 
     add_executable(${sample} ${SAMPLE_SRCS})
 
-    if(EXISTS "${CMAKE_SOURCE_DIR}/samples/${sample}/romdisk")
-        message("Generating romdisk for sample: ${sample}")
-        add_custom_command(
-            OUTPUT ${ROMDISK_IMG}
-            COMMAND ${GENROMFS} -f ${ROMDISK_IMG} -d ${ROMDISK_DIR} -v
-        )
+    if(PLATFORM_DREAMCAST)
+        if(EXISTS "${CMAKE_SOURCE_DIR}/samples/${sample}/romdisk")
+            message("Generating romdisk for sample: ${sample}")
+            add_custom_command(
+                OUTPUT ${ROMDISK_IMG}
+                COMMAND ${GENROMFS} -f ${ROMDISK_IMG} -d ${ROMDISK_DIR} -v
+            )
 
-        add_custom_command(
-            OUTPUT ${ROMDISK_O}
-            COMMAND ${BIN2O} romdisk.img romdisk romdisk.o
-            DEPENDS ${ROMDISK_IMG}
-            WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}/samples/${sample}"
-        )
+            add_custom_command(
+                OUTPUT ${ROMDISK_O}
+                COMMAND ${BIN2O} romdisk.img romdisk romdisk.o
+                DEPENDS ${ROMDISK_IMG}
+                WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}/samples/${sample}"
+            )
 
-        add_custom_target(${sample}_romdisk DEPENDS ${ROMDISK_O})
-        add_dependencies(${sample} ${sample}_romdisk)
-        target_link_libraries(${sample} ${ROMDISK_O})
+            add_custom_target(${sample}_romdisk DEPENDS ${ROMDISK_O})
+            add_dependencies(${sample} ${sample}_romdisk)
+            target_link_libraries(${sample} ${ROMDISK_O})
 
-    else()
-        message("No such romdisk for sample: ${sample} at 'samples/${sample}/romdisk'")
+        else()
+            message("No such romdisk for sample: ${sample} at 'samples/${sample}/romdisk'")
+        endif()
     endif()
 endfunction()
 
