@@ -5,6 +5,10 @@ typedef enum
     true
 } bool;
 
+#ifdef __DREAMCAST__
+#include <kos.h>
+#endif
+
 #include "GL/gl.h"
 #include "GL/glu.h"
 #include "GL/glkos.h"

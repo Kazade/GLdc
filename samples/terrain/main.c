@@ -1,9 +1,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "gl.h"
-#include "glu.h"
-#include "glkos.h"
+#include "GL/gl.h"
+#include "GL/glu.h"
+#include "GL/glkos.h"
 
 #define TERRAIN_SIZE 100
 #define TERRAIN_SCALE 1.0f

@@ -187,7 +187,7 @@ int dtex_to_gl_texture(texture *tex, char* filename) {
 		printf("Texture %s loaded\n", tex->path);
 
 		return(1);
-};
+}
 
 void draw_textured_quad(texture *tex) {
 	if(glIsTexture(tex->id)) {

@@ -9,8 +9,11 @@
 #include "GL/glext.h"
 #include "GL/glkos.h"
 
-extern uint8_t romdisk[];
-KOS_INIT_ROMDISK(romdisk);
+#ifdef __DREAMCAST__
+    #include <kos.h>
+    extern uint8 romdisk[];
+    KOS_INIT_ROMDISK(romdisk);
+#endif
 
 /* floats for x rotation, y rotation, z rotation */
 float xrot, yrot, zrot;

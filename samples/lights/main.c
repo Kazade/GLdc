@@ -4,13 +4,17 @@
 
 #include "GL/gl.h"
 #include "GL/glu.h"
+#include "GL/glext.h"
 #include "GL/glkos.h"
 
+#ifdef __DREAMCAST__
+
+#include <kos.h>
 extern uint8_t romdisk[];
 KOS_INIT_ROMDISK(romdisk);
 
-#ifdef __DREAMCAST__
 #define IMAGE_FILENAME "/rd/NeHe.bmp"
+
 #else
 #define IMAGE_FILENAME "samples/lights/romdisk/NeHe.bmp"
 #endif

@@ -54,21 +54,21 @@ include_directories(include)
 
 link_libraries(GLdc)
 
-function(gen_sample sample sources)
+function(gen_sample sample)
+    set(SAMPLE_SRCS ${ARGN})
     set(GENROMFS "$ENV{KOS_BASE}/utils/genromfs/genromfs")
     set(BIN2O $ENV{KOS_BASE}/utils/bin2o/bin2o)
     set(ROMDISK_IMG "${CMAKE_SOURCE_DIR}/samples/${sample}/romdisk.img")
     set(ROMDISK_O "${CMAKE_SOURCE_DIR}/samples/${sample}/romdisk.o")
     set(ROMDISK_DIR "${CMAKE_SOURCE_DIR}/samples/${sample}/romdisk")
 
-    add_executable(${sample} ${sources})
+    add_executable(${sample} ${SAMPLE_SRCS})
 
     if(EXISTS "${CMAKE_SOURCE_DIR}/samples/${sample}/romdisk")
         message("Generating romdisk for sample: ${sample}")
         add_custom_command(
             OUTPUT ${ROMDISK_IMG}
             COMMAND ${GENROMFS} -f ${ROMDISK_IMG} -d ${ROMDISK_DIR} -v
-            DEPENDS ${sample}
         )
 
         add_custom_command(
@@ -78,30 +78,43 @@ function(gen_sample sample sources)
             WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}/samples/${sample}"
         )
 
-        add_custom_target(run_${sample} ALL DEPENDS ${ROMDISK_O})
+        add_custom_target(${sample}_romdisk DEPENDS ${ROMDISK_O})
+        add_dependencies(${sample} ${sample}_romdisk)
         target_link_libraries(${sample} ${ROMDISK_O})
+
     else()
         message("No such romdisk for sample: ${sample} at 'samples/${sample}/romdisk'")
     endif()
 endfunction()
 
-gen_sample(nehe02 samples/nehe02/main.c)
 gen_sample(blend_test samples/blend_test/main.c)
 gen_sample(depth_funcs samples/depth_funcs/main.c)
 gen_sample(depth_funcs_alpha_testing samples/depth_funcs_alpha_testing/main.c samples/depth_funcs_alpha_testing/gl_png.c)
 gen_sample(depth_funcs_ortho samples/depth_funcs_ortho/main.c)
+gen_sample(lerabot01 samples/lerabot01/main.c)
+gen_sample(lerabot_blend_test samples/lerabot_blend_test/main.c)
 gen_sample(lights samples/lights/main.c)
 gen_sample(mipmap samples/mipmap/main.c)
 gen_sample(multitexture_arrays samples/multitexture_arrays/main.c samples/multitexture_arrays/pvr-texture.c)
+gen_sample(nehe02 samples/nehe02/main.c)
 gen_sample(nehe02de samples/nehe02de/main.c)
+gen_sample(nehe02va samples/nehe02va/main.c)
+gen_sample(nehe03 samples/nehe03/main.c)
+gen_sample(nehe04 samples/nehe04/main.c)
+gen_sample(nehe05 samples/nehe05/main.c)
 gen_sample(nehe06 samples/nehe06/main.c)
+gen_sample(nehe06_vq samples/nehe06_vq/main.c)
+gen_sample(ortho2d samples/ortho2d/main.c)
 gen_sample(paletted samples/paletted/main.c)
 gen_sample(paletted_pcx samples/paletted_pcx/main.c)
 gen_sample(polygon_offset samples/polygon_offset/main.c)
+gen_sample(terrain samples/terrain/main.c)
 gen_sample(zclip samples/zclip/main.c)
 gen_sample(zclip_triangle samples/zclip_triangle/main.c)
 gen_sample(zclip_trianglestrip samples/zclip_trianglestrip/main.c)
 
 if(PLATFORM_DREAMCAST)
-    add_executable(polymark samples/polymark/main.c)
+    gen_sample(polymark samples/polymark/main.c)
+    gen_sample(quadmark samples/quadmark/main.c)
+    gen_sample(trimark samples/trimark/main.c)
 endif()
