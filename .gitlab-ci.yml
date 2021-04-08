@@ -14,7 +14,7 @@ build:x86-gcc:
   stage: build
   image: fedora:33
   before_script:
-    - sudo dnf install -y cmake gcc SDL2-devel.i686 
+    - sudo dnf install -y cmake gcc gcc-c++ SDL2-devel.i686 
   script:
     - mkdir builddir
     - cd builddir
