@@ -2,8 +2,6 @@
 #include "../containers/aligned_vector.h"
 #include "private.h"
 #include "profiler.h"
-#include "version.h"
-
 
 static PolyList OP_LIST;
 static PolyList PT_LIST;
