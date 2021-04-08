@@ -5,6 +5,7 @@ build:sh4-gcc:
   stage: build
   image: kazade/dreamcast-sdk
   script:
+    - source /etc/bash.bashrc
     - mkdir builddir
     - cd builddir
     - cmake -DCMAKE_TOOLCHAIN_FILE=../toolchains/Dreamcast.cmake ..
