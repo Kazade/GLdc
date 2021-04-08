@@ -54,22 +54,53 @@ include_directories(include)
 
 link_libraries(GLdc)
 
-add_executable(nehe02 samples/nehe02/main.c)
-add_executable(blend_test samples/blend_test/main.c)
-add_executable(depth_funcs samples/depth_funcs/main.c)
-add_executable(depth_funcs_alpha_testing samples/depth_funcs_alpha_testing/main.c samples/depth_funcs_alpha_testing/gl_png.c)
-add_executable(depth_funcs_ortho samples/depth_funcs_ortho/main.c)
-add_executable(lights samples/lights/main.c)
-add_executable(mipmap samples/mipmap/main.c)
-add_executable(multitexture_arrays samples/multitexture_arrays/main.c samples/multitexture_arrays/pvr-texture.c)
-add_executable(nehe02de samples/nehe02de/main.c)
-add_executable(nehe06 samples/nehe06/main.c)
-add_executable(paletted samples/paletted/main.c)
-add_executable(paletted_pcx samples/paletted_pcx/main.c)
-add_executable(polygon_offset samples/polygon_offset/main.c)
-add_executable(zclip samples/zclip/main.c)
-add_executable(zclip_triangle samples/zclip_triangle/main.c)
-add_executable(zclip_trianglestrip samples/zclip_trianglestrip/main.c)
+function(gen_sample sample sources)
+    set(GENROMFS "$ENV{KOS_BASE}/utils/genromfs/genromfs")
+    set(BIN2O $ENV{KOS_BASE}/utils/bin2o/bin2o)
+    set(ROMDISK_IMG "${CMAKE_SOURCE_DIR}/samples/${sample}/romdisk.img")
+    set(ROMDISK_O "${CMAKE_SOURCE_DIR}/samples/${sample}/romdisk.o")
+    set(ROMDISK_DIR "${CMAKE_SOURCE_DIR}/samples/${sample}/romdisk")
+
+    add_executable(${sample} ${sources})
+
+    if(EXISTS "${CMAKE_SOURCE_DIR}/samples/${sample}/romdisk")
+        message("Generating romdisk for sample: ${sample}")
+        add_custom_command(
+            OUTPUT ${ROMDISK_IMG}
+            COMMAND ${GENROMFS} -f ${ROMDISK_IMG} -d ${ROMDISK_DIR} -v
+            DEPENDS ${sample}
+        )
+
+        add_custom_command(
+            OUTPUT ${ROMDISK_O}
+            COMMAND ${BIN2O} romdisk.img romdisk romdisk.o
+            DEPENDS ${ROMDISK_IMG}
+            WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}/samples/${sample}"
+        )
+
+        add_custom_target(run_${sample} ALL DEPENDS ${ROMDISK_O})
+        target_link_libraries(${sample} ${ROMDISK_O})
+    else()
+        message("No such romdisk for sample: ${sample} at 'samples/${sample}/romdisk'")
+    endif()
+endfunction()
+
+gen_sample(nehe02 samples/nehe02/main.c)
+gen_sample(blend_test samples/blend_test/main.c)
+gen_sample(depth_funcs samples/depth_funcs/main.c)
+gen_sample(depth_funcs_alpha_testing samples/depth_funcs_alpha_testing/main.c samples/depth_funcs_alpha_testing/gl_png.c)
+gen_sample(depth_funcs_ortho samples/depth_funcs_ortho/main.c)
+gen_sample(lights samples/lights/main.c)
+gen_sample(mipmap samples/mipmap/main.c)
+gen_sample(multitexture_arrays samples/multitexture_arrays/main.c samples/multitexture_arrays/pvr-texture.c)
+gen_sample(nehe02de samples/nehe02de/main.c)
+gen_sample(nehe06 samples/nehe06/main.c)
+gen_sample(paletted samples/paletted/main.c)
+gen_sample(paletted_pcx samples/paletted_pcx/main.c)
+gen_sample(polygon_offset samples/polygon_offset/main.c)
+gen_sample(zclip samples/zclip/main.c)
+gen_sample(zclip_triangle samples/zclip_triangle/main.c)
+gen_sample(zclip_trianglestrip samples/zclip_trianglestrip/main.c)
 
 if(PLATFORM_DREAMCAST)
     add_executable(polymark samples/polymark/main.c)
