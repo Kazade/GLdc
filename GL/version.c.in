@@ -1,0 +1,2 @@
+
+const char* GLDC_VERSION = "@GLDC_VERSION@";

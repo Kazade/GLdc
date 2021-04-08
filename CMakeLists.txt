@@ -30,7 +30,16 @@ set(
     GL/texture.c
     GL/util.c
     GL/yalloc/yalloc.c
+    ${CMAKE_CURRENT_BINARY_DIR}/version.c
 )
+
+execute_process(
+    COMMAND git describe --abbrev=4 --dirty --always --tags
+    OUTPUT_VARIABLE GLDC_VERSION
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+)
+
+configure_file(GL/version.c.in ${CMAKE_CURRENT_BINARY_DIR}/version.c)
 
 if(PLATFORM_DREAMCAST)
     set(SOURCES ${SOURCES} GL/platforms/sh4.c)
