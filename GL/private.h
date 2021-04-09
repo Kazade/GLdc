@@ -2,16 +2,17 @@
 #define PRIVATE_H
 
 #include <stdint.h>
-#include <dc/matrix.h>
-#include <dc/pvr.h>
-#include <dc/vec3f.h>
-#include <dc/fmath.h>
-#include <dc/matrix3d.h>
+#include <stdio.h>
 
-#include "../include/gl.h"
+#include "platform.h"
+#include "types.h"
+
+#include "../include/GL/gl.h"
+#include "../include/GL/glext.h"
+#include "../include/GL/glkos.h"
+
 #include "../containers/aligned_vector.h"
 #include "../containers/named_array.h"
-#include "sh4_math.h"
 
 extern void* memcpy4 (void *dest, const void *src, size_t count);
 
@@ -19,12 +20,6 @@ extern void* memcpy4 (void *dest, const void *src, size_t count);
 #define GL_INLINE_DEBUG GL_NO_INSTRUMENT __attribute__((always_inline))
 #define GL_FORCE_INLINE static GL_INLINE_DEBUG
 #define _GL_UNUSED(x) (void)(x)
-
-#define FASTCPY(dst, src, bytes) \
-    (bytes % 32 == 0) ? sq_cpy(dst, src, bytes) : memcpy(dst, src, bytes);
-
-#define FASTCPY4(dst, src, bytes) \
-    (bytes % 32 == 0) ? sq_cpy(dst, src, bytes) : memcpy4(dst, src, bytes);
 
 #define _PACK4(v) ((v * 0xF) / 0xFF)
 #define PACK_ARGB4444(a,r,g,b) (_PACK4(a) << 12) | (_PACK4(r) << 8) | (_PACK4(g) << 4) | (_PACK4(b))
@@ -46,7 +41,6 @@ extern void* memcpy4 (void *dest, const void *src, size_t count);
 
 #define MAX_TEXTURE_SIZE 1024
 
-typedef float Matrix4x4[16];
 
 /* This gives us an easy way to switch
  * internal matrix order if necessary */
@@ -89,9 +83,6 @@ typedef float Matrix4x4[16];
 #define M15 15
 #endif
 
-typedef struct {
-    pvr_poly_hdr_t hdr;
-} PVRHeader;
 
 typedef struct {
     unsigned int flags;      /* Constant PVR_CMD_USERCLIP */
@@ -192,19 +183,6 @@ typedef struct {
     GLfloat specularMaterial[4];
 } LightSource;
 
-typedef struct {
-    /* Same 32 byte layout as pvr_vertex_t */
-    uint32_t flags;
-    float xyz[3];
-    float uv[2];
-    uint8_t bgra[4];
-
-    /* In the pvr_vertex_t structure, this next 4 bytes is oargb
-     * but we're not using that for now, so having W here makes the code
-     * simpler */
-    float w;
-} Vertex;
-
 
 #define argbcpy(dst, src) \
     *((GLuint*) dst) = *((GLuint*) src) \
@@ -263,7 +241,7 @@ typedef struct {
     AlignedVector* extras;
 } SubmissionTarget;
 
-PVRHeader* _glSubmissionTargetHeader(SubmissionTarget* target);
+PolyHeader* _glSubmissionTargetHeader(SubmissionTarget* target);
 Vertex* _glSubmissionTargetStart(SubmissionTarget* target);
 Vertex* _glSubmissionTargetEnd(SubmissionTarget* target);
 
@@ -310,10 +288,10 @@ Matrix4x4* _glGetModelViewMatrix();
 void _glWipeTextureOnFramebuffers(GLuint texture);
 GLubyte _glCheckImmediateModeInactive(const char* func);
 
-pvr_poly_cxt_t* _glGetPVRContext();
+PolyContext* _glGetPVRContext();
 GLubyte _glInitTextures();
 
-void _glUpdatePVRTextureContext(pvr_poly_cxt_t* context, GLshort textureUnit);
+void _glUpdatePVRTextureContext(PolyContext* context, GLshort textureUnit);
 void _glAllocateSpaceForMipmaps(TextureObject* active);
 
 typedef struct {
@@ -365,7 +343,7 @@ typedef struct {
     float finalColour[4]; //16 bytes (to 40)
 } EyeSpaceData;
 
-extern void _glPerformLighting(Vertex* vertices, EyeSpaceData *es, const int32_t count);
+extern void _glPerformLighting(Vertex* vertices, EyeSpaceData *es, const uint32_t count);
 
 unsigned char _glIsClippingEnabled();
 void _glEnableClipping(unsigned char v);
@@ -378,7 +356,6 @@ GLuint _glFreeTextureMemory();
 GLuint _glUsedTextureMemory();
 GLuint _glFreeContiguousTextureMemory();
 
-#define PVR_VERTEX_BUF_SIZE 2560 * 256
 #define MAX_TEXTURE_UNITS 2
 #define MAX_LIGHTS 8
 

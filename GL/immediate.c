@@ -10,11 +10,7 @@
 #include <string.h>
 #include <stdio.h>
 
-#include "../include/gl.h"
-#include "../include/glext.h"
-#include "../include/glkos.h"
 #include "profiler.h"
-
 #include "private.h"
 
 static GLboolean IMMEDIATE_MODE_ACTIVE = GL_FALSE;

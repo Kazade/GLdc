@@ -2,7 +2,7 @@
 #define __GL_PNG_H__
 
 #include <stdio.h>
-#include <kos.h>
+#include <stdint.h>
 #include <GL/gl.h>
 
 typedef struct _texture {

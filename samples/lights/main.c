@@ -1,12 +1,23 @@
 #include <stdio.h>
+#include <stdlib.h>
+#include <stdint.h>
 
-#include "gl.h"
-#include "glu.h"
-#include "glkos.h"
+#include "GL/gl.h"
+#include "GL/glu.h"
+#include "GL/glext.h"
+#include "GL/glkos.h"
 
-extern uint8 romdisk[];
+#ifdef __DREAMCAST__
+
+#include <kos.h>
+extern uint8_t romdisk[];
 KOS_INIT_ROMDISK(romdisk);
 
+#define IMAGE_FILENAME "/rd/NeHe.bmp"
+
+#else
+#define IMAGE_FILENAME "samples/lights/romdisk/NeHe.bmp"
+#endif
 
 float xrot, yrot, zrot;
 
@@ -89,7 +100,7 @@ int ImageLoad(char *filename, Image *image) {
     }
 
     if ((i = fread(image->data, size, 1, file)) != 1) {
-        printf(stderr, "Error reading image data from %s.\n", filename);
+        fprintf(stderr, "Error reading image data from %s.\n", filename);
         return 0;
     }
 
@@ -115,7 +126,7 @@ void LoadGLTextures() {
         exit(0);
     }
 
-    if (!ImageLoad("/rd/NeHe.bmp", image1)) {
+    if (!ImageLoad(IMAGE_FILENAME, image1)) {
         exit(1);
     }
 

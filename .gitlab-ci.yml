@@ -6,5 +6,18 @@ build:sh4-gcc:
   image: kazade/dreamcast-sdk
   script:
     - source /etc/bash.bashrc
-    - make clean
-    - make samples
+    - mkdir builddir
+    - cd builddir
+    - cmake -DCMAKE_TOOLCHAIN_FILE=../toolchains/Dreamcast.cmake ..
+    - make
+    
+build:x86-gcc:
+  stage: build
+  image: fedora:33
+  before_script:
+    - sudo dnf install -y cmake gcc gcc-c++ SDL2-devel.i686 glibc-devel.i686
+  script:
+    - mkdir builddir
+    - cd builddir
+    - cmake ..
+    - make

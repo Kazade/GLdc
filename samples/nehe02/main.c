@@ -1,6 +1,6 @@
-#include "gl.h"
-#include "glu.h"
-#include "glkos.h"
+#include "GL/gl.h"
+#include "GL/glu.h"
+#include "GL/glkos.h"
 
 /* A general OpenGL initialization function.  Sets all of the initial parameters. */
 void InitGL(int Width, int Height)	        // We call this right after our OpenGL window is created.
@@ -16,7 +16,7 @@ void InitGL(int Width, int Height)	        // We call this right after our OpenG
 
     gluPerspective(45.0f,(GLfloat)Width/(GLfloat)Height,0.1f,100.0f);	// Calculate The Aspect Ratio Of The Window
 
-    glMatrixMode(GL_MODELVIEW);
+    glMatrixMode(GL_MODELVIEW);    
 }
 
 /* The function called when our window is resized (which shouldn't happen, because we're fullscreen) */

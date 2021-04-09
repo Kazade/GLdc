@@ -1,11 +1,11 @@
-#include "gl.h"
-#include "glu.h"
-#include "glkos.h"
+#include "GL/gl.h"
+#include "GL/glu.h"
+#include "GL/glkos.h"
 #include  "gl_png.h"
 
 //$KOS_BASE/utils/texconv/texconv  --in disk.png --format ARGB4444 --preview disk_preview.png --out disk.dtex
 
-extern uint8 romdisk[];
+extern uint8_t romdisk[];
 KOS_INIT_ROMDISK(romdisk);
 texture t;
 int 	blendActive = -1;

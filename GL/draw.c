@@ -4,14 +4,10 @@
 #include <stdlib.h>
 #include <math.h>
 #include <assert.h>
-#include <dc/vec3f.h>
 
-#include "../include/gl.h"
-#include "../include/glext.h"
 #include "private.h"
 #include "profiler.h"
-#include "sh4_math.h"
-
+#include "platform.h"
 
 static AttribPointer VERTEX_POINTER;
 static AttribPointer UV_POINTER;
@@ -439,7 +435,7 @@ GL_FORCE_INLINE void transformNormalToEyeSpace(GLfloat* normal) {
     mat_trans_normal3(normal[0], normal[1], normal[2]);
 }
 
-PVRHeader* _glSubmissionTargetHeader(SubmissionTarget* target) {
+PolyHeader *_glSubmissionTargetHeader(SubmissionTarget* target) {
     assert(target->header_offset < target->output->vector.size);
     return aligned_vector_at(&target->output->vector, target->header_offset);
 }
@@ -458,7 +454,7 @@ static inline void genTriangles(Vertex* output, GLuint count) {
 
     GLuint i;
     for(i = 0; i < count; i += 3) {
-        it->flags = PVR_CMD_VERTEX_EOL;
+        it->flags = GPU_CMD_VERTEX_EOL;
         it += 3;
     }
 }
@@ -468,13 +464,13 @@ static inline void genQuads(Vertex* output, GLuint count) {
     GLuint i;
     for(i = 0; i < count; i += 4) {
         swapVertex((final - 1), final);
-        final->flags = PVR_CMD_VERTEX_EOL;
+        final->flags = GPU_CMD_VERTEX_EOL;
         final += 4;
     }
 }
 
 static void genTriangleStrip(Vertex* output, GLuint count) {
-    output[count - 1].flags = PVR_CMD_VERTEX_EOL;
+    output[count - 1].flags = GPU_CMD_VERTEX_EOL;
 }
 
 static void genTriangleFan(Vertex* output, GLuint count) {
@@ -486,7 +482,7 @@ static void genTriangleFan(Vertex* output, GLuint count) {
     GLubyte i = count - 2;
     while(i--) {
         *dst = *src--;
-        (*dst--).flags = PVR_CMD_VERTEX_EOL;
+        (*dst--).flags = GPU_CMD_VERTEX_EOL;
         *dst-- = *src;
         *dst-- = *output;
     }
@@ -655,7 +651,7 @@ GL_FORCE_INLINE void _readSTData(const GLuint first, const GLuint count, VertexE
     const GLubyte ststride = (ST_POINTER.stride) ? ST_POINTER.stride : ST_POINTER.size * byte_size(ST_POINTER.type);
     const void* stptr = ((GLubyte*) ST_POINTER.ptr + (first * ststride));
 
-    ReadUVFunc func = calcReadUVFunc();
+    ReadUVFunc func = calcReadSTFunc();
     GLubyte* out = (GLubyte*) extra[0].st;
 
     ITERATE(count) {
@@ -697,7 +693,8 @@ GL_FORCE_INLINE void _readNormalData(const GLuint first, const GLuint count, Ver
 }
 
 GL_FORCE_INLINE void _readDiffuseData(const GLuint first, const GLuint count, Vertex* output) {
-    const GLuint cstride = (DIFFUSE_POINTER.stride) ? DIFFUSE_POINTER.stride : DIFFUSE_POINTER.size * byte_size(DIFFUSE_POINTER.type);
+    const GLuint size = (DIFFUSE_POINTER.size == GL_BGRA) ? 4 : DIFFUSE_POINTER.size;
+    const GLuint cstride = (DIFFUSE_POINTER.stride) ? DIFFUSE_POINTER.stride : size * byte_size(DIFFUSE_POINTER.type);
     const GLubyte* cptr = ((GLubyte*) DIFFUSE_POINTER.ptr) + (first * cstride);
 
     ReadDiffuseFunc func = calcReadDiffuseFunc();
@@ -765,7 +762,7 @@ static void generateElements(
         st_func(st, (GLubyte*) ve->st);
         normal_func(nxyz, (GLubyte*) ve->nxyz);
 
-        output->flags = PVR_CMD_VERTEX;
+        output->flags = GPU_CMD_VERTEX;
         ++output;
         ++ve;
     }
@@ -786,7 +783,7 @@ static void generate(SubmissionTarget* target, const GLenum mode, const GLsizei 
             const GLubyte* pos = VERTEX_POINTER.ptr;
             Vertex* it = start;
             ITERATE(count) {
-                it->flags = PVR_CMD_VERTEX;
+                it->flags = GPU_CMD_VERTEX;
                 memcpy(it->xyz, pos, FAST_PATH_BYTE_SIZE);
                 it++;
                 pos += VERTEX_POINTER.stride;
@@ -799,7 +796,7 @@ static void generate(SubmissionTarget* target, const GLenum mode, const GLsizei 
             Vertex* it = _glSubmissionTargetStart(target);
 
             ITERATE(count) {
-                it->flags = PVR_CMD_VERTEX;
+                it->flags = GPU_CMD_VERTEX;
                 ++it;
             }
         }
@@ -843,25 +840,7 @@ static void transform(SubmissionTarget* target) {
 
     _glApplyRenderMatrix(); /* Apply the Render Matrix Stack */
 
-    ITERATE(target->count) {
-        register float __x __asm__("fr12") = (vertex->xyz[0]);
-        register float __y __asm__("fr13") = (vertex->xyz[1]);
-        register float __z __asm__("fr14") = (vertex->xyz[2]);
-        register float __w __asm__("fr15") = (vertex->w);
-
-        __asm__ __volatile__(
-            "fldi1 fr15\n"
-            "ftrv   xmtrx,fv12\n"
-            : "=f" (__x), "=f" (__y), "=f" (__z), "=f" (__w)
-            : "0" (__x), "1" (__y), "2" (__z), "3" (__w)
-        );
-
-        vertex->xyz[0] = __x;
-        vertex->xyz[1] = __y;
-        vertex->xyz[2] = __z;
-        vertex->w = __w;
-        ++vertex;
-    }
+    TransformVertices(vertex, target->count);
 }
 
 static void clip(SubmissionTarget* target) {
@@ -875,14 +854,17 @@ static void clip(SubmissionTarget* target) {
 }
 
 static void mat_transform3(const float* xyz, const float* xyzOut, const uint32_t count, const uint32_t inStride, const uint32_t outStride) {
-    uint8_t* dataIn = (uint8_t*) xyz;
+    const uint8_t* dataIn = (const uint8_t*) xyz;
     uint8_t* dataOut = (uint8_t*) xyzOut;
 
     ITERATE(count) {
-        float* in = (float*) dataIn;
+        const float* in = (const float*) dataIn;
         float* out = (float*) dataOut;
 
-        mat_trans_single3_nodiv_nomod(in[0], in[1], in[2], out[0], out[1], out[2]);
+        TransformVec3NoMod(
+            in,
+            out
+        );
 
         dataIn += inStride;
         dataOut += outStride;
@@ -890,14 +872,14 @@ static void mat_transform3(const float* xyz, const float* xyzOut, const uint32_t
 }
 
 static void mat_transform_normal3(const float* xyz, const float* xyzOut, const uint32_t count, const uint32_t inStride, const uint32_t outStride) {
-    uint8_t* dataIn = (uint8_t*) xyz;
+    const uint8_t* dataIn = (const uint8_t*) xyz;
     uint8_t* dataOut = (uint8_t*) xyzOut;
 
     ITERATE(count) {
-        float* in = (float*) dataIn;
+        const float* in = (const float*) dataIn;
         float* out = (float*) dataOut;
 
-        mat_trans_normal3_nomod(in[0], in[1], in[2], out[0], out[1], out[2]);
+        TransformNormalNoMod(in, out);
 
         dataIn += inStride;
         dataOut += outStride;
@@ -930,8 +912,8 @@ static void light(SubmissionTarget* target) {
     _glPerformLighting(vertex, ES, target->count);
 }
 
-#define PVR_MIN_Z 0.2f
-#define PVR_MAX_Z 1.0 + PVR_MIN_Z
+#define GPU_MIN_Z 0.2f
+#define GPU_MAX_Z 1.0 + GPU_MIN_Z
 
 GL_FORCE_INLINE void divide(SubmissionTarget* target) {
     TRACE();
@@ -949,26 +931,26 @@ GL_FORCE_INLINE void divide(SubmissionTarget* target) {
     }
 }
 
-GL_FORCE_INLINE void push(PVRHeader* header, GLboolean multiTextureHeader, PolyList* activePolyList, GLshort textureUnit) {
+GL_FORCE_INLINE void push(PolyHeader* header, GLboolean multiTextureHeader, PolyList* activePolyList, GLshort textureUnit) {
     TRACE();
 
     // Compile the header
-    pvr_poly_cxt_t cxt = *_glGetPVRContext();
+    PolyContext cxt = *_glGetPVRContext();
     cxt.list_type = activePolyList->list_type;
 
     _glUpdatePVRTextureContext(&cxt, textureUnit);
 
     if(multiTextureHeader) {
-        assert(cxt.list_type == PVR_LIST_TR_POLY);
+        assert(cxt.list_type == GPU_LIST_TR_POLY);
 
-        cxt.gen.alpha = PVR_ALPHA_ENABLE;
-        cxt.txr.alpha = PVR_TXRALPHA_ENABLE;
-        cxt.blend.src = PVR_BLEND_ZERO;
-        cxt.blend.dst = PVR_BLEND_DESTCOLOR;
-        cxt.depth.comparison = PVR_DEPTHCMP_EQUAL;
+        cxt.gen.alpha = GPU_ALPHA_ENABLE;
+        cxt.txr.alpha = GPU_TXRALPHA_ENABLE;
+        cxt.blend.src = GPU_BLEND_ZERO;
+        cxt.blend.dst = GPU_BLEND_DESTCOLOR;
+        cxt.depth.comparison = GPU_DEPTHCMP_EQUAL;
     }
 
-    pvr_poly_compile(&header->hdr, &cxt);
+    CompilePolyHeader(header, &cxt);
 
     /* Post-process the vertex list */
     /*
@@ -1136,7 +1118,7 @@ GL_FORCE_INLINE void submitVertices(GLenum mode, GLsizei first, GLuint count, GL
 
     assert(vertex);
 
-    PVRHeader* mtHeader = (PVRHeader*) vertex++;
+    PolyHeader* mtHeader = (PolyHeader*) vertex++;
 
     /* Replace the UV coordinates with the ST ones */
     VertexExtra* ve = aligned_vector_at(target->extras, 0);

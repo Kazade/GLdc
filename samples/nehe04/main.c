@@ -1,6 +1,6 @@
-#include "gl.h"
-#include "glu.h"
-#include "glkos.h"
+#include "GL/gl.h"
+#include "GL/glu.h"
+#include "GL/glkos.h"
 
 GLfloat rtri;
 GLfloat rquad;

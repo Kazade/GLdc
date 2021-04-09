@@ -4,6 +4,9 @@
 
 __BEGIN_DECLS
 
+extern const char* GLDC_VERSION;
+
+
 /*
  * Dreamcast specific compressed + twiddled formats.
  * We use constants from the range 0xEEE0 onwards
