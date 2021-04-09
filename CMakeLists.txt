@@ -1,6 +1,21 @@
 cmake_minimum_required(VERSION 3.0)
 project(GLdc)
 
+# set the default backend
+if(PLATFORM_DREAMCAST)
+    set(BACKEND "kospvr" CACHE STRING "Backend to use")
+else()
+    set(BACKEND "software" CACHE STRING "Backend to use")
+endif()
+
+# List of possible backends
+set_property(CACHE BACKEND PROPERTY STRINGS kospvr software)
+
+message("\nCompiling using backend: ${BACKEND}\n")
+
+string(TOUPPER ${BACKEND} BACKEND_UPPER)
+add_definitions(-DBACKEND_${BACKEND_UPPER})
+
 set(CMAKE_C_STANDARD 99)
 
 include_directories(include)

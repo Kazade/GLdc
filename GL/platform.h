@@ -491,7 +491,7 @@ static inline void CompilePolyHeader(PolyHeader *dst, const PolyContext *src) {
     dst->d3 = dst->d4 = 0xffffffff;
 }
 
-#ifdef __DREAMCAST__
+#ifdef BACKEND_KOSPVR
 #include "platforms/sh4.h"
 #else
 #include "platforms/software.h"
