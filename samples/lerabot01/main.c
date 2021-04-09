@@ -1,11 +1,16 @@
 #include <stdio.h>
-#include "gl.h"
-#include "glu.h"
-#include "glkos.h"
 #include <time.h>
+#include <stdlib.h>
+#include <stdio.h>
 
+#include "GL/gl.h"
+#include "GL/glu.h"
+#include "GL/glkos.h"
+
+#ifdef __DREAMCAST__
 extern uint8 romdisk[];
 KOS_INIT_ROMDISK(romdisk);
+#endif
 
 /* floats for x rotation, y rotation, z rotation */
 float xrot, yrot, zrot;

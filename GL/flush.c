@@ -1,56 +1,11 @@
 
-
-#include <kos.h>
-
-#include "../include/glkos.h"
 #include "../containers/aligned_vector.h"
 #include "private.h"
 #include "profiler.h"
-#include "version.h"
-
-#define TA_SQ_ADDR (unsigned int *)(void *) \
-    (0xe0000000 | (((unsigned long)0x10000000) & 0x03ffffe0))
 
 static PolyList OP_LIST;
 static PolyList PT_LIST;
 static PolyList TR_LIST;
-
-static void pvr_list_submit(void *src, int n) {
-    GLuint *d = TA_SQ_ADDR;
-    GLuint *s = src;
-
-    /* fill/write queues as many times necessary */
-    while(n--) {
-        __asm__("pref @%0" : : "r"(s + 8));  /* prefetch 32 bytes for next loop */
-        d[0] = *(s++);
-        d[1] = *(s++);
-        d[2] = *(s++);
-        d[3] = *(s++);
-        d[4] = *(s++);
-        d[5] = *(s++);
-        d[6] = *(s++);
-        d[7] = *(s++);
-        __asm__("pref @%0" : : "r"(d));
-        d += 8;
-    }
-
-    /* Wait for both store queues to complete */
-    d = (GLuint *)0xe0000000;
-    d[0] = d[8] = 0;
-}
-
-static void _glInitPVR(GLboolean autosort, GLboolean fsaa) {
-    pvr_init_params_t params = {
-        /* Enable opaque and translucent polygons with size 32 and 32 */
-        {PVR_BINSIZE_32, PVR_BINSIZE_0, PVR_BINSIZE_32, PVR_BINSIZE_0, PVR_BINSIZE_32},
-        PVR_VERTEX_BUF_SIZE, /* Vertex buffer size */
-        0, /* No DMA */
-        fsaa, /* No FSAA */
-        (autosort) ? 0 : 1 /* Disable translucent auto-sorting to match traditional GL */
-    };
-
-    pvr_init(&params);
-}
 
 
 PolyList* _glActivePolyList() {
@@ -92,7 +47,7 @@ void APIENTRY glKosInitEx(GLdcConfig* config) {
 
     printf("\nWelcome to GLdc! Git revision: %s\n\n", GLDC_VERSION);
 
-    _glInitPVR(config->autosort_enabled, config->fsaa_enabled);
+    InitGPU(config->autosort_enabled, config->fsaa_enabled);
 
     _glInitMatrices();
     _glInitAttributePointers();
@@ -105,9 +60,9 @@ void APIENTRY glKosInitEx(GLdcConfig* config) {
 
     _glInitTextures();
 
-    OP_LIST.list_type = PVR_LIST_OP_POLY;
-    PT_LIST.list_type = PVR_LIST_PT_POLY;
-    TR_LIST.list_type = PVR_LIST_TR_POLY;
+    OP_LIST.list_type = GPU_LIST_OP_POLY;
+    PT_LIST.list_type = GPU_LIST_PT_POLY;
+    TR_LIST.list_type = GPU_LIST_TR_POLY;
 
     aligned_vector_init(&OP_LIST.vector, sizeof(Vertex));
     aligned_vector_init(&PT_LIST.vector, sizeof(Vertex));
@@ -124,7 +79,6 @@ void APIENTRY glKosInit() {
     glKosInitEx(&config);
 }
 
-#define QACRTA ((((unsigned int)0x10000000)>>26)<<2)&0x1c
 
 void APIENTRY glKosSwapBuffers() {
     static int frame_count = 0;
@@ -133,24 +87,19 @@ void APIENTRY glKosSwapBuffers() {
 
     profiler_push(__func__);
 
-    pvr_wait_ready();
+    SceneBegin();
+        SceneListBegin(GPU_LIST_OP_POLY);
+        SceneListSubmit(OP_LIST.vector.data, OP_LIST.vector.size);
+        SceneListFinish();
 
-    pvr_scene_begin();
-        QACR0 = QACRTA;
-        QACR1 = QACRTA;
+        SceneListBegin(GPU_LIST_PT_POLY);
+        SceneListSubmit(PT_LIST.vector.data, PT_LIST.vector.size);
+        SceneListFinish();
 
-        pvr_list_begin(PVR_LIST_OP_POLY);
-        pvr_list_submit(OP_LIST.vector.data, OP_LIST.vector.size);
-        pvr_list_finish();
-
-        pvr_list_begin(PVR_LIST_PT_POLY);
-        pvr_list_submit(PT_LIST.vector.data, PT_LIST.vector.size);
-        pvr_list_finish();
-
-        pvr_list_begin(PVR_LIST_TR_POLY);
-        pvr_list_submit(TR_LIST.vector.data, TR_LIST.vector.size);
-        pvr_list_finish();
-    pvr_scene_finish();
+        SceneListBegin(GPU_LIST_TR_POLY);
+        SceneListSubmit(TR_LIST.vector.data, TR_LIST.vector.size);
+        SceneListFinish();
+    SceneFinish();
 
     aligned_vector_clear(&OP_LIST.vector);
     aligned_vector_clear(&PT_LIST.vector);

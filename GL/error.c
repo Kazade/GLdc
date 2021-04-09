@@ -8,9 +8,9 @@
     KOS Open GL State Machine Error Code Implementation.
 */
 
-#include "gl.h"
-
 #include <stdio.h>
+
+#include "private.h"
 
 static GLenum last_error = GL_NO_ERROR;
 static char error_function[64] = { '\0' };

@@ -7,12 +7,9 @@
 #include <string.h>
 
 #include "config.h"
-#include "../include/glext.h"
-#include "../include/glkos.h"
+#include "platform.h"
 
 #include "yalloc/yalloc.h"
-
-#include <kos/string.h>
 
 /* We always leave this amount of vram unallocated to prevent
  * issues with the allocator */
@@ -55,7 +52,7 @@ static TexturePalette* _initTexturePalette() {
     TexturePalette* palette = (TexturePalette*) malloc(sizeof(TexturePalette));
     assert(palette);
 
-    memset4(palette, 0x0, sizeof(TexturePalette));
+    MEMSET4(palette, 0x0, sizeof(TexturePalette));
     palette->bank = -1;
     return palette;
 }
@@ -115,6 +112,54 @@ static void _glReleasePaletteSlot(GLshort slot, GLushort size) {
     }
 }
 
+/* Linear/iterative twiddling algorithm from Marcus' tatest */
+#define TWIDTAB(x) ( (x&1)|((x&2)<<1)|((x&4)<<2)|((x&8)<<3)|((x&16)<<4)| \
+                     ((x&32)<<5)|((x&64)<<6)|((x&128)<<7)|((x&256)<<8)|((x&512)<<9) )
+#define TWIDOUT(x, y) ( TWIDTAB((y)) | (TWIDTAB((x)) << 1) )
+
+
+static void GPUTextureTwiddle8PPP(void* src, void* dst, uint32_t w, uint32_t h) {
+    uint32_t x, y, yout, min, mask;
+
+    min = MIN(w, h);
+    mask = min - 1;
+
+    uint8_t* pixels;
+    uint16_t* vtex;
+    pixels = (uint8_t*) src;
+    vtex = (uint16_t*) dst;
+
+    for(y = 0; y < h; y += 2) {
+        yout = y;
+        for(x = 0; x < w; x++) {
+            vtex[TWIDOUT((yout & mask) / 2, x & mask) +
+                 (x / min + yout / min)*min * min / 2] =
+                     pixels[y * w + x] | (pixels[(y + 1) * w + x] << 8);
+        }
+    }
+}
+
+static void GPUTextureTwiddle16BPP(void * src, void* dst, uint32_t w, uint32_t h) {
+    uint32_t x, y, yout, min, mask;
+
+    min = MIN(w, h);
+    mask = min - 1;
+
+    uint16_t* pixels;
+    uint16_t* vtex;
+    pixels = (uint16_t*) src;
+    vtex = (uint16_t*) dst;
+
+    for(y = 0; y < h; y++) {
+        yout = y;
+
+        for(x = 0; x < w; x++) {
+            vtex[TWIDOUT(x & mask, yout & mask) +
+                 (x / min + yout / min)*min * min] = pixels[y * w + x];
+        }
+    }
+}
+
 TexturePalette* _glGetSharedPalette(GLshort bank) {
     assert(bank >= 0 && bank < 4);
     return SHARED_PALETTES[bank];
@@ -124,10 +169,10 @@ void _glSetInternalPaletteFormat(GLenum val) {
     INTERNAL_PALETTE_FORMAT = val;
 
     if(INTERNAL_PALETTE_FORMAT == GL_RGBA4) {
-        pvr_set_pal_format(PVR_PAL_ARGB4444);
+        GPUSetPaletteFormat(GPU_PAL_ARGB4444);
     } else {
         assert(INTERNAL_PALETTE_FORMAT == GL_RGBA8);
-        pvr_set_pal_format(PVR_PAL_ARGB8888);
+        GPUSetPaletteFormat(GPU_PAL_ARGB8888);
     }
 }
 
@@ -146,9 +191,9 @@ void _glApplyColorTable(TexturePalette* src) {
     for(i = 0; i < src->width; ++i) {
         GLubyte* entry = &src->data[i * 4];
         if(INTERNAL_PALETTE_FORMAT == GL_RGBA8) {
-            pvr_set_pal_entry(offset + i, PACK_ARGB8888(entry[3], entry[0], entry[1], entry[2]));
+            GPUSetPaletteEntry(offset + i, PACK_ARGB8888(entry[3], entry[0], entry[1], entry[2]));
         } else {
-            pvr_set_pal_entry(offset + i, PACK_ARGB4444(entry[3], entry[0], entry[1], entry[2]));
+            GPUSetPaletteEntry(offset + i, PACK_ARGB4444(entry[3], entry[0], entry[1], entry[2]));
         }
     }
 }
@@ -333,9 +378,9 @@ GLubyte _glInitTextures() {
     memset((void*) BANKS_USED, 0x0, sizeof(BANKS_USED));
     memset((void*) SUBBANKS_USED, 0x0, sizeof(SUBBANKS_USED));
 
-    size_t vram_free = pvr_mem_available();
+    size_t vram_free = GPUMemoryAvailable();
     YALLOC_SIZE = vram_free - PVR_MEM_BUFFER_SIZE; /* Take all but 64kb VRAM */
-    YALLOC_BASE = pvr_mem_malloc(YALLOC_SIZE);
+    YALLOC_BASE = GPUMemoryAlloc(YALLOC_SIZE);
     yalloc_init(YALLOC_BASE, YALLOC_SIZE);
     return 1;
 }
@@ -375,7 +420,7 @@ static void _glInitializeTextureObject(TextureObject* txr, unsigned int id) {
     txr->width = txr->height = 0;
     txr->mipmap = 0;
     txr->uv_clamp = 0;
-    txr->env = PVR_TXRENV_MODULATEALPHA;
+    txr->env = GPU_TXRENV_MODULATEALPHA;
     txr->data = NULL;
     txr->mipmapCount = 0;
     txr->minFilter = GL_NEAREST;
@@ -497,13 +542,13 @@ void APIENTRY glTexEnvi(GLenum target, GLenum pname, GLint param) {
 
             switch(param) {
                 case GL_MODULATE:
-                    active->env = PVR_TXRENV_MODULATEALPHA;
+                    active->env = GPU_TXRENV_MODULATEALPHA;
                 break;
                 case GL_DECAL:
-                    active->env = PVR_TXRENV_DECAL;
+                    active->env = GPU_TXRENV_DECAL;
                 break;
                 case GL_REPLACE:
-                    active->env = PVR_TXRENV_REPLACE;
+                    active->env = GPU_TXRENV_REPLACE;
                 break;
                 default:
                     break;
@@ -631,7 +676,7 @@ void APIENTRY glCompressedTexImage2DARB(GLenum target,
     active->data = yalloc_alloc_and_defrag(imageSize);
 
     if(data) {
-        sq_cpy(active->data, data, imageSize);
+        FASTCPY(active->data, data, imageSize);
     }
 }
 
@@ -722,47 +767,47 @@ static GLint _cleanInternalFormat(GLint internalFormat) {
          * the type was already 1555 (1-bit alpha) in which case we return that
          */
             if(type == GL_UNSIGNED_SHORT_1_5_5_5_REV) {
-                return PVR_TXRFMT_ARGB1555 | PVR_TXRFMT_NONTWIDDLED;
+                return GPU_TXRFMT_ARGB1555 | GPU_TXRFMT_NONTWIDDLED;
             } else if(type == GL_UNSIGNED_SHORT_1_5_5_5_REV_TWID_KOS) {
-                return PVR_TXRFMT_ARGB1555 | PVR_TXRFMT_TWIDDLED;
+                return GPU_TXRFMT_ARGB1555 | GPU_TXRFMT_TWIDDLED;
             } else if(type == GL_UNSIGNED_SHORT_4_4_4_4_REV_TWID_KOS) {
-                return PVR_TXRFMT_ARGB4444 | PVR_TXRFMT_TWIDDLED;
+                return GPU_TXRFMT_ARGB4444 | GPU_TXRFMT_TWIDDLED;
             } else {
-                return PVR_TXRFMT_ARGB4444 | PVR_TXRFMT_NONTWIDDLED;
+                return GPU_TXRFMT_ARGB4444 | GPU_TXRFMT_NONTWIDDLED;
             }
         case GL_RED:
         case GL_RGB:
             /* No alpha? Return RGB565 which is the best we can do without using palettes */
-            return PVR_TXRFMT_RGB565 | PVR_TXRFMT_NONTWIDDLED;
+            return GPU_TXRFMT_RGB565 | GPU_TXRFMT_NONTWIDDLED;
         /* Compressed and twiddled versions */
         case GL_UNSIGNED_SHORT_5_6_5_TWID_KOS:
-            return PVR_TXRFMT_RGB565 | PVR_TXRFMT_TWIDDLED;
+            return GPU_TXRFMT_RGB565 | GPU_TXRFMT_TWIDDLED;
         case GL_UNSIGNED_SHORT_4_4_4_4_REV_TWID_KOS:
-            return PVR_TXRFMT_ARGB4444 | PVR_TXRFMT_TWIDDLED;
+            return GPU_TXRFMT_ARGB4444 | GPU_TXRFMT_TWIDDLED;
         case GL_UNSIGNED_SHORT_1_5_5_5_REV_TWID_KOS:
-            return PVR_TXRFMT_ARGB1555 | PVR_TXRFMT_TWIDDLED;
+            return GPU_TXRFMT_ARGB1555 | GPU_TXRFMT_TWIDDLED;
         case GL_COMPRESSED_RGB_565_VQ_KOS:
         case GL_COMPRESSED_RGB_565_VQ_MIPMAP_KOS:
-            return PVR_TXRFMT_RGB565 | PVR_TXRFMT_NONTWIDDLED | PVR_TXRFMT_VQ_ENABLE;
+            return GPU_TXRFMT_RGB565 | GPU_TXRFMT_NONTWIDDLED | GPU_TXRFMT_VQ_ENABLE;
         case GL_COMPRESSED_RGB_565_VQ_TWID_KOS:
         case GL_COMPRESSED_RGB_565_VQ_MIPMAP_TWID_KOS:
-            return PVR_TXRFMT_RGB565 | PVR_TXRFMT_TWIDDLED | PVR_TXRFMT_VQ_ENABLE;
+            return GPU_TXRFMT_RGB565 | GPU_TXRFMT_TWIDDLED | GPU_TXRFMT_VQ_ENABLE;
         case GL_COMPRESSED_ARGB_4444_VQ_TWID_KOS:
         case GL_COMPRESSED_ARGB_4444_VQ_MIPMAP_TWID_KOS:
-            return PVR_TXRFMT_ARGB4444 | PVR_TXRFMT_TWIDDLED | PVR_TXRFMT_VQ_ENABLE;
+            return GPU_TXRFMT_ARGB4444 | GPU_TXRFMT_TWIDDLED | GPU_TXRFMT_VQ_ENABLE;
         case GL_COMPRESSED_ARGB_4444_VQ_KOS:
         case GL_COMPRESSED_ARGB_4444_VQ_MIPMAP_KOS:
-            return PVR_TXRFMT_ARGB4444 | PVR_TXRFMT_NONTWIDDLED | PVR_TXRFMT_VQ_ENABLE;
+            return GPU_TXRFMT_ARGB4444 | GPU_TXRFMT_NONTWIDDLED | GPU_TXRFMT_VQ_ENABLE;
         case GL_COMPRESSED_ARGB_1555_VQ_KOS:
         case GL_COMPRESSED_ARGB_1555_VQ_MIPMAP_KOS:
-            return PVR_TXRFMT_ARGB1555 | PVR_TXRFMT_NONTWIDDLED | PVR_TXRFMT_VQ_ENABLE;
+            return GPU_TXRFMT_ARGB1555 | GPU_TXRFMT_NONTWIDDLED | GPU_TXRFMT_VQ_ENABLE;
         case GL_COMPRESSED_ARGB_1555_VQ_TWID_KOS:
         case GL_COMPRESSED_ARGB_1555_VQ_MIPMAP_TWID_KOS:
-            return PVR_TXRFMT_ARGB1555 | PVR_TXRFMT_TWIDDLED | PVR_TXRFMT_VQ_ENABLE;
+            return GPU_TXRFMT_ARGB1555 | GPU_TXRFMT_TWIDDLED | GPU_TXRFMT_VQ_ENABLE;
         case GL_COLOR_INDEX8_EXT:
-            return PVR_TXRFMT_PAL8BPP | PVR_TXRFMT_TWIDDLED;
+            return GPU_TXRFMT_PAL8BPP | GPU_TXRFMT_TWIDDLED;
         case GL_COLOR_INDEX4_EXT:
-            return PVR_TXRFMT_PAL4BPP | PVR_TXRFMT_TWIDDLED;
+            return GPU_TXRFMT_PAL4BPP | GPU_TXRFMT_TWIDDLED;
         default:
             return 0;
     }
@@ -1228,9 +1273,9 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
         const GLubyte *pixels = (GLubyte*) (conversionBuffer) ? conversionBuffer : data;
 
         if(internalFormat == GL_COLOR_INDEX8_EXT) {
-            pvr_txr_load_ex((void*) pixels, targetData, width, height, PVR_TXRLOAD_8BPP);
+            GPUTextureTwiddle8PPP((void*) pixels, targetData, width, height);
         } else {
-            pvr_txr_load_ex((void*) pixels, targetData, width, height, PVR_TXRLOAD_16BPP);
+            GPUTextureTwiddle16BPP((void*) pixels, targetData, width, height);
         }
 
         /* We make sure we remove nontwiddled and add twiddled. We could always
