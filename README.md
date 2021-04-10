@@ -24,6 +24,34 @@ Things I'd like to do:
  - Define an extension for modifier volumes
  - Add support for point sprites
  - Optimise, add unit tests for correctness
+
+# Compiling
+
+GLdc uses CMake for its build system, it currently ships with two "backends":
+
+ - kospvr - This is the hardware-accelerated Dreamcast backend
+ - software - This is a stub software rasterizer used for testing testing and debugging
+ 
+To compile for Dreamcast, you'll want to do something like the following:
+
+```
+mkdir dcbuild
+cd dcbuild
+cmake -DCMAKE_TOOLCHAIN_FILE=../toolchains/Dreamcast.cmake -G "Unix Makefiles" ..
+make
+```
+
+You will need KallistiOS compiled and configured (e.g. the KOS_BASE environment
+variable must be set)
+
+To compile for PC:
+
+```
+mkdir pcbuild
+cd pcbuild
+cmake -G "Unix Makefiles" ..
+make
+```
  
 # Special Thanks!
 
