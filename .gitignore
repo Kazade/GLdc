@@ -8,3 +8,4 @@ dc-build.sh
 .buildconfig
 build/*
 builddir/*
+version.[c|h]
