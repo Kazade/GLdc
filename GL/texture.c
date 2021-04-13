@@ -777,8 +777,19 @@ static GLint _cleanInternalFormat(GLint internalFormat) {
             }
         case GL_RED:
         case GL_RGB:
-            /* No alpha? Return RGB565 which is the best we can do without using palettes */
-            return GPU_TXRFMT_RGB565 | GPU_TXRFMT_NONTWIDDLED;
+            switch(type) {
+                case GL_UNSIGNED_SHORT_5_6_5_TWID_KOS:
+                    return GPU_TXRFMT_RGB565 | GPU_TXRFMT_TWIDDLED;
+                case GL_COMPRESSED_RGB_565_VQ_KOS:
+                case GL_COMPRESSED_RGB_565_VQ_MIPMAP_KOS:
+                    return GPU_TXRFMT_RGB565 | GPU_TXRFMT_NONTWIDDLED | GPU_TXRFMT_VQ_ENABLE;
+                case GL_COMPRESSED_RGB_565_VQ_TWID_KOS:
+                case GL_COMPRESSED_RGB_565_VQ_MIPMAP_TWID_KOS:
+                    return GPU_TXRFMT_RGB565 | GPU_TXRFMT_TWIDDLED | GPU_TXRFMT_VQ_ENABLE;
+                default:
+                    return GPU_TXRFMT_RGB565 | GPU_TXRFMT_NONTWIDDLED;
+            }
+        break;
         /* Compressed and twiddled versions */
         case GL_UNSIGNED_SHORT_5_6_5_TWID_KOS:
             return GPU_TXRFMT_RGB565 | GPU_TXRFMT_TWIDDLED;
@@ -956,6 +967,7 @@ static GLboolean _isSupportedFormat(GLenum format) {
     case GL_RGBA:
     case GL_BGRA:
     case GL_COLOR_INDEX:
+    case GL_UNSIGNED_SHORT_4_4_4_4_REV_TWID_KOS:
         return GL_TRUE;
     default:
         return GL_FALSE;
@@ -1022,14 +1034,13 @@ void _glAllocateSpaceForMipmaps(TextureObject* active) {
 
 #define STRINGIFY(x) #x
 #define TOSTRING(x) STRINGIFY(x)
-#define INFO_MSG(x) printf("%s %s\n", __FILE__ ":" TOSTRING(__LINE__), x)
+#define INFO_MSG(x) fprintf(stderr, "%s:%s > %s\n", __FILE__, TOSTRING(__LINE__), x)
 
 void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
                            GLsizei width, GLsizei height, GLint border,
                            GLenum format, GLenum type, const GLvoid *data) {
 
     TRACE();
-
 
     if(target != GL_TEXTURE_2D) {
         INFO_MSG("");
@@ -1038,7 +1049,7 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
 
     if(format != GL_COLOR_INDEX) {
         if(!_isSupportedFormat(format)) {
-            INFO_MSG("");
+            INFO_MSG("Unsupported format");
             _glKosThrowError(GL_INVALID_ENUM, __func__);
         }
 
@@ -1090,8 +1101,8 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
     }
 
     if(level > 0 && width != height) {
-        INFO_MSG("");
-        fprintf(stderr, "[GL ERROR] Mipmaps cannot be supported on non-square textures\n");
+        INFO_MSG("Tried to set non-square texture as a mipmap level");
+        printf("[GL ERROR] Mipmaps cannot be supported on non-square textures\n");
         _glKosThrowError(GL_INVALID_OPERATION, __func__);
     }
 
@@ -1101,7 +1112,7 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
     }
 
     if(!TEXTURE_UNITS[ACTIVE_TEXTURE]) {
-        INFO_MSG("");
+        INFO_MSG("Called glTexImage2D on unbound texture");
         _glKosThrowError(GL_INVALID_OPERATION, __func__);
     }
 
@@ -1239,6 +1250,7 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
         );
 
         if(!convert) {
+            INFO_MSG("Couldn't find conversion\n");
             _glKosThrowError(GL_INVALID_OPERATION, __func__);
             return;
         }
@@ -1247,6 +1259,7 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
         assert(stride > -1);
 
         if(stride == -1) {
+            INFO_MSG("Stride was not detected\n");
             _glKosThrowError(GL_INVALID_OPERATION, __func__);
             return;
         }
