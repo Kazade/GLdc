@@ -265,6 +265,8 @@ float _glClipLineToNearZ(const Vertex* v1, const Vertex* v2, Vertex* vout);
 void _glClipTriangleStrip(SubmissionTarget* target, uint8_t fladeShade);
 
 PolyList *_glActivePolyList();
+PolyList* _glOpaquePolyList();
+PolyList* _glPunchThruPolyList();
 PolyList *_glTransparentPolyList();
 
 void _glInitAttributePointers();
@@ -355,6 +357,8 @@ GLubyte _glKosHasError();
 GLuint _glFreeTextureMemory();
 GLuint _glUsedTextureMemory();
 GLuint _glFreeContiguousTextureMemory();
+
+void _glApplyScissor(bool force);
 
 #define MAX_TEXTURE_UNITS 2
 #define MAX_LIGHTS 8

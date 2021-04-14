@@ -29,9 +29,21 @@ static GLboolean POLYGON_OFFSET_ENABLED = GL_FALSE;
 
 static GLboolean NORMALIZE_ENABLED = GL_FALSE;
 
+static struct {
+    GLint x;
+    GLint y;
+    GLsizei width;
+    GLsizei height;
+    GLboolean applied;
+} SCISSOR_RECT = {
+    0, 0, 640, 480, false
+};
+
 GLboolean _glIsSharedTexturePaletteEnabled() {
     return SHARED_PALETTE_ENABLED;
 }
+
+void _glApplyScissor(bool force);
 
 static int _calc_pvr_face_culling() {
     if(!CULLING_ENABLED) {
@@ -261,6 +273,13 @@ void _glInitContext() {
     GL_CONTEXT.fmt.uv = GPU_UVFMT_32BIT;
     GL_CONTEXT.gen.color_clamp = GPU_CLRCLAMP_DISABLE;
 
+    const VideoMode* mode = GetVideoMode();
+
+    SCISSOR_RECT.x = 0;
+    SCISSOR_RECT.y = 0;
+    SCISSOR_RECT.width = mode->width;
+    SCISSOR_RECT.height = mode->height;
+
     glClearDepth(1.0f);
     glDepthFunc(GL_LESS);
     glDepthMask(GL_TRUE);
@@ -302,6 +321,7 @@ GLAPI void APIENTRY glEnable(GLenum cap) {
         } break;
         case GL_SCISSOR_TEST: {
             GL_CONTEXT.gen.clip_mode = GPU_USERCLIP_INSIDE;
+            _glApplyScissor(false);
         } break;
         case GL_LIGHTING: {
             LIGHTING_ENABLED = GL_TRUE;
@@ -537,6 +557,23 @@ void glPixelStorei(GLenum pname, GLint param) {
 }
 
 
+void APIENTRY glScissor(GLint x, GLint y, GLsizei width, GLsizei height) {
+    if(SCISSOR_RECT.x == x &&
+        SCISSOR_RECT.y == y &&
+        SCISSOR_RECT.width == width &&
+        SCISSOR_RECT.height == height) {
+        return;
+    }
+
+    SCISSOR_RECT.x = x;
+    SCISSOR_RECT.y = y;
+    SCISSOR_RECT.width = width;
+    SCISSOR_RECT.height = height;
+    SCISSOR_RECT.applied = false;
+
+    _glApplyScissor(false);
+}
+
 /* Setup the hardware user clip rectangle.
 
    The minimum clip rectangle is a 32x32 area which is dependent on the tile
@@ -549,30 +586,55 @@ void glPixelStorei(GLenum pname, GLint param) {
     glScissor(0, 0, 32, 32) allows only the 'tile' in the lower left
     hand corner of the screen to be modified and glScissor(0, 0, 0, 0)
     disallows modification to all 'tiles' on the screen.
+
+    We call this in the following situations:
+
+     - glEnable(GL_SCISSOR_TEST) is called
+     - glScissor() is called
+     - After glKosSwapBuffers()
+
+    This ensures that a clip command is added to every vertex list
+    at the right place, either when enabling the scissor test, or
+    when the scissor test changes.
 */
-void APIENTRY glScissor(GLint x, GLint y, GLsizei width, GLsizei height) {
-    /*!!! FIXME: Shouldn't this be added to *all* lists? */
-    PVRTileClipCommand *c = aligned_vector_extend(&_glActivePolyList()->vector, 1);
+void _glApplyScissor(bool force) {
+    /* Don't do anyting if clipping is disabled */
+    if(GL_CONTEXT.gen.clip_mode == GPU_USERCLIP_DISABLE) {
+        return;
+    }
+
+    /* Don't apply if we already applied - nothing changed */
+    if(SCISSOR_RECT.applied && !force) {
+        return;
+    }
+
+    PVRTileClipCommand c;
 
     GLint miny, maxx, maxy;
 
     const VideoMode* vid_mode = GetVideoMode();
 
-    GLsizei gl_scissor_width = MAX( MIN(width, vid_mode->width), 0 );
-    GLsizei gl_scissor_height = MAX( MIN(height, vid_mode->height), 0 );
+    GLsizei scissor_width = MAX(MIN(SCISSOR_RECT.width, vid_mode->width), 0);
+    GLsizei scissor_height = MAX(MIN(SCISSOR_RECT.height, vid_mode->height), 0);
 
     /* force the origin to the lower left-hand corner of the screen */
-    miny = (vid_mode->height - gl_scissor_height) - y;
-    maxx = (gl_scissor_width + x);
-    maxy = (gl_scissor_height + miny);
+    miny = (vid_mode->height - scissor_height) - SCISSOR_RECT.y;
+    maxx = (scissor_width + SCISSOR_RECT.x);
+    maxy = (scissor_height + miny);
 
     /* load command structure while mapping screen coords to TA tiles */
-    c->flags = GPU_CMD_USERCLIP;
-    c->d1 = c->d2 = c->d3 = 0;
-    c->sx = CLAMP(x / 32, 0, vid_mode->width / 32);
-    c->sy = CLAMP(miny / 32, 0, vid_mode->height / 32);
-    c->ex = CLAMP((maxx / 32) - 1, 0, vid_mode->width / 32);
-    c->ey = CLAMP((maxy / 32) - 1, 0, vid_mode->height / 32);
+    c.flags = GPU_CMD_USERCLIP;
+    c.d1 = c.d2 = c.d3 = 0;
+    c.sx = CLAMP(SCISSOR_RECT.x / 32, 0, vid_mode->width / 32);
+    c.sy = CLAMP(miny / 32, 0, vid_mode->height / 32);
+    c.ex = CLAMP((maxx / 32) - 1, 0, vid_mode->width / 32);
+    c.ey = CLAMP((maxy / 32) - 1, 0, vid_mode->height / 32);
+
+    aligned_vector_push_back(&_glOpaquePolyList()->vector, &c, 1);
+    aligned_vector_push_back(&_glPunchThruPolyList()->vector, &c, 1);
+    aligned_vector_push_back(&_glTransparentPolyList()->vector, &c, 1);
+
+    SCISSOR_RECT.applied = true;
 }
 
 GLboolean APIENTRY glIsEnabled(GLenum cap) {
