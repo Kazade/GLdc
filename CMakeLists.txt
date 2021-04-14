@@ -139,6 +139,7 @@ gen_sample(terrain samples/terrain/main.c)
 gen_sample(zclip samples/zclip/main.c)
 gen_sample(zclip_triangle samples/zclip_triangle/main.c)
 gen_sample(zclip_trianglestrip samples/zclip_trianglestrip/main.c)
+gen_sample(scissor samples/scissor/main.c)
 
 if(PLATFORM_DREAMCAST)
     gen_sample(polymark samples/polymark/main.c)

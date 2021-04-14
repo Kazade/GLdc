@@ -18,6 +18,14 @@ PolyList* _glActivePolyList() {
     }
 }
 
+PolyList* _glOpaquePolyList() {
+    return &OP_LIST;
+}
+
+PolyList* _glPunchThruPolyList() {
+    return &PT_LIST;
+}
+
 PolyList *_glTransparentPolyList() {
     return &TR_LIST;
 }
@@ -104,6 +112,8 @@ void APIENTRY glKosSwapBuffers() {
     aligned_vector_clear(&OP_LIST.vector);
     aligned_vector_clear(&PT_LIST.vector);
     aligned_vector_clear(&TR_LIST.vector);
+
+    _glApplyScissor(true);
 
     profiler_checkpoint("scene");
     profiler_pop();
