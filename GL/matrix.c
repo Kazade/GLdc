@@ -49,8 +49,8 @@ void _glInitMatrices() {
     stack_push(&MATRIX_STACKS[1], IDENTITY);
     stack_push(&MATRIX_STACKS[2], IDENTITY);
 
-    FASTCPY4(NORMAL_MATRIX, IDENTITY, sizeof(Matrix4x4));
-    FASTCPY4(SCREENVIEW_MATRIX, IDENTITY, sizeof(Matrix4x4));
+    MEMCPY4(NORMAL_MATRIX, IDENTITY, sizeof(Matrix4x4));
+    MEMCPY4(SCREENVIEW_MATRIX, IDENTITY, sizeof(Matrix4x4));
 
     const VideoMode* vid_mode = GetVideoMode();
 
@@ -96,7 +96,7 @@ static void transpose(GLfloat* m) {
 }
 
 static void recalculateNormalMatrix() {
-    FASTCPY4(NORMAL_MATRIX, stack_top(MATRIX_STACKS + (GL_MODELVIEW & 0xF)), sizeof(Matrix4x4));
+    MEMCPY4(NORMAL_MATRIX, stack_top(MATRIX_STACKS + (GL_MODELVIEW & 0xF)), sizeof(Matrix4x4));
     inverse((GLfloat*) NORMAL_MATRIX);
     transpose((GLfloat*) NORMAL_MATRIX);
 }
@@ -290,7 +290,7 @@ void APIENTRY glFrustum(GLfloat left, GLfloat right,
 /* Multiply the current matrix by an arbitrary matrix */
 void glMultMatrixf(const GLfloat *m) {
     Matrix4x4 TEMP;
-    FASTCPY4(TEMP, m, sizeof(Matrix4x4));
+    MEMCPY4(TEMP, m, sizeof(Matrix4x4));
 
     UploadMatrix4x4(stack_top(MATRIX_STACKS + MATRIX_IDX));
     MultiplyMatrix4x4((const Matrix4x4*) &TEMP);

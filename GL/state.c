@@ -702,10 +702,10 @@ void APIENTRY glGetBooleanv(GLenum pname, GLboolean* params) {
 void APIENTRY glGetFloatv(GLenum pname, GLfloat* params) {
     switch(pname) {
         case GL_PROJECTION_MATRIX:
-            FASTCPY4(params, _glGetProjectionMatrix(), sizeof(float) * 16);
+            MEMCPY4(params, _glGetProjectionMatrix(), sizeof(float) * 16);
         break;
         case GL_MODELVIEW_MATRIX:
-            FASTCPY4(params, _glGetModelViewMatrix(), sizeof(float) * 16);
+            MEMCPY4(params, _glGetModelViewMatrix(), sizeof(float) * 16);
         break;
         case GL_POLYGON_OFFSET_FACTOR:
             *params = OFFSET_FACTOR;

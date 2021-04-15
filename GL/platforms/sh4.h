@@ -10,11 +10,27 @@
 #include "../types.h"
 #include "sh4_math.h"
 
-#define FASTCPY(dst, src, bytes) \
-    (bytes % 32 == 0) ? sq_cpy(dst, src, bytes) : memcpy(dst, src, bytes)
+#ifndef NDEBUG
+#define PERF_WARNING() printf("[PERF] Unaligned data passed to glTexImage2D\n")
+#else
+#define PERF_WARNING() (void) 0
+#endif
 
-#define FASTCPY4(dst, src, bytes) \
-    (bytes % 32 == 0) ? sq_cpy(dst, src, bytes) : memcpy4(dst, src, bytes)
+
+/* We use sq_cpy if the src and size is properly aligned. We control that the
+ * destination is properly aligned so we assert that. */
+#define FASTCPY(dst, src, bytes) \
+    do { \
+        if(bytes % 32 == 0 && (uintptr_t) src % 32 == 0) { \
+            assert((uintptr_t) dst % 32 == 0); \
+            sq_cpy(dst, src, bytes); \
+        } else { \
+            PERF_WARNING(); \
+            memcpy(dst, src, bytes); \
+        } \
+    } while(0)
+
+#define MEMCPY4(dst, src, bytes) memcpy4(dst, src, bytes)
 
 #define MEMSET4(dst, v, size) memset4((dst), (v), (size))
 

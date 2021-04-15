@@ -12,7 +12,9 @@
 #define MATH_Fast_Invert(x) (1.0f / (x))
 
 #define FASTCPY(dst, src, bytes) memcpy(dst, src, bytes)
-#define FASTCPY4(dst, src, bytes) memcpy(dst, src, bytes)
+#define MEMCPY(dst, src, bytes) memcpy(dst, src, bytes)
+#define MEMCPY4(dst, src, bytes) memcpy(dst, src, bytes)
+
 #define MEMSET4(dst, v, size) memset((dst), (v), (size))
 
 #define VEC3_NORMALIZE(x, y, z) \
