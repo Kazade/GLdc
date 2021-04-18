@@ -325,7 +325,7 @@ void * yalloc_alloc(void * pool, size_t size)
   }
 
   /* round up to alignment */
-  size = ALIGN(size, 64);
+  size = ALIGN(size, 32);
 
   size_t bruttoSize = size + sizeof(Header);
   Header * prev = NULL;
