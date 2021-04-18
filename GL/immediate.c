@@ -20,7 +20,7 @@ static AlignedVector VERTICES;
 static AlignedVector ST_COORDS;
 static AlignedVector NORMALS;
 
-static GLfloat NORMAL[3] = {0.0f, 0.0f, 1.0f};
+static uint32_t NORMAL; /* Packed normal */
 static GLubyte COLOR[4] = {255, 255, 255, 255};
 static GLfloat UV_COORD[2] = {0.0f, 0.0f};
 static GLfloat ST_COORD[2] = {0.0f, 0.0f};
@@ -30,6 +30,23 @@ static AttribPointer DIFFUSE_ATTRIB;
 static AttribPointer UV_ATTRIB;
 static AttribPointer ST_ATTRIB;
 static AttribPointer NORMAL_ATTRIB;
+
+static inline uint32_t pack_vertex_attribute_vec3_1i(float x, float y, float z) {
+    const float w = 0.0f;
+
+    const uint32_t xs = x < 0;
+    const uint32_t ys = y < 0;
+    const uint32_t zs = z < 0;
+    const uint32_t ws = w < 0;
+
+    uint32_t vi =
+        ws << 31 | ((uint32_t)(w + (ws << 1)) & 1) << 30 |
+        zs << 29 | ((uint32_t)(z * 511 + (zs << 9)) & 511) << 20 |
+        ys << 19 | ((uint32_t)(y * 511 + (ys << 9)) & 511) << 10 |
+        xs << 9  | ((uint32_t)(x * 511 + (xs << 9)) & 511);
+
+    return vi;
+}
 
 void _glInitImmediateMode(GLuint initial_size) {
     aligned_vector_init(&VERTICES, sizeof(GLVertexKOS));
@@ -64,6 +81,8 @@ void _glInitImmediateMode(GLuint initial_size) {
     ST_ATTRIB.stride = 0;
     ST_ATTRIB.type = GL_FLOAT;
     ST_ATTRIB.size = 2;
+
+    NORMAL = pack_vertex_attribute_vec3_1i(0.0f, 0.0f, 1.0f);
 }
 
 GLubyte _glCheckImmediateModeInactive(const char* func) {
@@ -137,23 +156,6 @@ void APIENTRY glColor3fv(const GLfloat* v) {
     COLOR[3] = 255;
 }
 
-static inline uint32_t pack_vertex_attribute_vec3_1i(float x, float y, float z) {
-    const float w = 0.0f;
-
-    const uint32_t xs = x < 0;
-    const uint32_t ys = y < 0;
-    const uint32_t zs = z < 0;
-    const uint32_t ws = w < 0;
-
-    uint32_t vi =
-        ws << 31 | ((uint32_t)(w + (ws << 1)) & 1) << 30 |
-        zs << 29 | ((uint32_t)(z * 511 + (zs << 9)) & 511) << 20 |
-        ys << 19 | ((uint32_t)(y * 511 + (ys << 9)) & 511) << 10 |
-        xs << 9  | ((uint32_t)(x * 511 + (xs << 9)) & 511);
-
-    return vi;
-}
-
 void APIENTRY glVertex3f(GLfloat x, GLfloat y, GLfloat z) {
     GLVertexKOS* vert = aligned_vector_extend(&VERTICES, 1);
     GLfloat* st = aligned_vector_extend(&ST_COORDS, 2);
@@ -170,9 +172,9 @@ void APIENTRY glVertex3f(GLfloat x, GLfloat y, GLfloat z) {
     vert->bgra[B8IDX] = COLOR[2];
     vert->bgra[A8IDX] = COLOR[3];
 
-    *n = pack_vertex_attribute_vec3_1i(NORMAL[0], NORMAL[1], NORMAL[2]);
-
-    memcpy(st, ST_COORD, sizeof(GLfloat) * 2);
+    *n = NORMAL;
+    st[0] = ST_COORD[0];
+    st[1] = ST_COORD[1];
 }
 
 void APIENTRY glVertex3fv(const GLfloat* v) {
@@ -220,9 +222,7 @@ void APIENTRY glTexCoord2fv(const GLfloat* v) {
 }
 
 void APIENTRY glNormal3f(GLfloat x, GLfloat y, GLfloat z) {
-    NORMAL[0] = x;
-    NORMAL[1] = y;
-    NORMAL[2] = z;
+    NORMAL = pack_vertex_attribute_vec3_1i(x, y, z);
 }
 
 void APIENTRY glNormal3fv(const GLfloat* v) {

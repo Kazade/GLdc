@@ -382,8 +382,10 @@ GLubyte _glInitTextures() {
     YALLOC_SIZE = vram_free - PVR_MEM_BUFFER_SIZE; /* Take all but 64kb VRAM */
     YALLOC_BASE = GPUMemoryAlloc(YALLOC_SIZE);
 
+#ifdef __DREAMCAST__
     /* Ensure memory is aligned */
     assert((uintptr_t) YALLOC_BASE % 32 == 0);
+#endif
 
     yalloc_init(YALLOC_BASE, YALLOC_SIZE);
     return 1;
