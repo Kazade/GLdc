@@ -21,8 +21,8 @@
  * destination is properly aligned so we assert that. */
 #define FASTCPY(dst, src, bytes) \
     do { \
-        if(bytes % 32 == 0 && (uintptr_t) src % 32 == 0) { \
-            assert((uintptr_t) dst % 32 == 0); \
+        if(bytes % 32 == 0 && ((uintptr_t) src % 4) == 0) { \
+            assert(((uintptr_t) dst) % 32 == 0); \
             sq_cpy(dst, src, bytes); \
         } else { \
             PERF_WARNING(); \

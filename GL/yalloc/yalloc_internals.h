@@ -7,6 +7,10 @@ typedef struct
 {
   uint32_t prev; // low bit set if free
   uint32_t next; // for used blocks: low bit set if unused header at the end
+
+  /* We need user data to be 32-byte aligned, so the header needs
+   * to be 32 bytes in size (as user data follows the header) */
+  uint8_t padding[32 - (sizeof(uint32_t) * 2)];
 } Header;
 
 // NOTE: We have 32bit aligned data and 16bit offsets where the lowest bit is used as flag. So we remove the low bit and shift by 1 to address 128k bytes with the 15bit significant offset bits.
