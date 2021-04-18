@@ -354,9 +354,23 @@ void SceneFinish();
 #define GPU_TA_PM3_TXRFMT_SHIFT     0
 #define GPU_TA_PM3_TXRFMT_MASK      0xffffffff
 
+static inline int DimensionFlag(const int w) {
+    switch(w) {
+        case 16: return 1;
+        case 32: return 2;
+        case 64: return 3;
+        case 128: return 4;
+        case 256: return 5;
+        case 512: return 6;
+        case 1024: return 7;
+        case 8:
+        default:
+            return 0;
+    }
+}
+
 /* Compile a polygon context into a polygon header */
 static inline void CompilePolyHeader(PolyHeader *dst, const PolyContext *src) {
-    int u, v;
     uint32_t  txr_base;
 
     /* Basically we just take each parameter, clip it, shift it
@@ -365,8 +379,7 @@ static inline void CompilePolyHeader(PolyHeader *dst, const PolyContext *src) {
     /* The base values for CMD */
     dst->cmd = GPU_CMD_POLYHDR;
 
-    if(src->txr.enable == GPU_TEXTURE_ENABLE)
-        dst->cmd |= 8;
+    dst->cmd |= src->txr.enable << 3;
 
     /* Or in the list type, shading type, color and UV formats */
     dst->cmd |= (src->list_type << GPU_TA_CMD_TYPE_SHIFT) & GPU_TA_CMD_TYPE_MASK;
@@ -404,70 +417,8 @@ static inline void CompilePolyHeader(PolyHeader *dst, const PolyContext *src) {
         dst->mode2 |= (src->txr.mipmap_bias << GPU_TA_PM2_MIPBIAS_SHIFT) & GPU_TA_PM2_MIPBIAS_MASK;
         dst->mode2 |= (src->txr.env << GPU_TA_PM2_TXRENV_SHIFT) & GPU_TA_PM2_TXRENV_MASK;
 
-        switch(src->txr.width) {
-            case 8:
-                u = 0;
-                break;
-            case 16:
-                u = 1;
-                break;
-            case 32:
-                u = 2;
-                break;
-            case 64:
-                u = 3;
-                break;
-            case 128:
-                u = 4;
-                break;
-            case 256:
-                u = 5;
-                break;
-            case 512:
-                u = 6;
-                break;
-            case 1024:
-                u = 7;
-                break;
-            default:
-                assert(0 && "Invalid texture U size");
-                u = 0;
-                break;
-        }
-
-        switch(src->txr.height) {
-            case 8:
-                v = 0;
-                break;
-            case 16:
-                v = 1;
-                break;
-            case 32:
-                v = 2;
-                break;
-            case 64:
-                v = 3;
-                break;
-            case 128:
-                v = 4;
-                break;
-            case 256:
-                v = 5;
-                break;
-            case 512:
-                v = 6;
-                break;
-            case 1024:
-                v = 7;
-                break;
-            default:
-                assert(0 && "Invalid texture V size");
-                v = 0;
-                break;
-        }
-
-        dst->mode2 |= (u << GPU_TA_PM2_USIZE_SHIFT) & GPU_TA_PM2_USIZE_MASK;
-        dst->mode2 |= (v << GPU_TA_PM2_VSIZE_SHIFT) & GPU_TA_PM2_VSIZE_MASK;
+        dst->mode2 |= (DimensionFlag(src->txr.width) << GPU_TA_PM2_USIZE_SHIFT) & GPU_TA_PM2_USIZE_MASK;
+        dst->mode2 |= (DimensionFlag(src->txr.height) << GPU_TA_PM2_VSIZE_SHIFT) & GPU_TA_PM2_VSIZE_MASK;
 
         /* Polygon mode 3 */
         dst->mode3  = (src->txr.mipmap << GPU_TA_PM3_MIPMAP_SHIFT) & GPU_TA_PM3_MIPMAP_MASK;
