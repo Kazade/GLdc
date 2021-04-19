@@ -912,9 +912,6 @@ static void light(SubmissionTarget* target) {
     _glPerformLighting(vertex, ES, target->count);
 }
 
-#define GPU_MIN_Z 0.2f
-#define GPU_MAX_Z 1.0 + GPU_MIN_Z
-
 GL_FORCE_INLINE void divide(SubmissionTarget* target) {
     TRACE();
 
@@ -926,7 +923,7 @@ GL_FORCE_INLINE void divide(SubmissionTarget* target) {
         vertex->xyz[0] *= f;
         vertex->xyz[1] *= f;
         vertex->xyz[2] *= f;
-        vertex->xyz[2] = MAX(1.0f - (vertex->xyz[2] * 0.5f + 0.5f), 0.0001f);
+        vertex->xyz[2] = MAX(1.0f - (vertex->xyz[2] * 0.5f + 0.5f), PVR_MIN_Z);
         ++vertex;
     }
 }

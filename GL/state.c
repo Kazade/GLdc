@@ -456,7 +456,7 @@ GLAPI void APIENTRY glClearDepthf(GLfloat depth) {
 
 GLAPI void APIENTRY glClearDepth(GLfloat depth) {
     /* We reverse because using invW means that farther Z == lower number */
-    GPUSetClearDepth(1.0f - depth);
+    GPUSetClearDepth(MIN(1.0f - depth, PVR_MIN_Z));
 }
 
 GLAPI void APIENTRY glDrawBuffer(GLenum mode) {

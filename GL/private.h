@@ -363,6 +363,9 @@ void _glApplyScissor(bool force);
 #define MAX_TEXTURE_UNITS 2
 #define MAX_LIGHTS 8
 
+/* This is from KOS pvr_buffers.c */
+#define PVR_MIN_Z 0.0001f
+
 #define MIN(a,b) (((a)<(b))?(a):(b))
 #define MAX(a,b) (((a)>(b))?(a):(b))
 #define CLAMP( X, _MIN, _MAX )  ( (X)<(_MIN) ? (_MIN) : ((X)>(_MAX) ? (_MAX) : (X)) )
