@@ -91,7 +91,7 @@ GL_FORCE_INLINE GLboolean _glIsVertexDataFastPathCompatible() {
     return GL_TRUE;
 }
 
-GL_FORCE_INLINE GLuint byte_size(GLenum type) {
+GL_FORCE_INLINE GLsizei byte_size(GLenum type) {
     switch(type) {
     case GL_BYTE: return sizeof(GLbyte);
     case GL_UNSIGNED_BYTE: return sizeof(GLubyte);
@@ -620,7 +620,7 @@ ReadNormalFunc calcReadNormalFunc() {
 }
 
 GL_FORCE_INLINE void _readPositionData(const GLuint first, const GLuint count, Vertex* output) {
-    const GLubyte vstride = (VERTEX_POINTER.stride) ? VERTEX_POINTER.stride : VERTEX_POINTER.size * byte_size(VERTEX_POINTER.type);
+    const GLsizei vstride = (VERTEX_POINTER.stride) ? VERTEX_POINTER.stride : VERTEX_POINTER.size * byte_size(VERTEX_POINTER.type);
     const void* vptr = ((GLubyte*) VERTEX_POINTER.ptr + (first * vstride));
 
     ReadDiffuseFunc func = calcReadPositionFunc();
@@ -634,7 +634,7 @@ GL_FORCE_INLINE void _readPositionData(const GLuint first, const GLuint count, V
 }
 
 GL_FORCE_INLINE void _readUVData(const GLuint first, const GLuint count, Vertex* output) {
-    const GLubyte uvstride = (UV_POINTER.stride) ? UV_POINTER.stride : UV_POINTER.size * byte_size(UV_POINTER.type);
+    const GLsizei uvstride = (UV_POINTER.stride) ? UV_POINTER.stride : UV_POINTER.size * byte_size(UV_POINTER.type);
     const void* uvptr = ((GLubyte*) UV_POINTER.ptr + (first * uvstride));
 
     ReadUVFunc func = calcReadUVFunc();
@@ -648,7 +648,7 @@ GL_FORCE_INLINE void _readUVData(const GLuint first, const GLuint count, Vertex*
 }
 
 GL_FORCE_INLINE void _readSTData(const GLuint first, const GLuint count, VertexExtra* extra) {
-    const GLubyte ststride = (ST_POINTER.stride) ? ST_POINTER.stride : ST_POINTER.size * byte_size(ST_POINTER.type);
+    const GLsizei ststride = (ST_POINTER.stride) ? ST_POINTER.stride : ST_POINTER.size * byte_size(ST_POINTER.type);
     const void* stptr = ((GLubyte*) ST_POINTER.ptr + (first * ststride));
 
     ReadUVFunc func = calcReadSTFunc();
@@ -662,7 +662,7 @@ GL_FORCE_INLINE void _readSTData(const GLuint first, const GLuint count, VertexE
 }
 
 GL_FORCE_INLINE void _readNormalData(const GLuint first, const GLuint count, VertexExtra* extra) {
-    const GLuint nstride = (NORMAL_POINTER.stride) ? NORMAL_POINTER.stride : NORMAL_POINTER.size * byte_size(NORMAL_POINTER.type);
+    const GLsizei nstride = (NORMAL_POINTER.stride) ? NORMAL_POINTER.stride : NORMAL_POINTER.size * byte_size(NORMAL_POINTER.type);
     const void* nptr = ((GLubyte*) NORMAL_POINTER.ptr + (first * nstride));
 
     ReadNormalFunc func = calcReadNormalFunc();
@@ -784,7 +784,7 @@ static void generate(SubmissionTarget* target, const GLenum mode, const GLsizei 
             Vertex* it = start;
             ITERATE(count) {
                 it->flags = GPU_CMD_VERTEX;
-                memcpy(it->xyz, pos, FAST_PATH_BYTE_SIZE);
+                MEMCPY4(it->xyz, pos, FAST_PATH_BYTE_SIZE);
                 it++;
                 pos += VERTEX_POINTER.stride;
             }
