@@ -31,12 +31,9 @@ static AttribPointer UV_ATTRIB;
 static AttribPointer ST_ATTRIB;
 static AttribPointer NORMAL_ATTRIB;
 
-/* Set of flags that have been enabled by glNormal etc. Cleared to VERTEX_ENABLED_FLAG
-   in glBegin */
-static GLuint ENABLED_VERTEX_ATTRIBUTES_DRAFT = VERTEX_ENABLED_FLAG;
-
-/* Set from ENABLED_VERTEX_ATTRIBUTES when glVertex is called so that
- * new attribute types are ignored if they appear after the first vertex */
+/* We store the list of attributes that have been "enabled" by a call to
+  glColor, glNormal, glTexCoord etc. otherwise we already have defaults that
+  can be applied faster */
 static GLuint ENABLED_VERTEX_ATTRIBUTES = 0;
 
 static inline uint32_t pack_vertex_attribute_vec3_1i(float x, float y, float z) {
@@ -113,13 +110,10 @@ void APIENTRY glBegin(GLenum mode) {
 
     IMMEDIATE_MODE_ACTIVE = GL_TRUE;
     ACTIVE_POLYGON_MODE = mode;
-
-    /* Only vertices enabled at the moment */
-    ENABLED_VERTEX_ATTRIBUTES = ENABLED_VERTEX_ATTRIBUTES_DRAFT = VERTEX_ENABLED_FLAG;
 }
 
 void APIENTRY glColor4f(GLfloat r, GLfloat g, GLfloat b, GLfloat a) {
-    ENABLED_VERTEX_ATTRIBUTES_DRAFT |= DIFFUSE_ENABLED_FLAG;
+    ENABLED_VERTEX_ATTRIBUTES |= DIFFUSE_ENABLED_FLAG;
 
     COLOR[0] = (GLubyte)(r * 255);
     COLOR[1] = (GLubyte)(g * 255);
@@ -128,7 +122,7 @@ void APIENTRY glColor4f(GLfloat r, GLfloat g, GLfloat b, GLfloat a) {
 }
 
 void APIENTRY glColor4ub(GLubyte r, GLubyte  g, GLubyte b, GLubyte a) {
-    ENABLED_VERTEX_ATTRIBUTES_DRAFT |= DIFFUSE_ENABLED_FLAG;
+    ENABLED_VERTEX_ATTRIBUTES |= DIFFUSE_ENABLED_FLAG;
 
     COLOR[0] = r;
     COLOR[1] = g;
@@ -137,7 +131,7 @@ void APIENTRY glColor4ub(GLubyte r, GLubyte  g, GLubyte b, GLubyte a) {
 }
 
 void APIENTRY glColor4fv(const GLfloat* v) {
-    ENABLED_VERTEX_ATTRIBUTES_DRAFT |= DIFFUSE_ENABLED_FLAG;
+    ENABLED_VERTEX_ATTRIBUTES |= DIFFUSE_ENABLED_FLAG;
 
     COLOR[0] = (GLubyte)(v[0] * 255);
     COLOR[1] = (GLubyte)(v[1] * 255);
@@ -146,7 +140,7 @@ void APIENTRY glColor4fv(const GLfloat* v) {
 }
 
 void APIENTRY glColor3f(GLfloat r, GLfloat g, GLfloat b) {
-    ENABLED_VERTEX_ATTRIBUTES_DRAFT |= DIFFUSE_ENABLED_FLAG;
+    ENABLED_VERTEX_ATTRIBUTES |= DIFFUSE_ENABLED_FLAG;
 
     COLOR[0] = (GLubyte)(r * 255);
     COLOR[1] = (GLubyte)(g * 255);
@@ -155,7 +149,7 @@ void APIENTRY glColor3f(GLfloat r, GLfloat g, GLfloat b) {
 }
 
 void APIENTRY glColor3ub(GLubyte red, GLubyte green, GLubyte blue) {
-    ENABLED_VERTEX_ATTRIBUTES_DRAFT |= DIFFUSE_ENABLED_FLAG;
+    ENABLED_VERTEX_ATTRIBUTES |= DIFFUSE_ENABLED_FLAG;
 
     COLOR[0] = red;
     COLOR[1] = green;
@@ -164,7 +158,7 @@ void APIENTRY glColor3ub(GLubyte red, GLubyte green, GLubyte blue) {
 }
 
 void APIENTRY glColor3ubv(const GLubyte *v) {
-    ENABLED_VERTEX_ATTRIBUTES_DRAFT |= DIFFUSE_ENABLED_FLAG;
+    ENABLED_VERTEX_ATTRIBUTES |= DIFFUSE_ENABLED_FLAG;
 
     COLOR[0] = v[0];
     COLOR[1] = v[1];
@@ -173,7 +167,7 @@ void APIENTRY glColor3ubv(const GLubyte *v) {
 }
 
 void APIENTRY glColor3fv(const GLfloat* v) {
-    ENABLED_VERTEX_ATTRIBUTES_DRAFT |= DIFFUSE_ENABLED_FLAG;
+    ENABLED_VERTEX_ATTRIBUTES |= DIFFUSE_ENABLED_FLAG;
 
     COLOR[0] = (GLubyte)(v[0] * 255);
     COLOR[1] = (GLubyte)(v[1] * 255);
@@ -182,7 +176,7 @@ void APIENTRY glColor3fv(const GLfloat* v) {
 }
 
 void APIENTRY glVertex3f(GLfloat x, GLfloat y, GLfloat z) {
-    ENABLED_VERTEX_ATTRIBUTES = ENABLED_VERTEX_ATTRIBUTES_DRAFT;
+    ENABLED_VERTEX_ATTRIBUTES |= VERTEX_ENABLED_FLAG;
 
     GLVertexKOS* vert = aligned_vector_extend(&VERTICES, 1);
 
@@ -237,11 +231,11 @@ void APIENTRY glVertex4fv(const GLfloat* v) {
 
 void APIENTRY glMultiTexCoord2fARB(GLenum target, GLfloat s, GLfloat t) {
     if(target == GL_TEXTURE0) {
-        ENABLED_VERTEX_ATTRIBUTES_DRAFT |= UV_ENABLED_FLAG;
+        ENABLED_VERTEX_ATTRIBUTES |= UV_ENABLED_FLAG;
         UV_COORD[0] = s;
         UV_COORD[1] = t;
     } else if(target == GL_TEXTURE1) {
-        ENABLED_VERTEX_ATTRIBUTES_DRAFT |= ST_ENABLED_FLAG;
+        ENABLED_VERTEX_ATTRIBUTES |= ST_ENABLED_FLAG;
         ST_COORD[0] = s;
         ST_COORD[1] = t;
     } else {
@@ -252,7 +246,7 @@ void APIENTRY glMultiTexCoord2fARB(GLenum target, GLfloat s, GLfloat t) {
 }
 
 void APIENTRY glTexCoord2f(GLfloat u, GLfloat v) {
-    ENABLED_VERTEX_ATTRIBUTES_DRAFT |= UV_ENABLED_FLAG;
+    ENABLED_VERTEX_ATTRIBUTES |= UV_ENABLED_FLAG;
     UV_COORD[0] = u;
     UV_COORD[1] = v;
 }
@@ -262,12 +256,12 @@ void APIENTRY glTexCoord2fv(const GLfloat* v) {
 }
 
 void APIENTRY glNormal3f(GLfloat x, GLfloat y, GLfloat z) {
-    ENABLED_VERTEX_ATTRIBUTES_DRAFT |= NORMAL_ENABLED_FLAG;
+    ENABLED_VERTEX_ATTRIBUTES |= NORMAL_ENABLED_FLAG;
     NORMAL = pack_vertex_attribute_vec3_1i(x, y, z);
 }
 
 void APIENTRY glNormal3fv(const GLfloat* v) {
-    ENABLED_VERTEX_ATTRIBUTES_DRAFT |= NORMAL_ENABLED_FLAG;
+    ENABLED_VERTEX_ATTRIBUTES |= NORMAL_ENABLED_FLAG;
     glNormal3f(v[0], v[1], v[2]);
 }
 
