@@ -106,9 +106,7 @@ void* aligned_vector_resize(AlignedVector* vector, const unsigned int element_co
 }
 
 void* aligned_vector_extend(AlignedVector* vector, const unsigned int additional_count) {
-    const unsigned int current = vector->size;
-    aligned_vector_resize(vector, vector->size + additional_count);
-    return aligned_vector_at(vector, current);
+    return aligned_vector_resize(vector, vector->size + additional_count);
 }
 
 void aligned_vector_shrink_to_fit(AlignedVector* vector) {
