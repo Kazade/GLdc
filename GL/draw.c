@@ -923,7 +923,7 @@ GL_FORCE_INLINE void divide(SubmissionTarget* target) {
         vertex->xyz[0] *= f;
         vertex->xyz[1] *= f;
         vertex->xyz[2] = MAX(
-            1.0f - fmaf(vertex->xyz[2] * f, 0.5f, 0.5f),
+            1.0f - MATH_fmac(vertex->xyz[2] * f, 0.5f, 0.5f),
             PVR_MIN_Z
         );
         ++vertex;
