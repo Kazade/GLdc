@@ -285,11 +285,7 @@ static void _fillWithNegZVE(const GLubyte* input, GLubyte* out) {
 
 static void  _fillWhiteARGB(const GLubyte* input, GLubyte* output) {
     _GL_UNUSED(input);
-
-    output[R8IDX] = 255;
-    output[G8IDX] = 255;
-    output[B8IDX] = 255;
-    output[A8IDX] = 255;
+    *((uint32_t*) output) = ~0;
 }
 
 static void _fillZero2f(const GLubyte* input, GLubyte* out) {
