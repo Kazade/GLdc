@@ -11,7 +11,6 @@
 #define PVR_PACK_COLOR(a, r, g, b) {}
 #endif
 
-#include "profiler.h"
 #include "private.h"
 #include "../containers/aligned_vector.h"
 

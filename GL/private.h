@@ -185,7 +185,7 @@ typedef struct {
 
 
 #define argbcpy(dst, src) \
-    *((GLuint*) dst) = *((GLuint*) src) \
+    *((GLuint*) dst) = *((const GLuint*) src) \
 
 
 typedef struct {

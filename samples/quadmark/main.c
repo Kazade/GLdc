@@ -9,11 +9,13 @@
 
 #ifdef __DREAMCAST__
 #include <kos.h>
+#include "../profiler.h"
 #endif
 
 #include <GL/gl.h>
 #include <GL/glkos.h>
 
+#include <stdint.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <time.h>
@@ -162,14 +164,23 @@ void check_switch() {
 }
 
 int main(int argc, char **argv) {
+#ifndef NDEBUG
+#ifdef __DREAMCAST__
+    profiler_init("/pc/gmon.out");
+    profiler_start();
+#endif
+#endif
+
     setup();
 
     /* Start off with something obscene */
     switch_tests(200000 / 60);
     start = time(NULL);
 
+    uint32_t iterations = 2000;
+
     for(;;) {
-        if(check_start())
+        if(check_start() || iterations-- == 0)
             break;
 
         printf(" \r");
@@ -180,7 +191,12 @@ int main(int argc, char **argv) {
 
     stats();
 
+#ifdef __DREAMCAST__
+#ifndef NDEBUG
+    profiler_stop();
+    profiler_clean_up();
+#endif
+#endif
+
     return 0;
 }
-
-

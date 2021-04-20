@@ -37,13 +37,13 @@ static inline unsigned int round_to_chunk_size(unsigned int val) {
     return ((n + m - 1) / m) * m;
 }
 
-void aligned_vector_reserve(AlignedVector* vector, unsigned int element_count) {
+void* aligned_vector_reserve(AlignedVector* vector, unsigned int element_count) {
     if(element_count == 0) {
-        return;
+        return NULL;
     }
 
     if(element_count <= vector->capacity) {
-        return;
+        return NULL;
     }
 
     unsigned int original_byte_size = vector->size * vector->element_size;
@@ -63,6 +63,8 @@ void aligned_vector_reserve(AlignedVector* vector, unsigned int element_count) {
     }
 
     vector->capacity = element_count;
+
+    return vector->data + original_byte_size;
 }
 
 void* aligned_vector_push_back(AlignedVector* vector, const void* objs, unsigned int count) {
@@ -84,6 +86,8 @@ void* aligned_vector_push_back(AlignedVector* vector, const void* objs, unsigned
 }
 
 void* aligned_vector_resize(AlignedVector* vector, const unsigned int element_count) {
+    void* ret = NULL;
+
     unsigned int previousCount = vector->size;
 
     /* Don't change memory when resizing downwards, just change the size */
@@ -93,13 +97,15 @@ void* aligned_vector_resize(AlignedVector* vector, const unsigned int element_co
     }
 
     if(vector->capacity < element_count) {
-        aligned_vector_reserve(vector, element_count);
+        ret = aligned_vector_reserve(vector, element_count);
+        vector->size = element_count;
+    } else if(previousCount < element_count) {
+        vector->size = element_count;
+        ret = aligned_vector_at(vector, previousCount);
     }
 
-    vector->size = element_count;
-
     if(previousCount < vector->size) {
-        return aligned_vector_at(vector, previousCount);
+        return ret;
     } else {
         return NULL;
     }

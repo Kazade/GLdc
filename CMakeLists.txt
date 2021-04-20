@@ -42,7 +42,6 @@ set(
     GL/immediate.c
     GL/lighting.c
     GL/matrix.c
-    GL/profiler.c
     GL/state.c
     GL/texture.c
     GL/util.c
@@ -143,8 +142,11 @@ gen_sample(zclip_triangle samples/zclip_triangle/main.c)
 gen_sample(zclip_trianglestrip samples/zclip_trianglestrip/main.c)
 gen_sample(scissor samples/scissor/main.c)
 gen_sample(polymark samples/polymark/main.c)
-gen_sample(quadmark samples/quadmark/main.c)
+
 
 if(PLATFORM_DREAMCAST)
     gen_sample(trimark samples/trimark/main.c)
+    gen_sample(quadmark samples/quadmark/main.c samples/profiler.c)
+else()
+    gen_sample(quadmark samples/quadmark/main.c)
 endif()

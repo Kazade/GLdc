@@ -1,7 +1,6 @@
 
 #include "../containers/aligned_vector.h"
 #include "private.h"
-#include "profiler.h"
 
 static PolyList OP_LIST;
 static PolyList PT_LIST;
@@ -93,8 +92,6 @@ void APIENTRY glKosSwapBuffers() {
 
     TRACE();
 
-    profiler_push(__func__);
-
     SceneBegin();
         SceneListBegin(GPU_LIST_OP_POLY);
         SceneListSubmit(OP_LIST.vector.data, OP_LIST.vector.size);
@@ -114,12 +111,4 @@ void APIENTRY glKosSwapBuffers() {
     aligned_vector_clear(&TR_LIST.vector);
 
     _glApplyScissor(true);
-
-    profiler_checkpoint("scene");
-    profiler_pop();
-
-    if(frame_count++ > 100) {
-        profiler_print_stats();
-        frame_count = 0;
-    }
 }

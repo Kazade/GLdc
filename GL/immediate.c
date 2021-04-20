@@ -10,7 +10,6 @@
 #include <string.h>
 #include <stdio.h>
 
-#include "profiler.h"
 #include "private.h"
 
 static GLboolean IMMEDIATE_MODE_ACTIVE = GL_FALSE;
@@ -266,8 +265,6 @@ void APIENTRY glNormal3fv(const GLfloat* v) {
 }
 
 void APIENTRY glEnd() {
-    profiler_push(__func__);
-
     IMMEDIATE_MODE_ACTIVE = GL_FALSE;
 
     /* Resizing could have invalidated these pointers */
@@ -333,9 +330,6 @@ void APIENTRY glEnd() {
     *nattr = nptr;
     *uattr = uvptr;
     *sattr = stptr;
-
-    profiler_checkpoint("restore");
-    profiler_pop();
 }
 
 void APIENTRY glRectf(GLfloat x1, GLfloat y1, GLfloat x2, GLfloat y2) {
