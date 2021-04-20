@@ -109,7 +109,7 @@ typedef void (*FloatParseFunc)(GLfloat* out, const GLubyte* in);
 typedef void (*ByteParseFunc)(GLubyte* out, const GLubyte* in);
 typedef void (*PolyBuildFunc)(Vertex* first, Vertex* previous, Vertex* vertex, Vertex* next, const GLsizei i);
 
-static void _readVertexData3f3f(const GLubyte* in, GLubyte* out) {
+static void _readVertexData3f3f(const GLubyte* __restrict__ in, GLubyte* __restrict__ out) {
     vec3cpy(out, in);
 }
 
@@ -265,7 +265,7 @@ static void _readVertexData4ubRevARGB(const GLubyte* __restrict__ input, GLubyte
     argbcpy(output, input);
 }
 
-static void _readVertexData4fRevARGB(const GLubyte* in, GLubyte* output) {
+static void _readVertexData4fRevARGB(const GLubyte* __restrict__ in, GLubyte* __restrict__ output) {
     const float* input = (const float*) in;
 
     output[0] = (GLubyte) clamp(input[0] * 255.0f, 0, 255);
@@ -286,12 +286,12 @@ static void _fillWithNegZVE(const GLubyte* __restrict__ input, GLubyte* __restri
     *((V*) out) = NegZ;
 }
 
-static void  _fillWhiteARGB(const GLubyte* input, GLubyte* output) {
+static void  _fillWhiteARGB(const GLubyte* __restrict__ input, GLubyte* __restrict__ output) {
     _GL_UNUSED(input);
     *((uint32_t*) output) = ~0;
 }
 
-static void _fillZero2f(const GLubyte* input, GLubyte* out) {
+static void _fillZero2f(const GLubyte* __restrict__ input, GLubyte* __restrict__ out) {
     _GL_UNUSED(input);
     memset(out, sizeof(float) * 2, 0);
 }
@@ -616,21 +616,28 @@ ReadNormalFunc calcReadNormalFunc() {
     }
 }
 
-GL_FORCE_INLINE void _readPositionData(const GLuint first, const GLuint count, const Vertex* output) {
+void _readPositionData(const GLuint first, const GLuint count, const Vertex* output) {
     const GLsizei vstride = (VERTEX_POINTER.stride) ? VERTEX_POINTER.stride : VERTEX_POINTER.size * byte_size(VERTEX_POINTER.type);
     const void* vptr = ((GLubyte*) VERTEX_POINTER.ptr + (first * vstride));
 
     ReadDiffuseFunc func = calcReadPositionFunc();
     GLubyte* out = (GLubyte*) output[0].xyz;
+    uint32_t* flags;
 
     ITERATE(count) {
         func(vptr, out);
         vptr += vstride;
+
+        /* Set the flags which are 4 bytes before the position. Doing it here saves
+         * an additional loop */
+        flags = (uint32_t*) out - 1;
+        *flags = GPU_CMD_VERTEX;
+
         out += sizeof(Vertex);
     }
 }
 
-GL_FORCE_INLINE void _readUVData(const GLuint first, const GLuint count, const Vertex* output) {
+void _readUVData(const GLuint first, const GLuint count, const Vertex* output) {
     const GLsizei uvstride = (UV_POINTER.stride) ? UV_POINTER.stride : UV_POINTER.size * byte_size(UV_POINTER.type);
     const void* uvptr = ((GLubyte*) UV_POINTER.ptr + (first * uvstride));
 
@@ -644,7 +651,7 @@ GL_FORCE_INLINE void _readUVData(const GLuint first, const GLuint count, const V
     }
 }
 
-GL_FORCE_INLINE void _readSTData(const GLuint first, const GLuint count, const VertexExtra* extra) {
+void _readSTData(const GLuint first, const GLuint count, const VertexExtra* extra) {
     const GLsizei ststride = (ST_POINTER.stride) ? ST_POINTER.stride : ST_POINTER.size * byte_size(ST_POINTER.type);
     const void* stptr = ((GLubyte*) ST_POINTER.ptr + (first * ststride));
 
@@ -658,7 +665,7 @@ GL_FORCE_INLINE void _readSTData(const GLuint first, const GLuint count, const V
     }
 }
 
-GL_FORCE_INLINE void _readNormalData(const GLuint first, const GLuint count, const VertexExtra* extra) {
+void _readNormalData(const GLuint first, const GLuint count, const VertexExtra* extra) {
     const GLsizei nstride = (NORMAL_POINTER.stride) ? NORMAL_POINTER.stride : NORMAL_POINTER.size * byte_size(NORMAL_POINTER.type);
     const void* nptr = ((GLubyte*) NORMAL_POINTER.ptr + (first * nstride));
 
@@ -689,7 +696,7 @@ GL_FORCE_INLINE void _readNormalData(const GLuint first, const GLuint count, con
     }
 }
 
-GL_FORCE_INLINE void _readDiffuseData(const GLuint first, const GLuint count, const Vertex* output) {
+void _readDiffuseData(const GLuint first, const GLuint count, const Vertex* output) {
     const GLuint size = (DIFFUSE_POINTER.size == GL_BGRA) ? 4 : DIFFUSE_POINTER.size;
     const GLuint cstride = (DIFFUSE_POINTER.stride) ? DIFFUSE_POINTER.stride : size * byte_size(DIFFUSE_POINTER.type);
     const GLubyte* cptr = ((GLubyte*) DIFFUSE_POINTER.ptr) + (first * cstride);
@@ -767,7 +774,7 @@ static void generateElements(
 
 static const uint32_t FAST_PATH_BYTE_SIZE = (sizeof(GLfloat) * 3) + (sizeof(GLfloat) * 2) + (sizeof(GLubyte) * 4);
 
-static void generateArraysFastPath(SubmissionTarget* target, const GLsizei first, const GLuint count, const GLenum type) {
+static void generateArraysFastPath(SubmissionTarget* target, const GLsizei first, const GLuint count) {
     Vertex* start = _glSubmissionTargetStart(target);
     /* Copy the pos, uv and color directly in one go */
     const GLubyte* pos = VERTEX_POINTER.ptr;
@@ -785,21 +792,13 @@ static void generateArraysFastPath(SubmissionTarget* target, const GLsizei first
     _readSTData(first, count, ve);
 }
 
-static void generateArrays(SubmissionTarget* target, const GLsizei first, const GLuint count, const GLenum type) {
+static void generateArrays(SubmissionTarget* target, const GLsizei first, const GLuint count) {
     Vertex* start = _glSubmissionTargetStart(target);
+    VertexExtra* ve = aligned_vector_at(target->extras, 0);
+
     _readPositionData(first, count, start);
     _readDiffuseData(first, count, start);
     _readUVData(first, count, start);
-
-    Vertex* it = _glSubmissionTargetStart(target);
-
-    ITERATE(count) {
-        it->flags = GPU_CMD_VERTEX;
-        ++it;
-    }
-
-    VertexExtra* ve = aligned_vector_at(target->extras, 0);
-
     _readNormalData(first, count, ve);
     _readSTData(first, count, ve);
 }
@@ -812,9 +811,9 @@ static void generate(SubmissionTarget* target, const GLenum mode, const GLsizei 
     if(indices) {
         generateElements(target, first, count, indices, type);
     } else if(FAST_PATH_ENABLED) {
-        generateArraysFastPath(target, first, count, type);
+        generateArraysFastPath(target, first, count);
     } else {
-        generateArrays(target, first, count, type);
+        generateArrays(target, first, count);
     }
 
     Vertex* it = _glSubmissionTargetStart(target);
