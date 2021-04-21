@@ -328,3 +328,18 @@ void TransformVertices(Vertex* vertices, const int count) {
         vertices->w = ret[3];
     }
 }
+
+void TransformVertex(const float* xyz, const float* w, float* oxyz, float* ow) {
+    float ret[4];
+    ret[0] = xyz[0];
+    ret[1] = xyz[1];
+    ret[2] = xyz[2];
+    ret[3] = *w;
+
+    TransformVec4(ret);
+
+    oxyz[0] = ret[0];
+    oxyz[1] = ret[1];
+    oxyz[2] = ret[2];
+    *ow = ret[3];
+}
