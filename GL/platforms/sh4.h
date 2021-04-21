@@ -69,6 +69,25 @@ inline void TransformVec4(float* x) {
 
 }
 
+static inline void TransformVertex(const float* xyz, const float* w, float* oxyz, float* ow) {
+    register float __x __asm__("fr12") = (xyz[0]);
+    register float __y __asm__("fr13") = (xyz[1]);
+    register float __z __asm__("fr14") = (xyz[2]);
+    register float __w __asm__("fr15") = (*w);
+
+    __asm__ __volatile__(
+        "fldi1 fr15\n"
+        "ftrv   xmtrx,fv12\n"
+        : "=f" (__x), "=f" (__y), "=f" (__z), "=f" (__w)
+        : "0" (__x), "1" (__y), "2" (__z), "3" (__w)
+    );
+
+    oxyz[0] = __x;
+    oxyz[1] = __y;
+    oxyz[2] = __z;
+    *ow = __w;
+}
+
 static inline void TransformVertices(Vertex* vertices, const int count) {
     Vertex* it = vertices;
     for(int i = 0; i < count; ++i, ++it) {

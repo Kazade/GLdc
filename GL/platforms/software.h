@@ -50,6 +50,7 @@ static inline void TransformNormalNoMod(const float* xIn, float* xOut) {
 }
 
 void TransformVertices(Vertex* vertices, const int count);
+void TransformVertex(const float* xyz, const float* w, float* oxyz, float* ow);
 
 void InitGPU(_Bool autosort, _Bool fsaa);
 
