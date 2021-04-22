@@ -16,9 +16,13 @@ typedef struct {
 
 #define ALIGNED_VECTOR_CHUNK_SIZE 256u
 
+#ifdef __cplusplus
+#define AV_FORCE_INLINE static inline
+#else
 #define AV_NO_INSTRUMENT inline __attribute__((no_instrument_function))
 #define AV_INLINE_DEBUG AV_NO_INSTRUMENT __attribute__((always_inline))
 #define AV_FORCE_INLINE static AV_INLINE_DEBUG
+#endif
 
 void aligned_vector_init(AlignedVector* vector, unsigned int element_size);
 void* aligned_vector_reserve(AlignedVector* vector, unsigned int element_count);

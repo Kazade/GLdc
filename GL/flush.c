@@ -88,8 +88,6 @@ void APIENTRY glKosInit() {
 
 
 void APIENTRY glKosSwapBuffers() {
-    static int frame_count = 0;
-
     TRACE();
 
     SceneBegin();

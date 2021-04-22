@@ -777,6 +777,99 @@ static void generateElements(
     }
 }
 
+typedef struct {
+    float x, y, z;
+} Float3;
+
+typedef struct {
+    float u, v;
+} Float2;
+
+static const Float3 F3Z = {0.0f, 0.0f, 1.0f};
+static const Float3 F3ZERO = {0.0f, 0.0f, 0.0f};
+static const Float2 F2ZERO = {0.0f, 0.0f};
+
+static void generateElementsFastPath(
+        SubmissionTarget* target, const GLsizei first, const GLuint count,
+        const GLubyte* indices, const GLenum type) {
+
+    Vertex* start = _glSubmissionTargetStart(target);
+
+    const GLuint vstride = (VERTEX_POINTER.stride) ?
+        VERTEX_POINTER.stride : VERTEX_POINTER.size * byte_size(VERTEX_POINTER.type);
+
+    const GLuint uvstride = (UV_POINTER.stride) ?
+        UV_POINTER.stride : UV_POINTER.size * byte_size(UV_POINTER.type);
+
+    const GLuint ststride = (ST_POINTER.stride) ?
+        ST_POINTER.stride : ST_POINTER.size * byte_size(ST_POINTER.type);
+
+    const GLuint dstride = (DIFFUSE_POINTER.stride) ?
+        DIFFUSE_POINTER.stride : DIFFUSE_POINTER.size * byte_size(DIFFUSE_POINTER.type);
+
+    const GLuint nstride = (NORMAL_POINTER.stride) ?
+        NORMAL_POINTER.stride : NORMAL_POINTER.size * byte_size(NORMAL_POINTER.type);
+
+    const GLsizei istride = byte_size(type);
+    const IndexParseFunc IndexFunc = _calcParseIndexFunc(type);
+
+    /* Copy the pos, uv and color directly in one go */
+    const GLubyte* pos = (ENABLED_VERTEX_ATTRIBUTES & VERTEX_ENABLED_FLAG) ? VERTEX_POINTER.ptr : NULL;
+    const GLubyte* uv = (ENABLED_VERTEX_ATTRIBUTES & UV_ENABLED_FLAG) ? UV_POINTER.ptr : NULL;
+    const GLubyte* col = (ENABLED_VERTEX_ATTRIBUTES & DIFFUSE_ENABLED_FLAG) ? DIFFUSE_POINTER.ptr : NULL;
+    const GLubyte* st = (ENABLED_VERTEX_ATTRIBUTES & ST_ENABLED_FLAG) ? ST_POINTER.ptr : NULL;
+    const GLubyte* n = (ENABLED_VERTEX_ATTRIBUTES & NORMAL_ENABLED_FLAG) ? NORMAL_POINTER.ptr : NULL;
+
+    VertexExtra* ve = aligned_vector_at(target->extras, 0);
+    Vertex* it = start;
+
+    const float w = 1.0f;
+
+    for(GLuint i = first; i < first + count; ++i) {
+        GLuint idx = IndexFunc(indices + (i * istride));
+
+        it->flags = GPU_CMD_VERTEX;
+
+        if(pos) {
+            pos = (GLubyte*) VERTEX_POINTER.ptr + (idx * vstride);
+            TransformVertex((const float*) pos, &w, it->xyz, &it->w);
+        } else {
+            *((Float3*) it->xyz) = F3ZERO;
+        }
+
+        if(uv) {
+            uv = (GLubyte*) UV_POINTER.ptr + (idx * uvstride);
+            MEMCPY4(it->uv, uv, sizeof(float) * 2);
+        } else {
+            *((Float2*) it->uv) = F2ZERO;
+        }
+
+        if(col) {
+            col = (GLubyte*) DIFFUSE_POINTER.ptr + (idx * dstride);
+            MEMCPY4(it->bgra, col, sizeof(uint32_t));
+        } else {
+            *((uint32_t*) it->bgra) = ~0;
+        }
+
+        if(st) {
+            st = (GLubyte*) ST_POINTER.ptr + (idx * ststride);
+            MEMCPY4(ve->st, st, sizeof(float) * 2);
+        } else {
+            *((Float2*) ve->st) = F2ZERO;
+        }
+
+        if(n) {
+            n = (GLubyte*) NORMAL_POINTER.ptr + (idx * nstride);
+            MEMCPY4(ve->nxyz, n, sizeof(float) * 3);
+        } else {
+            *((Float3*) ve->nxyz) = F3Z;
+        }
+
+        it++;
+        ve++;
+    }
+}
+
 static void generateArraysFastPath(SubmissionTarget* target, const GLsizei first, const GLuint count) {
     Vertex* start = _glSubmissionTargetStart(target);
 
@@ -816,26 +909,37 @@ static void generateArraysFastPath(SubmissionTarget* target, const GLsizei first
         if(pos) {
             TransformVertex((const float*) pos, &w, it->xyz, &it->w);
             pos += vstride;
+        } else {
+            *((Float3*) it->xyz) = F3ZERO;
         }
+
 
         if(uv) {
             MEMCPY4(it->uv, uv, sizeof(float) * 2);
             uv += uvstride;
+        } else {
+            *((Float2*) it->uv) = F2ZERO;
         }
 
         if(col) {
             MEMCPY4(it->bgra, col, sizeof(uint32_t));
             col += dstride;
+        } else {
+            *((uint32_t*) it->bgra) = ~0;
         }
 
         if(st) {
             MEMCPY4(ve->st, st, sizeof(float) * 2);
             st += ststride;
+        } else {
+            *((Float2*) ve->st) = F2ZERO;
         }
 
         if(n) {
             MEMCPY4(ve->nxyz, n, sizeof(float) * 3);
             n += nstride;
+        } else {
+            *((Float3*) ve->nxyz) = F3Z;
         }
 
         it++;
@@ -865,12 +969,18 @@ static void generate(SubmissionTarget* target, const GLenum mode, const GLsizei 
     /* Read from the client buffers and generate an array of ClipVertices */
     TRACE();
 
-    if(indices) {
-        generateElements(target, first, count, indices, type);
-    } else if(FAST_PATH_ENABLED) {
-        generateArraysFastPath(target, first, count);
+    if(FAST_PATH_ENABLED) {
+        if(indices) {
+            generateElementsFastPath(target, first, count, indices, type);
+        } else {
+            generateArraysFastPath(target, first, count);
+        }
     } else {
-        generateArrays(target, first, count);
+        if(indices) {
+            generateElements(target, first, count, indices, type);
+        } else {
+            generateArrays(target, first, count);
+        }
     }
 
     Vertex* it = _glSubmissionTargetStart(target);
