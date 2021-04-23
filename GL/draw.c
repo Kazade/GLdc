@@ -702,8 +702,12 @@ static void _readNormalData(ReadNormalFunc func, const GLuint first, const GLuin
     }
 }
 
+GL_FORCE_INLINE GLuint diffusePointerSize() {
+    return (DIFFUSE_POINTER.size == GL_BGRA) ? 4 : DIFFUSE_POINTER.size;
+}
+
 static void _readDiffuseData(ReadDiffuseFunc func, const GLuint first, const GLuint count, const Vertex* output) {
-    const GLuint size = (DIFFUSE_POINTER.size == GL_BGRA) ? 4 : DIFFUSE_POINTER.size;
+    const GLuint size = diffusePointerSize();
     const GLuint cstride = (DIFFUSE_POINTER.stride) ? DIFFUSE_POINTER.stride : size * byte_size(DIFFUSE_POINTER.type);
     const GLubyte* cptr = ((GLubyte*) DIFFUSE_POINTER.ptr) + (first * cstride);
 
@@ -751,7 +755,7 @@ static void generateElements(
         ST_POINTER.stride : ST_POINTER.size * byte_size(ST_POINTER.type);
 
     const GLuint dstride = (DIFFUSE_POINTER.stride) ?
-        DIFFUSE_POINTER.stride : DIFFUSE_POINTER.size * byte_size(DIFFUSE_POINTER.type);
+        DIFFUSE_POINTER.stride : diffusePointerSize() * byte_size(DIFFUSE_POINTER.type);
 
     const GLuint nstride = (NORMAL_POINTER.stride) ?
         NORMAL_POINTER.stride : NORMAL_POINTER.size * byte_size(NORMAL_POINTER.type);
@@ -805,7 +809,7 @@ static void generateElementsFastPath(
         ST_POINTER.stride : ST_POINTER.size * byte_size(ST_POINTER.type);
 
     const GLuint dstride = (DIFFUSE_POINTER.stride) ?
-        DIFFUSE_POINTER.stride : DIFFUSE_POINTER.size * byte_size(DIFFUSE_POINTER.type);
+        DIFFUSE_POINTER.stride : diffusePointerSize() * byte_size(DIFFUSE_POINTER.type);
 
     const GLuint nstride = (NORMAL_POINTER.stride) ?
         NORMAL_POINTER.stride : NORMAL_POINTER.size * byte_size(NORMAL_POINTER.type);
@@ -883,7 +887,7 @@ static void generateArraysFastPath(SubmissionTarget* target, const GLsizei first
         ST_POINTER.stride : ST_POINTER.size * byte_size(ST_POINTER.type);
 
     const GLuint dstride = (DIFFUSE_POINTER.stride) ?
-        DIFFUSE_POINTER.stride : DIFFUSE_POINTER.size * byte_size(DIFFUSE_POINTER.type);
+        DIFFUSE_POINTER.stride : diffusePointerSize() * byte_size(DIFFUSE_POINTER.type);
 
     const GLuint nstride = (NORMAL_POINTER.stride) ?
         NORMAL_POINTER.stride : NORMAL_POINTER.size * byte_size(NORMAL_POINTER.type);
