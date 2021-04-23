@@ -8,8 +8,12 @@ build:sh4-gcc:
     - source /etc/bash.bashrc
     - mkdir builddir
     - cd builddir
-    - cmake -DCMAKE_TOOLCHAIN_FILE=../toolchains/Dreamcast.cmake ..
+    - cmake -DCMAKE_TOOLCHAIN_FILE=../toolchains/Dreamcast.cmake -DCMAKE_BUILD_TYPE=Release ..
     - make
+    - tar -zcf gldc.tar.gz libGLdc.a ../LICENSE ../README.md ../include
+  artifacts:
+    paths:
+    - gldc.tar.gz
     
 build:x86-gcc:
   stage: build
@@ -19,5 +23,5 @@ build:x86-gcc:
   script:
     - mkdir builddir
     - cd builddir
-    - cmake ..
+    - cmake -DCMAKE_BUILD_TYPE=Release ..
     - make
