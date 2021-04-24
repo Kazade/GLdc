@@ -13,7 +13,7 @@ build:sh4-gcc:
     - tar -zcf gldc.tar.gz libGLdc.a ../LICENSE ../README.md ../include
   artifacts:
     paths:
-    - gldc.tar.gz
+    - builddir/gldc.tar.gz
     
 build:x86-gcc:
   stage: build
