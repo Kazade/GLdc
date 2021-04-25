@@ -1090,19 +1090,17 @@ GL_FORCE_INLINE void divide(SubmissionTarget* target) {
     /* Perform perspective divide on each vertex */
     Vertex* vertex = _glSubmissionTargetStart(target);
 
+    const float h = GetVideoMode()->height;
+
     ITERATE(target->count) {
-        float f = MATH_Fast_Invert(vertex->w);
+        const float f = MATH_Fast_Invert(vertex->w);
 
-        /* Convert to NDC */
-        vertex->xyz[0] *= f;
-        vertex->xyz[1] *= f;
-
-        /* Apply viewport */
+        /* Convert to NDC and apply viewport */
         vertex->xyz[0] = MATH_fmac(
-            VIEWPORT.hwidth, vertex->xyz[0], VIEWPORT.x_plus_hwidth
+            VIEWPORT.hwidth, vertex->xyz[0] * f, VIEWPORT.x_plus_hwidth
         );
-        vertex->xyz[1] = GetVideoMode()->height - MATH_fmac(
-            VIEWPORT.hheight, vertex->xyz[1], VIEWPORT.y_plus_hheight
+        vertex->xyz[1] = h - MATH_fmac(
+            VIEWPORT.hheight, vertex->xyz[1] * f, VIEWPORT.y_plus_hheight
         );
 
         /* Apply depth range */
@@ -1110,6 +1108,7 @@ GL_FORCE_INLINE void divide(SubmissionTarget* target) {
             1.0f - MATH_fmac(vertex->xyz[2] * f, 0.5f, 0.5f),
             PVR_MIN_Z
         );
+
         ++vertex;
     }
 }
