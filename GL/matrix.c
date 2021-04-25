@@ -13,12 +13,12 @@
 GLfloat DEPTH_RANGE_MULTIPLIER_L = (1 - 0) / 2;
 GLfloat DEPTH_RANGE_MULTIPLIER_H = (0 + 1) / 2;
 
-/* Viewport size */
-static GLint gl_viewport_x1, gl_viewport_y1, gl_viewport_width, gl_viewport_height;
-
 static Stack MATRIX_STACKS[3]; // modelview, projection, texture
 static Matrix4x4 NORMAL_MATRIX __attribute__((aligned(32)));
-static Matrix4x4 SCREENVIEW_MATRIX __attribute__((aligned(32)));
+
+Viewport VIEWPORT = {
+    0, 0, 640, 480, 320.0f, 240.0f, 320.0f, 240.0f
+};
 
 static GLenum MATRIX_MODE = GL_MODELVIEW;
 static GLubyte MATRIX_IDX = 0;
@@ -50,7 +50,6 @@ void _glInitMatrices() {
     stack_push(&MATRIX_STACKS[2], IDENTITY);
 
     MEMCPY4(NORMAL_MATRIX, IDENTITY, sizeof(Matrix4x4));
-    MEMCPY4(SCREENVIEW_MATRIX, IDENTITY, sizeof(Matrix4x4));
 
     const VideoMode* vid_mode = GetVideoMode();
 
@@ -370,22 +369,14 @@ void glMultTransposeMatrixf(const GLfloat *m) {
 
 /* Set the GL viewport */
 void APIENTRY glViewport(GLint x, GLint y, GLsizei width, GLsizei height) {
-    const VideoMode* vid_mode = GetVideoMode();
-
-    gl_viewport_x1 = x;
-    gl_viewport_y1 = y;
-    gl_viewport_width = width;
-    gl_viewport_height = height;
-
-    GLfloat hw = ((GLfloat) width) / 2.0f;
-    GLfloat hh = ((GLfloat) height) / 2.0f;
-    y *= -1; // Flip
-
-    SCREENVIEW_MATRIX[M0] = hw;
-    SCREENVIEW_MATRIX[M5] = -hh;
-    SCREENVIEW_MATRIX[M10] = 1;
-    SCREENVIEW_MATRIX[M12] = hw + x;
-    SCREENVIEW_MATRIX[M13] = vid_mode->height - hh + y;
+    VIEWPORT.x = x;
+    VIEWPORT.y = y;
+    VIEWPORT.width = width;
+    VIEWPORT.height = height;
+    VIEWPORT.hwidth = ((GLfloat) VIEWPORT.width) * 0.5f;
+    VIEWPORT.hheight = ((GLfloat) VIEWPORT.height) * 0.5f;
+    VIEWPORT.x_plus_hwidth = VIEWPORT.x + VIEWPORT.hwidth;
+    VIEWPORT.y_plus_hheight = VIEWPORT.y + VIEWPORT.hheight;
 }
 
 /* Set the depth range */
@@ -468,18 +459,21 @@ void gluLookAt(GLfloat eyex, GLfloat eyey, GLfloat eyez, GLfloat centerx,
     DownloadMatrix4x4(stack_top(MATRIX_STACKS + (GL_MODELVIEW & 0xF)));
 }
 
-void _glApplyRenderMatrix() {
-    UploadMatrix4x4((const Matrix4x4*) &SCREENVIEW_MATRIX);
-    MultiplyMatrix4x4((const Matrix4x4*) stack_top(MATRIX_STACKS + (GL_PROJECTION & 0xF)));
-    MultiplyMatrix4x4((const Matrix4x4*) stack_top(MATRIX_STACKS + (GL_MODELVIEW & 0xF)));
-}
-
 void _glMatrixLoadTexture() {
     UploadMatrix4x4((const Matrix4x4*) stack_top(MATRIX_STACKS + (GL_TEXTURE & 0xF)));
 }
 
 void _glMatrixLoadModelView() {
     UploadMatrix4x4((const Matrix4x4*) stack_top(MATRIX_STACKS + (GL_MODELVIEW & 0xF)));
+}
+
+void _glMatrixLoadProjection() {
+    UploadMatrix4x4((const Matrix4x4*) stack_top(MATRIX_STACKS + (GL_PROJECTION & 0xF)));
+}
+
+void _glMatrixLoadModelViewProjection() {
+    UploadMatrix4x4((const Matrix4x4*) stack_top(MATRIX_STACKS + (GL_PROJECTION & 0xF)));
+    MultiplyMatrix4x4((const Matrix4x4*) stack_top(MATRIX_STACKS + (GL_MODELVIEW & 0xF)));
 }
 
 void _glMatrixLoadNormal() {

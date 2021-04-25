@@ -1075,7 +1075,6 @@ static void light(SubmissionTarget* target) {
     VertexExtra* extra = aligned_vector_at(target->extras, 0);
     EyeSpaceData* eye_space = (EyeSpaceData*) eye_space_data->data;
 
-    _glMatrixLoadModelView();
     mat_transform3(vertex->xyz, eye_space->xyz, target->count, sizeof(Vertex), sizeof(EyeSpaceData));
 
     _glMatrixLoadNormal();
@@ -1093,8 +1092,20 @@ GL_FORCE_INLINE void divide(SubmissionTarget* target) {
 
     ITERATE(target->count) {
         float f = MATH_Fast_Invert(vertex->w);
+
+        /* Convert to NDC */
         vertex->xyz[0] *= f;
         vertex->xyz[1] *= f;
+
+        /* Apply viewport */
+        vertex->xyz[0] = MATH_fmac(
+            VIEWPORT.hwidth, vertex->xyz[0], VIEWPORT.x_plus_hwidth
+        );
+        vertex->xyz[1] = GetVideoMode()->height - MATH_fmac(
+            VIEWPORT.hheight, vertex->xyz[1], VIEWPORT.y_plus_hheight
+        );
+
+        /* Apply depth range */
         vertex->xyz[2] = MAX(
             1.0f - MATH_fmac(vertex->xyz[2] * f, 0.5f, 0.5f),
             PVR_MIN_Z
@@ -1217,15 +1228,33 @@ GL_FORCE_INLINE void submitVertices(GLenum mode, GLsizei first, GLuint count, GL
     /* Make room for the vertices and header */
     aligned_vector_extend(&target->output->vector, target->count + 1);
 
-    _glApplyRenderMatrix(); /* Apply the Render Matrix Stack */
+    /* If we're lighting, then we need to do some work in
+     * eye-space, so we only transform vertices by the modelview
+     * matrix, and then later multiply by projection.
+     *
+     * If we're not doing lighting though we can optimise by taking
+     * vertices straight to clip-space */
 
+    if(doLighting) {
+        _glMatrixLoadModelView();
+    } else {
+        _glMatrixLoadModelViewProjection();
+    }
+
+    /* If we're FAST_PATH_ENABLED, then this will do the transform for us */
     generate(target, mode, first, count, (GLubyte*) indices, type);
+
+    /* No fast path, then we have to do another iteration :( */
+    if(!FAST_PATH_ENABLED) {
+        /* Multiply by modelview */
+        transform(target);
+    }
 
     if(doLighting){
         light(target);
-    }
 
-    if(!FAST_PATH_ENABLED) {
+        /* OK eye-space work done, now move into clip space */
+        _glMatrixLoadProjection();
         transform(target);
     }
 

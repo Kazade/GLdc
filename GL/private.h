@@ -99,6 +99,20 @@ typedef struct {
 } PolyList;
 
 typedef struct {
+    GLint x;
+    GLint y;
+    GLint width;
+    GLint height;
+
+    float x_plus_hwidth;
+    float y_plus_hheight;
+    float hwidth;  /* width * 0.5f */
+    float hheight; /* height * 0.5f */
+} Viewport;
+
+extern Viewport VIEWPORT;
+
+typedef struct {
     /* Palette data is always stored in RAM as RGBA8888 and packed as ARGB8888
      * when uploaded to the PVR */
     GLubyte*    data;
@@ -278,8 +292,9 @@ void _glInitFramebuffers();
 
 void _glMatrixLoadNormal();
 void _glMatrixLoadModelView();
+void _glMatrixLoadProjection();
 void _glMatrixLoadTexture();
-void _glApplyRenderMatrix();
+void _glMatrixLoadModelViewProjection();
 
 extern GLfloat DEPTH_RANGE_MULTIPLIER_L;
 extern GLfloat DEPTH_RANGE_MULTIPLIER_H;
