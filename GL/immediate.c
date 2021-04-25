@@ -20,7 +20,7 @@ static AlignedVector ST_COORDS;
 static AlignedVector NORMALS;
 
 static uint32_t NORMAL; /* Packed normal */
-static GLubyte COLOR[4] = {255, 255, 255, 255};
+static GLubyte COLOR[4] = {255, 255, 255, 255}; /* ARGB order for speed */
 static GLfloat UV_COORD[2] = {0.0f, 0.0f};
 static GLfloat ST_COORD[2] = {0.0f, 0.0f};
 
@@ -114,64 +114,64 @@ void APIENTRY glBegin(GLenum mode) {
 void APIENTRY glColor4f(GLfloat r, GLfloat g, GLfloat b, GLfloat a) {
     ENABLED_VERTEX_ATTRIBUTES |= DIFFUSE_ENABLED_FLAG;
 
-    COLOR[0] = (GLubyte)(r * 255);
-    COLOR[1] = (GLubyte)(g * 255);
-    COLOR[2] = (GLubyte)(b * 255);
-    COLOR[3] = (GLubyte)(a * 255);
+    COLOR[A8IDX] = (GLubyte)(a * 255);
+    COLOR[R8IDX] = (GLubyte)(r * 255);
+    COLOR[G8IDX] = (GLubyte)(g * 255);
+    COLOR[B8IDX] = (GLubyte)(b * 255);
 }
 
 void APIENTRY glColor4ub(GLubyte r, GLubyte  g, GLubyte b, GLubyte a) {
     ENABLED_VERTEX_ATTRIBUTES |= DIFFUSE_ENABLED_FLAG;
 
-    COLOR[0] = r;
-    COLOR[1] = g;
-    COLOR[2] = b;
-    COLOR[3] = a;
+    COLOR[A8IDX] = a;
+    COLOR[R8IDX] = r;
+    COLOR[G8IDX] = g;
+    COLOR[B8IDX] = b;
 }
 
 void APIENTRY glColor4fv(const GLfloat* v) {
     ENABLED_VERTEX_ATTRIBUTES |= DIFFUSE_ENABLED_FLAG;
 
-    COLOR[0] = (GLubyte)(v[0] * 255);
-    COLOR[1] = (GLubyte)(v[1] * 255);
-    COLOR[2] = (GLubyte)(v[2] * 255);
-    COLOR[3] = (GLubyte)(v[3] * 255);
+    COLOR[B8IDX] = (GLubyte)(v[2] * 255);
+    COLOR[G8IDX] = (GLubyte)(v[1] * 255);
+    COLOR[R8IDX] = (GLubyte)(v[0] * 255);
+    COLOR[A8IDX] = (GLubyte)(v[3] * 255);
 }
 
 void APIENTRY glColor3f(GLfloat r, GLfloat g, GLfloat b) {
     ENABLED_VERTEX_ATTRIBUTES |= DIFFUSE_ENABLED_FLAG;
 
-    COLOR[0] = (GLubyte)(r * 255);
-    COLOR[1] = (GLubyte)(g * 255);
-    COLOR[2] = (GLubyte)(b * 255);
-    COLOR[3] = 255;
+    COLOR[B8IDX] = (GLubyte)(b * 255);
+    COLOR[G8IDX] = (GLubyte)(g * 255);
+    COLOR[R8IDX] = (GLubyte)(r * 255);
+    COLOR[A8IDX] = 255;
 }
 
 void APIENTRY glColor3ub(GLubyte red, GLubyte green, GLubyte blue) {
     ENABLED_VERTEX_ATTRIBUTES |= DIFFUSE_ENABLED_FLAG;
 
-    COLOR[0] = red;
-    COLOR[1] = green;
-    COLOR[2] = blue;
-    COLOR[3] = 255;
+    COLOR[A8IDX] = 255;
+    COLOR[R8IDX] = red;
+    COLOR[G8IDX] = green;
+    COLOR[B8IDX] = blue;
 }
 
 void APIENTRY glColor3ubv(const GLubyte *v) {
     ENABLED_VERTEX_ATTRIBUTES |= DIFFUSE_ENABLED_FLAG;
 
-    COLOR[0] = v[0];
-    COLOR[1] = v[1];
-    COLOR[2] = v[2];
-    COLOR[3] = 255;
+    COLOR[A8IDX] = 255;
+    COLOR[R8IDX] = v[0];
+    COLOR[G8IDX] = v[1];
+    COLOR[B8IDX] = v[2];
 }
 
 void APIENTRY glColor3fv(const GLfloat* v) {
     ENABLED_VERTEX_ATTRIBUTES |= DIFFUSE_ENABLED_FLAG;
 
-    COLOR[0] = (GLubyte)(v[0] * 255);
-    COLOR[1] = (GLubyte)(v[1] * 255);
-    COLOR[2] = (GLubyte)(v[2] * 255);
-    COLOR[3] = 255;
+    COLOR[A8IDX] = 255;
+    COLOR[R8IDX] = (GLubyte)(v[0] * 255);
+    COLOR[G8IDX] = (GLubyte)(v[1] * 255);
+    COLOR[B8IDX] = (GLubyte)(v[2] * 255);
 }
 
 void APIENTRY glVertex3f(GLfloat x, GLfloat y, GLfloat z) {
@@ -189,10 +189,7 @@ void APIENTRY glVertex3f(GLfloat x, GLfloat y, GLfloat z) {
     }
 
     if(ENABLED_VERTEX_ATTRIBUTES & DIFFUSE_ENABLED_FLAG) {
-        vert->bgra[R8IDX] = COLOR[0];
-        vert->bgra[G8IDX] = COLOR[1];
-        vert->bgra[B8IDX] = COLOR[2];
-        vert->bgra[A8IDX] = COLOR[3];
+        *((uint32_t*) vert->bgra) = *((uint32_t*) COLOR);
     }
 
     if(ENABLED_VERTEX_ATTRIBUTES & NORMAL_ENABLED_FLAG) {
