@@ -182,15 +182,9 @@ void APIENTRY glVertex3f(GLfloat x, GLfloat y, GLfloat z) {
     vert->x = x;
     vert->y = y;
     vert->z = z;
-
-    if(ENABLED_VERTEX_ATTRIBUTES & UV_ENABLED_FLAG) {
-        vert->u = UV_COORD[0];
-        vert->v = UV_COORD[1];
-    }
-
-    if(ENABLED_VERTEX_ATTRIBUTES & DIFFUSE_ENABLED_FLAG) {
-        *((uint32_t*) vert->bgra) = *((uint32_t*) COLOR);
-    }
+    vert->u = UV_COORD[0];
+    vert->v = UV_COORD[1];
+    *((uint32_t*) vert->bgra) = *((uint32_t*) COLOR);
 
     if(ENABLED_VERTEX_ATTRIBUTES & NORMAL_ENABLED_FLAG) {
         GLuint* n = aligned_vector_extend(&NORMALS, 1);
