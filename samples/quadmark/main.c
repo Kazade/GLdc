@@ -74,6 +74,8 @@ void setup() {
     glOrtho(0, 640, 0, 480, -100, 100);
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
+
+    glDisable(GL_NEARZ_CLIPPING_KOS);
 }
 
 void do_frame() {

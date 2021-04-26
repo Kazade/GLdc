@@ -442,7 +442,7 @@ GL_FORCE_INLINE void transformNormalToEyeSpace(GLfloat* normal) {
     mat_trans_normal3(normal[0], normal[1], normal[2]);
 }
 
-PolyHeader *_glSubmissionTargetHeader(SubmissionTarget* target) {
+GL_FORCE_INLINE PolyHeader *_glSubmissionTargetHeader(SubmissionTarget* target) {
     assert(target->header_offset < target->output->vector.size);
     return aligned_vector_at(&target->output->vector, target->header_offset);
 }
@@ -456,7 +456,7 @@ Vertex* _glSubmissionTargetEnd(SubmissionTarget* target) {
     return _glSubmissionTargetStart(target) + target->count;
 }
 
-static inline void genTriangles(Vertex* output, GLuint count) {
+GL_FORCE_INLINE void genTriangles(Vertex* output, GLuint count) {
     Vertex* it = output + 2;
 
     GLuint i;
@@ -466,17 +466,22 @@ static inline void genTriangles(Vertex* output, GLuint count) {
     }
 }
 
-static inline void genQuads(Vertex* output, GLuint count) {
+GL_FORCE_INLINE void genQuads(Vertex* output, GLuint count) {
+    Vertex* pen = output + 2;
     Vertex* final = output + 3;
-    GLuint i;
-    for(i = 0; i < count; i += 4) {
-        swapVertex((final - 1), final);
+    GLuint i = count >> 2;
+    while(i--) {
+        __asm__("pref @%0" : : "r"(pen + 4));
+
+        swapVertex(pen, final);
         final->flags = GPU_CMD_VERTEX_EOL;
+
+        pen += 4;
         final += 4;
     }
 }
 
-static void genTriangleStrip(Vertex* output, GLuint count) {
+GL_FORCE_INLINE void genTriangleStrip(Vertex* output, GLuint count) {
     output[count - 1].flags = GPU_CMD_VERTEX_EOL;
 }
 
@@ -634,6 +639,8 @@ static void _readPositionData(ReadDiffuseFunc func, const GLuint first, const GL
     uint32_t* flags;
 
     ITERATE(count) {
+        __asm__("pref @%0" : : "r"(vptr + vstride));
+
         func(vptr, out);
         vptr += vstride;
 
@@ -653,6 +660,8 @@ static void _readUVData(ReadUVFunc func, const GLuint first, const GLuint count,
     GLubyte* out = (GLubyte*) output[0].uv;
 
     ITERATE(count) {
+        __asm__("pref @%0" : : "r"(uvptr + uvstride));
+
         func(uvptr, out);
         uvptr += uvstride;
         out += sizeof(Vertex);
@@ -666,6 +675,8 @@ static void _readSTData(ReadUVFunc func, const GLuint first, const GLuint count,
     GLubyte* out = (GLubyte*) extra[0].st;
 
     ITERATE(count) {
+        __asm__("pref @%0" : : "r"(stptr + ststride));
+
         func(stptr, out);
         stptr += ststride;
         out += sizeof(VertexExtra);
@@ -714,6 +725,8 @@ static void _readDiffuseData(ReadDiffuseFunc func, const GLuint first, const GLu
     GLubyte* out = (GLubyte*) output[0].bgra;
 
     ITERATE(count) {
+        __asm__("pref @%0" : : "r"(cptr + cstride));
+
         func(cptr, out);
         cptr += cstride;
         out += sizeof(Vertex);
@@ -873,6 +886,8 @@ static void generateElementsFastPath(
         ve++;
     }
 }
+
+#define likely(x)      __builtin_expect(!!(x), 1)
 
 static void generateArraysFastPath(SubmissionTarget* target, const GLsizei first, const GLuint count) {
     Vertex* start = _glSubmissionTargetStart(target);
@@ -1290,7 +1305,6 @@ GL_FORCE_INLINE void submitVertices(GLenum mode, GLsizei first, GLuint count, GL
 
     }
 
-    divide(target);
     push(_glSubmissionTargetHeader(target), GL_FALSE, target->output, 0);
 
     /*

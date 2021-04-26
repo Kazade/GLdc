@@ -42,10 +42,10 @@ void APIENTRY glKosInitConfig(GLdcConfig* config) {
     config->autosort_enabled = GL_FALSE;
     config->fsaa_enabled = GL_FALSE;
 
-    config->initial_op_capacity = 1024;
-    config->initial_pt_capacity = 512;
-    config->initial_tr_capacity = 1024;
-    config->initial_immediate_capacity = 1024;
+    config->initial_op_capacity = 1024 * 3;
+    config->initial_pt_capacity = 512 * 3;
+    config->initial_tr_capacity = 1024 * 3;
+    config->initial_immediate_capacity = 1024 * 3;
     config->internal_palette_format = GL_RGBA4;
 }
 
@@ -86,20 +86,65 @@ void APIENTRY glKosInit() {
     glKosInitEx(&config);
 }
 
+#define likely(x)      __builtin_expect(!!(x), 1)
+#define unlikely(x)    __builtin_expect(!!(x), 0)
+
+GL_FORCE_INLINE bool glIsVertex(const float flags) {
+    return flags == GPU_CMD_VERTEX_EOL || flags == GPU_CMD_VERTEX;
+}
+
+
+GL_FORCE_INLINE void glPerspectiveDivide(void* src, uint32_t n) {
+    TRACE();
+
+    /* Perform perspective divide on each vertex */
+    Vertex* vertex = (Vertex*) src;
+
+    const float h = GetVideoMode()->height;
+
+    while(n--) {
+        __asm__("pref @%0" : : "r"(vertex + 1));
+
+        if(likely(glIsVertex(vertex->flags))) {
+            const float f = MATH_Fast_Invert(vertex->w);
+
+            /* Convert to NDC and apply viewport */
+            vertex->xyz[0] = MATH_fmac(
+                VIEWPORT.hwidth, vertex->xyz[0] * f, VIEWPORT.x_plus_hwidth
+            );
+
+            vertex->xyz[1] = h - MATH_fmac(
+                VIEWPORT.hheight, vertex->xyz[1] * f, VIEWPORT.y_plus_hheight
+            );
+
+            /* Apply depth range */
+            vertex->xyz[2] = MAX(
+                1.0f - MATH_fmac(vertex->xyz[2] * f, 0.5f, 0.5f),
+                PVR_MIN_Z
+            );
+        }
+
+        ++vertex;
+    }
+}
+
 
 void APIENTRY glKosSwapBuffers() {
     TRACE();
 
     SceneBegin();
         SceneListBegin(GPU_LIST_OP_POLY);
+        glPerspectiveDivide(OP_LIST.vector.data, OP_LIST.vector.size);
         SceneListSubmit(OP_LIST.vector.data, OP_LIST.vector.size);
         SceneListFinish();
 
         SceneListBegin(GPU_LIST_PT_POLY);
+        glPerspectiveDivide(PT_LIST.vector.data, PT_LIST.vector.size);
         SceneListSubmit(PT_LIST.vector.data, PT_LIST.vector.size);
         SceneListFinish();
 
         SceneListBegin(GPU_LIST_TR_POLY);
+        glPerspectiveDivide(TR_LIST.vector.data, TR_LIST.vector.size);
         SceneListSubmit(TR_LIST.vector.data, TR_LIST.vector.size);
         SceneListFinish();
     SceneFinish();

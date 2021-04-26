@@ -255,7 +255,6 @@ typedef struct {
     AlignedVector* extras;
 } SubmissionTarget;
 
-PolyHeader* _glSubmissionTargetHeader(SubmissionTarget* target);
 Vertex* _glSubmissionTargetStart(SubmissionTarget* target);
 Vertex* _glSubmissionTargetEnd(SubmissionTarget* target);
 
