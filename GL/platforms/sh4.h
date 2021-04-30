@@ -11,9 +11,9 @@
 #include "sh4_math.h"
 
 #ifndef NDEBUG
-#define PERF_WARNING() printf("[PERF] Unaligned data passed to glTexImage2D\n")
+#define PERF_WARNING(msg) printf("[PERF] %s\n", msg)
 #else
-#define PERF_WARNING() (void) 0
+#define PERF_WARNING(msg) (void) 0
 #endif
 
 
@@ -25,7 +25,6 @@
             assert(((uintptr_t) dst) % 32 == 0); \
             sq_cpy(dst, src, bytes); \
         } else { \
-            PERF_WARNING(); \
             memcpy(dst, src, bytes); \
         } \
     } while(0)
