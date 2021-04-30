@@ -354,9 +354,9 @@ GLboolean _glIsNormalizeEnabled();
 GLboolean _glRecalcFastPath();
 
 typedef struct {
-    float xyz[3]; // 12 bytes
     float n[3]; // 12 bytes
-    float finalColour[4]; //16 bytes (to 40)
+    float finalColour[4]; //28 bytes
+    uint32_t padding; // 32 bytes
 } EyeSpaceData;
 
 extern void _glPerformLighting(Vertex* vertices, EyeSpaceData *es, const uint32_t count);

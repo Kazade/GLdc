@@ -492,9 +492,9 @@ void _glPerformLighting(Vertex* vertices, EyeSpaceData* es, const uint32_t count
     data = es;
     for(j = 0; j < count; ++j, ++vertex, ++data) {
         /* Direction to vertex in eye space */
-        float Vx = -data->xyz[0];
-        float Vy = -data->xyz[1];
-        float Vz = -data->xyz[2];
+        float Vx = -vertex->xyz[0];
+        float Vy = -vertex->xyz[1];
+        float Vz = -vertex->xyz[2];
         VEC3_NORMALIZE(Vx, Vy, Vz);
 
         const float Nx = data->n[0];
@@ -506,9 +506,9 @@ void _glPerformLighting(Vertex* vertices, EyeSpaceData* es, const uint32_t count
                 continue;
             }
 
-            float Lx = LIGHTS[i].position[0] - data->xyz[0];
-            float Ly = LIGHTS[i].position[1] - data->xyz[1];
-            float Lz = LIGHTS[i].position[2] - data->xyz[2];
+            float Lx = LIGHTS[i].position[0] - vertex->xyz[0];
+            float Ly = LIGHTS[i].position[1] - vertex->xyz[1];
+            float Lz = LIGHTS[i].position[2] - vertex->xyz[2];
 
             if(LIGHTS[i].isDirectional) {
                 float Hx = (Lx + 0);
