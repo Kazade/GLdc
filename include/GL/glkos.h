@@ -56,6 +56,7 @@ typedef struct {
     GLuint initial_tr_capacity;
     GLuint initial_pt_capacity;
     GLuint initial_immediate_capacity;
+
 } GLdcConfig;
 
 

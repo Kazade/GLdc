@@ -6,6 +6,14 @@ static PolyList OP_LIST;
 static PolyList PT_LIST;
 static PolyList TR_LIST;
 
+/** Don't fully comply to the GL standard to make some performance
+ *  gains. Specifically glDepthRange will be ignored, and the final
+ *  Z coordinate will be invW and not between 0 and 1.
+ *
+ *  Defaults to TRUE set to FALSE if you experience issues.
+ **/
+
+#define FAST_MODE GL_TRUE
 
 PolyList* _glActivePolyList() {
     if(_glIsBlendingEnabled()) {
@@ -94,7 +102,7 @@ GL_FORCE_INLINE bool glIsVertex(const float flags) {
 }
 
 
-GL_FORCE_INLINE void glPerspectiveDivide(void* src, uint32_t n) {
+GL_FORCE_INLINE void glPerspectiveDivideStandard(void* src, uint32_t n) {
     TRACE();
 
     /* Perform perspective divide on each vertex */
@@ -117,7 +125,7 @@ GL_FORCE_INLINE void glPerspectiveDivide(void* src, uint32_t n) {
                 VIEWPORT.hheight, vertex->xyz[1] * f, VIEWPORT.y_plus_hheight
             );
 
-            /* Apply depth range */
+            /* FIXME: Apply depth range */
             vertex->xyz[2] = MAX(
                 1.0f - MATH_fmac(vertex->xyz[2] * f, 0.5f, 0.5f),
                 PVR_MIN_Z
@@ -128,6 +136,43 @@ GL_FORCE_INLINE void glPerspectiveDivide(void* src, uint32_t n) {
     }
 }
 
+GL_FORCE_INLINE void glPerspectiveDivideFastMode(void* src, uint32_t n) {
+    TRACE();
+
+    /* Perform perspective divide on each vertex */
+    Vertex* vertex = (Vertex*) src;
+
+    const float h = GetVideoMode()->height;
+
+    while(n--) {
+        __asm__("pref @%0" : : "r"(vertex + 1));
+
+        if(likely(glIsVertex(vertex->flags))) {
+            const float f = MATH_Fast_Invert(vertex->w);
+
+            /* Convert to NDC and apply viewport */
+            vertex->xyz[0] = MATH_fmac(
+                VIEWPORT.hwidth, vertex->xyz[0] * f, VIEWPORT.x_plus_hwidth
+            );
+
+            vertex->xyz[1] = h - MATH_fmac(
+                VIEWPORT.hheight, vertex->xyz[1] * f, VIEWPORT.y_plus_hheight
+            );
+
+            vertex->xyz[2] = f;
+        }
+
+        ++vertex;
+    }
+}
+
+GL_FORCE_INLINE void glPerspectiveDivide(void* src, uint32_t n) {
+#if FAST_MODE
+        glPerspectiveDivideFastMode(src, n);
+#else
+        glPerspectiveDivideStandard(src, n);
+#endif
+}
 
 void APIENTRY glKosSwapBuffers() {
     TRACE();
