@@ -2,9 +2,9 @@
 #include "../containers/aligned_vector.h"
 #include "private.h"
 
-static PolyList OP_LIST;
-static PolyList PT_LIST;
-static PolyList TR_LIST;
+PolyList OP_LIST;
+PolyList PT_LIST;
+PolyList TR_LIST;
 
 /** Don't fully comply to the GL standard to make some performance
  *  gains. Specifically glDepthRange will be ignored, and the final
@@ -14,16 +14,6 @@ static PolyList TR_LIST;
  **/
 
 #define FAST_MODE GL_TRUE
-
-PolyList* _glActivePolyList() {
-    if(_glIsBlendingEnabled()) {
-        return &TR_LIST;
-    } else if(_glIsAlphaTestEnabled()) {
-        return &PT_LIST;
-    } else {
-        return &OP_LIST;
-    }
-}
 
 PolyList* _glOpaquePolyList() {
     return &OP_LIST;

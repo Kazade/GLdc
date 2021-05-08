@@ -23,7 +23,7 @@ static GLboolean LIGHTING_ENABLED = GL_FALSE;
 /* Is the shared texture palette enabled? */
 static GLboolean SHARED_PALETTE_ENABLED = GL_FALSE;
 
-static GLboolean ALPHA_TEST_ENABLED = GL_FALSE;
+GLboolean ALPHA_TEST_ENABLED = GL_FALSE;
 
 static GLboolean POLYGON_OFFSET_ENABLED = GL_FALSE;
 
@@ -89,21 +89,13 @@ static int _calc_pvr_depth_test() {
 
 static GLenum BLEND_SFACTOR = GL_ONE;
 static GLenum BLEND_DFACTOR = GL_ZERO;
-static GLboolean BLEND_ENABLED = GL_FALSE;
+GLboolean BLEND_ENABLED = GL_FALSE;
 
 static GLfloat OFFSET_FACTOR = 0.0f;
 static GLfloat OFFSET_UNITS = 0.0f;
 
 GLboolean _glIsNormalizeEnabled() {
     return NORMALIZE_ENABLED;
-}
-
-GLboolean _glIsBlendingEnabled() {
-    return BLEND_ENABLED;
-}
-
-GLboolean _glIsAlphaTestEnabled() {
-    return ALPHA_TEST_ENABLED;
 }
 
 static int _calcPVRBlendFactor(GLenum factor) {

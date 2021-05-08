@@ -277,7 +277,6 @@ struct SubmissionTarget;
 float _glClipLineToNearZ(const Vertex* v1, const Vertex* v2, Vertex* vout);
 void _glClipTriangleStrip(SubmissionTarget* target, uint8_t fladeShade);
 
-PolyList *_glActivePolyList();
 PolyList* _glOpaquePolyList();
 PolyList* _glPunchThruPolyList();
 PolyList *_glTransparentPolyList();
@@ -338,8 +337,30 @@ void _glSetInternalPaletteFormat(GLenum val);
 GLboolean _glIsSharedTexturePaletteEnabled();
 void _glApplyColorTable(TexturePalette *palette);
 
-GLboolean _glIsBlendingEnabled();
-GLboolean _glIsAlphaTestEnabled();
+extern GLboolean BLEND_ENABLED;
+extern GLboolean ALPHA_TEST_ENABLED;
+
+GL_FORCE_INLINE GLboolean _glIsBlendingEnabled() {
+    return BLEND_ENABLED;
+}
+
+GL_FORCE_INLINE GLboolean _glIsAlphaTestEnabled() {
+    return ALPHA_TEST_ENABLED;
+}
+
+extern PolyList OP_LIST;
+extern PolyList PT_LIST;
+extern PolyList TR_LIST;
+
+GL_FORCE_INLINE PolyList* _glActivePolyList() {
+    if(BLEND_ENABLED) {
+        return &TR_LIST;
+    } else if(ALPHA_TEST_ENABLED) {
+        return &PT_LIST;
+    } else {
+        return &OP_LIST;
+    }
+}
 
 GLboolean _glIsMipmapComplete(const TextureObject* obj);
 GLubyte* _glGetMipmapLocation(const TextureObject* obj, GLuint level);
