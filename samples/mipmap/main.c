@@ -137,6 +137,8 @@ void LoadGLTextures() {
     glTexImage2D(GL_TEXTURE_2D, 0, 3, image1->sizeX, image1->sizeY, 0, GL_RGB, GL_UNSIGNED_BYTE, image1->data);
 
     glGenerateMipmapEXT(GL_TEXTURE_2D);
+
+    free(image1);
 };
 
 /* A general OpenGL initialization function.  Sets all of the initial parameters. */
