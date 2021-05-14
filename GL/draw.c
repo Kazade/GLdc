@@ -471,7 +471,7 @@ GL_FORCE_INLINE void genQuads(Vertex* output, GLuint count) {
     Vertex* final = output + 3;
     GLuint i = count >> 2;
     while(i--) {
-        __asm__("pref @%0" : : "r"(pen + 4));
+        PREFETCH(pen + 4);
 
         swapVertex(pen, final);
         final->flags = GPU_CMD_VERTEX_EOL;
@@ -639,7 +639,7 @@ static void _readPositionData(ReadDiffuseFunc func, const GLuint first, const GL
     uint32_t* flags;
 
     ITERATE(count) {
-        __asm__("pref @%0" : : "r"(vptr + vstride));
+        PREFETCH(vptr + vstride);
 
         func(vptr, out);
         vptr += vstride;
@@ -660,7 +660,7 @@ static void _readUVData(ReadUVFunc func, const GLuint first, const GLuint count,
     GLubyte* out = (GLubyte*) output[0].uv;
 
     ITERATE(count) {
-        __asm__("pref @%0" : : "r"(uvptr + uvstride));
+        PREFETCH(uvptr + uvstride);
 
         func(uvptr, out);
         uvptr += uvstride;
@@ -675,7 +675,7 @@ static void _readSTData(ReadUVFunc func, const GLuint first, const GLuint count,
     GLubyte* out = (GLubyte*) extra[0].st;
 
     ITERATE(count) {
-        __asm__("pref @%0" : : "r"(stptr + ststride));
+        PREFETCH(stptr + ststride);
 
         func(stptr, out);
         stptr += ststride;
@@ -725,7 +725,7 @@ static void _readDiffuseData(ReadDiffuseFunc func, const GLuint first, const GLu
     GLubyte* out = (GLubyte*) output[0].bgra;
 
     ITERATE(count) {
-        __asm__("pref @%0" : : "r"(cptr + cstride));
+        PREFETCH(cptr + cstride);
 
         func(cptr, out);
         cptr += cstride;

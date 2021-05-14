@@ -17,6 +17,8 @@
 #endif
 
 
+#define PREFETCH(addr) __asm__("pref @%0" : : "r"((addr)))
+
 /* We use sq_cpy if the src and size is properly aligned. We control that the
  * destination is properly aligned so we assert that. */
 #define FASTCPY(dst, src, bytes) \

@@ -101,7 +101,7 @@ GL_FORCE_INLINE void glPerspectiveDivideStandard(void* src, uint32_t n) {
     const float h = GetVideoMode()->height;
 
     while(n--) {
-        __asm__("pref @%0" : : "r"(vertex + 1));
+        PREFETCH(vertex + 1);
 
         if(likely(glIsVertex(vertex->flags))) {
             const float f = MATH_Fast_Invert(vertex->w);
@@ -135,7 +135,7 @@ GL_FORCE_INLINE void glPerspectiveDivideFastMode(void* src, uint32_t n) {
     const float h = GetVideoMode()->height;
 
     while(n--) {
-        __asm__("pref @%0" : : "r"(vertex + 1));
+        PREFETCH(vertex + 1);
 
         if(likely(glIsVertex(vertex->flags))) {
             const float f = MATH_Fast_Invert(vertex->w);
