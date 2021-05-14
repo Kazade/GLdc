@@ -162,6 +162,8 @@ void LoadGLTextures() {
         GL_TEXTURE_2D, 0, image1->internalFormat, image1->sizeX, image1->sizeY, 0,
         image1->dataSize, image1->data
     );
+
+    free(image1);
 };
 
 /* A general OpenGL initialization function.  Sets all of the initial parameters. */
