@@ -1133,8 +1133,12 @@ GL_FORCE_INLINE void push(PolyHeader* header, GLboolean multiTextureHeader, Poly
     PolyContext cxt = *_glGetPVRContext();
     cxt.list_type = activePolyList->list_type;
 
-    /* Punch-through polys require fixed blending and depth modes */
-    if(cxt.list_type == GPU_LIST_PT_POLY) {
+    if(cxt.list_type == GPU_LIST_OP_POLY) {
+        /* Opaque polys are always one/zero */
+        cxt.blend.src = GPU_BLEND_ONE;
+        cxt.blend.dst = GPU_BLEND_ZERO;
+    } else if(cxt.list_type == GPU_LIST_PT_POLY) {
+        /* Punch-through polys require fixed blending and depth modes */
         cxt.blend.src = GPU_BLEND_SRCALPHA;
         cxt.blend.dst = GPU_BLEND_INVSRCALPHA;
         cxt.depth.comparison = GPU_DEPTHCMP_LEQUAL;
