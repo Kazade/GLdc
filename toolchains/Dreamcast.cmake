@@ -6,8 +6,13 @@ SET(CMAKE_SYSTEM_VERSION 1)
 
 set(CMAKE_CROSSCOMPILING TRUE)
 
+IF(WIN32)
 set(CMAKE_C_COMPILER $ENV{KOS_CC_BASE}/bin/sh-elf-gcc${CMAKE_EXECUTABLE_SUFFIX})
 set(CMAKE_CXX_COMPILER $ENV{KOS_CC_BASE}/bin/sh-elf-g++${CMAKE_EXECUTABLE_SUFFIX})
+ELSE()
+set(CMAKE_C_COMPILER $ENV{KOS_CC_BASE}/bin/sh-elf-gcc)
+set(CMAKE_CXX_COMPILER $ENV{KOS_CC_BASE}/bin/sh-elf-g++)
+ENDIF()
 
 add_compile_options(-ml -m4-single-only -ffunction-sections -fdata-sections)
 
