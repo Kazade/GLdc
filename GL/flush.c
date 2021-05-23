@@ -10,10 +10,10 @@ PolyList TR_LIST;
  *  gains. Specifically glDepthRange will be ignored, and the final
  *  Z coordinate will be invW and not between 0 and 1.
  *
- *  Defaults to TRUE set to FALSE if you experience issues.
+ *  This will break orthographic mode so default is FALSE
  **/
 
-#define FAST_MODE GL_TRUE
+#define FAST_MODE GL_FALSE
 
 PolyList* _glOpaquePolyList() {
     return &OP_LIST;
