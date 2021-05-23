@@ -1138,6 +1138,9 @@ GL_FORCE_INLINE void push(PolyHeader* header, GLboolean multiTextureHeader, Poly
         cxt.blend.src = GPU_BLEND_SRCALPHA;
         cxt.blend.dst = GPU_BLEND_INVSRCALPHA;
         cxt.depth.comparison = GPU_DEPTHCMP_LEQUAL;
+    } else if(cxt.list_type == GPU_LIST_TR_POLY && AUTOSORT_ENABLED) {
+        /* Autosort mode requires this mode for transparent polys */
+        cxt.depth.comparison = GPU_DEPTHCMP_GEQUAL;
     }
 
     _glUpdatePVRTextureContext(&cxt, textureUnit);

@@ -339,6 +339,7 @@ void _glApplyColorTable(TexturePalette *palette);
 
 extern GLboolean BLEND_ENABLED;
 extern GLboolean ALPHA_TEST_ENABLED;
+extern GLboolean AUTOSORT_ENABLED;
 
 GL_FORCE_INLINE GLboolean _glIsBlendingEnabled() {
     return BLEND_ENABLED;

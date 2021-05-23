@@ -15,6 +15,8 @@ PolyList TR_LIST;
 
 #define FAST_MODE GL_FALSE
 
+GLboolean AUTOSORT_ENABLED = GL_FALSE;
+
 PolyList* _glOpaquePolyList() {
     return &OP_LIST;
 }
@@ -53,6 +55,8 @@ void APIENTRY glKosInitEx(GLdcConfig* config) {
     printf("\nWelcome to GLdc! Git revision: %s\n\n", GLDC_VERSION);
 
     InitGPU(config->autosort_enabled, config->fsaa_enabled);
+
+    AUTOSORT_ENABLED = config->autosort_enabled;
 
     _glInitMatrices();
     _glInitAttributePointers();
