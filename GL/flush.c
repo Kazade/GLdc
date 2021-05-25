@@ -101,29 +101,38 @@ GL_FORCE_INLINE void glPerspectiveDivideStandard(void* src, uint32_t n) {
 
     /* Perform perspective divide on each vertex */
     Vertex* vertex = (Vertex*) src;
+    PREFETCH(vertex + 1);
 
     const float h = GetVideoMode()->height;
 
     while(n--) {
-        PREFETCH(vertex + 1);
+        PREFETCH(vertex + 2);
 
         if(likely(glIsVertex(vertex->flags))) {
             const float f = MATH_Fast_Invert(vertex->w);
 
             /* Convert to NDC and apply viewport */
-            vertex->xyz[0] = MATH_fmac(
+            vertex->xyz[0] = __builtin_fmaf(
                 VIEWPORT.hwidth, vertex->xyz[0] * f, VIEWPORT.x_plus_hwidth
             );
 
-            vertex->xyz[1] = h - MATH_fmac(
+            vertex->xyz[1] = h - __builtin_fmaf(
                 VIEWPORT.hheight, vertex->xyz[1] * f, VIEWPORT.y_plus_hheight
             );
 
             /* FIXME: Apply depth range */
-            vertex->xyz[2] = MAX(
-                1.0f - MATH_fmac(vertex->xyz[2] * f, 0.5f, 0.5f),
-                PVR_MIN_Z
-            );
+
+            /* After multiplying by 'f', the Z coordinate is between
+            * -1 and 1. We then need to shift it into a value > 0.00001f
+            * where the larger value becomes smaller and vice-versa (because
+            * the PVR works backwards).
+            *
+            * If we multipled the lowest value (-1) by -1 it becomes 1, if
+            * we multiply the lowest value (1) by -1 it becomes, then we need
+            * to add 1 to get it in the range 0 - 2. Then we add a little offset
+            * and this approach means we can just use FMAC.
+            * */
+            vertex->xyz[2] = __builtin_fmaf((vertex->xyz[2] * f), -1.0f, 1.00001f);
         }
 
         ++vertex;

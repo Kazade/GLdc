@@ -30,6 +30,12 @@ static AttribPointer UV_ATTRIB;
 static AttribPointer ST_ATTRIB;
 static AttribPointer NORMAL_ATTRIB;
 
+extern AttribPointer VERTEX_POINTER;
+extern AttribPointer UV_POINTER;
+extern AttribPointer ST_POINTER;
+extern AttribPointer NORMAL_POINTER;
+extern AttribPointer DIFFUSE_POINTER;
+
 /* We store the list of attributes that have been "enabled" by a call to
   glColor, glNormal, glTexCoord etc. otherwise we already have defaults that
   can be applied faster */
@@ -114,10 +120,10 @@ void APIENTRY glBegin(GLenum mode) {
 void APIENTRY glColor4f(GLfloat r, GLfloat g, GLfloat b, GLfloat a) {
     ENABLED_VERTEX_ATTRIBUTES |= DIFFUSE_ENABLED_FLAG;
 
-    COLOR[A8IDX] = (GLubyte)(a * 255);
-    COLOR[R8IDX] = (GLubyte)(r * 255);
-    COLOR[G8IDX] = (GLubyte)(g * 255);
-    COLOR[B8IDX] = (GLubyte)(b * 255);
+    COLOR[A8IDX] = (GLubyte)(a * 255.0f);
+    COLOR[R8IDX] = (GLubyte)(r * 255.0f);
+    COLOR[G8IDX] = (GLubyte)(g * 255.0f);
+    COLOR[B8IDX] = (GLubyte)(b * 255.0f);
 }
 
 void APIENTRY glColor4ub(GLubyte r, GLubyte  g, GLubyte b, GLubyte a) {
@@ -268,27 +274,21 @@ void APIENTRY glEnd() {
 
     GLuint* attrs = _glGetEnabledAttributes();
 
-    AttribPointer* vattr = _glGetVertexAttribPointer();
-    AttribPointer* dattr = _glGetDiffuseAttribPointer();
-    AttribPointer* nattr = _glGetNormalAttribPointer();
-    AttribPointer* uattr = _glGetUVAttribPointer();
-    AttribPointer* sattr = _glGetSTAttribPointer();
-
     /* Stash existing values */
-    AttribPointer vptr = *vattr;
-    AttribPointer dptr = *dattr;
-    AttribPointer nptr = *nattr;
-    AttribPointer uvptr = *uattr;
-    AttribPointer stptr = *sattr;
+    AttribPointer vptr = VERTEX_POINTER;
+    AttribPointer dptr = DIFFUSE_POINTER;
+    AttribPointer nptr = NORMAL_POINTER;
+    AttribPointer uvptr = UV_POINTER;
+    AttribPointer stptr = ST_POINTER;
 
     GLuint prevAttrs = *attrs;
 
     /* Switch to our immediate mode arrays */
-    *vattr = VERTEX_ATTRIB;
-    *dattr = DIFFUSE_ATTRIB;
-    *nattr = NORMAL_ATTRIB;
-    *uattr = UV_ATTRIB;
-    *sattr = ST_ATTRIB;
+    VERTEX_POINTER = VERTEX_ATTRIB;
+    DIFFUSE_POINTER = DIFFUSE_ATTRIB;
+    NORMAL_POINTER = NORMAL_ATTRIB;
+    UV_POINTER = UV_ATTRIB;
+    ST_POINTER = ST_ATTRIB;
 
     *attrs = ENABLED_VERTEX_ATTRIBUTES;
 
@@ -303,11 +303,11 @@ void APIENTRY glEnd() {
     glDrawArrays(ACTIVE_POLYGON_MODE, 0, VERTICES.size);
 
     /* Restore everything */
-    *vattr = vptr;
-    *dattr = dptr;
-    *nattr = nptr;
-    *uattr = uvptr;
-    *sattr = stptr;
+    VERTEX_POINTER = vptr;
+    DIFFUSE_POINTER = dptr;
+    NORMAL_POINTER = nptr;
+    UV_POINTER = uvptr;
+    ST_POINTER = stptr;
 
     *attrs = prevAttrs;
 
@@ -315,12 +315,6 @@ void APIENTRY glEnd() {
     aligned_vector_clear(&VERTICES);
     aligned_vector_clear(&ST_COORDS);
     aligned_vector_clear(&NORMALS);
-
-    *vattr = vptr;
-    *dattr = dptr;
-    *nattr = nptr;
-    *uattr = uvptr;
-    *sattr = stptr;
 }
 
 void APIENTRY glRectf(GLfloat x1, GLfloat y1, GLfloat x2, GLfloat y2) {

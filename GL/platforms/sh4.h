@@ -16,6 +16,11 @@
 #define PERF_WARNING(msg) (void) 0
 #endif
 
+#ifndef GL_FORCE_INLINE
+#define GL_NO_INSTRUMENT inline __attribute__((no_instrument_function))
+#define GL_INLINE_DEBUG GL_NO_INSTRUMENT __attribute__((always_inline))
+#define GL_FORCE_INLINE static GL_INLINE_DEBUG
+#endif
 
 #define PREFETCH(addr) __asm__("pref @%0" : : "r"((addr)))
 
@@ -39,29 +44,29 @@
 #define VEC3_LENGTH(x, y, z, l) vec3f_length((x), (y), (z), (l))
 #define VEC3_DOT(x1, y1, z1, x2, y2, z2, d) vec3f_dot((x1), (y1), (z1), (x2), (y2), (z2), (d))
 
-static inline void UploadMatrix4x4(const Matrix4x4* mat) {
+GL_FORCE_INLINE void UploadMatrix4x4(const Matrix4x4* mat) {
     mat_load((matrix_t*) mat);
 }
 
-static inline void DownloadMatrix4x4(Matrix4x4* mat) {
+GL_FORCE_INLINE void DownloadMatrix4x4(Matrix4x4* mat) {
     mat_store((matrix_t*) mat);
 }
 
-static inline void MultiplyMatrix4x4(const Matrix4x4* mat) {
+GL_FORCE_INLINE void MultiplyMatrix4x4(const Matrix4x4* mat) {
     mat_apply((matrix_t*) mat);
 }
 
-static inline void TransformVec3(float* x) {
+GL_FORCE_INLINE void TransformVec3(float* x) {
     mat_trans_single4(x[0], x[1], x[2], x[3]);
 }
 
 /* Transform a 3-element vector using the stored matrix (w == 1) */
-static inline void TransformVec3NoMod(const float* xIn, float* xOut) {
+GL_FORCE_INLINE void TransformVec3NoMod(const float* xIn, float* xOut) {
     mat_trans_single3_nodiv_nomod(xIn[0], xIn[1], xIn[2], xOut[0], xOut[1], xOut[2]);
 }
 
 /* Transform a 3-element normal using the stored matrix (w == 0)*/
-static inline void TransformNormalNoMod(const float* in, float* out) {
+GL_FORCE_INLINE void TransformNormalNoMod(const float* in, float* out) {
     mat_trans_normal3_nomod(in[0], in[1], in[2], out[0], out[1], out[2]);
 }
 
@@ -70,7 +75,7 @@ inline void TransformVec4(float* x) {
 
 }
 
-static inline void TransformVertex(const float* xyz, const float* w, float* oxyz, float* ow) {
+GL_FORCE_INLINE void TransformVertex(const float* xyz, const float* w, float* oxyz, float* ow) {
     register float __x __asm__("fr12") = (xyz[0]);
     register float __y __asm__("fr13") = (xyz[1]);
     register float __z __asm__("fr14") = (xyz[2]);

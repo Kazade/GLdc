@@ -8,11 +8,11 @@
 #include "private.h"
 #include "platform.h"
 
-static AttribPointer VERTEX_POINTER;
-static AttribPointer UV_POINTER;
-static AttribPointer ST_POINTER;
-static AttribPointer NORMAL_POINTER;
-static AttribPointer DIFFUSE_POINTER;
+AttribPointer VERTEX_POINTER;
+AttribPointer UV_POINTER;
+AttribPointer ST_POINTER;
+AttribPointer NORMAL_POINTER;
+AttribPointer DIFFUSE_POINTER;
 
 static GLuint ENABLED_VERTEX_ATTRIBUTES = 0;
 static GLubyte ACTIVE_CLIENT_TEXTURE = 0;
@@ -632,7 +632,7 @@ ReadNormalFunc calcReadNormalFunc() {
 }
 
 static void _readPositionData(ReadDiffuseFunc func, const GLuint first, const GLuint count, const Vertex* output) {
-    const GLsizei vstride = (VERTEX_POINTER.stride) ? VERTEX_POINTER.stride : VERTEX_POINTER.size * byte_size(VERTEX_POINTER.type);
+    const GLsizei vstride = VERTEX_POINTER.stride;
     const GLubyte* vptr = ((GLubyte*) VERTEX_POINTER.ptr + (first * vstride));
 
     GLubyte* out = (GLubyte*) output[0].xyz;
@@ -654,7 +654,7 @@ static void _readPositionData(ReadDiffuseFunc func, const GLuint first, const GL
 }
 
 static void _readUVData(ReadUVFunc func, const GLuint first, const GLuint count, const Vertex* output) {
-    const GLsizei uvstride = (UV_POINTER.stride) ? UV_POINTER.stride : UV_POINTER.size * byte_size(UV_POINTER.type);
+    const GLsizei uvstride = UV_POINTER.stride;
     const GLubyte* uvptr = ((GLubyte*) UV_POINTER.ptr + (first * uvstride));
 
     GLubyte* out = (GLubyte*) output[0].uv;
@@ -669,7 +669,7 @@ static void _readUVData(ReadUVFunc func, const GLuint first, const GLuint count,
 }
 
 static void _readSTData(ReadUVFunc func, const GLuint first, const GLuint count, const VertexExtra* extra) {
-    const GLsizei ststride = (ST_POINTER.stride) ? ST_POINTER.stride : ST_POINTER.size * byte_size(ST_POINTER.type);
+    const GLsizei ststride = ST_POINTER.stride;
     const GLubyte* stptr = ((GLubyte*) ST_POINTER.ptr + (first * ststride));
 
     GLubyte* out = (GLubyte*) extra[0].st;
@@ -684,7 +684,7 @@ static void _readSTData(ReadUVFunc func, const GLuint first, const GLuint count,
 }
 
 static void _readNormalData(ReadNormalFunc func, const GLuint first, const GLuint count, const VertexExtra* extra) {
-    const GLsizei nstride = (NORMAL_POINTER.stride) ? NORMAL_POINTER.stride : NORMAL_POINTER.size * byte_size(NORMAL_POINTER.type);
+    const GLsizei nstride = NORMAL_POINTER.stride;
     const GLubyte* nptr = ((GLubyte*) NORMAL_POINTER.ptr + (first * nstride));
 
     GLubyte* out = (GLubyte*) extra[0].nxyz;
@@ -718,8 +718,7 @@ GL_FORCE_INLINE GLuint diffusePointerSize() {
 }
 
 static void _readDiffuseData(ReadDiffuseFunc func, const GLuint first, const GLuint count, const Vertex* output) {
-    const GLuint size = diffusePointerSize();
-    const GLuint cstride = (DIFFUSE_POINTER.stride) ? DIFFUSE_POINTER.stride : size * byte_size(DIFFUSE_POINTER.type);
+    const GLuint cstride = DIFFUSE_POINTER.stride;
     const GLubyte* cptr = ((GLubyte*) DIFFUSE_POINTER.ptr) + (first * cstride);
 
     GLubyte* out = (GLubyte*) output[0].bgra;
@@ -758,20 +757,12 @@ static void generateElements(
     const ReadDiffuseFunc diffuse_func = calcReadDiffuseFunc();
     const ReadNormalFunc normal_func = calcReadNormalFunc();
 
-    const GLuint vstride = (VERTEX_POINTER.stride) ?
-        VERTEX_POINTER.stride : VERTEX_POINTER.size * byte_size(VERTEX_POINTER.type);
+    const GLsizei vstride = VERTEX_POINTER.stride;
 
-    const GLuint uvstride = (UV_POINTER.stride) ?
-        UV_POINTER.stride : UV_POINTER.size * byte_size(UV_POINTER.type);
-
-    const GLuint ststride = (ST_POINTER.stride) ?
-        ST_POINTER.stride : ST_POINTER.size * byte_size(ST_POINTER.type);
-
-    const GLuint dstride = (DIFFUSE_POINTER.stride) ?
-        DIFFUSE_POINTER.stride : diffusePointerSize() * byte_size(DIFFUSE_POINTER.type);
-
-    const GLuint nstride = (NORMAL_POINTER.stride) ?
-        NORMAL_POINTER.stride : NORMAL_POINTER.size * byte_size(NORMAL_POINTER.type);
+    const GLuint uvstride = UV_POINTER.stride;
+    const GLuint ststride = ST_POINTER.stride;
+    const GLuint dstride = DIFFUSE_POINTER.stride;
+    const GLuint nstride = NORMAL_POINTER.stride;
 
     for(; i < first + count; ++i) {
         idx = IndexFunc(indices + (i * istride));
@@ -812,20 +803,11 @@ static void generateElementsFastPath(
 
     Vertex* start = _glSubmissionTargetStart(target);
 
-    const GLuint vstride = (VERTEX_POINTER.stride) ?
-        VERTEX_POINTER.stride : VERTEX_POINTER.size * byte_size(VERTEX_POINTER.type);
-
-    const GLuint uvstride = (UV_POINTER.stride) ?
-        UV_POINTER.stride : UV_POINTER.size * byte_size(UV_POINTER.type);
-
-    const GLuint ststride = (ST_POINTER.stride) ?
-        ST_POINTER.stride : ST_POINTER.size * byte_size(ST_POINTER.type);
-
-    const GLuint dstride = (DIFFUSE_POINTER.stride) ?
-        DIFFUSE_POINTER.stride : diffusePointerSize() * byte_size(DIFFUSE_POINTER.type);
-
-    const GLuint nstride = (NORMAL_POINTER.stride) ?
-        NORMAL_POINTER.stride : NORMAL_POINTER.size * byte_size(NORMAL_POINTER.type);
+    const GLuint vstride = VERTEX_POINTER.stride;
+    const GLuint uvstride = UV_POINTER.stride;
+    const GLuint ststride = ST_POINTER.stride;
+    const GLuint dstride = DIFFUSE_POINTER.stride;
+    const GLuint nstride = NORMAL_POINTER.stride;
 
     const GLsizei istride = byte_size(type);
     const IndexParseFunc IndexFunc = _calcParseIndexFunc(type);
@@ -842,17 +824,17 @@ static void generateElementsFastPath(
 
     const float w = 1.0f;
 
+    if(!pos) {
+        return;
+    }
+
     for(GLuint i = first; i < first + count; ++i) {
         GLuint idx = IndexFunc(indices + (i * istride));
 
         it->flags = GPU_CMD_VERTEX;
 
-        if(pos) {
-            pos = (GLubyte*) VERTEX_POINTER.ptr + (idx * vstride);
-            TransformVertex((const float*) pos, &w, it->xyz, &it->w);
-        } else {
-            *((Float3*) it->xyz) = F3ZERO;
-        }
+        pos = (GLubyte*) VERTEX_POINTER.ptr + (idx * vstride);
+        TransformVertex((const float*) pos, &w, it->xyz, &it->w);
 
         if(uv) {
             uv = (GLubyte*) UV_POINTER.ptr + (idx * uvstride);
@@ -892,21 +874,11 @@ static void generateElementsFastPath(
 static void generateArraysFastPath(SubmissionTarget* target, const GLsizei first, const GLuint count) {
     Vertex* start = _glSubmissionTargetStart(target);
 
-    const GLuint vstride = (VERTEX_POINTER.stride) ?
-        VERTEX_POINTER.stride : VERTEX_POINTER.size * byte_size(VERTEX_POINTER.type);
-
-    const GLuint uvstride = (UV_POINTER.stride) ?
-        UV_POINTER.stride : UV_POINTER.size * byte_size(UV_POINTER.type);
-
-    const GLuint ststride = (ST_POINTER.stride) ?
-        ST_POINTER.stride : ST_POINTER.size * byte_size(ST_POINTER.type);
-
-    const GLuint dstride = (DIFFUSE_POINTER.stride) ?
-        DIFFUSE_POINTER.stride : diffusePointerSize() * byte_size(DIFFUSE_POINTER.type);
-
-    const GLuint nstride = (NORMAL_POINTER.stride) ?
-        NORMAL_POINTER.stride : NORMAL_POINTER.size * byte_size(NORMAL_POINTER.type);
-
+    const GLuint vstride = VERTEX_POINTER.stride;
+    const GLuint uvstride = UV_POINTER.stride;
+    const GLuint ststride = ST_POINTER.stride;
+    const GLuint dstride = DIFFUSE_POINTER.stride;
+    const GLuint nstride = NORMAL_POINTER.stride;
 
     /* Copy the pos, uv and color directly in one go */
     const GLubyte* pos = (ENABLED_VERTEX_ATTRIBUTES & VERTEX_ENABLED_FLAG) ? VERTEX_POINTER.ptr + (first * vstride) : NULL;
@@ -922,16 +894,16 @@ static void generateArraysFastPath(SubmissionTarget* target, const GLsizei first
 
     uint32_t i = count;
 
+    if(!pos) {
+        /* If we don't have vertices, do nothing */
+        return;
+    }
+
     while(i--) {
         it->flags = GPU_CMD_VERTEX;
 
-        if(pos) {
-            TransformVertex((const float*) pos, &w, it->xyz, &it->w);
-            pos += vstride;
-        } else {
-            *((Float3*) it->xyz) = F3ZERO;
-        }
-
+        TransformVertex((const float*) pos, &w, it->xyz, &it->w);
+        pos += vstride;
 
         if(uv) {
             MEMCPY4(it->uv, uv, sizeof(float) * 2);
@@ -1468,12 +1440,12 @@ void APIENTRY glTexCoordPointer(GLint size,  GLenum type,  GLsizei stride,  cons
     AttribPointer* tointer = (ACTIVE_CLIENT_TEXTURE == 0) ? &UV_POINTER : &ST_POINTER;
 
     tointer->ptr = pointer;
-    tointer->stride = stride;
+    tointer->stride = (stride) ? stride : size * byte_size(type);
     tointer->type = type;
     tointer->size = size;
 }
 
-void APIENTRY glVertexPointer(GLint size,  GLenum type,  GLsizei stride,  const GLvoid * pointer) {
+void APIENTRY glVertexPointer(GLint size, GLenum type,  GLsizei stride,  const GLvoid * pointer) {
     TRACE();
 
     if(size < 2 || size > 4) {
@@ -1483,7 +1455,7 @@ void APIENTRY glVertexPointer(GLint size,  GLenum type,  GLsizei stride,  const 
     }
 
     VERTEX_POINTER.ptr = pointer;
-    VERTEX_POINTER.stride = stride;
+    VERTEX_POINTER.stride = (stride) ? stride : (size * byte_size(VERTEX_POINTER.type));
     VERTEX_POINTER.type = type;
     VERTEX_POINTER.size = size;
 }
@@ -1497,10 +1469,11 @@ void APIENTRY glColorPointer(GLint size,  GLenum type,  GLsizei stride,  const G
         return;
     }
 
+
     DIFFUSE_POINTER.ptr = pointer;
-    DIFFUSE_POINTER.stride = stride;
     DIFFUSE_POINTER.type = type;
-    DIFFUSE_POINTER.size = size;
+    DIFFUSE_POINTER.size = (DIFFUSE_POINTER.size == GL_BGRA) ? 4 : size;
+    DIFFUSE_POINTER.stride = (stride) ? stride : DIFFUSE_POINTER.size * byte_size(type);
 }
 
 void APIENTRY glNormalPointer(GLenum type,  GLsizei stride,  const GLvoid * pointer) {
@@ -1522,8 +1495,7 @@ void APIENTRY glNormalPointer(GLenum type,  GLsizei stride,  const GLvoid * poin
     }
 
     NORMAL_POINTER.ptr = pointer;
-    NORMAL_POINTER.stride = stride;
-    NORMAL_POINTER.type = type;
     NORMAL_POINTER.size = (type == GL_UNSIGNED_INT_2_10_10_10_REV) ? 1 : 3;
-
+    NORMAL_POINTER.stride = (stride) ? stride : NORMAL_POINTER.size * byte_size(type);
+    NORMAL_POINTER.type = type;
 }
