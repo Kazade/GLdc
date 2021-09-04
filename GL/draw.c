@@ -303,7 +303,7 @@ static void  _fillWhiteARGB(const GLubyte* __restrict__ input, GLubyte* __restri
 
 static void _fillZero2f(const GLubyte* __restrict__ input, GLubyte* __restrict__ out) {
     _GL_UNUSED(input);
-    memset(out, sizeof(float) * 2, 0);
+    memset(out, 0, sizeof(float) * 2);
 }
 
 static void _readVertexData3usARGB(const GLubyte* input, GLubyte* output) {
