@@ -665,6 +665,14 @@ void APIENTRY glCompressedTexImage2DARB(GLenum target,
 
     active->data = yalloc_alloc_and_defrag(imageSize);
 
+    assert(active->data);  // Debug assert
+
+    if(!active->data) {  // Release, bail out "gracefully"
+        _glKosThrowError(GL_OUT_OF_MEMORY, __func__);
+        _glKosPrintError();
+        return;
+    }
+
     if(data) {
         FASTCPY(active->data, data, imageSize);
     }
@@ -1011,6 +1019,12 @@ void _glAllocateSpaceForMipmaps(TextureObject* active) {
 
     active->data = yalloc_alloc_and_defrag(bytes);
 
+    assert(active->data);
+    if(!active->data) {
+        free(temp);
+        return;
+    }
+
     /* If there was existing data, then copy it where it should go */
     memcpy(_glGetMipmapLocation(active, 0), temp, size);
 
@@ -1168,7 +1182,6 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
             active->data = yalloc_alloc_and_defrag(active->baseDataSize);
         }
 
-        assert(active->data);
         active->isCompressed = GL_FALSE;
         active->isPaletted = isPaletted;
     }
@@ -1177,6 +1190,15 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
      * data for the first level (level 0) */
     if(level > 0 && active->baseDataOffset == 0) {
         _glAllocateSpaceForMipmaps(active);
+    }
+
+    assert(active->data);
+
+    /* If we run out of PVR memory just return */
+    if(!active->data) {
+        _glKosThrowError(GL_OUT_OF_MEMORY, __func__);
+        _glKosPrintError();
+        return;
     }
 
     /* Mark this level as set in the mipmap bitmask */
