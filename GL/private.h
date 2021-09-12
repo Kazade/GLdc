@@ -301,7 +301,6 @@ Matrix4x4* _glGetProjectionMatrix();
 Matrix4x4* _glGetModelViewMatrix();
 
 void _glWipeTextureOnFramebuffers(GLuint texture);
-GLubyte _glCheckImmediateModeInactive(const char* func);
 
 PolyContext* _glGetPVRContext();
 GLubyte _glInitTextures();
@@ -329,7 +328,12 @@ GLenum _glGetShadeModel();
 TextureObject* _glGetTexture0();
 TextureObject* _glGetTexture1();
 TextureObject* _glGetBoundTexture();
+
+extern GLubyte ACTIVE_TEXTURE;
+extern GLboolean TEXTURES_ENABLED[];
+
 GLubyte _glGetActiveTexture();
+
 GLuint _glGetActiveClientTexture();
 TexturePalette* _glGetSharedPalette(GLshort bank);
 void _glSetInternalPaletteFormat(GLenum val);
@@ -367,13 +371,92 @@ GLboolean _glIsMipmapComplete(const TextureObject* obj);
 GLubyte* _glGetMipmapLocation(const TextureObject* obj, GLuint level);
 GLuint _glGetMipmapLevelCount(const TextureObject* obj);
 
+extern GLboolean LIGHTING_ENABLED;
 GLboolean _glIsLightingEnabled();
+
 void _glEnableLight(GLubyte light, unsigned char value);
 GLboolean _glIsColorMaterialEnabled();
 
 GLboolean _glIsNormalizeEnabled();
 
-GLboolean _glRecalcFastPath();
+extern AttribPointer VERTEX_POINTER;
+extern AttribPointer UV_POINTER;
+extern AttribPointer ST_POINTER;
+extern AttribPointer NORMAL_POINTER;
+extern AttribPointer DIFFUSE_POINTER;
+extern GLuint ENABLED_VERTEX_ATTRIBUTES;
+extern GLboolean FAST_PATH_ENABLED;
+
+GL_FORCE_INLINE GLboolean _glIsVertexDataFastPathCompatible() {
+    /* The fast path is enabled when all enabled elements of the vertex
+     * match the output format. This means:
+     *
+     * xyz == 3f
+     * uv == 2f
+     * rgba == argb4444
+     * st == 2f
+     * normal == 3f
+     *
+     * When this happens we do inline straight copies of the enabled data
+     * and transforms for positions and normals happen while copying.
+     */
+
+
+
+    if((ENABLED_VERTEX_ATTRIBUTES & VERTEX_ENABLED_FLAG)) {
+        if(VERTEX_POINTER.size != 3 || VERTEX_POINTER.type != GL_FLOAT) {
+            return GL_FALSE;
+        }
+    }
+
+    if((ENABLED_VERTEX_ATTRIBUTES & UV_ENABLED_FLAG)) {
+        if(UV_POINTER.size != 2 || UV_POINTER.type != GL_FLOAT) {
+            return GL_FALSE;
+        }
+    }
+
+    if((ENABLED_VERTEX_ATTRIBUTES & DIFFUSE_ENABLED_FLAG)) {
+        /* FIXME: Shouldn't this be a reversed format? */
+        if(DIFFUSE_POINTER.size != GL_BGRA || DIFFUSE_POINTER.type != GL_UNSIGNED_BYTE) {
+            return GL_FALSE;
+        }
+    }
+
+    if((ENABLED_VERTEX_ATTRIBUTES & ST_ENABLED_FLAG)) {
+        if(ST_POINTER.size != 2 || ST_POINTER.type != GL_FLOAT) {
+            return GL_FALSE;
+        }
+    }
+
+    if((ENABLED_VERTEX_ATTRIBUTES & NORMAL_ENABLED_FLAG)) {
+        if(NORMAL_POINTER.size != 3 || NORMAL_POINTER.type != GL_FLOAT) {
+            return GL_FALSE;
+        }
+    }
+
+    return GL_TRUE;
+}
+
+GL_FORCE_INLINE GLboolean _glRecalcFastPath() {
+    FAST_PATH_ENABLED = _glIsVertexDataFastPathCompatible();
+    return FAST_PATH_ENABLED;
+}
+
+extern GLboolean IMMEDIATE_MODE_ACTIVE;
+
+void _glKosThrowError(GLenum error, const char *function);
+void _glKosPrintError();
+
+GL_FORCE_INLINE GLboolean _glCheckImmediateModeInactive(const char* func) {
+    /* Returns 1 on error */
+    if(IMMEDIATE_MODE_ACTIVE) {
+        _glKosThrowError(GL_INVALID_OPERATION, func);
+        _glKosPrintError();
+        return GL_TRUE;
+    }
+
+    return GL_FALSE;
+}
 
 typedef struct {
     float n[3]; // 12 bytes

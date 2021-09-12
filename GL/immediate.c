@@ -12,7 +12,9 @@
 
 #include "private.h"
 
-static GLboolean IMMEDIATE_MODE_ACTIVE = GL_FALSE;
+extern inline GLboolean _glRecalcFastPath();
+
+GLboolean IMMEDIATE_MODE_ACTIVE = GL_FALSE;
 static GLenum ACTIVE_POLYGON_MODE = GL_TRIANGLES;
 
 static AlignedVector VERTICES;
@@ -39,7 +41,7 @@ extern AttribPointer DIFFUSE_POINTER;
 /* We store the list of attributes that have been "enabled" by a call to
   glColor, glNormal, glTexCoord etc. otherwise we already have defaults that
   can be applied faster */
-static GLuint ENABLED_VERTEX_ATTRIBUTES = 0;
+static GLuint IM_ENABLED_VERTEX_ATTRIBUTES = 0;
 
 static inline uint32_t pack_vertex_attribute_vec3_1i(float x, float y, float z) {
     const float w = 0.0f;
@@ -95,17 +97,6 @@ void _glInitImmediateMode(GLuint initial_size) {
     NORMAL = pack_vertex_attribute_vec3_1i(0.0f, 0.0f, 1.0f);
 }
 
-GLubyte _glCheckImmediateModeInactive(const char* func) {
-    /* Returns 1 on error */
-    if(IMMEDIATE_MODE_ACTIVE) {
-        _glKosThrowError(GL_INVALID_OPERATION, func);
-        _glKosPrintError();
-        return 1;
-    }
-
-    return 0;
-}
-
 void APIENTRY glBegin(GLenum mode) {
     if(IMMEDIATE_MODE_ACTIVE) {
         _glKosThrowError(GL_INVALID_OPERATION, __func__);
@@ -118,7 +109,7 @@ void APIENTRY glBegin(GLenum mode) {
 }
 
 void APIENTRY glColor4f(GLfloat r, GLfloat g, GLfloat b, GLfloat a) {
-    ENABLED_VERTEX_ATTRIBUTES |= DIFFUSE_ENABLED_FLAG;
+    IM_ENABLED_VERTEX_ATTRIBUTES |= DIFFUSE_ENABLED_FLAG;
 
     COLOR[A8IDX] = (GLubyte)(a * 255.0f);
     COLOR[R8IDX] = (GLubyte)(r * 255.0f);
@@ -127,7 +118,7 @@ void APIENTRY glColor4f(GLfloat r, GLfloat g, GLfloat b, GLfloat a) {
 }
 
 void APIENTRY glColor4ub(GLubyte r, GLubyte  g, GLubyte b, GLubyte a) {
-    ENABLED_VERTEX_ATTRIBUTES |= DIFFUSE_ENABLED_FLAG;
+    IM_ENABLED_VERTEX_ATTRIBUTES |= DIFFUSE_ENABLED_FLAG;
 
     COLOR[A8IDX] = a;
     COLOR[R8IDX] = r;
@@ -136,7 +127,7 @@ void APIENTRY glColor4ub(GLubyte r, GLubyte  g, GLubyte b, GLubyte a) {
 }
 
 void APIENTRY glColor4fv(const GLfloat* v) {
-    ENABLED_VERTEX_ATTRIBUTES |= DIFFUSE_ENABLED_FLAG;
+    IM_ENABLED_VERTEX_ATTRIBUTES |= DIFFUSE_ENABLED_FLAG;
 
     COLOR[B8IDX] = (GLubyte)(v[2] * 255);
     COLOR[G8IDX] = (GLubyte)(v[1] * 255);
@@ -145,7 +136,7 @@ void APIENTRY glColor4fv(const GLfloat* v) {
 }
 
 void APIENTRY glColor3f(GLfloat r, GLfloat g, GLfloat b) {
-    ENABLED_VERTEX_ATTRIBUTES |= DIFFUSE_ENABLED_FLAG;
+    IM_ENABLED_VERTEX_ATTRIBUTES |= DIFFUSE_ENABLED_FLAG;
 
     COLOR[B8IDX] = (GLubyte)(b * 255);
     COLOR[G8IDX] = (GLubyte)(g * 255);
@@ -154,7 +145,7 @@ void APIENTRY glColor3f(GLfloat r, GLfloat g, GLfloat b) {
 }
 
 void APIENTRY glColor3ub(GLubyte red, GLubyte green, GLubyte blue) {
-    ENABLED_VERTEX_ATTRIBUTES |= DIFFUSE_ENABLED_FLAG;
+    IM_ENABLED_VERTEX_ATTRIBUTES |= DIFFUSE_ENABLED_FLAG;
 
     COLOR[A8IDX] = 255;
     COLOR[R8IDX] = red;
@@ -163,7 +154,7 @@ void APIENTRY glColor3ub(GLubyte red, GLubyte green, GLubyte blue) {
 }
 
 void APIENTRY glColor3ubv(const GLubyte *v) {
-    ENABLED_VERTEX_ATTRIBUTES |= DIFFUSE_ENABLED_FLAG;
+    IM_ENABLED_VERTEX_ATTRIBUTES |= DIFFUSE_ENABLED_FLAG;
 
     COLOR[A8IDX] = 255;
     COLOR[R8IDX] = v[0];
@@ -172,7 +163,7 @@ void APIENTRY glColor3ubv(const GLubyte *v) {
 }
 
 void APIENTRY glColor3fv(const GLfloat* v) {
-    ENABLED_VERTEX_ATTRIBUTES |= DIFFUSE_ENABLED_FLAG;
+    IM_ENABLED_VERTEX_ATTRIBUTES |= DIFFUSE_ENABLED_FLAG;
 
     COLOR[A8IDX] = 255;
     COLOR[R8IDX] = (GLubyte)(v[0] * 255);
@@ -181,7 +172,7 @@ void APIENTRY glColor3fv(const GLfloat* v) {
 }
 
 void APIENTRY glVertex3f(GLfloat x, GLfloat y, GLfloat z) {
-    ENABLED_VERTEX_ATTRIBUTES |= VERTEX_ENABLED_FLAG;
+    IM_ENABLED_VERTEX_ATTRIBUTES |= VERTEX_ENABLED_FLAG;
 
     GLVertexKOS* vert = aligned_vector_extend(&VERTICES, 1);
 
@@ -192,12 +183,12 @@ void APIENTRY glVertex3f(GLfloat x, GLfloat y, GLfloat z) {
     vert->v = UV_COORD[1];
     *((uint32_t*) vert->bgra) = *((uint32_t*) COLOR);
 
-    if(ENABLED_VERTEX_ATTRIBUTES & NORMAL_ENABLED_FLAG) {
+    if(IM_ENABLED_VERTEX_ATTRIBUTES & NORMAL_ENABLED_FLAG) {
         GLuint* n = aligned_vector_extend(&NORMALS, 1);
         *n = NORMAL;
     }
 
-    if(ENABLED_VERTEX_ATTRIBUTES & ST_ENABLED_FLAG) {
+    if(IM_ENABLED_VERTEX_ATTRIBUTES & ST_ENABLED_FLAG) {
         GLfloat* st = aligned_vector_extend(&ST_COORDS, 2);
         st[0] = ST_COORD[0];
         st[1] = ST_COORD[1];
@@ -227,11 +218,11 @@ void APIENTRY glVertex4fv(const GLfloat* v) {
 
 void APIENTRY glMultiTexCoord2fARB(GLenum target, GLfloat s, GLfloat t) {
     if(target == GL_TEXTURE0) {
-        ENABLED_VERTEX_ATTRIBUTES |= UV_ENABLED_FLAG;
+        IM_ENABLED_VERTEX_ATTRIBUTES |= UV_ENABLED_FLAG;
         UV_COORD[0] = s;
         UV_COORD[1] = t;
     } else if(target == GL_TEXTURE1) {
-        ENABLED_VERTEX_ATTRIBUTES |= ST_ENABLED_FLAG;
+        IM_ENABLED_VERTEX_ATTRIBUTES |= ST_ENABLED_FLAG;
         ST_COORD[0] = s;
         ST_COORD[1] = t;
     } else {
@@ -242,7 +233,7 @@ void APIENTRY glMultiTexCoord2fARB(GLenum target, GLfloat s, GLfloat t) {
 }
 
 void APIENTRY glTexCoord2f(GLfloat u, GLfloat v) {
-    ENABLED_VERTEX_ATTRIBUTES |= UV_ENABLED_FLAG;
+    IM_ENABLED_VERTEX_ATTRIBUTES |= UV_ENABLED_FLAG;
     UV_COORD[0] = u;
     UV_COORD[1] = v;
 }
@@ -252,12 +243,12 @@ void APIENTRY glTexCoord2fv(const GLfloat* v) {
 }
 
 void APIENTRY glNormal3f(GLfloat x, GLfloat y, GLfloat z) {
-    ENABLED_VERTEX_ATTRIBUTES |= NORMAL_ENABLED_FLAG;
+    IM_ENABLED_VERTEX_ATTRIBUTES |= NORMAL_ENABLED_FLAG;
     NORMAL = pack_vertex_attribute_vec3_1i(x, y, z);
 }
 
 void APIENTRY glNormal3fv(const GLfloat* v) {
-    ENABLED_VERTEX_ATTRIBUTES |= NORMAL_ENABLED_FLAG;
+    IM_ENABLED_VERTEX_ATTRIBUTES |= NORMAL_ENABLED_FLAG;
     glNormal3f(v[0], v[1], v[2]);
 }
 
@@ -272,7 +263,7 @@ void APIENTRY glEnd() {
     NORMAL_ATTRIB.ptr = NORMALS.data;
     ST_ATTRIB.ptr = ST_COORDS.data;
 
-    GLuint* attrs = _glGetEnabledAttributes();
+    GLuint* attrs = &ENABLED_VERTEX_ATTRIBUTES;
 
     /* Stash existing values */
     AttribPointer vptr = VERTEX_POINTER;
@@ -290,10 +281,11 @@ void APIENTRY glEnd() {
     UV_POINTER = UV_ATTRIB;
     ST_POINTER = ST_ATTRIB;
 
-    *attrs = ENABLED_VERTEX_ATTRIBUTES;
+    *attrs = IM_ENABLED_VERTEX_ATTRIBUTES;
 
 #ifndef NDEBUG
-    _glRecalcFastPath();
+    /* If we're not debugging, set to true - we assume we haven't broken it! */
+    FAST_PATH_ENABLED = GL_TRUE;
 #else
     // Immediate mode should always activate the fast path
     GLboolean fastPathEnabled = _glRecalcFastPath();

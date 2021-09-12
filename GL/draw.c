@@ -13,10 +13,12 @@ AttribPointer UV_POINTER;
 AttribPointer ST_POINTER;
 AttribPointer NORMAL_POINTER;
 AttribPointer DIFFUSE_POINTER;
+GLuint ENABLED_VERTEX_ATTRIBUTES = 0;
+GLboolean FAST_PATH_ENABLED = GL_FALSE;
 
-static GLuint ENABLED_VERTEX_ATTRIBUTES = 0;
 static GLubyte ACTIVE_CLIENT_TEXTURE = 0;
-static GLboolean FAST_PATH_ENABLED = GL_FALSE;
+
+extern inline GLboolean _glRecalcFastPath();
 
 #define ITERATE(count) \
     GLuint i = count; \
@@ -52,53 +54,7 @@ void _glInitAttributePointers() {
     NORMAL_POINTER.size = 3;
 }
 
-GL_FORCE_INLINE GLboolean _glIsVertexDataFastPathCompatible() {
-    /* The fast path is enabled when all enabled elements of the vertex
-     * match the output format. This means:
-     *
-     * xyz == 3f
-     * uv == 2f
-     * rgba == argb4444
-     * st == 2f
-     * normal == 3f
-     *
-     * When this happens we do inline straight copies of the enabled data
-     * and transforms for positions and normals happen while copying.
-     */
 
-    if((ENABLED_VERTEX_ATTRIBUTES & VERTEX_ENABLED_FLAG)) {
-        if(VERTEX_POINTER.size != 3 || VERTEX_POINTER.type != GL_FLOAT) {
-            return GL_FALSE;
-        }
-    }
-
-    if((ENABLED_VERTEX_ATTRIBUTES & UV_ENABLED_FLAG)) {
-        if(UV_POINTER.size != 2 || UV_POINTER.type != GL_FLOAT) {
-            return GL_FALSE;
-        }
-    }
-
-    if((ENABLED_VERTEX_ATTRIBUTES & DIFFUSE_ENABLED_FLAG)) {
-        /* FIXME: Shouldn't this be a reversed format? */
-        if(DIFFUSE_POINTER.size != GL_BGRA || DIFFUSE_POINTER.type != GL_UNSIGNED_BYTE) {
-            return GL_FALSE;
-        }
-    }
-
-    if((ENABLED_VERTEX_ATTRIBUTES & ST_ENABLED_FLAG)) {
-        if(ST_POINTER.size != 2 || ST_POINTER.type != GL_FLOAT) {
-            return GL_FALSE;
-        }
-    }
-
-    if((ENABLED_VERTEX_ATTRIBUTES & NORMAL_ENABLED_FLAG)) {
-        if(NORMAL_POINTER.size != 3 || NORMAL_POINTER.type != GL_FLOAT) {
-            return GL_FALSE;
-        }
-    }
-
-    return GL_TRUE;
-}
 
 GL_FORCE_INLINE GLsizei byte_size(GLenum type) {
     switch(type) {
@@ -1182,19 +1138,8 @@ GL_FORCE_INLINE void submitVertices(GLenum mode, GLsizei first, GLuint count, GL
         target->extras = &extras;
     }
 
-    GLboolean doMultitexture, doTexture, doLighting;
-    GLint activeTexture;
-    glGetIntegerv(GL_ACTIVE_TEXTURE_ARB, &activeTexture);
-
-    glActiveTextureARB(GL_TEXTURE0);
-    glGetBooleanv(GL_TEXTURE_2D, &doTexture);
-
-    glActiveTextureARB(GL_TEXTURE1);
-    glGetBooleanv(GL_TEXTURE_2D, &doMultitexture);
-
-    doLighting = _glIsLightingEnabled();
-
-    glActiveTextureARB(activeTexture);
+    const GLboolean doLighting = LIGHTING_ENABLED;
+    const GLboolean doMultitexture = TEXTURES_ENABLED[1];
 
     /* Polygons are treated as triangle fans, the only time this would be a
      * problem is if we supported glPolygonMode(..., GL_LINE) but we don't.
@@ -1421,11 +1366,6 @@ void APIENTRY glClientActiveTextureARB(GLenum texture) {
     }
 
     ACTIVE_CLIENT_TEXTURE = (texture == GL_TEXTURE1_ARB) ? 1 : 0;
-}
-
-GLboolean _glRecalcFastPath() {
-    FAST_PATH_ENABLED = _glIsVertexDataFastPathCompatible();
-    return FAST_PATH_ENABLED;
 }
 
 void APIENTRY glTexCoordPointer(GLint size,  GLenum type,  GLsizei stride,  const GLvoid * pointer) {

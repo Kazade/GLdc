@@ -18,7 +18,7 @@ static GLenum FRONT_FACE = GL_CCW;
 static GLboolean CULLING_ENABLED = GL_FALSE;
 static GLboolean COLOR_MATERIAL_ENABLED = GL_FALSE;
 
-static GLboolean LIGHTING_ENABLED = GL_FALSE;
+GLboolean LIGHTING_ENABLED = GL_FALSE;
 
 /* Is the shared texture palette enabled? */
 static GLboolean SHARED_PALETTE_ENABLED = GL_FALSE;

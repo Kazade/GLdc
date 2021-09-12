@@ -20,7 +20,7 @@
 
 static TextureObject* TEXTURE_UNITS[MAX_TEXTURE_UNITS] = {NULL, NULL};
 static NamedArray TEXTURE_OBJECTS;
-static GLubyte ACTIVE_TEXTURE = 0;
+GLubyte ACTIVE_TEXTURE = 0;
 
 static TexturePalette* SHARED_PALETTES[4] = {NULL, NULL, NULL, NULL};
 
