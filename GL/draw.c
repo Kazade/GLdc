@@ -11,11 +11,11 @@
 
 AttribPointerList ATTRIB_POINTERS;
 GLuint ENABLED_VERTEX_ATTRIBUTES = 0;
-GLboolean FAST_PATH_ENABLED = GL_FALSE;
+GLuint FAST_PATH_ENABLED = GL_FALSE;
 
 static GLubyte ACTIVE_CLIENT_TEXTURE = 0;
 
-extern inline GLboolean _glRecalcFastPath();
+extern inline GLuint _glRecalcFastPath();
 
 #define ITERATE(count) \
     GLuint i = count; \
@@ -1135,9 +1135,6 @@ GL_FORCE_INLINE void submitVertices(GLenum mode, GLsizei first, GLuint count, GL
         target->extras = &extras;
     }
 
-    const GLboolean doLighting = LIGHTING_ENABLED;
-    const GLboolean doMultitexture = TEXTURES_ENABLED[1];
-
     /* Polygons are treated as triangle fans, the only time this would be a
      * problem is if we supported glPolygonMode(..., GL_LINE) but we don't.
      * We optimise the triangle and quad cases.
@@ -1175,7 +1172,7 @@ GL_FORCE_INLINE void submitVertices(GLenum mode, GLsizei first, GLuint count, GL
      * If we're not doing lighting though we can optimise by taking
      * vertices straight to clip-space */
 
-    if(doLighting) {
+    if(LIGHTING_ENABLED) {
         _glMatrixLoadModelView();
     } else {
         _glMatrixLoadModelViewProjection();
@@ -1190,7 +1187,7 @@ GL_FORCE_INLINE void submitVertices(GLenum mode, GLsizei first, GLuint count, GL
         transform(target);
     }
 
-    if(doLighting){
+    if(LIGHTING_ENABLED){
         light(target);
 
         /* OK eye-space work done, now move into clip space */
@@ -1241,7 +1238,7 @@ GL_FORCE_INLINE void submitVertices(GLenum mode, GLsizei first, GLuint count, GL
        - We want to set the uv coordinates to the passed st ones
     */
 
-    if(!doMultitexture) {
+    if(!TEXTURES_ENABLED[1]) {
         /* Multitexture actively disabled */
         return;
     }

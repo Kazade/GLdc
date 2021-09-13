@@ -12,7 +12,7 @@
 
 #include "private.h"
 
-extern inline GLboolean _glRecalcFastPath();
+extern inline GLuint _glRecalcFastPath();
 
 GLboolean IMMEDIATE_MODE_ACTIVE = GL_FALSE;
 static GLenum ACTIVE_POLYGON_MODE = GL_TRIANGLES;
@@ -248,7 +248,7 @@ void APIENTRY glEnd() {
 
 #ifndef NDEBUG
     // Immediate mode should always activate the fast path
-    GLboolean fastPathEnabled = _glRecalcFastPath();
+    GLuint fastPathEnabled = _glRecalcFastPath();
     assert(fastPathEnabled);
 #else
     /* If we're not debugging, set to true - we assume we haven't broken it! */

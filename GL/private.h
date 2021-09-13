@@ -391,9 +391,9 @@ GLboolean _glIsNormalizeEnabled();
 extern AttribPointerList ATTRIB_POINTERS;
 
 extern GLuint ENABLED_VERTEX_ATTRIBUTES;
-extern GLboolean FAST_PATH_ENABLED;
+extern GLuint FAST_PATH_ENABLED;
 
-GL_FORCE_INLINE GLboolean _glIsVertexDataFastPathCompatible() {
+GL_FORCE_INLINE GLuint _glIsVertexDataFastPathCompatible() {
     /* The fast path is enabled when all enabled elements of the vertex
      * match the output format. This means:
      *
@@ -443,7 +443,7 @@ GL_FORCE_INLINE GLboolean _glIsVertexDataFastPathCompatible() {
     return GL_TRUE;
 }
 
-GL_FORCE_INLINE GLboolean _glRecalcFastPath() {
+GL_FORCE_INLINE GLuint _glRecalcFastPath() {
     FAST_PATH_ENABLED = _glIsVertexDataFastPathCompatible();
     return FAST_PATH_ENABLED;
 }
