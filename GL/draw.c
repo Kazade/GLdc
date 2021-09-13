@@ -1284,7 +1284,6 @@ void APIENTRY glDrawElements(GLenum mode, GLsizei count, GLenum type, const GLvo
     if(_glCheckImmediateModeInactive(__func__)) {
         return;
     }
-    _glRecalcFastPath();
 
     submitVertices(mode, 0, count, type, indices);
 }
@@ -1295,7 +1294,6 @@ void APIENTRY glDrawArrays(GLenum mode, GLint first, GLsizei count) {
     if(_glCheckImmediateModeInactive(__func__)) {
         return;
     }
-    _glRecalcFastPath();
 
     submitVertices(mode, first, count, GL_UNSIGNED_INT, NULL);
 }
@@ -1361,7 +1359,11 @@ void APIENTRY glClientActiveTextureARB(GLenum texture) {
     ACTIVE_CLIENT_TEXTURE = (texture == GL_TEXTURE1_ARB) ? 1 : 0;
 }
 
-void APIENTRY glTexCoordPointer(GLint size,  GLenum type,  GLsizei stride,  const GLvoid * pointer) {
+GL_FORCE_INLINE GLboolean _glComparePointers(AttribPointer* p, GLint size, GLenum type, GLsizei stride, const GLvoid* pointer) {
+    return (p->size == size && p->type == type && p->stride == stride && p->ptr == pointer);
+}
+
+void APIENTRY glTexCoordPointer(GLint size, GLenum type, GLsizei stride, const GLvoid * pointer) {
     TRACE();
 
     if(size < 1 || size > 4) {
@@ -1371,10 +1373,17 @@ void APIENTRY glTexCoordPointer(GLint size,  GLenum type,  GLsizei stride,  cons
 
     AttribPointer* tointer = (ACTIVE_CLIENT_TEXTURE == 0) ? &ATTRIB_POINTERS.uv : &ATTRIB_POINTERS.st;
 
+    if(_glComparePointers(tointer, size, type, stride, pointer)) {
+        // No Change
+        return;
+    }
+
     tointer->ptr = pointer;
     tointer->stride = (stride) ? stride : size * byte_size(type);
     tointer->type = type;
     tointer->size = size;
+
+    _glRecalcFastPath();
 }
 
 void APIENTRY glVertexPointer(GLint size, GLenum type,  GLsizei stride,  const GLvoid * pointer) {
@@ -1385,10 +1394,17 @@ void APIENTRY glVertexPointer(GLint size, GLenum type,  GLsizei stride,  const G
         return;
     }
 
+    if(_glComparePointers(&ATTRIB_POINTERS.vertex, size, type, stride, pointer)) {
+        // No Change
+        return;
+    }
+
     ATTRIB_POINTERS.vertex.ptr = pointer;
     ATTRIB_POINTERS.vertex.stride = (stride) ? stride : (size * byte_size(ATTRIB_POINTERS.vertex.type));
     ATTRIB_POINTERS.vertex.type = type;
     ATTRIB_POINTERS.vertex.size = size;
+
+    _glRecalcFastPath();
 }
 
 void APIENTRY glColorPointer(GLint size,  GLenum type,  GLsizei stride,  const GLvoid * pointer) {
@@ -1399,10 +1415,17 @@ void APIENTRY glColorPointer(GLint size,  GLenum type,  GLsizei stride,  const G
         return;
     }
 
+    if(_glComparePointers(&ATTRIB_POINTERS.colour, size, type, stride, pointer)) {
+        // No Change
+        return;
+    }
+
     ATTRIB_POINTERS.colour.ptr = pointer;
     ATTRIB_POINTERS.colour.type = type;
     ATTRIB_POINTERS.colour.size = (ATTRIB_POINTERS.colour.size == GL_BGRA) ? 4 : size;
     ATTRIB_POINTERS.colour.stride = (stride) ? stride : ATTRIB_POINTERS.colour.size * byte_size(type);
+
+    _glRecalcFastPath();
 }
 
 void APIENTRY glNormalPointer(GLenum type,  GLsizei stride,  const GLvoid * pointer) {
@@ -1423,8 +1446,15 @@ void APIENTRY glNormalPointer(GLenum type,  GLsizei stride,  const GLvoid * poin
         return;
     }
 
+    if(_glComparePointers(&ATTRIB_POINTERS.normal, 3, type, stride, pointer)) {
+        // No Change
+        return;
+    }
+
     ATTRIB_POINTERS.normal.ptr = pointer;
     ATTRIB_POINTERS.normal.size = (type == GL_UNSIGNED_INT_2_10_10_10_REV) ? 1 : 3;
     ATTRIB_POINTERS.normal.stride = (stride) ? stride : ATTRIB_POINTERS.normal.size * byte_size(type);
     ATTRIB_POINTERS.normal.type = type;
+
+    _glRecalcFastPath();
 }
