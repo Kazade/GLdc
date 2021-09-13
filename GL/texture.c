@@ -406,11 +406,8 @@ TextureObject* _glGetBoundTexture() {
 void APIENTRY glActiveTextureARB(GLenum texture) {
     TRACE();
 
-    if(texture < GL_TEXTURE0_ARB || texture > GL_TEXTURE0_ARB + MAX_TEXTURE_UNITS)
+    if(texture < GL_TEXTURE0_ARB || texture > GL_TEXTURE0_ARB + MAX_TEXTURE_UNITS) {
         _glKosThrowError(GL_INVALID_ENUM, "glActiveTextureARB");
-
-    if(_glKosHasError()) {
-        _glKosPrintError();
         return;
     }
 
@@ -594,24 +591,28 @@ void APIENTRY glCompressedTexImage2DARB(GLenum target,
 
     if(target != GL_TEXTURE_2D) {
         _glKosThrowError(GL_INVALID_ENUM, __func__);
+        return;
     }
 
     GLint w = width;
     if(w < 8 || (w & -w) != w) {
         /* Width is not a power of two. Must be!*/
         _glKosThrowError(GL_INVALID_VALUE, __func__);
+        return;
     }
 
     GLint h = height;
     if(h < 8 || (h & -h) != h) {
         /* Height is not a power of two. Must be!*/
         _glKosThrowError(GL_INVALID_VALUE, __func__);
+        return;
     }
 
     if(level || border) {
         /* We don't support setting mipmap levels manually with compressed textures
            maybe one day */
         _glKosThrowError(GL_INVALID_VALUE, __func__);
+        return;
     }
 
     GLboolean mipmapped = GL_FALSE;
@@ -632,16 +633,14 @@ void APIENTRY glCompressedTexImage2DARB(GLenum target,
         case GL_COMPRESSED_RGB_565_VQ_MIPMAP_TWID_KOS:
             mipmapped = GL_TRUE;
         break;
-        default:
-        _glKosThrowError(GL_INVALID_OPERATION, __func__);
+        default: {
+            _glKosThrowError(GL_INVALID_OPERATION, __func__);
+            return;
+        }
     }
 
     if(TEXTURE_UNITS[ACTIVE_TEXTURE] == NULL) {
         _glKosThrowError(GL_INVALID_OPERATION, __func__);
-    }
-
-    if(_glKosHasError()) {
-        _glKosPrintError();
         return;
     }
 
@@ -669,7 +668,6 @@ void APIENTRY glCompressedTexImage2DARB(GLenum target,
 
     if(!active->data) {  // Release, bail out "gracefully"
         _glKosThrowError(GL_OUT_OF_MEMORY, __func__);
-        _glKosPrintError();
         return;
     }
 
@@ -1049,29 +1047,34 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
     if(target != GL_TEXTURE_2D) {
         INFO_MSG("");
         _glKosThrowError(GL_INVALID_ENUM, __func__);
+        return;
     }
 
     if(format != GL_COLOR_INDEX) {
         if(!_isSupportedFormat(format)) {
             INFO_MSG("Unsupported format");
             _glKosThrowError(GL_INVALID_ENUM, __func__);
+            return;
         }
 
         /* Abuse determineStride to see if type is valid */
         if(_determineStride(GL_RGBA, type) == -1) {
             INFO_MSG("");
             _glKosThrowError(GL_INVALID_ENUM, __func__);
+            return;
         }
 
         internalFormat = _cleanInternalFormat(internalFormat);
         if(internalFormat == -1) {
             INFO_MSG("");
             _glKosThrowError(GL_INVALID_VALUE, __func__);
+            return;
         }
     } else {
         if(internalFormat != GL_COLOR_INDEX8_EXT) {
             INFO_MSG("");
             _glKosThrowError(GL_INVALID_ENUM, __func__);
+            return;
         }
     }
 
@@ -1082,6 +1085,7 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
             /* Width is not a power of two. Must be!*/
             INFO_MSG("");
             _glKosThrowError(GL_INVALID_VALUE, __func__);
+            return;
         }
 
 
@@ -1089,6 +1093,7 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
             /* height is not a power of two. Must be!*/
             INFO_MSG("");
             _glKosThrowError(GL_INVALID_VALUE, __func__);
+            return;
         }
     } else {
         /* Mipmap Errors, kos crashes if 1x1 */
@@ -1102,30 +1107,29 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
     if(level < 0) {
         INFO_MSG("");
         _glKosThrowError(GL_INVALID_VALUE, __func__);
+        return;
     }
 
     if(level > 0 && width != height) {
         INFO_MSG("Tried to set non-square texture as a mipmap level");
         printf("[GL ERROR] Mipmaps cannot be supported on non-square textures\n");
         _glKosThrowError(GL_INVALID_OPERATION, __func__);
+        return;
     }
 
     if(border) {
         INFO_MSG("");
         _glKosThrowError(GL_INVALID_VALUE, __func__);
+        return;
     }
 
     if(!TEXTURE_UNITS[ACTIVE_TEXTURE]) {
         INFO_MSG("Called glTexImage2D on unbound texture");
         _glKosThrowError(GL_INVALID_OPERATION, __func__);
+        return;
     }
 
     GLboolean isPaletted = (internalFormat == GL_COLOR_INDEX8_EXT) ? GL_TRUE : GL_FALSE;
-
-    if(_glKosHasError()) {
-        _glKosPrintError();
-        return;
-    }
 
     /* Calculate the format that we need to convert the data to */
     GLuint pvr_format = _determinePVRFormat(internalFormat, type);
@@ -1197,7 +1201,6 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
     /* If we run out of PVR memory just return */
     if(!active->data) {
         _glKosThrowError(GL_OUT_OF_MEMORY, __func__);
-        _glKosPrintError();
         return;
     }
 
@@ -1340,7 +1343,6 @@ void APIENTRY glTexParameteri(GLenum target, GLenum pname, GLint param) {
                     break;
                     default: {
                         _glKosThrowError(GL_INVALID_VALUE, __func__);
-                        _glKosPrintError();
                         return;
                     }
                 }
@@ -1357,7 +1359,6 @@ void APIENTRY glTexParameteri(GLenum target, GLenum pname, GLint param) {
                     break;
                     default: {
                         _glKosThrowError(GL_INVALID_VALUE, __func__);
-                        _glKosPrintError();
                         return;
                     }
                 }
@@ -1435,7 +1436,6 @@ GLAPI void APIENTRY glColorTableEXT(GLenum target, GLenum internalFormat, GLsize
     /* Only allow up to 256 colours in a palette */
     if(width > 256 || width == 0) {
         _glKosThrowError(GL_INVALID_VALUE, __func__);
-        _glKosPrintError();
         return;
     }
 
@@ -1451,7 +1451,6 @@ GLAPI void APIENTRY glColorTableEXT(GLenum target, GLenum internalFormat, GLsize
 
     if(!convert) {
         _glKosThrowError(GL_INVALID_OPERATION, __func__);
-        _glKosPrintError();
         return;
     }
 
@@ -1498,7 +1497,6 @@ GLAPI void APIENTRY glColorTableEXT(GLenum target, GLenum internalFormat, GLsize
     if(palette->bank < 0) {
         /* We ran out of slots! */
         _glKosThrowError(GL_INVALID_OPERATION, __func__);
-        _glKosPrintError();
 
         free(palette->data);
         palette->format = palette->width = palette->size = 0;
@@ -1531,7 +1529,6 @@ GLAPI void APIENTRY glColorSubTableEXT(GLenum target, GLsizei start, GLsizei cou
     _GL_UNUSED(type);
     _GL_UNUSED(data);
     _glKosThrowError(GL_INVALID_OPERATION, __func__);
-    _glKosPrintError();
 }
 
 GLAPI void APIENTRY glGetColorTableEXT(GLenum target, GLenum format, GLenum type, GLvoid *data) {
@@ -1540,7 +1537,6 @@ GLAPI void APIENTRY glGetColorTableEXT(GLenum target, GLenum format, GLenum type
     _GL_UNUSED(type);
     _GL_UNUSED(data);
     _glKosThrowError(GL_INVALID_OPERATION, __func__);
-    _glKosPrintError();
 }
 
 GLAPI void APIENTRY glGetColorTableParameterivEXT(GLenum target, GLenum pname, GLint *params) {
@@ -1548,7 +1544,6 @@ GLAPI void APIENTRY glGetColorTableParameterivEXT(GLenum target, GLenum pname, G
     _GL_UNUSED(pname);
     _GL_UNUSED(params);
     _glKosThrowError(GL_INVALID_OPERATION, __func__);
-    _glKosPrintError();
 }
 
 GLAPI void APIENTRY glGetColorTableParameterfvEXT(GLenum target, GLenum pname, GLfloat *params) {
@@ -1556,7 +1551,6 @@ GLAPI void APIENTRY glGetColorTableParameterfvEXT(GLenum target, GLenum pname, G
     _GL_UNUSED(pname);
     _GL_UNUSED(params);
     _glKosThrowError(GL_INVALID_OPERATION, __func__);
-    _glKosPrintError();
 }
 
 GLAPI void APIENTRY glTexSubImage2D(

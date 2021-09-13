@@ -8,11 +8,8 @@
 #include "private.h"
 #include "platform.h"
 
-AttribPointer VERTEX_POINTER;
-AttribPointer UV_POINTER;
-AttribPointer ST_POINTER;
-AttribPointer NORMAL_POINTER;
-AttribPointer DIFFUSE_POINTER;
+
+AttribPointerList ATTRIB_POINTERS;
 GLuint ENABLED_VERTEX_ATTRIBUTES = 0;
 GLboolean FAST_PATH_ENABLED = GL_FALSE;
 
@@ -28,33 +25,31 @@ extern inline GLboolean _glRecalcFastPath();
 void _glInitAttributePointers() {
     TRACE();
 
-    VERTEX_POINTER.ptr = NULL;
-    VERTEX_POINTER.stride = 0;
-    VERTEX_POINTER.type = GL_FLOAT;
-    VERTEX_POINTER.size = 4;
+    ATTRIB_POINTERS.vertex.ptr = NULL;
+    ATTRIB_POINTERS.vertex.stride = 0;
+    ATTRIB_POINTERS.vertex.type = GL_FLOAT;
+    ATTRIB_POINTERS.vertex.size = 4;
 
-    DIFFUSE_POINTER.ptr = NULL;
-    DIFFUSE_POINTER.stride = 0;
-    DIFFUSE_POINTER.type = GL_FLOAT;
-    DIFFUSE_POINTER.size = 4;
+    ATTRIB_POINTERS.colour.ptr = NULL;
+    ATTRIB_POINTERS.colour.stride = 0;
+    ATTRIB_POINTERS.colour.type = GL_FLOAT;
+    ATTRIB_POINTERS.colour.size = 4;
 
-    UV_POINTER.ptr = NULL;
-    UV_POINTER.stride = 0;
-    UV_POINTER.type = GL_FLOAT;
-    UV_POINTER.size = 4;
+    ATTRIB_POINTERS.uv.ptr = NULL;
+    ATTRIB_POINTERS.uv.stride = 0;
+    ATTRIB_POINTERS.uv.type = GL_FLOAT;
+    ATTRIB_POINTERS.uv.size = 4;
 
-    ST_POINTER.ptr = NULL;
-    ST_POINTER.stride = 0;
-    ST_POINTER.type = GL_FLOAT;
-    ST_POINTER.size = 4;
+    ATTRIB_POINTERS.st.ptr = NULL;
+    ATTRIB_POINTERS.st.stride = 0;
+    ATTRIB_POINTERS.st.type = GL_FLOAT;
+    ATTRIB_POINTERS.st.size = 4;
 
-    NORMAL_POINTER.ptr = NULL;
-    NORMAL_POINTER.stride = 0;
-    NORMAL_POINTER.type = GL_FLOAT;
-    NORMAL_POINTER.size = 3;
+    ATTRIB_POINTERS.normal.ptr = NULL;
+    ATTRIB_POINTERS.normal.stride = 0;
+    ATTRIB_POINTERS.normal.type = GL_FLOAT;
+    ATTRIB_POINTERS.normal.size = 3;
 }
-
-
 
 GL_FORCE_INLINE GLsizei byte_size(GLenum type) {
     switch(type) {
@@ -303,23 +298,23 @@ GLuint* _glGetEnabledAttributes() {
 }
 
 AttribPointer* _glGetVertexAttribPointer() {
-    return &VERTEX_POINTER;
+    return &ATTRIB_POINTERS.vertex;
 }
 
 AttribPointer* _glGetDiffuseAttribPointer() {
-    return &DIFFUSE_POINTER;
+    return &ATTRIB_POINTERS.colour;
 }
 
 AttribPointer* _glGetNormalAttribPointer() {
-    return &NORMAL_POINTER;
+    return &ATTRIB_POINTERS.normal;
 }
 
 AttribPointer* _glGetUVAttribPointer() {
-    return &UV_POINTER;
+    return &ATTRIB_POINTERS.uv;
 }
 
 AttribPointer* _glGetSTAttribPointer() {
-    return &ST_POINTER;
+    return &ATTRIB_POINTERS.st;
 }
 
 typedef GLuint (*IndexParseFunc)(const GLubyte* in);
@@ -467,49 +462,49 @@ ReadPositionFunc calcReadDiffuseFunc() {
         return _fillWhiteARGB;
     }
 
-    switch(DIFFUSE_POINTER.type) {
+    switch(ATTRIB_POINTERS.colour.type) {
         default:
         case GL_DOUBLE:
         case GL_FLOAT:
-            return (DIFFUSE_POINTER.size == 3) ? _readVertexData3fARGB:
-                   (DIFFUSE_POINTER.size == 4) ? _readVertexData4fARGB:
+            return (ATTRIB_POINTERS.colour.size == 3) ? _readVertexData3fARGB:
+                   (ATTRIB_POINTERS.colour.size == 4) ? _readVertexData4fARGB:
                     _readVertexData4fRevARGB;
         case GL_BYTE:
         case GL_UNSIGNED_BYTE:
-            return (DIFFUSE_POINTER.size == 3) ? _readVertexData3ubARGB:
-                   (DIFFUSE_POINTER.size == 4) ? _readVertexData4ubARGB:
+            return (ATTRIB_POINTERS.colour.size == 3) ? _readVertexData3ubARGB:
+                   (ATTRIB_POINTERS.colour.size == 4) ? _readVertexData4ubARGB:
                     _readVertexData4ubRevARGB;
         case GL_SHORT:
         case GL_UNSIGNED_SHORT:
-            return (DIFFUSE_POINTER.size == 3) ? _readVertexData3usARGB:
-                   (DIFFUSE_POINTER.size == 4) ? _readVertexData4usARGB:
+            return (ATTRIB_POINTERS.colour.size == 3) ? _readVertexData3usARGB:
+                   (ATTRIB_POINTERS.colour.size == 4) ? _readVertexData4usARGB:
                     _readVertexData4usRevARGB;
         case GL_INT:
         case GL_UNSIGNED_INT:
-            return (DIFFUSE_POINTER.size == 3) ? _readVertexData3uiARGB:
-                   (DIFFUSE_POINTER.size == 4) ? _readVertexData4uiARGB:
+            return (ATTRIB_POINTERS.colour.size == 3) ? _readVertexData3uiARGB:
+                   (ATTRIB_POINTERS.colour.size == 4) ? _readVertexData4uiARGB:
                     _readVertexData4uiRevARGB;
     }
 }
 
 ReadPositionFunc calcReadPositionFunc() {
-    switch(VERTEX_POINTER.type) {
+    switch(ATTRIB_POINTERS.vertex.type) {
         default:
         case GL_DOUBLE:
         case GL_FLOAT:
-            return (VERTEX_POINTER.size == 3) ? _readVertexData3f3f:
+            return (ATTRIB_POINTERS.vertex.size == 3) ? _readVertexData3f3f:
                     _readVertexData2f3f;
         case GL_BYTE:
         case GL_UNSIGNED_BYTE:
-            return (VERTEX_POINTER.size == 3) ? _readVertexData3ub3f:
+            return (ATTRIB_POINTERS.vertex.size == 3) ? _readVertexData3ub3f:
                     _readVertexData2ub3f;
         case GL_SHORT:
         case GL_UNSIGNED_SHORT:
-            return (VERTEX_POINTER.size == 3) ? _readVertexData3us3f:
+            return (ATTRIB_POINTERS.vertex.size == 3) ? _readVertexData3us3f:
                     _readVertexData2us3f;
         case GL_INT:
         case GL_UNSIGNED_INT:
-            return (VERTEX_POINTER.size == 3) ? _readVertexData3ui3f:
+            return (ATTRIB_POINTERS.vertex.size == 3) ? _readVertexData3ui3f:
                     _readVertexData2ui3f;
     }
 }
@@ -519,7 +514,7 @@ ReadUVFunc calcReadUVFunc() {
         return _fillZero2f;
     }
 
-    switch(UV_POINTER.type) {
+    switch(ATTRIB_POINTERS.uv.type) {
         default:
         case GL_DOUBLE:
         case GL_FLOAT:
@@ -541,7 +536,7 @@ ReadUVFunc calcReadSTFunc() {
         return _fillZero2f;
     }
 
-    switch(ST_POINTER.type) {
+    switch(ATTRIB_POINTERS.st.type) {
         default:
         case GL_DOUBLE:
         case GL_FLOAT:
@@ -563,7 +558,7 @@ ReadNormalFunc calcReadNormalFunc() {
         return _fillWithNegZVE;
     }
 
-    switch(NORMAL_POINTER.type) {
+    switch(ATTRIB_POINTERS.normal.type) {
         default:
         case GL_DOUBLE:
         case GL_FLOAT:
@@ -588,8 +583,8 @@ ReadNormalFunc calcReadNormalFunc() {
 }
 
 static void _readPositionData(ReadDiffuseFunc func, const GLuint first, const GLuint count, const Vertex* output) {
-    const GLsizei vstride = VERTEX_POINTER.stride;
-    const GLubyte* vptr = ((GLubyte*) VERTEX_POINTER.ptr + (first * vstride));
+    const GLsizei vstride = ATTRIB_POINTERS.vertex.stride;
+    const GLubyte* vptr = ((GLubyte*) ATTRIB_POINTERS.vertex.ptr + (first * vstride));
 
     GLubyte* out = (GLubyte*) output[0].xyz;
     uint32_t* flags;
@@ -610,8 +605,8 @@ static void _readPositionData(ReadDiffuseFunc func, const GLuint first, const GL
 }
 
 static void _readUVData(ReadUVFunc func, const GLuint first, const GLuint count, const Vertex* output) {
-    const GLsizei uvstride = UV_POINTER.stride;
-    const GLubyte* uvptr = ((GLubyte*) UV_POINTER.ptr + (first * uvstride));
+    const GLsizei uvstride = ATTRIB_POINTERS.uv.stride;
+    const GLubyte* uvptr = ((GLubyte*) ATTRIB_POINTERS.uv.ptr + (first * uvstride));
 
     GLubyte* out = (GLubyte*) output[0].uv;
 
@@ -625,8 +620,8 @@ static void _readUVData(ReadUVFunc func, const GLuint first, const GLuint count,
 }
 
 static void _readSTData(ReadUVFunc func, const GLuint first, const GLuint count, const VertexExtra* extra) {
-    const GLsizei ststride = ST_POINTER.stride;
-    const GLubyte* stptr = ((GLubyte*) ST_POINTER.ptr + (first * ststride));
+    const GLsizei ststride = ATTRIB_POINTERS.st.stride;
+    const GLubyte* stptr = ((GLubyte*) ATTRIB_POINTERS.st.ptr + (first * ststride));
 
     GLubyte* out = (GLubyte*) extra[0].st;
 
@@ -640,8 +635,8 @@ static void _readSTData(ReadUVFunc func, const GLuint first, const GLuint count,
 }
 
 static void _readNormalData(ReadNormalFunc func, const GLuint first, const GLuint count, const VertexExtra* extra) {
-    const GLsizei nstride = NORMAL_POINTER.stride;
-    const GLubyte* nptr = ((GLubyte*) NORMAL_POINTER.ptr + (first * nstride));
+    const GLsizei nstride = ATTRIB_POINTERS.normal.stride;
+    const GLubyte* nptr = ((GLubyte*) ATTRIB_POINTERS.normal.ptr + (first * nstride));
 
     GLubyte* out = (GLubyte*) extra[0].nxyz;
 
@@ -670,12 +665,12 @@ static void _readNormalData(ReadNormalFunc func, const GLuint first, const GLuin
 }
 
 GL_FORCE_INLINE GLuint diffusePointerSize() {
-    return (DIFFUSE_POINTER.size == GL_BGRA) ? 4 : DIFFUSE_POINTER.size;
+    return (ATTRIB_POINTERS.colour.size == GL_BGRA) ? 4 : ATTRIB_POINTERS.colour.size;
 }
 
 static void _readDiffuseData(ReadDiffuseFunc func, const GLuint first, const GLuint count, const Vertex* output) {
-    const GLuint cstride = DIFFUSE_POINTER.stride;
-    const GLubyte* cptr = ((GLubyte*) DIFFUSE_POINTER.ptr) + (first * cstride);
+    const GLuint cstride = ATTRIB_POINTERS.colour.stride;
+    const GLubyte* cptr = ((GLubyte*) ATTRIB_POINTERS.colour.ptr) + (first * cstride);
 
     GLubyte* out = (GLubyte*) output[0].bgra;
 
@@ -708,26 +703,28 @@ static void generateElements(
     uint32_t idx = 0;
 
     const ReadPositionFunc pos_func = calcReadPositionFunc();
+    const GLsizei vstride = ATTRIB_POINTERS.vertex.stride;
+
     const ReadUVFunc uv_func = calcReadUVFunc();
+    const GLuint uvstride = ATTRIB_POINTERS.uv.stride;
+
     const ReadUVFunc st_func = calcReadSTFunc();
+    const GLuint ststride = ATTRIB_POINTERS.st.stride;
+
     const ReadDiffuseFunc diffuse_func = calcReadDiffuseFunc();
+    const GLuint dstride = ATTRIB_POINTERS.colour.stride;
+
     const ReadNormalFunc normal_func = calcReadNormalFunc();
-
-    const GLsizei vstride = VERTEX_POINTER.stride;
-
-    const GLuint uvstride = UV_POINTER.stride;
-    const GLuint ststride = ST_POINTER.stride;
-    const GLuint dstride = DIFFUSE_POINTER.stride;
-    const GLuint nstride = NORMAL_POINTER.stride;
+    const GLuint nstride = ATTRIB_POINTERS.normal.stride;
 
     for(; i < first + count; ++i) {
         idx = IndexFunc(indices + (i * istride));
 
-        xyz = (GLubyte*) VERTEX_POINTER.ptr + (idx * vstride);
-        uv = (GLubyte*) UV_POINTER.ptr + (idx * uvstride);
-        bgra = (GLubyte*) DIFFUSE_POINTER.ptr + (idx * dstride);
-        st = (GLubyte*) ST_POINTER.ptr + (idx * ststride);
-        nxyz = (GLubyte*) NORMAL_POINTER.ptr + (idx * nstride);
+        xyz = (GLubyte*) ATTRIB_POINTERS.vertex.ptr + (idx * vstride);
+        uv = (GLubyte*) ATTRIB_POINTERS.uv.ptr + (idx * uvstride);
+        bgra = (GLubyte*) ATTRIB_POINTERS.colour.ptr + (idx * dstride);
+        st = (GLubyte*) ATTRIB_POINTERS.st.ptr + (idx * ststride);
+        nxyz = (GLubyte*) ATTRIB_POINTERS.normal.ptr + (idx * nstride);
 
         pos_func(xyz, (GLubyte*) output->xyz);
         uv_func(uv, (GLubyte*) output->uv);
@@ -759,21 +756,21 @@ static void generateElementsFastPath(
 
     Vertex* start = _glSubmissionTargetStart(target);
 
-    const GLuint vstride = VERTEX_POINTER.stride;
-    const GLuint uvstride = UV_POINTER.stride;
-    const GLuint ststride = ST_POINTER.stride;
-    const GLuint dstride = DIFFUSE_POINTER.stride;
-    const GLuint nstride = NORMAL_POINTER.stride;
+    const GLuint vstride = ATTRIB_POINTERS.vertex.stride;
+    const GLuint uvstride = ATTRIB_POINTERS.uv.stride;
+    const GLuint ststride = ATTRIB_POINTERS.st.stride;
+    const GLuint dstride = ATTRIB_POINTERS.colour.stride;
+    const GLuint nstride = ATTRIB_POINTERS.normal.stride;
 
     const GLsizei istride = byte_size(type);
     const IndexParseFunc IndexFunc = _calcParseIndexFunc(type);
 
     /* Copy the pos, uv and color directly in one go */
-    const GLubyte* pos = (ENABLED_VERTEX_ATTRIBUTES & VERTEX_ENABLED_FLAG) ? VERTEX_POINTER.ptr : NULL;
-    const GLubyte* uv = (ENABLED_VERTEX_ATTRIBUTES & UV_ENABLED_FLAG) ? UV_POINTER.ptr : NULL;
-    const GLubyte* col = (ENABLED_VERTEX_ATTRIBUTES & DIFFUSE_ENABLED_FLAG) ? DIFFUSE_POINTER.ptr : NULL;
-    const GLubyte* st = (ENABLED_VERTEX_ATTRIBUTES & ST_ENABLED_FLAG) ? ST_POINTER.ptr : NULL;
-    const GLubyte* n = (ENABLED_VERTEX_ATTRIBUTES & NORMAL_ENABLED_FLAG) ? NORMAL_POINTER.ptr : NULL;
+    const GLubyte* pos = (ENABLED_VERTEX_ATTRIBUTES & VERTEX_ENABLED_FLAG) ? ATTRIB_POINTERS.vertex.ptr : NULL;
+    const GLubyte* uv = (ENABLED_VERTEX_ATTRIBUTES & UV_ENABLED_FLAG) ? ATTRIB_POINTERS.uv.ptr : NULL;
+    const GLubyte* col = (ENABLED_VERTEX_ATTRIBUTES & DIFFUSE_ENABLED_FLAG) ? ATTRIB_POINTERS.colour.ptr : NULL;
+    const GLubyte* st = (ENABLED_VERTEX_ATTRIBUTES & ST_ENABLED_FLAG) ? ATTRIB_POINTERS.st.ptr : NULL;
+    const GLubyte* n = (ENABLED_VERTEX_ATTRIBUTES & NORMAL_ENABLED_FLAG) ? ATTRIB_POINTERS.normal.ptr : NULL;
 
     VertexExtra* ve = aligned_vector_at(target->extras, 0);
     Vertex* it = start;
@@ -789,32 +786,32 @@ static void generateElementsFastPath(
 
         it->flags = GPU_CMD_VERTEX;
 
-        pos = (GLubyte*) VERTEX_POINTER.ptr + (idx * vstride);
+        pos = (GLubyte*) ATTRIB_POINTERS.vertex.ptr + (idx * vstride);
         TransformVertex((const float*) pos, &w, it->xyz, &it->w);
 
         if(uv) {
-            uv = (GLubyte*) UV_POINTER.ptr + (idx * uvstride);
+            uv = (GLubyte*) ATTRIB_POINTERS.uv.ptr + (idx * uvstride);
             MEMCPY4(it->uv, uv, sizeof(float) * 2);
         } else {
             *((Float2*) it->uv) = F2ZERO;
         }
 
         if(col) {
-            col = (GLubyte*) DIFFUSE_POINTER.ptr + (idx * dstride);
+            col = (GLubyte*) ATTRIB_POINTERS.colour.ptr + (idx * dstride);
             MEMCPY4(it->bgra, col, sizeof(uint32_t));
         } else {
             *((uint32_t*) it->bgra) = ~0;
         }
 
         if(st) {
-            st = (GLubyte*) ST_POINTER.ptr + (idx * ststride);
+            st = (GLubyte*) ATTRIB_POINTERS.st.ptr + (idx * ststride);
             MEMCPY4(ve->st, st, sizeof(float) * 2);
         } else {
             *((Float2*) ve->st) = F2ZERO;
         }
 
         if(n) {
-            n = (GLubyte*) NORMAL_POINTER.ptr + (idx * nstride);
+            n = (GLubyte*) ATTRIB_POINTERS.normal.ptr + (idx * nstride);
             MEMCPY4(ve->nxyz, n, sizeof(float) * 3);
         } else {
             *((Float3*) ve->nxyz) = F3Z;
@@ -830,18 +827,18 @@ static void generateElementsFastPath(
 static void generateArraysFastPath(SubmissionTarget* target, const GLsizei first, const GLuint count) {
     Vertex* start = _glSubmissionTargetStart(target);
 
-    const GLuint vstride = VERTEX_POINTER.stride;
-    const GLuint uvstride = UV_POINTER.stride;
-    const GLuint ststride = ST_POINTER.stride;
-    const GLuint dstride = DIFFUSE_POINTER.stride;
-    const GLuint nstride = NORMAL_POINTER.stride;
+    const GLuint vstride = ATTRIB_POINTERS.vertex.stride;
+    const GLuint uvstride = ATTRIB_POINTERS.uv.stride;
+    const GLuint ststride = ATTRIB_POINTERS.st.stride;
+    const GLuint dstride = ATTRIB_POINTERS.colour.stride;
+    const GLuint nstride = ATTRIB_POINTERS.normal.stride;
 
     /* Copy the pos, uv and color directly in one go */
-    const GLubyte* pos = (ENABLED_VERTEX_ATTRIBUTES & VERTEX_ENABLED_FLAG) ? VERTEX_POINTER.ptr + (first * vstride) : NULL;
-    const GLubyte* uv = (ENABLED_VERTEX_ATTRIBUTES & UV_ENABLED_FLAG) ? UV_POINTER.ptr + (first * uvstride) : NULL;
-    const GLubyte* col = (ENABLED_VERTEX_ATTRIBUTES & DIFFUSE_ENABLED_FLAG) ? DIFFUSE_POINTER.ptr + (first * dstride) : NULL;
-    const GLubyte* st = (ENABLED_VERTEX_ATTRIBUTES & ST_ENABLED_FLAG) ? ST_POINTER.ptr + (first * ststride) : NULL;
-    const GLubyte* n = (ENABLED_VERTEX_ATTRIBUTES & NORMAL_ENABLED_FLAG) ? NORMAL_POINTER.ptr + (first * nstride) : NULL;
+    const GLubyte* pos = (ENABLED_VERTEX_ATTRIBUTES & VERTEX_ENABLED_FLAG) ? ATTRIB_POINTERS.vertex.ptr + (first * vstride) : NULL;
+    const GLubyte* uv = (ENABLED_VERTEX_ATTRIBUTES & UV_ENABLED_FLAG) ? ATTRIB_POINTERS.uv.ptr + (first * uvstride) : NULL;
+    const GLubyte* col = (ENABLED_VERTEX_ATTRIBUTES & DIFFUSE_ENABLED_FLAG) ? ATTRIB_POINTERS.colour.ptr + (first * dstride) : NULL;
+    const GLubyte* st = (ENABLED_VERTEX_ATTRIBUTES & ST_ENABLED_FLAG) ? ATTRIB_POINTERS.st.ptr + (first * ststride) : NULL;
+    const GLubyte* n = (ENABLED_VERTEX_ATTRIBUTES & NORMAL_ENABLED_FLAG) ? ATTRIB_POINTERS.normal.ptr + (first * nstride) : NULL;
 
     VertexExtra* ve = aligned_vector_at(target->extras, 0);
     Vertex* it = start;
@@ -1358,10 +1355,6 @@ void APIENTRY glClientActiveTextureARB(GLenum texture) {
 
     if(texture < GL_TEXTURE0_ARB || texture > GL_TEXTURE0_ARB + MAX_TEXTURE_UNITS) {
         _glKosThrowError(GL_INVALID_ENUM, __func__);
-    }
-
-    if(_glKosHasError()) {
-        _glKosPrintError();
         return;
     }
 
@@ -1373,11 +1366,10 @@ void APIENTRY glTexCoordPointer(GLint size,  GLenum type,  GLsizei stride,  cons
 
     if(size < 1 || size > 4) {
         _glKosThrowError(GL_INVALID_VALUE, __func__);
-        _glKosPrintError();
         return;
     }
 
-    AttribPointer* tointer = (ACTIVE_CLIENT_TEXTURE == 0) ? &UV_POINTER : &ST_POINTER;
+    AttribPointer* tointer = (ACTIVE_CLIENT_TEXTURE == 0) ? &ATTRIB_POINTERS.uv : &ATTRIB_POINTERS.st;
 
     tointer->ptr = pointer;
     tointer->stride = (stride) ? stride : size * byte_size(type);
@@ -1390,14 +1382,13 @@ void APIENTRY glVertexPointer(GLint size, GLenum type,  GLsizei stride,  const G
 
     if(size < 2 || size > 4) {
         _glKosThrowError(GL_INVALID_VALUE, __func__);
-        _glKosPrintError();
         return;
     }
 
-    VERTEX_POINTER.ptr = pointer;
-    VERTEX_POINTER.stride = (stride) ? stride : (size * byte_size(VERTEX_POINTER.type));
-    VERTEX_POINTER.type = type;
-    VERTEX_POINTER.size = size;
+    ATTRIB_POINTERS.vertex.ptr = pointer;
+    ATTRIB_POINTERS.vertex.stride = (stride) ? stride : (size * byte_size(ATTRIB_POINTERS.vertex.type));
+    ATTRIB_POINTERS.vertex.type = type;
+    ATTRIB_POINTERS.vertex.size = size;
 }
 
 void APIENTRY glColorPointer(GLint size,  GLenum type,  GLsizei stride,  const GLvoid * pointer) {
@@ -1405,15 +1396,13 @@ void APIENTRY glColorPointer(GLint size,  GLenum type,  GLsizei stride,  const G
 
     if(size != 3 && size != 4 && size != GL_BGRA) {
         _glKosThrowError(GL_INVALID_VALUE, __func__);
-        _glKosPrintError();
         return;
     }
 
-
-    DIFFUSE_POINTER.ptr = pointer;
-    DIFFUSE_POINTER.type = type;
-    DIFFUSE_POINTER.size = (DIFFUSE_POINTER.size == GL_BGRA) ? 4 : size;
-    DIFFUSE_POINTER.stride = (stride) ? stride : DIFFUSE_POINTER.size * byte_size(type);
+    ATTRIB_POINTERS.colour.ptr = pointer;
+    ATTRIB_POINTERS.colour.type = type;
+    ATTRIB_POINTERS.colour.size = (ATTRIB_POINTERS.colour.size == GL_BGRA) ? 4 : size;
+    ATTRIB_POINTERS.colour.stride = (stride) ? stride : ATTRIB_POINTERS.colour.size * byte_size(type);
 }
 
 void APIENTRY glNormalPointer(GLenum type,  GLsizei stride,  const GLvoid * pointer) {
@@ -1434,8 +1423,8 @@ void APIENTRY glNormalPointer(GLenum type,  GLsizei stride,  const GLvoid * poin
         return;
     }
 
-    NORMAL_POINTER.ptr = pointer;
-    NORMAL_POINTER.size = (type == GL_UNSIGNED_INT_2_10_10_10_REV) ? 1 : 3;
-    NORMAL_POINTER.stride = (stride) ? stride : NORMAL_POINTER.size * byte_size(type);
-    NORMAL_POINTER.type = type;
+    ATTRIB_POINTERS.normal.ptr = pointer;
+    ATTRIB_POINTERS.normal.size = (type == GL_UNSIGNED_INT_2_10_10_10_REV) ? 1 : 3;
+    ATTRIB_POINTERS.normal.stride = (stride) ? stride : ATTRIB_POINTERS.normal.size * byte_size(type);
+    ATTRIB_POINTERS.normal.type = type;
 }

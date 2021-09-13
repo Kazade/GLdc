@@ -40,7 +40,6 @@ void APIENTRY glFogf(GLenum pname,  GLfloat param) {
     case GL_FOG_INDEX:
     default: {
         _glKosThrowError(GL_INVALID_ENUM, __func__);
-        _glKosPrintError();
     }
     }
 }

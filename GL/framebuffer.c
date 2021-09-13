@@ -81,13 +81,11 @@ void APIENTRY glFramebufferTexture2DEXT(GLenum target, GLenum attachment, GLenum
     _GL_UNUSED(level);
     if(texture != 0 && !glIsTexture(texture)) {
         _glKosThrowError(GL_INVALID_OPERATION, __func__);
-        _glKosPrintError();
         return;
     }
 
     if(!ACTIVE_FRAMEBUFFER) {
         _glKosThrowError(GL_INVALID_OPERATION, __func__);
-        _glKosPrintError();
         return;
     }
 
@@ -260,7 +258,6 @@ GLboolean _glGenerateMipmapTwiddled(const GLuint pvrFormat, const GLubyte* prevD
 void APIENTRY glGenerateMipmapEXT(GLenum target) {
     if(target != GL_TEXTURE_2D) {
         _glKosThrowError(GL_INVALID_OPERATION, __func__);
-        _glKosPrintError();
         return;
     }
 
@@ -268,14 +265,12 @@ void APIENTRY glGenerateMipmapEXT(GLenum target) {
 
     if(!tex || !tex->data || !tex->mipmapCount) {
         _glKosThrowError(GL_INVALID_OPERATION, __func__);
-        _glKosPrintError();
         return;
     }
 
     if(tex->width != tex->height) {
         fprintf(stderr, "[GL ERROR] Mipmaps cannot be supported on non-square textures\n");
         _glKosThrowError(GL_INVALID_OPERATION, __func__);
-        _glKosPrintError();
         return;
     }
 
@@ -285,7 +280,6 @@ void APIENTRY glGenerateMipmapEXT(GLenum target) {
 
         fprintf(stderr, "[GL ERROR] Mipmaps are only supported on twiddled textures\n");
         _glKosThrowError(GL_INVALID_OPERATION, __func__);
-        _glKosPrintError();
         return;
     }
 
@@ -293,7 +287,6 @@ void APIENTRY glGenerateMipmapEXT(GLenum target) {
     if(!complete && tex->isCompressed) {
         fprintf(stderr, "[GL ERROR] Generating mipmaps for compressed textures is not yet supported\n");
         _glKosThrowError(GL_INVALID_OPERATION, __func__);
-        _glKosPrintError();
         return;
     }
 
@@ -330,7 +323,6 @@ void APIENTRY glGenerateMipmapEXT(GLenum target) {
 GLenum APIENTRY glCheckFramebufferStatusEXT(GLenum target) {
     if(target != GL_FRAMEBUFFER_EXT) {
         _glKosThrowError(GL_INVALID_ENUM, __func__);
-        _glKosPrintError();
         return 0;
     }
 

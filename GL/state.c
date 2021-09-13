@@ -145,7 +145,6 @@ GLboolean _glCheckValidEnum(GLint param, GLint* values, const char* func) {
 
     if(!found) {
         _glKosThrowError(GL_INVALID_ENUM, func);
-        _glKosPrintError();
         return GL_TRUE;
     }
 
@@ -687,7 +686,6 @@ void APIENTRY glGetBooleanv(GLenum pname, GLboolean* params) {
     } break;
     default:
         _glKosThrowError(GL_INVALID_ENUM, __func__);
-        _glKosPrintError();
     }
 }
 
@@ -707,7 +705,6 @@ void APIENTRY glGetFloatv(GLenum pname, GLfloat* params) {
         break;
         default:
             _glKosThrowError(GL_INVALID_ENUM, __func__);
-            _glKosPrintError();
             break;
     }
 }
@@ -759,7 +756,6 @@ void APIENTRY glGetIntegerv(GLenum pname, GLint *params) {
         break;
     default:
         _glKosThrowError(GL_INVALID_ENUM, __func__);
-        _glKosPrintError();
         break;
     }
 }

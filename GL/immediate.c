@@ -17,90 +17,68 @@ extern inline GLboolean _glRecalcFastPath();
 GLboolean IMMEDIATE_MODE_ACTIVE = GL_FALSE;
 static GLenum ACTIVE_POLYGON_MODE = GL_TRIANGLES;
 
-static AlignedVector VERTICES;
-static AlignedVector ST_COORDS;
-static AlignedVector NORMALS;
-
-static uint32_t NORMAL; /* Packed normal */
+static GLfloat NORMAL[3] = {0.0f, 0.0f, 1.0f};
 static GLubyte COLOR[4] = {255, 255, 255, 255}; /* ARGB order for speed */
 static GLfloat UV_COORD[2] = {0.0f, 0.0f};
 static GLfloat ST_COORD[2] = {0.0f, 0.0f};
 
-static AttribPointer VERTEX_ATTRIB;
-static AttribPointer DIFFUSE_ATTRIB;
-static AttribPointer UV_ATTRIB;
-static AttribPointer ST_ATTRIB;
-static AttribPointer NORMAL_ATTRIB;
-
-extern AttribPointer VERTEX_POINTER;
-extern AttribPointer UV_POINTER;
-extern AttribPointer ST_POINTER;
-extern AttribPointer NORMAL_POINTER;
-extern AttribPointer DIFFUSE_POINTER;
+static AlignedVector VERTICES;
+static AttribPointerList IM_ATTRIBS;
 
 /* We store the list of attributes that have been "enabled" by a call to
   glColor, glNormal, glTexCoord etc. otherwise we already have defaults that
   can be applied faster */
 static GLuint IM_ENABLED_VERTEX_ATTRIBUTES = 0;
 
-static inline uint32_t pack_vertex_attribute_vec3_1i(float x, float y, float z) {
-    const float w = 0.0f;
+typedef struct {
+    GLfloat x;
+    GLfloat y;
+    GLfloat z;
+    GLfloat u;
+    GLfloat v;
+    GLfloat s;
+    GLfloat t;
+    GLubyte bgra[4];
+    GLfloat nx;
+    GLfloat ny;
+    GLfloat nz;
+    GLuint padding[5];
+} IMVertex;
 
-    const uint32_t xs = x < 0;
-    const uint32_t ys = y < 0;
-    const uint32_t zs = z < 0;
-    const uint32_t ws = w < 0;
-
-    uint32_t vi =
-        ws << 31 | ((uint32_t)(w + (ws << 1)) & 1) << 30 |
-        zs << 29 | ((uint32_t)(z * 511 + (zs << 9)) & 511) << 20 |
-        ys << 19 | ((uint32_t)(y * 511 + (ys << 9)) & 511) << 10 |
-        xs << 9  | ((uint32_t)(x * 511 + (xs << 9)) & 511);
-
-    return vi;
-}
 
 void _glInitImmediateMode(GLuint initial_size) {
-    aligned_vector_init(&VERTICES, sizeof(GLVertexKOS));
-    aligned_vector_init(&ST_COORDS, sizeof(GLfloat));
-    aligned_vector_init(&NORMALS, sizeof(GLuint));
-
+    aligned_vector_init(&VERTICES, sizeof(IMVertex));
     aligned_vector_reserve(&VERTICES, initial_size);
-    aligned_vector_reserve(&ST_COORDS, initial_size * 2);
-    aligned_vector_reserve(&NORMALS, initial_size);
 
-    VERTEX_ATTRIB.ptr = VERTICES.data + sizeof(uint32_t);
-    VERTEX_ATTRIB.size = 3;
-    VERTEX_ATTRIB.type = GL_FLOAT;
-    VERTEX_ATTRIB.stride = 32;
+    IM_ATTRIBS.vertex.ptr = VERTICES.data;
+    IM_ATTRIBS.vertex.size = 3;
+    IM_ATTRIBS.vertex.type = GL_FLOAT;
+    IM_ATTRIBS.vertex.stride = sizeof(IMVertex);
 
-    UV_ATTRIB.ptr = VERTEX_ATTRIB.ptr + (sizeof(GLfloat) * 3);
-    UV_ATTRIB.stride = 32;
-    UV_ATTRIB.type = GL_FLOAT;
-    UV_ATTRIB.size = 2;
+    IM_ATTRIBS.uv.ptr = IM_ATTRIBS.vertex.ptr + (sizeof(GLfloat) * 3);
+    IM_ATTRIBS.uv.stride = sizeof(IMVertex);
+    IM_ATTRIBS.uv.type = GL_FLOAT;
+    IM_ATTRIBS.uv.size = 2;
 
-    DIFFUSE_ATTRIB.ptr = VERTEX_ATTRIB.ptr + (sizeof(GLfloat) * 5);
-    DIFFUSE_ATTRIB.size = GL_BGRA;  /* Flipped color order */
-    DIFFUSE_ATTRIB.type = GL_UNSIGNED_BYTE;
-    DIFFUSE_ATTRIB.stride = 32;
+    IM_ATTRIBS.st.ptr = IM_ATTRIBS.vertex.ptr + (sizeof(GLfloat) * 5);
+    IM_ATTRIBS.st.stride = sizeof(IMVertex);
+    IM_ATTRIBS.st.type = GL_FLOAT;
+    IM_ATTRIBS.st.size = 2;
 
-    NORMAL_ATTRIB.ptr = NORMALS.data;
-    NORMAL_ATTRIB.stride = 0;
-    NORMAL_ATTRIB.type = GL_UNSIGNED_INT_2_10_10_10_REV;
-    NORMAL_ATTRIB.size = 1;
+    IM_ATTRIBS.colour.ptr = IM_ATTRIBS.vertex.ptr + (sizeof(GLfloat) * 7);
+    IM_ATTRIBS.colour.size = GL_BGRA;  /* Flipped color order */
+    IM_ATTRIBS.colour.type = GL_UNSIGNED_BYTE;
+    IM_ATTRIBS.colour.stride = sizeof(IMVertex);
 
-    ST_ATTRIB.ptr = ST_COORDS.data;
-    ST_ATTRIB.stride = 0;
-    ST_ATTRIB.type = GL_FLOAT;
-    ST_ATTRIB.size = 2;
-
-    NORMAL = pack_vertex_attribute_vec3_1i(0.0f, 0.0f, 1.0f);
+    IM_ATTRIBS.normal.ptr = IM_ATTRIBS.vertex.ptr + (sizeof(GLfloat) * 7) + sizeof(uint32_t);
+    IM_ATTRIBS.normal.stride = sizeof(IMVertex);
+    IM_ATTRIBS.normal.type = GL_FLOAT;
+    IM_ATTRIBS.normal.size = 3;
 }
 
 void APIENTRY glBegin(GLenum mode) {
     if(IMMEDIATE_MODE_ACTIVE) {
         _glKosThrowError(GL_INVALID_OPERATION, __func__);
-        _glKosPrintError();
         return;
     }
 
@@ -138,9 +116,9 @@ void APIENTRY glColor4fv(const GLfloat* v) {
 void APIENTRY glColor3f(GLfloat r, GLfloat g, GLfloat b) {
     IM_ENABLED_VERTEX_ATTRIBUTES |= DIFFUSE_ENABLED_FLAG;
 
-    COLOR[B8IDX] = (GLubyte)(b * 255);
-    COLOR[G8IDX] = (GLubyte)(g * 255);
-    COLOR[R8IDX] = (GLubyte)(r * 255);
+    COLOR[B8IDX] = (GLubyte)(b * 255.0f);
+    COLOR[G8IDX] = (GLubyte)(g * 255.0f);
+    COLOR[R8IDX] = (GLubyte)(r * 255.0f);
     COLOR[A8IDX] = 255;
 }
 
@@ -174,25 +152,28 @@ void APIENTRY glColor3fv(const GLfloat* v) {
 void APIENTRY glVertex3f(GLfloat x, GLfloat y, GLfloat z) {
     IM_ENABLED_VERTEX_ATTRIBUTES |= VERTEX_ENABLED_FLAG;
 
-    GLVertexKOS* vert = aligned_vector_extend(&VERTICES, 1);
+    IMVertex* vert = aligned_vector_extend(&VERTICES, 1);
+
+    /* Resizing could've invalidated the pointers */
+    IM_ATTRIBS.vertex.ptr = VERTICES.data;
+    IM_ATTRIBS.uv.ptr = IM_ATTRIBS.vertex.ptr + (sizeof(GLfloat) * 3);
+    IM_ATTRIBS.st.ptr = IM_ATTRIBS.vertex.ptr + (sizeof(GLfloat) * 5);
+    IM_ATTRIBS.colour.ptr = IM_ATTRIBS.vertex.ptr + (sizeof(GLfloat) * 7);
+    IM_ATTRIBS.normal.ptr = IM_ATTRIBS.vertex.ptr + (sizeof(GLfloat) * 7) + sizeof(uint32_t);
 
     vert->x = x;
     vert->y = y;
-    vert->z = z;
+    vert->z = z;    
     vert->u = UV_COORD[0];
     vert->v = UV_COORD[1];
+    vert->s = ST_COORD[0];
+    vert->t = ST_COORD[1];
+
     *((uint32_t*) vert->bgra) = *((uint32_t*) COLOR);
 
-    if(IM_ENABLED_VERTEX_ATTRIBUTES & NORMAL_ENABLED_FLAG) {
-        GLuint* n = aligned_vector_extend(&NORMALS, 1);
-        *n = NORMAL;
-    }
-
-    if(IM_ENABLED_VERTEX_ATTRIBUTES & ST_ENABLED_FLAG) {
-        GLfloat* st = aligned_vector_extend(&ST_COORDS, 2);
-        st[0] = ST_COORD[0];
-        st[1] = ST_COORD[1];
-    }
+    vert->nx = NORMAL[0];
+    vert->ny = NORMAL[1];
+    vert->nz = NORMAL[2];
 }
 
 void APIENTRY glVertex3fv(const GLfloat* v) {
@@ -227,7 +208,6 @@ void APIENTRY glMultiTexCoord2fARB(GLenum target, GLfloat s, GLfloat t) {
         ST_COORD[1] = t;
     } else {
         _glKosThrowError(GL_INVALID_ENUM, __func__);
-        _glKosPrintError();
         return;
     }
 }
@@ -244,69 +224,44 @@ void APIENTRY glTexCoord2fv(const GLfloat* v) {
 
 void APIENTRY glNormal3f(GLfloat x, GLfloat y, GLfloat z) {
     IM_ENABLED_VERTEX_ATTRIBUTES |= NORMAL_ENABLED_FLAG;
-    NORMAL = pack_vertex_attribute_vec3_1i(x, y, z);
+    NORMAL[0] = x;
+    NORMAL[1] = y;
+    NORMAL[2] = z;
 }
 
 void APIENTRY glNormal3fv(const GLfloat* v) {
-    IM_ENABLED_VERTEX_ATTRIBUTES |= NORMAL_ENABLED_FLAG;
     glNormal3f(v[0], v[1], v[2]);
 }
 
 void APIENTRY glEnd() {
     IMMEDIATE_MODE_ACTIVE = GL_FALSE;
 
-    /* Resizing could have invalidated these pointers */
-    VERTEX_ATTRIB.ptr = VERTICES.data + sizeof(uint32_t);
-    UV_ATTRIB.ptr = VERTEX_ATTRIB.ptr + (sizeof(GLfloat) * 3);
-    DIFFUSE_ATTRIB.ptr = VERTEX_ATTRIB.ptr + (sizeof(GLfloat) * 5);
-
-    NORMAL_ATTRIB.ptr = NORMALS.data;
-    ST_ATTRIB.ptr = ST_COORDS.data;
-
     GLuint* attrs = &ENABLED_VERTEX_ATTRIBUTES;
 
-    /* Stash existing values */
-    AttribPointer vptr = VERTEX_POINTER;
-    AttribPointer dptr = DIFFUSE_POINTER;
-    AttribPointer nptr = NORMAL_POINTER;
-    AttribPointer uvptr = UV_POINTER;
-    AttribPointer stptr = ST_POINTER;
+    /* Redirect attrib pointers */
+    AttribPointerList stashed_attrib_pointers = ATTRIB_POINTERS;
+    ATTRIB_POINTERS = IM_ATTRIBS;
 
     GLuint prevAttrs = *attrs;
-
-    /* Switch to our immediate mode arrays */
-    VERTEX_POINTER = VERTEX_ATTRIB;
-    DIFFUSE_POINTER = DIFFUSE_ATTRIB;
-    NORMAL_POINTER = NORMAL_ATTRIB;
-    UV_POINTER = UV_ATTRIB;
-    ST_POINTER = ST_ATTRIB;
 
     *attrs = IM_ENABLED_VERTEX_ATTRIBUTES;
 
 #ifndef NDEBUG
-    /* If we're not debugging, set to true - we assume we haven't broken it! */
-    FAST_PATH_ENABLED = GL_TRUE;
-#else
     // Immediate mode should always activate the fast path
     GLboolean fastPathEnabled = _glRecalcFastPath();
     assert(fastPathEnabled);
+#else
+    /* If we're not debugging, set to true - we assume we haven't broken it! */
+    FAST_PATH_ENABLED = GL_TRUE;
 #endif
 
     glDrawArrays(ACTIVE_POLYGON_MODE, 0, VERTICES.size);
 
-    /* Restore everything */
-    VERTEX_POINTER = vptr;
-    DIFFUSE_POINTER = dptr;
-    NORMAL_POINTER = nptr;
-    UV_POINTER = uvptr;
-    ST_POINTER = stptr;
+    ATTRIB_POINTERS = stashed_attrib_pointers;
 
     *attrs = prevAttrs;
 
-    /* Clear arrays for next polys */
     aligned_vector_clear(&VERTICES);
-    aligned_vector_clear(&ST_COORDS);
-    aligned_vector_clear(&NORMALS);
 }
 
 void APIENTRY glRectf(GLfloat x1, GLfloat y1, GLfloat x2, GLfloat y2) {

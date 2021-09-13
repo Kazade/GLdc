@@ -154,7 +154,6 @@ void APIENTRY glLightModelfv(GLenum pname, const GLfloat *params) {
         /* Not implemented */
     default:
         _glKosThrowError(GL_INVALID_ENUM, __func__);
-        _glKosPrintError();
     }
 }
 
@@ -168,7 +167,6 @@ void APIENTRY glLightModeliv(GLenum pname, const GLint* params) {
         break;
     default:
         _glKosThrowError(GL_INVALID_ENUM, __func__);
-        _glKosPrintError();
     }
 }
 
@@ -220,7 +218,7 @@ void APIENTRY glLightfv(GLenum light, GLenum pname, const GLfloat *params) {
         break;
     default:
         _glKosThrowError(GL_INVALID_ENUM, __func__);
-        _glKosPrintError();
+        return;
     }
 
     _glPrecalcLightingValues(mask);
@@ -251,14 +249,12 @@ void APIENTRY glLightf(GLenum light, GLenum pname, GLfloat param) {
         break;
     default:
         _glKosThrowError(GL_INVALID_ENUM, __func__);
-        _glKosPrintError();
     }
 }
 
 void APIENTRY glMaterialf(GLenum face, GLenum pname, const GLfloat param) {
     if(face == GL_BACK || pname != GL_SHININESS) {
         _glKosThrowError(GL_INVALID_ENUM, __func__);
-        _glKosPrintError();
         return;
     }
 
@@ -272,7 +268,6 @@ void APIENTRY glMateriali(GLenum face, GLenum pname, const GLint param) {
 void APIENTRY glMaterialfv(GLenum face, GLenum pname, const GLfloat *params) {
     if(face == GL_BACK) {
         _glKosThrowError(GL_INVALID_ENUM, __func__);
-        _glKosPrintError();
         return;
     }
 
@@ -299,7 +294,7 @@ void APIENTRY glMaterialfv(GLenum face, GLenum pname, const GLfloat *params) {
         case GL_COLOR_INDEXES:
         default: {
             _glKosThrowError(GL_INVALID_ENUM, __func__);
-            _glKosPrintError();
+            return;
         }
     }
 
@@ -315,7 +310,6 @@ void APIENTRY glMaterialfv(GLenum face, GLenum pname, const GLfloat *params) {
 void APIENTRY glColorMaterial(GLenum face, GLenum mode) {
     if(face != GL_FRONT_AND_BACK) {
         _glKosThrowError(GL_INVALID_ENUM, __func__);
-        _glKosPrintError();
         return;
     }
 

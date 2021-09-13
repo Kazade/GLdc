@@ -309,11 +309,20 @@ void _glUpdatePVRTextureContext(PolyContext* context, GLshort textureUnit);
 void _glAllocateSpaceForMipmaps(TextureObject* active);
 
 typedef struct {
-    const void* ptr;
-    GLenum type;
-    GLsizei stride;
-    GLint size;
+    const void* ptr;  // 4
+    GLenum type;  // 4
+    GLsizei stride;  // 4
+    GLint size; // 4
 } AttribPointer;
+
+typedef struct {
+    AttribPointer vertex; // 16
+    AttribPointer colour; // 32
+    AttribPointer uv; // 48
+    AttribPointer st; // 64
+    AttribPointer normal; // 80
+    AttribPointer padding; // 96
+} AttribPointerList;
 
 GLboolean _glCheckValidEnum(GLint param, GLint* values, const char* func);
 
@@ -379,11 +388,8 @@ GLboolean _glIsColorMaterialEnabled();
 
 GLboolean _glIsNormalizeEnabled();
 
-extern AttribPointer VERTEX_POINTER;
-extern AttribPointer UV_POINTER;
-extern AttribPointer ST_POINTER;
-extern AttribPointer NORMAL_POINTER;
-extern AttribPointer DIFFUSE_POINTER;
+extern AttribPointerList ATTRIB_POINTERS;
+
 extern GLuint ENABLED_VERTEX_ATTRIBUTES;
 extern GLboolean FAST_PATH_ENABLED;
 
@@ -404,32 +410,32 @@ GL_FORCE_INLINE GLboolean _glIsVertexDataFastPathCompatible() {
 
 
     if((ENABLED_VERTEX_ATTRIBUTES & VERTEX_ENABLED_FLAG)) {
-        if(VERTEX_POINTER.size != 3 || VERTEX_POINTER.type != GL_FLOAT) {
+        if(ATTRIB_POINTERS.vertex.size != 3 || ATTRIB_POINTERS.vertex.type != GL_FLOAT) {
             return GL_FALSE;
         }
     }
 
     if((ENABLED_VERTEX_ATTRIBUTES & UV_ENABLED_FLAG)) {
-        if(UV_POINTER.size != 2 || UV_POINTER.type != GL_FLOAT) {
+        if(ATTRIB_POINTERS.uv.size != 2 || ATTRIB_POINTERS.uv.type != GL_FLOAT) {
             return GL_FALSE;
         }
     }
 
     if((ENABLED_VERTEX_ATTRIBUTES & DIFFUSE_ENABLED_FLAG)) {
         /* FIXME: Shouldn't this be a reversed format? */
-        if(DIFFUSE_POINTER.size != GL_BGRA || DIFFUSE_POINTER.type != GL_UNSIGNED_BYTE) {
+        if(ATTRIB_POINTERS.colour.size != GL_BGRA || ATTRIB_POINTERS.colour.type != GL_UNSIGNED_BYTE) {
             return GL_FALSE;
         }
     }
 
     if((ENABLED_VERTEX_ATTRIBUTES & ST_ENABLED_FLAG)) {
-        if(ST_POINTER.size != 2 || ST_POINTER.type != GL_FLOAT) {
+        if(ATTRIB_POINTERS.st.size != 2 || ATTRIB_POINTERS.st.type != GL_FLOAT) {
             return GL_FALSE;
         }
     }
 
     if((ENABLED_VERTEX_ATTRIBUTES & NORMAL_ENABLED_FLAG)) {
-        if(NORMAL_POINTER.size != 3 || NORMAL_POINTER.type != GL_FLOAT) {
+        if(ATTRIB_POINTERS.normal.size != 3 || ATTRIB_POINTERS.normal.type != GL_FLOAT) {
             return GL_FALSE;
         }
     }
@@ -444,14 +450,41 @@ GL_FORCE_INLINE GLboolean _glRecalcFastPath() {
 
 extern GLboolean IMMEDIATE_MODE_ACTIVE;
 
-void _glKosThrowError(GLenum error, const char *function);
-void _glKosPrintError();
+extern GLenum LAST_ERROR;
+extern char ERROR_FUNCTION[64];
+
+GL_FORCE_INLINE const char* _glErrorEnumAsString(GLenum error) {
+    switch(error) {
+        case GL_INVALID_ENUM: return "GL_INVALID_ENUM";
+        case GL_OUT_OF_MEMORY: return "GL_OUT_OF_MEMORY";
+        case GL_INVALID_OPERATION: return "GL_INVALID_OPERATION";
+        case GL_INVALID_VALUE: return "GL_INVALID_VALUE";
+        default:
+            return "GL_UNKNOWN_ERROR";
+    }
+}
+
+GL_FORCE_INLINE void _glKosThrowError(GLenum error, const char *function) {
+    if(LAST_ERROR == GL_NO_ERROR) {
+        LAST_ERROR = error;
+        sprintf(ERROR_FUNCTION, "%s\n", function);
+        fprintf(stderr, "GL ERROR: %s when calling %s\n", _glErrorEnumAsString(LAST_ERROR), ERROR_FUNCTION);
+    }
+}
+
+GL_FORCE_INLINE GLubyte _glKosHasError() {
+    return (LAST_ERROR != GL_NO_ERROR) ? GL_TRUE : GL_FALSE;
+}
+
+GL_FORCE_INLINE void _glKosResetError() {
+    LAST_ERROR = GL_NO_ERROR;
+    sprintf(ERROR_FUNCTION, "\n");
+}
 
 GL_FORCE_INLINE GLboolean _glCheckImmediateModeInactive(const char* func) {
     /* Returns 1 on error */
     if(IMMEDIATE_MODE_ACTIVE) {
         _glKosThrowError(GL_INVALID_OPERATION, func);
-        _glKosPrintError();
         return GL_TRUE;
     }
 
@@ -468,10 +501,6 @@ extern void _glPerformLighting(Vertex* vertices, EyeSpaceData *es, const uint32_
 
 unsigned char _glIsClippingEnabled();
 void _glEnableClipping(unsigned char v);
-
-void _glKosThrowError(GLenum error, const char *function);
-void _glKosPrintError();
-GLubyte _glKosHasError();
 
 GLuint _glFreeTextureMemory();
 GLuint _glUsedTextureMemory();
