@@ -423,6 +423,7 @@ GL_FORCE_INLINE void genQuads(Vertex* output, GLuint count) {
     GLuint i = count >> 2;
     while(i--) {
         PREFETCH(pen + 4);
+        PREFETCH(final + 4);
 
         swapVertex(pen, final);
         final->flags = GPU_CMD_VERTEX_EOL;
@@ -749,6 +750,7 @@ typedef struct {
 static const Float3 F3Z = {0.0f, 0.0f, 1.0f};
 static const Float3 F3ZERO = {0.0f, 0.0f, 0.0f};
 static const Float2 F2ZERO = {0.0f, 0.0f};
+static const uint32_t U4ONE = ~0;
 
 static void generateElementsFastPath(
         SubmissionTarget* target, const GLsizei first, const GLuint count,
@@ -826,12 +828,13 @@ static void generateElementsFastPath(
 
 static void generateArraysFastPath(SubmissionTarget* target, const GLsizei first, const GLuint count) {
     Vertex* start = _glSubmissionTargetStart(target);
+    VertexExtra* ve_start = aligned_vector_at(target->extras, 0);
 
     const GLuint vstride = ATTRIB_POINTERS.vertex.stride;
-    const GLuint uvstride = ATTRIB_POINTERS.uv.stride;
-    const GLuint ststride = ATTRIB_POINTERS.st.stride;
-    const GLuint dstride = ATTRIB_POINTERS.colour.stride;
-    const GLuint nstride = ATTRIB_POINTERS.normal.stride;
+    GLuint uvstride = ATTRIB_POINTERS.uv.stride;
+    GLuint ststride = ATTRIB_POINTERS.st.stride;
+    GLuint dstride = ATTRIB_POINTERS.colour.stride;
+    GLuint nstride = ATTRIB_POINTERS.normal.stride;
 
     /* Copy the pos, uv and color directly in one go */
     const GLubyte* pos = (ENABLED_VERTEX_ATTRIBUTES & VERTEX_ENABLED_FLAG) ? ATTRIB_POINTERS.vertex.ptr + (first * vstride) : NULL;
@@ -840,54 +843,95 @@ static void generateArraysFastPath(SubmissionTarget* target, const GLsizei first
     const GLubyte* st = (ENABLED_VERTEX_ATTRIBUTES & ST_ENABLED_FLAG) ? ATTRIB_POINTERS.st.ptr + (first * ststride) : NULL;
     const GLubyte* n = (ENABLED_VERTEX_ATTRIBUTES & NORMAL_ENABLED_FLAG) ? ATTRIB_POINTERS.normal.ptr + (first * nstride) : NULL;
 
-    VertexExtra* ve = aligned_vector_at(target->extras, 0);
+    VertexExtra* ve = ve_start;
     Vertex* it = start;
 
     const float w = 1.0f;
-
-    uint32_t i = count;
 
     if(!pos) {
         /* If we don't have vertices, do nothing */
         return;
     }
 
-    while(i--) {
-        it->flags = GPU_CMD_VERTEX;
+    if(!col) {
+        col = (GLubyte*) &U4ONE;
+        dstride = 0;
+    }
 
-        TransformVertex((const float*) pos, &w, it->xyz, &it->w);
-        pos += vstride;
+    if(!uv) {
+        uv = (GLubyte*) &F2ZERO;
+        uvstride = 0;
+    }
 
-        if(uv) {
-            MEMCPY4(it->uv, uv, sizeof(float) * 2);
+    if(!st) {
+        st = (GLubyte*) &F2ZERO;
+        ststride = 0;
+    }
+
+    if(!n) {
+        n = (GLubyte*) &F3Z;
+        nstride = 0;
+    }
+
+#define BATCH_SIZE 64
+
+    int_fast32_t start_idx = 0;
+    int_fast32_t end_idx = BATCH_SIZE;
+
+    while(1) {
+        for(int_fast32_t i = start_idx; i < end_idx; ++i) {
+            PREFETCH(pos + vstride);
+
+            it = start + i;
+
+            it->flags = GPU_CMD_VERTEX;
+
+            TransformVertex((const float*) pos, &w, it->xyz, &it->w);
+            pos += vstride;
+        }
+
+        for(int_fast32_t i = start_idx; i < end_idx; ++i) {
+            PREFETCH(uv + uvstride);
+
+            it = start + i;
+            *((Float2*) it->uv) = *((Float2*) uv);
             uv += uvstride;
-        } else {
-            *((Float2*) it->uv) = F2ZERO;
         }
 
-        if(col) {
-            MEMCPY4(it->bgra, col, sizeof(uint32_t));
+        for(int_fast32_t i = start_idx; i < end_idx; ++i) {
+            PREFETCH(col + dstride);
+
+            it = start + i;
+            *((uint32_t*) it->bgra) = *((uint32_t*) col);
             col += dstride;
-        } else {
-            *((uint32_t*) it->bgra) = ~0;
         }
 
-        if(st) {
-            MEMCPY4(ve->st, st, sizeof(float) * 2);
+        for(int_fast32_t i = start_idx; i < end_idx; ++i) {
+            PREFETCH(st + ststride);
+
+            ve = ve_start + i;
+            *((Float2*) ve->st) = *((Float2*) st);
             st += ststride;
-        } else {
-            *((Float2*) ve->st) = F2ZERO;
         }
 
-        if(n) {
-            MEMCPY4(ve->nxyz, n, sizeof(float) * 3);
+        for(int_fast32_t i = start_idx; i < end_idx; ++i) {
+            PREFETCH(n + nstride);
+
+            ve = ve_start + i;
+            *((Float3*) ve->nxyz) = *((Float3*) n);
             n += nstride;
-        } else {
-            *((Float3*) ve->nxyz) = F3Z;
         }
 
-        it++;
-        ve++;
+        if(end_idx == count) {
+            break;
+        }
+
+        start_idx = end_idx;
+
+        PREFETCH(it + start_idx);
+
+        end_idx += BATCH_SIZE;
+        end_idx = MIN(end_idx, count);
     }
 }
 
