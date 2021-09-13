@@ -152,14 +152,17 @@ void APIENTRY glColor3fv(const GLfloat* v) {
 void APIENTRY glVertex3f(GLfloat x, GLfloat y, GLfloat z) {
     IM_ENABLED_VERTEX_ATTRIBUTES |= VERTEX_ENABLED_FLAG;
 
+    unsigned int cap = VERTICES.capacity;
     IMVertex* vert = aligned_vector_extend(&VERTICES, 1);
 
-    /* Resizing could've invalidated the pointers */
-    IM_ATTRIBS.vertex.ptr = VERTICES.data;
-    IM_ATTRIBS.uv.ptr = IM_ATTRIBS.vertex.ptr + (sizeof(GLfloat) * 3);
-    IM_ATTRIBS.st.ptr = IM_ATTRIBS.vertex.ptr + (sizeof(GLfloat) * 5);
-    IM_ATTRIBS.colour.ptr = IM_ATTRIBS.vertex.ptr + (sizeof(GLfloat) * 7);
-    IM_ATTRIBS.normal.ptr = IM_ATTRIBS.vertex.ptr + (sizeof(GLfloat) * 7) + sizeof(uint32_t);
+    if(cap != VERTICES.capacity) {
+        /* Resizing could've invalidated the pointers */
+        IM_ATTRIBS.vertex.ptr = VERTICES.data;
+        IM_ATTRIBS.uv.ptr = IM_ATTRIBS.vertex.ptr + (sizeof(GLfloat) * 3);
+        IM_ATTRIBS.st.ptr = IM_ATTRIBS.vertex.ptr + (sizeof(GLfloat) * 5);
+        IM_ATTRIBS.colour.ptr = IM_ATTRIBS.vertex.ptr + (sizeof(GLfloat) * 7);
+        IM_ATTRIBS.normal.ptr = IM_ATTRIBS.vertex.ptr + (sizeof(GLfloat) * 7) + sizeof(uint32_t);
+    }
 
     vert->x = x;
     vert->y = y;
