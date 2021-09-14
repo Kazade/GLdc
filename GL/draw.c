@@ -843,9 +843,6 @@ static void generateArraysFastPath(SubmissionTarget* target, const GLsizei first
     const GLubyte* st = (ENABLED_VERTEX_ATTRIBUTES & ST_ENABLED_FLAG) ? ATTRIB_POINTERS.st.ptr + (first * ststride) : NULL;
     const GLubyte* n = (ENABLED_VERTEX_ATTRIBUTES & NORMAL_ENABLED_FLAG) ? ATTRIB_POINTERS.normal.ptr + (first * nstride) : NULL;
 
-    VertexExtra* ve = ve_start;
-    Vertex* it = start;
-
     const float w = 1.0f;
 
     if(!pos) {
@@ -873,65 +870,34 @@ static void generateArraysFastPath(SubmissionTarget* target, const GLsizei first
         nstride = 0;
     }
 
-#define BATCH_SIZE 64
+    int_fast32_t i = count;
+    VertexExtra* ve = ve_start;
+    Vertex* it = start;
 
-    int_fast32_t start_idx = 0;
-    int_fast32_t end_idx = BATCH_SIZE;
+    while(i--) {
+        it->flags = GPU_CMD_VERTEX;
+        TransformVertex((const float*) pos, &w, it->xyz, &it->w);
+        pos += vstride;
+        PREFETCH(pos);
 
-    while(1) {
-        for(int_fast32_t i = start_idx; i < end_idx; ++i) {
-            PREFETCH(pos + vstride);
+        *((Float2*) it->uv) = *((Float2*) uv);
+        uv += uvstride;
+        PREFETCH(uv);
 
-            it = start + i;
+        *((uint32_t*) it->bgra) = *((uint32_t*) col);
+        col += dstride;
+        PREFETCH(col);
 
-            it->flags = GPU_CMD_VERTEX;
+        *((Float2*) ve->st) = *((Float2*) st);
+        st += ststride;
+        PREFETCH(st);
 
-            TransformVertex((const float*) pos, &w, it->xyz, &it->w);
-            pos += vstride;
-        }
+        *((Float3*) ve->nxyz) = *((Float3*) n);
+        n += nstride;
+        PREFETCH(n);
 
-        for(int_fast32_t i = start_idx; i < end_idx; ++i) {
-            PREFETCH(uv + uvstride);
-
-            it = start + i;
-            *((Float2*) it->uv) = *((Float2*) uv);
-            uv += uvstride;
-        }
-
-        for(int_fast32_t i = start_idx; i < end_idx; ++i) {
-            PREFETCH(col + dstride);
-
-            it = start + i;
-            *((uint32_t*) it->bgra) = *((uint32_t*) col);
-            col += dstride;
-        }
-
-        for(int_fast32_t i = start_idx; i < end_idx; ++i) {
-            PREFETCH(st + ststride);
-
-            ve = ve_start + i;
-            *((Float2*) ve->st) = *((Float2*) st);
-            st += ststride;
-        }
-
-        for(int_fast32_t i = start_idx; i < end_idx; ++i) {
-            PREFETCH(n + nstride);
-
-            ve = ve_start + i;
-            *((Float3*) ve->nxyz) = *((Float3*) n);
-            n += nstride;
-        }
-
-        if(end_idx == count) {
-            break;
-        }
-
-        start_idx = end_idx;
-
-        PREFETCH(it + start_idx);
-
-        end_idx += BATCH_SIZE;
-        end_idx = MIN(end_idx, count);
+        ++it;
+        ++ve;
     }
 }
 
