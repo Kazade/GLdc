@@ -826,80 +826,39 @@ static void generateElementsFastPath(
 
 #define likely(x)      __builtin_expect(!!(x), 1)
 
-static void generateArraysFastPath(SubmissionTarget* target, const GLsizei first, const GLuint count) {
-    Vertex* start = _glSubmissionTargetStart(target);
-    VertexExtra* ve_start = aligned_vector_at(target->extras, 0);
-
-    const GLuint vstride = ATTRIB_POINTERS.vertex.stride;
-    GLuint uvstride = ATTRIB_POINTERS.uv.stride;
-    GLuint ststride = ATTRIB_POINTERS.st.stride;
-    GLuint dstride = ATTRIB_POINTERS.colour.stride;
-    GLuint nstride = ATTRIB_POINTERS.normal.stride;
-
-    /* Copy the pos, uv and color directly in one go */
-    const GLubyte* pos = (ENABLED_VERTEX_ATTRIBUTES & VERTEX_ENABLED_FLAG) ? ATTRIB_POINTERS.vertex.ptr + (first * vstride) : NULL;
-    const GLubyte* uv = (ENABLED_VERTEX_ATTRIBUTES & UV_ENABLED_FLAG) ? ATTRIB_POINTERS.uv.ptr + (first * uvstride) : NULL;
-    const GLubyte* col = (ENABLED_VERTEX_ATTRIBUTES & DIFFUSE_ENABLED_FLAG) ? ATTRIB_POINTERS.colour.ptr + (first * dstride) : NULL;
-    const GLubyte* st = (ENABLED_VERTEX_ATTRIBUTES & ST_ENABLED_FLAG) ? ATTRIB_POINTERS.st.ptr + (first * ststride) : NULL;
-    const GLubyte* n = (ENABLED_VERTEX_ATTRIBUTES & NORMAL_ENABLED_FLAG) ? ATTRIB_POINTERS.normal.ptr + (first * nstride) : NULL;
-
-    const float w = 1.0f;
-
-    if(!pos) {
-        /* If we don't have vertices, do nothing */
-        return;
-    }
-
-    if(!col) {
-        col = (GLubyte*) &U4ONE;
-        dstride = 0;
-    }
-
-    if(!uv) {
-        uv = (GLubyte*) &F2ZERO;
-        uvstride = 0;
-    }
-
-    if(!st) {
-        st = (GLubyte*) &F2ZERO;
-        ststride = 0;
-    }
-
-    if(!n) {
-        n = (GLubyte*) &F3Z;
-        nstride = 0;
-    }
-
-    int_fast32_t i = count;
-    VertexExtra* ve = ve_start;
-    Vertex* it = start;
-
-    while(i--) {
-        it->flags = GPU_CMD_VERTEX;
-        TransformVertex((const float*) pos, &w, it->xyz, &it->w);
-        pos += vstride;
-        PREFETCH(pos);
-
-        *((Float2*) it->uv) = *((Float2*) uv);
-        uv += uvstride;
-        PREFETCH(uv);
-
-        *((uint32_t*) it->bgra) = *((uint32_t*) col);
-        col += dstride;
-        PREFETCH(col);
-
-        *((Float2*) ve->st) = *((Float2*) st);
-        st += ststride;
-        PREFETCH(st);
-
-        *((Float3*) ve->nxyz) = *((Float3*) n);
-        n += nstride;
-        PREFETCH(n);
-
-        ++it;
-        ++ve;
-    }
+#define POLYMODE ALL
+#define PROCESS_VERTEX_FLAGS(it, i) { \
+    (it)->flags = GPU_CMD_VERTEX; \
 }
+
+#include "draw_fastpath.inc"
+#undef PROCESS_VERTEX_FLAGS
+#undef POLYMODE
+
+#define POLYMODE QUADS
+#define PROCESS_VERTEX_FLAGS(it, i) { \
+    if((i + 1) % 4 == 0) { \
+        Vertex* prev = ((it) - 1); \
+        Vertex t = (*prev); \
+        *(prev) = *((it)); \
+        *((it)) = t; \
+        prev->flags = GPU_CMD_VERTEX; \
+        it->flags = GPU_CMD_VERTEX_EOL; \
+    } else { \
+        it->flags = GPU_CMD_VERTEX; \
+    } \
+}
+#include "draw_fastpath.inc"
+#undef PROCESS_VERTEX_FLAGS
+#undef POLYMODE
+
+#define POLYMODE TRIS
+#define PROCESS_VERTEX_FLAGS(it, i) { \
+    it->flags = ((i + 1) % 3 == 0) ? GPU_CMD_VERTEX_EOL : GPU_CMD_VERTEX; \
+}
+#include "draw_fastpath.inc"
+#undef PROCESS_VERTEX_FLAGS
+#undef POLYMODE
 
 static void generateArrays(SubmissionTarget* target, const GLsizei first, const GLuint count) {
     Vertex* start = _glSubmissionTargetStart(target);
@@ -927,7 +886,13 @@ static void generate(SubmissionTarget* target, const GLenum mode, const GLsizei 
         if(indices) {
             generateElementsFastPath(target, first, count, indices, type);
         } else {
-            generateArraysFastPath(target, first, count);
+            if(mode == GL_QUADS) {
+                generateArraysFastPath_QUADS(target, first, count);
+            } else if(mode == GL_TRIANGLES) {
+                generateArraysFastPath_TRIS(target, first, count);
+            } else {
+                generateArraysFastPath_ALL(target, first, count);
+            }
         }
     } else {
         if(indices) {
@@ -941,10 +906,8 @@ static void generate(SubmissionTarget* target, const GLenum mode, const GLsizei 
     // Drawing arrays
     switch(mode) {
     case GL_TRIANGLES:
-        genTriangles(it, count);
-        break;
-    case GL_QUADS:
-        genQuads(it, count);
+        break; // Already done
+    case GL_QUADS: // Already done
         break;
     case GL_TRIANGLE_FAN:
         genTriangleFan(it, count);
