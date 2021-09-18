@@ -3,7 +3,6 @@
 #include <assert.h>
 #include <stdlib.h>
 #include <string.h>
-#include "../GL/platform.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -16,6 +15,13 @@ static inline void* memalign(size_t alignment, size_t size) {
 }
 #else
     #include <malloc.h>
+#endif
+
+#ifdef __DREAMCAST__
+#include <kos/string.h>
+#define AV_MEMCPY4 memcpy4
+#else
+#define AV_MEMCPY4 memcpy
 #endif
 
 typedef struct {
@@ -58,7 +64,7 @@ AV_FORCE_INLINE void* aligned_vector_reserve(AlignedVector* vector, unsigned int
     assert(vector->data);
 
     if(original_data) {
-        FASTCPY(vector->data, original_data, original_byte_size);
+        AV_MEMCPY4(vector->data, original_data, original_byte_size);
         free(original_data);
     }
 
@@ -106,7 +112,7 @@ AV_FORCE_INLINE void* aligned_vector_push_back(AlignedVector* vector, const void
     unsigned char* dest = vector->data + (vector->element_size * initial_size);
 
     /* Copy the objects in */
-    FASTCPY(dest, objs, vector->element_size * count);
+    AV_MEMCPY4(dest, objs, vector->element_size * count);
 
     return dest;
 }
