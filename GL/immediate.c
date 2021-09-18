@@ -47,6 +47,8 @@ typedef struct {
 
 
 void _glInitImmediateMode(GLuint initial_size) {
+    printf("WHAT WHAT");
+
     aligned_vector_init(&VERTICES, sizeof(IMVertex));
     aligned_vector_reserve(&VERTICES, initial_size);
 

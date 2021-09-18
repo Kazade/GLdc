@@ -79,14 +79,16 @@ AV_FORCE_INLINE void* aligned_vector_resize(AlignedVector* vector, const unsigne
 
     if(vector->capacity < element_count) {
         /* If we didn't have capacity, increase capacity (slow) */
+        vector->size = element_count;
         ret = aligned_vector_reserve(vector, element_count);
     } else if(previousCount < element_count) {
         /* So we grew, but had the capacity, just get a pointer to
          * where we were */
+        vector->size = element_count;
         ret = aligned_vector_at(vector, previousCount);
+    } else {
+        vector->size = element_count;
     }
-
-    vector->size = element_count;
 
     return ret;
 }

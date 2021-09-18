@@ -23,9 +23,12 @@ include_directories(include)
 if(NOT PLATFORM_DREAMCAST)
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -m32")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -m32")
+    set(FIND_LIBRARY_USE_LIB32_PATHS true)
+    set(FIND_LIBRARY_USE_LIB64_PATHS false)
 endif()
 
 set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -O3 --fast-math -fexpensive-optimizations -funroll-all-loops")
+set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -O0 -g")
 
 set(
     SOURCES
@@ -60,7 +63,9 @@ configure_file(GL/version.c.in ${CMAKE_CURRENT_BINARY_DIR}/version.c)
 if(PLATFORM_DREAMCAST)
     set(SOURCES ${SOURCES} GL/platforms/sh4.c)
 else()
-    find_package(SDL2 REQUIRED)
+    find_package(PkgConfig)
+    pkg_check_modules(SDL2 REQUIRED sdl2)
+
     include_directories(${SDL2_INCLUDE_DIRS})
     link_libraries(${SDL2_LIBRARIES})
     set(

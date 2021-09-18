@@ -209,6 +209,8 @@ static inline void markDead(Vertex* vert) {
 #define MAX_CLIP_TRIANGLES 255
 
 void _glClipTriangleStrip(SubmissionTarget* target, uint8_t fladeShade) {
+    printf("WHAT");
+
     static Triangle TO_CLIP[MAX_CLIP_TRIANGLES];
     static uint8_t CLIP_COUNT = 0;
 
