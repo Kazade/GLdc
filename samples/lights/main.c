@@ -2,6 +2,10 @@
 #include <stdlib.h>
 #include <stdint.h>
 
+#ifdef __DREAMCAST__
+#include <kos.h>
+#endif
+
 #include "GL/gl.h"
 #include "GL/glu.h"
 #include "GL/glext.h"
@@ -213,6 +217,24 @@ void ReSizeGLScene(int Width, int Height)
     glMatrixMode(GL_MODELVIEW);
 }
 
+int check_start() {
+#ifdef __DREAMCAST__
+    maple_device_t *cont;
+    cont_state_t *state;
+
+    cont = maple_enum_type(0, MAPLE_FUNC_CONTROLLER);
+
+    if(cont) {
+        state = (cont_state_t *)maple_dev_status(cont);
+
+        if(state)
+            return state->buttons & CONT_START;
+    }
+#endif
+
+    return 0;
+}
+
 void DrawCube(float x, float z) {
     static float pos = 0.0f;
     const static float radius = 30.0f;
@@ -307,6 +329,9 @@ int main(int argc, char **argv)
     ReSizeGLScene(640, 480);
 
     while(1) {
+        if(check_start())
+            break;
+
         DrawGLScene();
     }
 
