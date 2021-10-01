@@ -17,7 +17,7 @@ build:sh4-gcc:
     
 build:x86-gcc:
   stage: build
-  image: fedora:33
+  image: fedora:34
   before_script:
     - sudo dnf install -y cmake gcc gcc-c++ SDL2-devel glibc-devel pkgconf-pkg-config
   script:
