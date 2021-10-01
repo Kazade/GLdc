@@ -99,8 +99,11 @@ static int thd_each_cb(kthread_t* thd, void* data) {
      * current. Obviouly thought between iterations the
      * PC will change so it's not like this is a true snapshot
      * in time across threads */
+    int old = irq_disable();
     uint32_t PC = thd->context.pc;
     uint32_t PR = thd->context.pr;
+    irq_restore(old);
+
     record_thread(PC, PR);
     return 0;
 }
