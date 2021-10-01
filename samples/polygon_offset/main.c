@@ -1,4 +1,3 @@
-
 typedef enum
 {
     false,
@@ -99,7 +98,7 @@ void drawPolygon()
     glEnd();
 }
 int frames = 0;
-void check_input()
+int check_input()
 {
 #ifdef __DREAMCAST__
     maple_device_t *cont;
@@ -113,9 +112,12 @@ void check_input()
 
         if (state)
         {
+            if (state->buttons & CONT_START)
+                return 0;
+
             if (frames <= 0)
             {
-                if (state->buttons & CONT_START)
+                if (state->buttons & CONT_A)
                 {
                     offset = !offset;
                     frames = 60;
@@ -124,6 +126,8 @@ void check_input()
         }
     }
 #endif
+
+    return 1;
 }
 
 /* The main drawing function. */
@@ -211,7 +215,8 @@ int main(int argc, char **argv)
 
     while (1)
     {
-        check_input();
+        if(!check_input())
+            break;
         DrawGLScene();
         xrot += 0.1f;
         yrot += 0.25f;

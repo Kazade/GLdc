@@ -249,6 +249,10 @@ void APIENTRY glEnd() {
 
     *attrs = IM_ENABLED_VERTEX_ATTRIBUTES;
 
+    /* Store the fast path enabled setting so we can restore it
+     * after drawing */
+    const GLboolean fp_was_enabled = FAST_PATH_ENABLED;
+
 #ifndef NDEBUG
     // Immediate mode should always activate the fast path
     GLuint fastPathEnabled = _glRecalcFastPath();
@@ -265,6 +269,8 @@ void APIENTRY glEnd() {
     *attrs = prevAttrs;
 
     aligned_vector_clear(&VERTICES);
+
+    FAST_PATH_ENABLED = fp_was_enabled;
 }
 
 void APIENTRY glRectf(GLfloat x1, GLfloat y1, GLfloat x2, GLfloat y2) {
