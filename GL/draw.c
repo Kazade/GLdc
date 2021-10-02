@@ -888,8 +888,10 @@ static void generate(SubmissionTarget* target, const GLenum mode, const GLsizei 
         } else {
             if(mode == GL_QUADS) {
                 generateArraysFastPath_QUADS(target, first, count);
+                return;  // Don't need to do any more processing
             } else if(mode == GL_TRIANGLES) {
                 generateArraysFastPath_TRIS(target, first, count);
+                return; // Don't need to do any more processing
             } else {
                 generateArraysFastPath_ALL(target, first, count);
             }
@@ -906,8 +908,10 @@ static void generate(SubmissionTarget* target, const GLenum mode, const GLsizei 
     // Drawing arrays
     switch(mode) {
     case GL_TRIANGLES:
-        break; // Already done
-    case GL_QUADS: // Already done
+        genTriangles(it, count);
+        break;
+    case GL_QUADS:
+        genQuads(it, count);
         break;
     case GL_TRIANGLE_FAN:
         genTriangleFan(it, count);
@@ -1392,8 +1396,8 @@ void APIENTRY glColorPointer(GLint size,  GLenum type,  GLsizei stride,  const G
 
     ATTRIB_POINTERS.colour.ptr = pointer;
     ATTRIB_POINTERS.colour.type = type;
-    ATTRIB_POINTERS.colour.size = (ATTRIB_POINTERS.colour.size == GL_BGRA) ? 4 : size;
-    ATTRIB_POINTERS.colour.stride = (stride) ? stride : ATTRIB_POINTERS.colour.size * byte_size(type);
+    ATTRIB_POINTERS.colour.size = size;
+    ATTRIB_POINTERS.colour.stride = (stride) ? stride : ((size == GL_BGRA) ? 4 : size) * byte_size(type);
 
     _glRecalcFastPath();
 }

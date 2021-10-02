@@ -62,7 +62,7 @@ GLuint glTextureLoadPVR(char *fname, unsigned char isMipMapped, unsigned char gl
     if(tex == NULL) {
         printf("FILE READ ERROR: %s\n", fname);
 
-        while(1);
+        return 1;
     }
 
     fseek(tex, 0, SEEK_END);
