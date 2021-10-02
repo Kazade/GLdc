@@ -1293,6 +1293,11 @@ void APIENTRY glEnableClientState(GLenum cap) {
     default:
         _glKosThrowError(GL_INVALID_ENUM, __func__);
     }
+
+    /* It's possible that we called glVertexPointer and friends before
+     * calling glEnableClientState, so we should recheck to make sure
+     * everything is in the right format with this new information */
+    _glRecalcFastPath();
 }
 
 void APIENTRY glDisableClientState(GLenum cap) {
@@ -1316,6 +1321,9 @@ void APIENTRY glDisableClientState(GLenum cap) {
     default:
         _glKosThrowError(GL_INVALID_ENUM, __func__);
     }
+
+    /* State changed, recalculate */
+    _glRecalcFastPath();
 }
 
 GLuint _glGetActiveClientTexture() {
