@@ -431,7 +431,7 @@ static void _glInitializeTextureObject(TextureObject* txr, unsigned int id) {
     txr->palette = NULL;
     txr->isCompressed = GL_FALSE;
     txr->isPaletted = GL_FALSE;
-    txr->mipmap_bias = GL_MAX_TEXTURE_LOD_BIAS_DEFAULT;
+    txr->mipmap_bias = GL_KOS_INTERNAL_DEFAULT_MIPMAP_LOD_BIAS;
 
     /* Not mipmapped by default */
     txr->baseDataOffset = 0;

@@ -193,11 +193,13 @@ void _glUpdatePVRTextureContext(PolyContext *context, GLshort textureUnit) {
     }
 
     if(enableMipmaps) {
-        if(tx1->minFilter == GL_LINEAR_MIPMAP_NEAREST) {
+        // FIXME: This is probably the wrong filter for this
+        // GL mode, but I'm not sure what's correct...
+        if(tx1->minFilter == GL_NEAREST_MIPMAP_LINEAR) {
             filter = GPU_FILTER_TRILINEAR1;
         } else if(tx1->minFilter == GL_LINEAR_MIPMAP_LINEAR) {
             filter = GPU_FILTER_TRILINEAR2;
-        } else if(tx1->minFilter == GL_NEAREST_MIPMAP_LINEAR) {
+        } else if(tx1->minFilter == GL_LINEAR_MIPMAP_NEAREST) {
             filter = GPU_FILTER_BILINEAR;
         } else {
             filter = GPU_FILTER_NEAREST;
