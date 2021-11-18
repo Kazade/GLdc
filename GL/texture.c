@@ -139,6 +139,41 @@ static void GPUTextureTwiddle8PPP(void* src, void* dst, uint32_t w, uint32_t h) 
     }
 }
 
+static void GPUTextureTwiddle4PPP(void* src, void* dst, uint32_t w, uint32_t h) {
+    uint32_t x, y, yout, min, mask;
+
+    min = MIN(w, h);
+    mask = min - 1;
+
+	uint8 * pixels;
+    uint16 * vtex;
+    pixels = (uint8 *) src;
+    vtex = (uint16*)dst;
+
+    for (y=0; y<h; y += 2) {
+        yout = y;
+        for (x=0; x<w; x += 2) {
+
+                //Ozzy note: if x alignment is wrong just use version commented instead (possible error)
+                #if 1
+            vtex[TWIDOUT((x&mask)/2, (yout&mask)/2) +
+                (x/min + yout/min)*min*min/4] =
+            vtex[TWIDOUT((x&mask)/2, (yout&mask)/2) +
+                (x/min + yout/min)*min*min/4] =
+                ((pixels[(x+y*w) >>1]&15)<<8) | ((pixels[(x+(y+1)*w) >>1]&15)<<12) |
+                ((pixels[(x+y*w) >>1]>>4)<<0) | ((pixels[(x+(y+1)*w) >>1]>>4)<<4);
+
+                #else
+            vtex[TWIDOUT((x&mask)/2, (yout&mask)/2) +
+                (x/min + yout/min)*min*min/4] =
+                (pixels[(x+y*w) >>1]&15) | ((pixels[(x+(y+1)*w) >>1]&15)<<4) |
+                ((pixels[(x+y*w) >>1]>>4)<<8) | ((pixels[(x+(y+1)*w) >>1]>>4)<<12);
+
+                #endif
+        }
+    }
+}
+
 static void GPUTextureTwiddle16BPP(void * src, void* dst, uint32_t w, uint32_t h) {
     uint32_t x, y, yout, min, mask;
 
@@ -188,6 +223,7 @@ void _glApplyColorTable(TexturePalette* src) {
 
     GLushort i;
     GLushort offset = src->size * src->bank;
+
     for(i = 0; i < src->width; ++i) {
         GLubyte* entry = &src->data[i * 4];
         if(INTERNAL_PALETTE_FORMAT == GL_RGBA8) {
@@ -925,6 +961,7 @@ static TextureConversionFunc _determineConversion(GLint internalFormat, GLenum f
         }
     } break;
     case GL_RGBA8: {
+
         if(type == GL_UNSIGNED_BYTE && format == GL_RGBA) {
             return _rgba8888_to_rgba8888;
         } else if (type == GL_BYTE && format == GL_RGBA) {
@@ -1071,7 +1108,7 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
             return;
         }
     } else {
-        if(internalFormat != GL_COLOR_INDEX8_EXT) {
+        if(internalFormat != GL_COLOR_INDEX8_EXT && internalFormat != GL_COLOR_INDEX4_EXT) {
             INFO_MSG("");
             _glKosThrowError(GL_INVALID_ENUM, __func__);
             return;
@@ -1129,7 +1166,7 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
         return;
     }
 
-    GLboolean isPaletted = (internalFormat == GL_COLOR_INDEX8_EXT) ? GL_TRUE : GL_FALSE;
+    GLboolean isPaletted = (internalFormat == GL_COLOR_INDEX8_EXT || internalFormat == GL_COLOR_INDEX4_EXT) ? GL_TRUE : GL_FALSE;
 
     /* Calculate the format that we need to convert the data to */
     GLuint pvr_format = _determinePVRFormat(internalFormat, type);
@@ -1160,6 +1197,11 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
      */
     GLint destStride = isPaletted ? 1 : 2;
     GLuint bytes = (width * height * destStride);
+
+    //special case 4bpp
+    if(internalFormat == GL_COLOR_INDEX4_EXT){
+        bytes >>= 1;
+    }
 
     if(!active->data) {
         assert(active);
@@ -1302,8 +1344,14 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
 
         if(internalFormat == GL_COLOR_INDEX8_EXT) {
             GPUTextureTwiddle8PPP((void*) pixels, targetData, width, height);
-        } else {
-            GPUTextureTwiddle16BPP((void*) pixels, targetData, width, height);
+        }
+        else{
+            if(internalFormat == GL_COLOR_INDEX4_EXT) {
+                GPUTextureTwiddle4PPP((void*) pixels, targetData, width, height);
+            }
+            else {
+                GPUTextureTwiddle16BPP((void*) pixels, targetData, width, height);
+            }
         }
 
         /* We make sure we remove nontwiddled and add twiddled. We could always
@@ -1487,7 +1535,7 @@ GLAPI void APIENTRY glColorTableEXT(GLenum target, GLenum internalFormat, GLsize
     }
 
     palette->data = (GLubyte*) malloc(width * 4);
-    palette->format = format;
+    palette->format = format; //Ozzy:was previously forcing to GL_RGBA for testing.
     palette->width = width;
     palette->size = (width > 16) ? 256 : 16;
     assert(palette->size == 16 || palette->size == 256);

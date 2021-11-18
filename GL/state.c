@@ -238,7 +238,12 @@ void _glUpdatePVRTextureContext(PolyContext *context, GLshort textureUnit) {
                 TexturePalette* palette = _glGetSharedPalette(tx1->shared_bank);
                 context->txr.format |= GPUPaletteSelect8BPP(palette->bank);
             } else {
-                context->txr.format |= GPUPaletteSelect8BPP((tx1->palette) ? tx1->palette->bank : 0);
+                if (tx1->palette->size != 16){
+                    context->txr.format |= GPUPaletteSelect8BPP((tx1->palette) ? tx1->palette->bank : 0);
+                }
+                else{
+                    context->txr.format |= GPUPaletteSelect4BPP((tx1->palette) ? tx1->palette->bank : 0);
+                }
             }
         }
 
