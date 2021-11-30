@@ -87,6 +87,31 @@ static GLshort _glGenPaletteSlot(GLushort size) {
     fprintf(stderr, "GL ERROR: No palette slots remain\n");
     return -1;
 }
+/* ozzy: used for statistics */
+GLushort _glFreePaletteSlots(GLushort size)
+{
+    GLushort i, j , slots = 0;
+
+    assert(size == 16 || size == 256);
+
+    if(size == 16) {
+        for(i = 0; i < 4; ++i) {
+            for(j = 0; j < 16; ++j) {
+                if(!SUBBANKS_USED[i][j]) {
+                    slots++;
+                }
+            }
+        }
+    } else {
+        for(i = 0; i < 4; ++i) {
+            if(!BANKS_USED[i]) {
+                slots++;
+            }
+        }
+    }
+
+    return slots;
+}
 
 static void _glReleasePaletteSlot(GLshort slot, GLushort size) {
     GLushort i;
@@ -263,6 +288,8 @@ GLubyte _glGetActiveTexture() {
 static GLuint _glGetMipmapDataOffset(const TextureObject* obj, GLuint level) {
     GLuint offset = 0;
     GLuint size = obj->height;
+
+    printf("\n_glGetMipmapDataOffset");
 
     if(obj->width != obj->height) {
         fprintf(stderr, "ERROR: Accessing memory location of mipmaps on non-square texture\n");
@@ -919,7 +946,16 @@ GL_FORCE_INLINE void _i8_to_i8(const GLubyte* source, GLubyte* dest) {
 }
 
 static inline void _alpha8_to_argb4444(const GLubyte* source, GLubyte* dest) {
+    #if 0
+    /*A111*/
     *((GLushort*) dest) = (*source & 0xF0) << 8 | (0xFF & 0xF0) << 4 | (0xFF & 0xF0) | (0xFF & 0xF0) >> 4;
+    #else
+    /* AAAA rather than A111*/
+    GLushort color = *source&0xf0;
+    color |= color>>4;
+
+    *((GLushort*) dest) = (color << 8)|color;
+    #endif
 }
 
 static TextureConversionFunc _determineConversion(GLint internalFormat, GLenum format, GLenum type) {
@@ -927,6 +963,7 @@ static TextureConversionFunc _determineConversion(GLint internalFormat, GLenum f
     case GL_ALPHA: {
         if(format == GL_ALPHA) {
             /* Dreamcast doesn't really support GL_ALPHA internally, so store as argb with each rgb value as white */
+            /* Ozzy : applying alpha values to all channels seems a better option*/
             return _alpha8_to_argb4444;
         } else if(type == GL_UNSIGNED_BYTE && format == GL_RGBA) {
             return _rgba8888_to_a000;
@@ -1084,6 +1121,12 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
     if(target != GL_TEXTURE_2D) {
         INFO_MSG("");
         _glKosThrowError(GL_INVALID_ENUM, __func__);
+        return;
+    }
+
+    if (width > 1024 || height > 1024){
+        INFO_MSG("Invalid texture size");
+        _glKosThrowError(GL_INVALID_VALUE, __func__);
         return;
     }
 
@@ -1670,6 +1713,9 @@ GLAPI void APIENTRY glReadPixels(GLint x, GLint y, GLsizei width, GLsizei height
     _GL_UNUSED(type);
     _GL_UNUSED(pixels);
     assert(0 && "Not Implemented");
+}
+GLuint _glMaxTextureMemory() {
+    return YALLOC_SIZE;
 }
 
 GLuint _glFreeTextureMemory() {
