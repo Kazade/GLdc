@@ -1333,7 +1333,7 @@ GLuint _glGetActiveClientTexture() {
 void APIENTRY glClientActiveTextureARB(GLenum texture) {
     TRACE();
 
-    if(texture < GL_TEXTURE0_ARB || texture > GL_TEXTURE0_ARB + MAX_TEXTURE_UNITS) {
+    if(texture < GL_TEXTURE0_ARB || texture > GL_TEXTURE0_ARB + MAX_GLDC_TEXTURE_UNITS) {
         _glKosThrowError(GL_INVALID_ENUM, __func__);
         return;
     }

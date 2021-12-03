@@ -155,6 +155,20 @@ GLAPI GLboolean APIENTRY glIsFramebufferEXT(GLuint framebuffer);
 
 #define GL_SHARED_TEXTURE_PALETTE_EXT      0x81FB
 
+/* ext OES_compressed_paletted_texture */
+
+/* PixelInternalFormat */
+#define GL_PALETTE4_RGB8_OES              0x8B90
+#define GL_PALETTE4_RGBA8_OES             0x8B91
+#define GL_PALETTE4_R5_G6_B5_OES          0x8B92
+#define GL_PALETTE4_RGBA4_OES             0x8B93
+#define GL_PALETTE4_RGB5_A1_OES           0x8B94
+#define GL_PALETTE8_RGB8_OES              0x8B95
+#define GL_PALETTE8_RGBA8_OES             0x8B96
+#define GL_PALETTE8_R5_G6_B5_OES          0x8B97
+#define GL_PALETTE8_RGBA4_OES             0x8B98
+#define GL_PALETTE8_RGB5_A1_OES           0x8B99
+
 GLAPI void APIENTRY glColorTableEXT(GLenum target, GLenum internalFormat, GLsizei width, GLenum format, GLenum type, const GLvoid *data);
 GLAPI void APIENTRY glColorSubTableEXT(GLenum target, GLsizei start, GLsizei count, GLenum format, GLenum type, const GLvoid *data);
 GLAPI void APIENTRY glGetColorTableEXT(GLenum target, GLenum format, GLenum type, GLvoid *data);

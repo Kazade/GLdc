@@ -46,7 +46,7 @@ void APIENTRY glKosInitConfig(GLdcConfig* config) {
     config->initial_pt_capacity = 512 * 3;
     config->initial_tr_capacity = 1024 * 3;
     config->initial_immediate_capacity = 1024 * 3;
-    config->internal_palette_format = GL_RGBA4;
+    config->internal_palette_format = GL_RGBA8;
 }
 
 void APIENTRY glKosInitEx(GLdcConfig* config) {
