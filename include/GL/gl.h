@@ -395,6 +395,7 @@ __BEGIN_DECLS
 #define GLsizei  unsigned int
 #define GLfixed  const unsigned int
 #define GLclampf float
+#define GLclampd float
 #define GLubyte  unsigned char
 #define GLbitfield unsigned int
 #define GLboolean  unsigned char
