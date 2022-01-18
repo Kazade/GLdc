@@ -404,7 +404,18 @@ __BEGIN_DECLS
 /* Stubs for portability */
 #define GL_ALPHA_TEST                     0x0BC0
 #define GL_STENCIL_TEST                   0x0B90
+#define GL_UNPACK_SWAP_BYTES              0x0CF0
+#define GL_UNPACK_LSB_FIRST               0x0CF1
+#define GL_UNPACK_ROW_LENGTH              0x0CF2
+#define GL_UNPACK_SKIP_ROWS               0x0CF3
+#define GL_UNPACK_SKIP_PIXELS             0x0CF4
 #define GL_UNPACK_ALIGNMENT               0x0CF5
+#define GL_PACK_SWAP_BYTES                0x0D00
+#define GL_PACK_LSB_FIRST                 0x0D01
+#define GL_PACK_ROW_LENGTH                0x0D02
+#define GL_PACK_SKIP_ROWS                 0x0D03
+#define GL_PACK_SKIP_PIXELS               0x0D04
+#define GL_PACK_ALIGNMENT                 0x0D05
 
 #define GLAPI extern
 #define APIENTRY
