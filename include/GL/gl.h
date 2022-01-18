@@ -657,7 +657,8 @@ GLAPI GLenum APIENTRY glGetError(void);
 GLAPI void APIENTRY glAlphaFunc(GLenum func, GLclampf ref);
 GLAPI void APIENTRY glLineWidth(GLfloat width);
 GLAPI void APIENTRY glPolygonOffset(GLfloat factor, GLfloat units);
-GLAPI void APIENTRY glGetTexParameteriv(GLenum target, GLenum pname, GLint * params);
+GLAPI void APIENTRY glGetTexParameterfv(GLenum target, GLenum pname, GLfloat *params);
+GLAPI void APIENTRY glGetTexParameteriv(GLenum target, GLenum pname, GLint *params);
 GLAPI void APIENTRY glColorMask(GLboolean red, GLboolean green, GLboolean blue, GLboolean alpha);
 GLAPI void APIENTRY glPixelStorei(GLenum pname, GLint param);
 
