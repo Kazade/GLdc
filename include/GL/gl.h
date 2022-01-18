@@ -513,6 +513,7 @@ GLAPI void APIENTRY glBlendFunc(GLenum sfactor, GLenum dfactor);
 
 /* Texturing */
 GLAPI void APIENTRY glTexParameteri(GLenum target, GLenum pname, GLint param);
+GLAPI void APIENTRY glTexParameterf(GLenum target, GLenum pname, GLfloat param);
 GLAPI void APIENTRY glTexEnvi(GLenum target, GLenum pname, GLint param);
 GLAPI void APIENTRY glTexEnvf(GLenum target, GLenum pname, GLfloat param);
 
