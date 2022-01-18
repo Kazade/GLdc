@@ -636,6 +636,18 @@ void _glApplyScissor(bool force) {
     SCISSOR_RECT.applied = true;
 }
 
+void glStencilFunc(GLenum func, GLint ref, GLuint mask) {
+    _GL_UNUSED(func);
+    _GL_UNUSED(ref);
+    _GL_UNUSED(mask);
+}
+
+void glStencilOp(GLenum sfail, GLenum dpfail, GLenum dppass) {
+    _GL_UNUSED(sfail);
+    _GL_UNUSED(dpfail);
+    _GL_UNUSED(dppass);
+}
+
 GLboolean APIENTRY glIsEnabled(GLenum cap) {
     switch(cap) {
     case GL_DEPTH_TEST:
