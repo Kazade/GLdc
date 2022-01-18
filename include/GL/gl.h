@@ -437,6 +437,8 @@ GLAPI void APIENTRY glBegin(GLenum mode);
 GLAPI void APIENTRY glEnd();
 
 /* Primitive Texture Coordinate Submission */
+GLAPI void APIENTRY glTexCoord1f(GLfloat u);
+GLAPI void APIENTRY glTexCoord1fv(const GLfloat *u);
 GLAPI void APIENTRY glTexCoord2f(GLfloat u, GLfloat v);
 GLAPI void APIENTRY glTexCoord2fv(const GLfloat *uv);
 
