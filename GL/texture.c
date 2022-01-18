@@ -1398,7 +1398,7 @@ void APIENTRY glTexParameteri(GLenum target, GLenum pname, GLint param) {
     }
 }
 
-void APIENTRY glTexParameterf(GLenum target, GLenum pname, GLint param) {
+void APIENTRY glTexParameterf(GLenum target, GLenum pname, GLfloat param) {
     glTexParameteri(target, pname, (GLint) param);
 }
 
