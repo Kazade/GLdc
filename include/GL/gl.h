@@ -47,6 +47,24 @@ __BEGIN_DECLS
 #define GL_SCISSOR_TEST     0x0008      /* capability bit */
 #define GL_SCISSOR_BOX      0x0C10
 
+/* Stencil actions */
+#define GL_KEEP             0x1E00
+#define GL_ZERO             0x0000
+#define GL_REPLACE          0x1E01
+#define GL_INCR             0x1E02
+#define GL_DECR             0x1E03
+#define GL_INVERT           0x150A
+
+/* Stencil comparison functions */
+#define GL_NEVER            0x0200
+#define GL_ALWAYS           0x0207
+#define GL_LESS             0x0201
+#define GL_LEQUAL           0x0203
+#define GL_EQUAL            0x0202
+#define GL_GEQUAL           0x0206
+#define GL_GREATER          0x0204
+#define GL_NOTEQUAL         0x0205
+
 /* Matrix modes */
 #define GL_MATRIX_MODE      0x0BA0
 #define GL_MODELVIEW        0x1700
@@ -657,6 +675,8 @@ GLAPI void APIENTRY glPolygonOffset(GLfloat factor, GLfloat units);
 GLAPI void APIENTRY glGetTexParameteriv(GLenum target, GLenum pname, GLint * params);
 GLAPI void APIENTRY glColorMask(GLboolean red, GLboolean green, GLboolean blue, GLboolean alpha);
 GLAPI void APIENTRY glPixelStorei(GLenum pname, GLint param);
+GLAPI void APIENTRY glStencilFunc(GLenum func, GLint ref, GLuint mask);
+GLAPI void APIENTRY glStencilOp(GLenum sfail, GLenum dpfail, GLenum dppass);
 
 __END_DECLS
 
