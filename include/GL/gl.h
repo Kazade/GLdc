@@ -431,6 +431,7 @@ GLAPI void APIENTRY glTexCoord2fv(const GLfloat *uv);
 /* Primitive Color Submission */
 GLAPI void APIENTRY glColor1ui(GLuint argb);
 GLAPI void APIENTRY glColor4ub(GLubyte r, GLubyte  g, GLubyte b, GLubyte a);
+GLAPI void APIENTRY glColor4ubv(const GLubyte *v);
 GLAPI void APIENTRY glColor3f(GLfloat r, GLfloat g, GLfloat b);
 GLAPI void APIENTRY glColor3ub(GLubyte r, GLubyte  g, GLubyte b);
 GLAPI void APIENTRY glColor3ubv(const GLubyte *v);

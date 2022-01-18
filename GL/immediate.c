@@ -104,6 +104,15 @@ void APIENTRY glColor4ub(GLubyte r, GLubyte  g, GLubyte b, GLubyte a) {
     COLOR[B8IDX] = b;
 }
 
+void APIENTRY glColor4ubv(const GLubyte *v) {
+    IM_ENABLED_VERTEX_ATTRIBUTES |= DIFFUSE_ENABLED_FLAG;
+
+    COLOR[A8IDX] = v[3];
+    COLOR[R8IDX] = v[0];
+    COLOR[G8IDX] = v[1];
+    COLOR[B8IDX] = v[2];
+}
+
 void APIENTRY glColor4fv(const GLfloat* v) {
     IM_ENABLED_VERTEX_ATTRIBUTES |= DIFFUSE_ENABLED_FLAG;
 
