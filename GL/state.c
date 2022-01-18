@@ -531,6 +531,12 @@ void glPolygonOffset(GLfloat factor, GLfloat units) {
     OFFSET_UNITS = units;
 }
 
+void glGetTexParameterfv(GLenum target, GLenum pname, GLfloat *params) {
+    _GL_UNUSED(target);
+    _GL_UNUSED(pname);
+    _GL_UNUSED(params);
+}
+
 void glGetTexParameteriv(GLenum target, GLenum pname, GLint *params) {
     _GL_UNUSED(target);
     _GL_UNUSED(pname);
