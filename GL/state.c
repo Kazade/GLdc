@@ -276,6 +276,7 @@ void _glInitContext() {
     glClearDepth(1.0f);
     glDepthFunc(GL_LESS);
     glDepthMask(GL_TRUE);
+    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
     glFrontFace(GL_CCW);
     glCullFace(GL_BACK);
     glShadeModel(GL_SMOOTH);
@@ -478,6 +479,12 @@ GLAPI void APIENTRY glHint(GLenum target, GLenum mode) {
     if(target == GL_PERSPECTIVE_CORRECTION_HINT && mode == GL_NICEST) {
         // FIXME: enable supersampling
     }
+}
+
+/* Polygon Rasterization Mode */
+GLAPI void APIENTRY glPolygonMode(GLenum face, GLenum mode) {
+    _GL_UNUSED(face);
+    _GL_UNUSED(mode);
 }
 
 /* Culling */

@@ -685,6 +685,7 @@ GLAPI GLenum APIENTRY glGetError(void);
 /* Non Operational Stubs for portability */
 GLAPI void APIENTRY glAlphaFunc(GLenum func, GLclampf ref);
 GLAPI void APIENTRY glLineWidth(GLfloat width);
+GLAPI void APIENTRY glPolygonMode(GLenum face, GLenum mode);
 GLAPI void APIENTRY glPolygonOffset(GLfloat factor, GLfloat units);
 GLAPI void APIENTRY glGetTexParameterfv(GLenum target, GLenum pname, GLfloat *params);
 GLAPI void APIENTRY glGetTexParameteriv(GLenum target, GLenum pname, GLint *params);
