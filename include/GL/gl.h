@@ -421,6 +421,7 @@ __BEGIN_DECLS
 #define GL_TRUE    1
 
 /* Stubs for portability */
+#define GL_LINE_SMOOTH                    0x0B20
 #define GL_ALPHA_TEST                     0x0BC0
 #define GL_STENCIL_TEST                   0x0B90
 #define GL_UNPACK_SWAP_BYTES              0x0CF0
