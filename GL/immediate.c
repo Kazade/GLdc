@@ -224,6 +224,16 @@ void APIENTRY glMultiTexCoord2fARB(GLenum target, GLfloat s, GLfloat t) {
     }
 }
 
+void APIENTRY glTexCoord1f(GLfloat u) {
+    IM_ENABLED_VERTEX_ATTRIBUTES |= UV_ENABLED_FLAG;
+    UV_COORD[0] = u;
+    UV_COORD[1] = 0.0f;
+}
+
+void APIENTRY glTexCoord1fv(const GLfloat* v) {
+    glTexCoord1f(v[0]);
+}
+
 void APIENTRY glTexCoord2f(GLfloat u, GLfloat v) {
     IM_ENABLED_VERTEX_ATTRIBUTES |= UV_ENABLED_FLAG;
     UV_COORD[0] = u;
