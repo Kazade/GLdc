@@ -75,7 +75,7 @@ int LoadPalettedTex(const char* filename, Image* image) {
     } palette_header;
     fread(&palette_header, sizeof(palette_header), 1, filein);
 
-    image->palette = (unsigned int*) malloc(sizeof(unsigned int) * palette_header.numcolors);
+    image->palette = (char*) malloc(sizeof(unsigned int) * palette_header.numcolors);
     image->palette_width = palette_header.numcolors;
 
     fread(image->palette, sizeof(unsigned int), palette_header.numcolors, filein);
