@@ -193,7 +193,7 @@ int check_start() {
     return 0;
 }
 
-void RenderTower(counter) {
+void RenderTower(int counter) {
     counter = counter % 3;
     float height = (counter + 1) * 5.0f;
     float width = 3.5f;

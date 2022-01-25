@@ -98,7 +98,7 @@ int ImageLoad(char *filename, Image *image) {
     }
 
     if ((i = fread(image->data, size, 1, file)) != 1) {
-        printf(stderr, "Error reading image data from %s.\n", filename);
+        printf("Error reading image data from %s.\n", filename);
         return 0;
     }
 
