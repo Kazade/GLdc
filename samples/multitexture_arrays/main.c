@@ -21,6 +21,8 @@
 #include "GL/glext.h"
 
 #ifdef __DREAMCAST__
+extern uint8_t romdisk[];
+KOS_INIT_ROMDISK(romdisk);
 #define IMAGE1_FILENAME "/rd/wp001vq.pvr"
 #define IMAGE2_FILENAME "/rd/FlareWS_256.pvr"
 #else
@@ -121,9 +123,6 @@ void RenderCallback(GLuint texID0, GLuint texID1) {
     glDisableClientState(GL_TEXTURE_COORD_ARRAY);
     glDisableClientState(GL_VERTEX_ARRAY);
 }
-
-extern uint8_t romdisk[];
-KOS_INIT_ROMDISK(romdisk);
 
 int main(int argc, char **argv) {
     /* Notice we do not init the PVR here, that is handled by Open GL */
