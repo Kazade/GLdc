@@ -311,7 +311,7 @@ void DrawGLScene()
     DrawTexturedQuad(texture[0], l1_pos[0], l1_pos[1], l1_pos[2]);
 
     for (int i = 0; i < 5; i++)
-      DrawTexturedQuad(texture[0], i * 20, 0.0f, 0.0f); // Draw the textured quad.
+      DrawTexturedQuad(texture[0], i * 20, 0.0f, 0.1f); // Draw the textured quad.
     // swap buffers to display, since we're double buffered.
     glKosSwapBuffers();
 
