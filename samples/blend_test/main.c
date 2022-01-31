@@ -1,7 +1,8 @@
 /*
- * This sample is to demonstrate a bug where rendering an unblended
- * polygon, before a series of blended ones would result in no blended
- * output and incorrect depth testing
+ * This sample demonstrates blending, and the importance of drawing order,
+ * depth testing and z-value.
+ * This is a merge of lerabot_blend_test and blend_test, with 1 added case,
+ * and with adapted/corrected explanation
  */
 
 #ifdef __DREAMCAST__
@@ -82,13 +83,13 @@ void DrawGLScene()
     const float NONE [] = {0, 0, 0, 0};
 
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);		// Clear The Screen And The Depth Buffer
+
+    // LEFT UPPER SECTION
     glLoadIdentity();				// Reset The View
-
-    glTranslatef(-4.0, 0, -10);
-
-    // LEFT SECTION
-    // This should draw 2 quad, a red first, then and overlapping blue one.
-    // This section draw both quad at the same Z value
+    glTranslatef(-4.0, 2.0, -10);
+    // This draws 2 quads, a red first, then an overlapping blue one.
+    // Both quads are drawn at the SAME z-value
+    // With depth test GL_LEQUAL, this means blending for the overlapping part
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     DrawQuad(RED);
@@ -96,16 +97,43 @@ void DrawGLScene()
     DrawQuad(BLUE);
     glDisable(GL_BLEND);
 
+    // RIGHT UPPER SECTION
     glTranslatef(4.0, 0, 0);
+    // This draws 2 quads, a red first, then an overlapping blue one.
+    // The blue quad has a LOWER z-value, so it is behind the red quad.
+    // With depth test GL_LEQUAL, the blue part is not considered for the overlapping part, so no blending
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    DrawQuad(RED);
+    glTranslatef(1.0, 0, -0.01);
+    DrawQuad(BLUE);
+    glDisable(GL_BLEND);
 
-    // RIGHT SECTION
-    // This should draw 2 quad, a red first, then and overlapping blue one.
-    // This section uses a HIGHER Z VALUE(0.01f), so the blue quad should be in FRONT of the red quad.
+    // LEFT DOWN SECTION
+    glLoadIdentity();				// Reset The View
+    glTranslatef(-4.0, -1.0, -10);
+    // This draws 2 quads, a red first, then an overlapping blue one.
+    // The blue quad has a HIGHER z-value, so it is in front the red quad.
+    // With depth test GL_LEQUAL, this means blending for the overlapping part
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     DrawQuad(RED);
     glTranslatef(1.0, 0, 0.01);
     DrawQuad(BLUE);
+    glDisable(GL_BLEND);
+
+    // RIGHT DOWN SECTION
+    glTranslatef(4.0, 0.0, -0.01);
+    // This is basically the same as the RIGHT UPPER SECTION, except that the blue quad
+    //  is drawn first.
+    // With depth test GL_LEQUAL, this means blending for the overlapping part 
+    // <- the order of drawing is important for blending !
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    glTranslatef(1.0, 0.0, -0.01);
+    DrawQuad(BLUE);
+    glTranslatef(-1.0, 0.0, 0.01);
+    DrawQuad(RED);
     glDisable(GL_BLEND);
 
     glKosSwapBuffers();
