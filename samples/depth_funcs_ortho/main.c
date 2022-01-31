@@ -82,9 +82,9 @@ void DrawGLScene()
     glDepthFunc(GL_LEQUAL);
     //RED over GREEN over BLUE
     DrawSquare(100.0, 1.0, 0.0, 0.0, 0.0);
-    glTranslatef(50, 0, 0.03f);
+    glTranslatef(50, 0, -0.03f);
     DrawSquare(100, 0, 1, 0, 0);
-    glTranslatef(50, 0, 0.03f);
+    glTranslatef(50, 0, -0.03f);
     DrawSquare(100, 0, 0, 1, 0);
 
     // swap buffers to display, since we're double buffered.
