@@ -684,6 +684,7 @@ GLAPI void APIENTRY glColorMask(GLboolean red, GLboolean green, GLboolean blue, 
 GLAPI void APIENTRY glPixelStorei(GLenum pname, GLint param);
 GLAPI void APIENTRY glStencilFunc(GLenum func, GLint ref, GLuint mask);
 GLAPI void APIENTRY glStencilOp(GLenum sfail, GLenum dpfail, GLenum dppass);
+GLAPI void APIENTRY glGetTexImage(GLenum tex, GLint lod, GLenum format, GLenum type, GLvoid* img);
 
 __END_DECLS
 

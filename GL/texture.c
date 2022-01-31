@@ -1651,3 +1651,11 @@ GLAPI GLvoid APIENTRY glDefragmentTextureMemory_KOS(void) {
 
     yalloc_defrag_commit(YALLOC_BASE);
 }
+
+GLAPI void APIENTRY glGetTexImage(GLenum tex, GLint lod, GLenum format, GLenum type, GLvoid* img) {
+    _GL_UNUSED(tex);
+    _GL_UNUSED(lod);
+    _GL_UNUSED(format);
+    _GL_UNUSED(type);
+    _GL_UNUSED(img);
+}
