@@ -26,8 +26,8 @@ KOS_INIT_ROMDISK(romdisk);
 #define IMAGE1_FILENAME "/rd/wp001vq.pvr"
 #define IMAGE2_FILENAME "/rd/FlareWS_256.pvr"
 #else
-#define IMAGE1_FILENAME "samples/multitexture_arrays/romdisk/wp001vq.pvr"
-#define IMAGE2_FILENAME "samples/multitexture_arrays/romdisk/FlareWS_256.pvr"
+#define IMAGE1_FILENAME "../samples/multitexture_arrays/romdisk/wp001vq.pvr"
+#define IMAGE2_FILENAME "../samples/multitexture_arrays/romdisk/FlareWS_256.pvr"
 #endif
 
 /* Load a PVR texture - located in pvr-texture.c */
