@@ -26,6 +26,11 @@
    blending.
 */
 
+#ifdef __DREAMCAST__
+extern uint8 romdisk[];
+KOS_INIT_ROMDISK(romdisk);
+#endif
+
 static GLfloat xrot;        /* X Rotation */
 static GLfloat yrot;        /* Y Rotation */
 static GLfloat xspeed;      /* X Rotation Speed */
@@ -114,11 +119,6 @@ void draw_gl(void) {
     xrot += xspeed;
     yrot += yspeed;
 }
-
-#ifdef __DREAMCAST__
-extern uint8 romdisk[];
-KOS_INIT_ROMDISK(romdisk);
-#endif
 
 int main(int argc, char **argv) {
 #ifdef __DREAMCAST__

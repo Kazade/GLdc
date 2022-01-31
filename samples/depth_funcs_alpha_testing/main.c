@@ -9,8 +9,11 @@
 
 //$KOS_BASE/utils/texconv/texconv  --in disk.png --format ARGB4444 --preview disk_preview.png --out disk.dtex
 
+#ifdef __DREAMCAST__
 extern uint8_t romdisk[];
 KOS_INIT_ROMDISK(romdisk);
+#endif
+
 texture t;
 int 	blendActive = -1;
 /* floats for x rotation, y rotation, z rotation */
