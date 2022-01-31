@@ -19,6 +19,17 @@ int32_t delaytime;
 #ifdef __DREAMCAST__
 extern uint8_t romdisk[];
 KOS_INIT_ROMDISK(romdisk);
+#define IMG_LOGO_PATH   "/rd/logo.bmp"
+#define IMG_MASK1_PATH  "/rd/mask1.bmp"
+#define IMG_IMAGE1_PATH "/rd/image1.bmp"
+#define IMG_MASK2_PATH  "/rd/mask2.bmp"
+#define IMG_IMAGE2_PATH "/rd/image2.bmp"
+#else
+#define IMG_LOGO_PATH   "../samples/nehe20/romdisk/logo.bmp"
+#define IMG_MASK1_PATH  "../samples/nehe20/romdisk/mask1.bmp"
+#define IMG_IMAGE1_PATH "../samples/nehe20/romdisk/image1.bmp"
+#define IMG_MASK2_PATH  "../samples/nehe20/romdisk/mask2.bmp"
+#define IMG_IMAGE2_PATH "../samples/nehe20/romdisk/image2.bmp"
 #endif
 
 #include "../loadbmp.h"
@@ -75,11 +86,11 @@ int LoadGLTextures()                                    // Load Bitmaps And Conv
 
 		Image TextureImage[5];
 
-        if ((ImageLoad("/rd/logo.bmp", &TextureImage[0])) &&	// Logo Texture
-			(ImageLoad("/rd/mask1.bmp", &TextureImage[1])) &&	// First Mask
-			(ImageLoad("/rd/image1.bmp", &TextureImage[2])) &&	// First Image
-			(ImageLoad("/rd/mask2.bmp", &TextureImage[3])) &&	// Second Mask
-			(ImageLoad("/rd/image2.bmp", &TextureImage[4])))	// Second Image
+        if ((ImageLoad(IMG_LOGO_PATH, &TextureImage[0])) &&	// Logo Texture
+			(ImageLoad(IMG_MASK1_PATH, &TextureImage[1])) &&	// First Mask
+			(ImageLoad(IMG_IMAGE1_PATH, &TextureImage[2])) &&	// First Image
+			(ImageLoad(IMG_MASK2_PATH, &TextureImage[3])) &&	// Second Mask
+			(ImageLoad(IMG_IMAGE2_PATH, &TextureImage[4])))	// Second Image
         {
                 Status=TRUE;                            // Set The Status To TRUE
                 glGenTextures(5, &texture[0]);          // Create Five Textures

@@ -17,6 +17,11 @@
     #include <kos.h>
     extern uint8 romdisk[];
     KOS_INIT_ROMDISK(romdisk);
+    #define IMG_PATH       "/rd/NeHe.pcx"
+    #define IMG_ALPHA_PATH "/rd/NeHe-Alpha.pcx"
+#else
+    #define IMG_PATH       "../samples/paletted_pcx/romdisk/NeHe.pcx"
+    #define IMG_ALPHA_PATH "../samples/paletted_pcx/romdisk/NeHe-Alpha.pcx"
 #endif
 
 /* floats for x rotation, y rotation, z rotation */
@@ -140,11 +145,11 @@ void LoadGLTextures() {
     // Load Texture
     Image image1, image2;
 
-    if(!LoadPalettedPCX("/rd/NeHe.pcx", &image1)) {
+    if(!LoadPalettedPCX(IMG_PATH, &image1)) {
         exit(1);
     }
 
-    if(!LoadPalettedPCX("/rd/NeHe-Alpha.pcx", &image2)) {
+    if(!LoadPalettedPCX(IMG_ALPHA_PATH, &image2)) {
         exit(1);
     }
 

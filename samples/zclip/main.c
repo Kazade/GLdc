@@ -16,6 +16,17 @@
 #include <kos.h>
 extern uint8 romdisk[];
 KOS_INIT_ROMDISK(romdisk);
+#define IMG_FACADE00_PATH "/rd/facade00.tga"
+#define IMG_FACADE01_PATH "/rd/facade01.tga"
+#define IMG_FACADE02_PATH "/rd/facade02.tga"
+#define IMG_FLOOR_PATH    "/rd/floor.tga"
+#define IMG_LIGHTMAP_PATH "/rd/lightmap.tga"
+#else
+#define IMG_FACADE00_PATH "../samples/zclip/romdisk/facade00.tga"
+#define IMG_FACADE01_PATH "../samples/zclip/romdisk/facade01.tga"
+#define IMG_FACADE02_PATH "../samples/zclip/romdisk/facade02.tga"
+#define IMG_FLOOR_PATH    "../samples/zclip/romdisk/floor.tga"
+#define IMG_LIGHTMAP_PATH "../samples/zclip/romdisk/lightmap.tga"
 #endif
 
 /* Image type - contains height, width, and data */
@@ -119,9 +130,9 @@ GLboolean LoadTGA(TextureImage *texture, const char *filename)			// Loads A TGA 
 // Load Bitmaps And Convert To Textures
 void LoadGLTextures() {
     const char* filenames [] = {
-        "/rd/facade00.tga",
-        "/rd/facade01.tga",
-        "/rd/facade02.tga"
+        IMG_FACADE00_PATH,
+        IMG_FACADE01_PATH,
+        IMG_FACADE02_PATH
     };
 
     GLubyte i;
@@ -129,11 +140,11 @@ void LoadGLTextures() {
         LoadTGA(&textures[i], filenames[i]);
     }
 
-    if(!LoadTGA(&road, "/rd/floor.tga")) {
+    if(!LoadTGA(&road, IMG_FLOOR_PATH)) {
         fprintf(stderr, "Error loading road texture");
     }
 
-    if(!LoadTGA(&lightmap, "/rd/lightmap.tga")) {
+    if(!LoadTGA(&lightmap, IMG_LIGHTMAP_PATH)) {
         fprintf(stderr, "Error loading lightmap texture");
     }
 }

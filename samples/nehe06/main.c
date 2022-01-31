@@ -13,11 +13,11 @@
 #include "GL/glkos.h"
 
 #ifdef __DREAMCAST__
-#define IMAGE_FILENAME "/rd/NeHe.bmp"
 extern uint8_t romdisk[];
 KOS_INIT_ROMDISK(romdisk);
+#define IMAGE_FILENAME "/rd/NeHe.bmp"
 #else
-#define IMAGE_FILENAME "samples/nehe06/romdisk/NeHe.bmp"
+#define IMAGE_FILENAME "../samples/nehe06/romdisk/NeHe.bmp"
 #endif
 
 #include "../loadbmp.h"

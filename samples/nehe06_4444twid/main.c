@@ -12,11 +12,11 @@
 #include "GL/glext.h"
 
 #ifdef __DREAMCAST__
-#define IMG_PATH "/rd/NeHe.tex"
 extern uint8 romdisk[];
 KOS_INIT_ROMDISK(romdisk);
+#define IMG_PATH "/rd/NeHe.tex"
 #else
-#define IMG_PATH "samples/nehe06_4444twid/romdisk/NeHe.tex"
+#define IMG_PATH "../samples/nehe06_4444twid/romdisk/NeHe.tex"
 #endif
 
 /* floats for x rotation, y rotation, z rotation */

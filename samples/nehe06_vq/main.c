@@ -13,6 +13,9 @@
 #ifdef __DREAMCAST__
 extern uint8 romdisk[];
 KOS_INIT_ROMDISK(romdisk);
+#define IMG_PATH "/rd/NeHe.tex"
+#else
+#define IMG_PATH "../samples/nehe06_vq/romdisk/NeHe.tex"
 #endif
 
 /* floats for x rotation, y rotation, z rotation */
@@ -149,7 +152,7 @@ void LoadGLTextures() {
         exit(0);
     }
 
-    if (!ImageLoad("/rd/NeHe.tex", image1)) {
+    if (!ImageLoad(IMG_PATH, image1)) {
         exit(1);
     }
 

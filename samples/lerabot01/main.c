@@ -2,6 +2,7 @@
 #include <time.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <math.h>
 
 #ifdef __DREAMCAST__
 #include <kos.h>
@@ -14,6 +15,9 @@
 #ifdef __DREAMCAST__
 extern uint8 romdisk[];
 KOS_INIT_ROMDISK(romdisk);
+#define IMAGE_FILENAME "/rd/flag1.bmp"
+#else
+#define IMAGE_FILENAME "../samples/lerabot01/romdisk/flag1.bmp"
 #endif
 
 #include "../loadbmp.h"
@@ -36,7 +40,7 @@ void LoadGLTextures() {
         exit(0);
     }
 
-    if (!ImageLoad("/rd/flag1.bmp", image1)) {
+    if (!ImageLoad(IMAGE_FILENAME, image1)) {
         exit(1);
     }
 

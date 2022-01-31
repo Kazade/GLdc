@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include <math.h>
 
 #ifdef __DREAMCAST__
 #include <kos.h>
@@ -17,7 +18,7 @@ extern uint8_t romdisk[];
 KOS_INIT_ROMDISK(romdisk);
 #define IMAGE_FILENAME "/rd/NeHe.bmp"
 #else
-#define IMAGE_FILENAME "samples/lights/romdisk/NeHe.bmp"
+#define IMAGE_FILENAME "../samples/lights/romdisk/NeHe.bmp"
 #endif
 
 #include "../loadbmp.h"

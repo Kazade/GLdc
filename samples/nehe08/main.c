@@ -29,6 +29,9 @@
 #ifdef __DREAMCAST__
 extern uint8 romdisk[];
 KOS_INIT_ROMDISK(romdisk);
+#define IMG_PATH "/rd/glass.pvr"
+#else
+#define IMG_PATH "../samples/nehe08/romdisk/glass.pvr"
 #endif
 
 static GLfloat xrot;        /* X Rotation */
@@ -156,11 +159,11 @@ int main(int argc, char **argv) {
     glEnable(GL_LIGHT0);
 
     /* Set up the textures */
-    texture[0] = glTextureLoadPVR("/rd/glass.pvr", 0, 0);
+    texture[0] = glTextureLoadPVR(IMG_PATH, 0, 0);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 
-    texture[1] = glTextureLoadPVR("/rd/glass.pvr", 0, 0);
+    texture[1] = glTextureLoadPVR(IMG_PATH, 0, 0);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 
