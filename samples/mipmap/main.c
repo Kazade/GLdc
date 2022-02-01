@@ -47,11 +47,9 @@ void LoadGLTextures() {
     glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_LINEAR); // scale linearly when image bigger than texture
     glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_LINEAR_MIPMAP_LINEAR); // scale linearly when image smalled than texture
 
-    // 2d texture, level of detail 0 (normal), 3 components (red, green, blue), x size from image, y size from image,
-    // border 0 (normal), rgb color data, unsigned byte data, and finally the data itself.
-    glTexImage2D(GL_TEXTURE_2D, 0, 3, image1->sizeX, image1->sizeY, 0, GL_RGB, GL_UNSIGNED_BYTE, image1->data);
-
-    glGenerateMipmapEXT(GL_TEXTURE_2D);
+    // 2d texture, 3 components (red, green, blue), x size from image, y size from image,
+    // rgb color data, unsigned byte data, and finally the data itself.
+    gluBuild2DMipmaps(GL_TEXTURE_2D, 3, image1->sizeX, image1->sizeY, GL_RGB, GL_UNSIGNED_BYTE, image1->data);
 
     free(image1);
 };
