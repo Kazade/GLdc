@@ -320,6 +320,18 @@ void APIENTRY glGenerateMipmapEXT(GLenum target) {
     assert(_glIsMipmapComplete(tex));
 }
 
+/* generate mipmaps for any image provided by the user and then pass them to OpenGL */
+GLAPI GLint APIENTRY gluBuild2DMipmaps(GLenum target, GLint internalFormat,
+                                       GLsizei width, GLsizei height,
+                                       GLenum format, GLenum type, const void *data){
+    /* 2d texture, level of detail 0 (normal), 3 components (red, green, blue), 
+	 width & height of the image, border 0 (normal), rgb color data,
+	 unsigned byte data, and finally the data itself. */
+    glTexImage2D(GL_TEXTURE_2D, 0, 3, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
+
+    glGenerateMipmapEXT(GL_TEXTURE_2D);
+}
+
 GLenum APIENTRY glCheckFramebufferStatusEXT(GLenum target) {
     if(target != GL_FRAMEBUFFER_EXT) {
         _glKosThrowError(GL_INVALID_ENUM, __func__);

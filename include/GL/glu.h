@@ -34,6 +34,11 @@ GLAPI void APIENTRY gluLookAt(GLfloat eyex, GLfloat eyey, GLfloat eyez,
                               GLfloat centerx, GLfloat centery, GLfloat centerz,
                               GLfloat upx, GLfloat upy, GLfloat upz);
 
+/* generate mipmaps for any image provided by the user and then pass them to OpenGL */
+GLAPI GLint APIENTRY gluBuild2DMipmaps(GLenum target, GLint internalFormat,
+                                       GLsizei width, GLsizei height,
+                                       GLenum format, GLenum type, const void *data);
+
 GLAPI const GLubyte* APIENTRY gluErrorString(GLenum error);
 
 __END_DECLS
