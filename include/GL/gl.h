@@ -36,9 +36,20 @@ __BEGIN_DECLS
 #define GL_CW               0x0900
 #define GL_CCW              0x0901
 
+#define GL_NONE             0
+#define GL_FRONT_LEFT       0x0400
+#define GL_FRONT_RIGHT      0x0401
+#define GL_BACK_LEFT        0x0402
+#define GL_BACK_RIGHT       0x0403
 #define GL_FRONT            0x0404
 #define GL_BACK             0x0405
+#define GL_LEFT             0x0406
+#define GL_RIGHT            0x0407
 #define GL_FRONT_AND_BACK   0x0408
+#define GL_AUX0             0x0409
+#define GL_AUX1             0x040A
+#define GL_AUX2             0x040B
+#define GL_AUX3             0x040C
 #define GL_CULL_FACE        0x0B44
 #define GL_CULL_FACE_MODE   0x0B45
 #define GL_FRONT_FACE       0x0B46
@@ -183,6 +194,14 @@ __BEGIN_DECLS
 #define GL_TEXTURE_BIT                          0x00040000
 #define GL_SCISSOR_BIT                          0x00080000
 #define GL_ALL_ATTRIB_BITS                      0x000FFFFF
+
+/* Clip planes */
+#define GL_CLIP_PLANE0      0x3000
+#define GL_CLIP_PLANE1      0x3001
+#define GL_CLIP_PLANE2      0x3002
+#define GL_CLIP_PLANE3      0x3003
+#define GL_CLIP_PLANE4      0x3004
+#define GL_CLIP_PLANE5      0x3005
 
 /* Fog */
 #define GL_FOG              0x0004      /* capability bit */
@@ -412,6 +431,9 @@ __BEGIN_DECLS
 #define GL_LINE_SMOOTH                    0x0B20
 #define GL_ALPHA_TEST                     0x0BC0
 #define GL_STENCIL_TEST                   0x0B90
+#define GL_STENCIL_WRITEMASK              0x0B98
+#define GL_INDEX_WRITEMASK                0x0C21
+#define GL_COLOR_WRITEMASK                0x0C23
 #define GL_UNPACK_SWAP_BYTES              0x0CF0
 #define GL_UNPACK_LSB_FIRST               0x0CF1
 #define GL_UNPACK_ROW_LENGTH              0x0CF2
