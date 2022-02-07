@@ -450,8 +450,8 @@ __BEGIN_DECLS
 #define GLAPI extern
 #define APIENTRY
 
-GLAPI void APIENTRY glFlush();
-GLAPI void APIENTRY glFinish();
+GLAPI void APIENTRY glFlush(void);
+GLAPI void APIENTRY glFinish(void);
 
 /* Start Submission of Primitive Data */
 /* Currently Supported Primitive Types:
@@ -463,7 +463,7 @@ GLAPI void APIENTRY glFinish();
 GLAPI void APIENTRY glBegin(GLenum mode);
 
 /* Finish Submission of Primitive Data */
-GLAPI void APIENTRY glEnd();
+GLAPI void APIENTRY glEnd(void);
 
 /* Primitive Texture Coordinate Submission */
 GLAPI void APIENTRY glTexCoord1f(GLfloat u);
@@ -629,15 +629,15 @@ GLAPI void APIENTRY glDisableClientState(GLenum cap);
 
 GLAPI void APIENTRY glMatrixMode(GLenum mode);
 
-GLAPI void APIENTRY glLoadIdentity();
+GLAPI void APIENTRY glLoadIdentity(void);
 
 GLAPI void APIENTRY glLoadMatrixf(const GLfloat *m);
 GLAPI void APIENTRY glLoadTransposeMatrixf(const GLfloat *m);
 GLAPI void APIENTRY glMultMatrixf(const GLfloat *m);
 GLAPI void APIENTRY glMultTransposeMatrixf(const GLfloat *m);
 
-GLAPI void APIENTRY glPushMatrix();
-GLAPI void APIENTRY glPopMatrix();
+GLAPI void APIENTRY glPushMatrix(void);
+GLAPI void APIENTRY glPopMatrix(void);
 
 GLAPI void APIENTRY glTranslatef(GLfloat x, GLfloat y, GLfloat z);
 #define glTranslated glTranslatef
