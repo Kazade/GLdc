@@ -6,9 +6,9 @@ PolyList OP_LIST;
 PolyList PT_LIST;
 PolyList TR_LIST;
 
-/** Don't fully comply to the GL standard to make some performance
- *  gains. Specifically glDepthRange will be ignored, and the final
- *  Z coordinate will be invW and not between 0 and 1.
+/**
+ *  FAST_MODE will use invW for all Z coordinates sent to the
+ *  GPU.
  *
  *  This will break orthographic mode so default is FALSE
  **/
@@ -120,19 +120,16 @@ GL_FORCE_INLINE void glPerspectiveDivideStandard(void* src, uint32_t n) {
                 VIEWPORT.hheight, vertex->xyz[1] * f, VIEWPORT.y_plus_hheight
             );
 
-            /* FIXME: Apply depth range */
-
-            /* After multiplying by 'f', the Z coordinate is between
-            * -1 and 1. We then need to shift it into a value > 0.00001f
-            * where the larger value becomes smaller and vice-versa (because
-            * the PVR works backwards).
-            *
-            * If we multipled the lowest value (-1) by -1 it becomes 1, if
-            * we multiply the lowest value (1) by -1 it becomes, then we need
-            * to add 1 to get it in the range 0 - 2. Then we add a little offset
-            * and this approach means we can just use FMAC.
-            * */
-            vertex->xyz[2] = __builtin_fmaf((vertex->xyz[2] * f), -1.0f, 1.00001f);
+            /* Orthographic projections need to use invZ otherwise we lose
+            the depth information. As w == 1, and clip-space range is -w to +w
+            we add 1.0 to the Z to bring it into range. We add a little extra to
+            avoid a divide by zero.
+            */
+            if(unlikely(vertex->w == 1.0f)) {
+                vertex->xyz[2] = MATH_Fast_Invert(1.0001f + vertex->xyz[2]);
+            } else {
+                vertex->xyz[2] = f;
+            }
         }
 
         ++vertex;
