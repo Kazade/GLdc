@@ -89,6 +89,38 @@ static GLshort _glGenPaletteSlot(GLushort size) {
     fprintf(stderr, "GL ERROR: No palette slots remain\n");
     return -1;
 }
+#if 0
+static GLshort _glGenSharedPaletteSlot(GLushort size) {
+    GLushort i, j;
+    TextureObject* active = _glGetBoundTexture();
+
+    assert(size == 16 || size == 256);
+
+    if(size == 16) {
+
+        i = active->shared_bank / MAX_GLDC_4BPP_PALETTE_SLOTS;
+        BANKS_USED[i] = GL_TRUE;
+        j = i * MAX_GLDC_4BPP_PALETTE_SLOTS;
+        j = active->shared_bank - j;
+        SUBBANKS_USED[i][j] = GL_TRUE;
+        return (i * MAX_GLDC_4BPP_PALETTE_SLOTS) + j;
+    }
+    else {
+        for(i = 0; i < MAX_GLDC_PALETTE_SLOTS; ++i) {
+            if(!BANKS_USED[i]) {
+                BANKS_USED[i] = GL_TRUE;
+                for(j = 0; j < MAX_GLDC_4BPP_PALETTE_SLOTS; ++j) {
+                    SUBBANKS_USED[i][j] = GL_TRUE;
+                }
+                return i;
+            }
+        }
+    }
+
+    fprintf(stderr, "GL ERROR: No palette slots remain\n");
+    return -1;
+}
+#endif
 
 /* ozzy: used for statistics */
 GLushort _glFreePaletteSlots(GLushort size)
@@ -447,6 +479,21 @@ static GLuint _glGetMipmapDataSize(TextureObject* obj) {
     return imageSize + offset;
 }
 
+
+void _glResetSharedPalettes()
+{
+    uint32_t i;
+
+    for (i=0; i < MAX_GLDC_SHARED_PALETTES;i++){
+
+        MEMSET4(SHARED_PALETTES[i], 0x0, sizeof(TexturePalette));
+        SHARED_PALETTES[i]->bank = -1;
+    }
+
+    memset((void*) BANKS_USED, 0x0, sizeof(BANKS_USED));
+    memset((void*) SUBBANKS_USED, 0x0, sizeof(SUBBANKS_USED));
+
+}
 GLubyte _glInitTextures() {
 
     uint32_t i;
@@ -460,8 +507,10 @@ GLubyte _glInitTextures() {
         SHARED_PALETTES[i] = _initTexturePalette();
     }
 
-    memset((void*) BANKS_USED, 0x0, sizeof(BANKS_USED));
-    memset((void*) SUBBANKS_USED, 0x0, sizeof(SUBBANKS_USED));
+    _glResetSharedPalettes();
+
+    //memset((void*) BANKS_USED, 0x0, sizeof(BANKS_USED));
+    //memset((void*) SUBBANKS_USED, 0x0, sizeof(SUBBANKS_USED));
 
     size_t vram_free = GPUMemoryAvailable();
     YALLOC_SIZE = vram_free - PVR_MEM_BUFFER_SIZE; /* Take all but 64kb VRAM */
@@ -1731,7 +1780,7 @@ GLAPI void APIENTRY glColorTableEXT(GLenum target, GLenum internalFormat, GLsize
         sharedPaletteUsed = GL_TRUE;
     }
 
-    for (GLbyte i = 1; i < 64; ++i) {
+    for (GLbyte i = 1; i < MAX_GLDC_SHARED_PALETTES; ++i) {
         if (target == GL_SHARED_TEXTURE_PALETTE_0_KOS + i) {
             palette = SHARED_PALETTES[i];
             sharedPaletteUsed = GL_TRUE;
@@ -1763,7 +1812,16 @@ GLAPI void APIENTRY glColorTableEXT(GLenum target, GLenum internalFormat, GLsize
     palette->size = (width > 16) ? 256 : 16;
     assert(palette->size == 16 || palette->size == 256);
 
+    #if 0
+    if (sharedPaletteUsed == GL_FALSE){
+        palette->bank = _glGenPaletteSlot(palette->size);
+    }
+    else{
+        palette->bank = _glGenSharedPaletteSlot(palette->size);
+    }
+    #else
     palette->bank = _glGenPaletteSlot(palette->size);
+    #endif
 
     if(palette->bank < 0) {
         /* We ran out of slots! */
