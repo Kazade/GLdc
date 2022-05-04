@@ -176,31 +176,20 @@ static void GPUTextureTwiddle4PPP(void* src, void* dst, uint32_t w, uint32_t h) 
     min = MIN(w, h);
     mask = min - 1;
 
-	uint8 * pixels;
-    uint16 * vtex;
-    pixels = (uint8 *) src;
-    vtex = (uint16*)dst;
+	uint8_t* pixels;
+    uint16_t* vtex;
+    pixels = (uint8_t*) src;
+    vtex = (uint16_t*) dst;
 
-    for (y=0; y<h; y += 2) {
+    for(y = 0; y < h; y += 2) {
         yout = y;
-        for (x=0; x<w; x += 2) {
-
-                //Ozzy note: if x alignment is wrong just use version commented instead (possible error)
-                #if 1
-            vtex[TWIDOUT((x&mask)/2, (yout&mask)/2) +
-                (x/min + yout/min)*min*min/4] =
-            vtex[TWIDOUT((x&mask)/2, (yout&mask)/2) +
-                (x/min + yout/min)*min*min/4] =
-                ((pixels[(x+y*w) >>1]&15)<<8) | ((pixels[(x+(y+1)*w) >>1]&15)<<12) |
-                ((pixels[(x+y*w) >>1]>>4)<<0) | ((pixels[(x+(y+1)*w) >>1]>>4)<<4);
-
-                #else
-            vtex[TWIDOUT((x&mask)/2, (yout&mask)/2) +
-                (x/min + yout/min)*min*min/4] =
-                (pixels[(x+y*w) >>1]&15) | ((pixels[(x+(y+1)*w) >>1]&15)<<4) |
-                ((pixels[(x+y*w) >>1]>>4)<<8) | ((pixels[(x+(y+1)*w) >>1]>>4)<<12);
-
-                #endif
+        for (x = 0; x < w; x += 2) {
+            vtex[TWIDOUT((x & mask) / 2, (yout & mask) / 2) +
+                (x / min + yout / min) * min * min / 4] =
+            vtex[TWIDOUT((x & mask) / 2, (yout & mask) / 2) +
+                (x / min + yout / min) * min * min / 4] =
+                ((pixels[(x + y * w) >> 1] & 15) << 8) | ((pixels[(x + (y + 1) * w) >> 1] & 15) << 12) |
+                ((pixels[(x + y * w) >> 1] >> 4) << 0) | ((pixels[(x + (y + 1) * w) >> 1] >> 4) << 4);
         }
     }
 }
@@ -1655,20 +1644,17 @@ GLAPI void APIENTRY glColorTableEXT(GLenum target, GLenum internalFormat, GLsize
         GL_SHARED_TEXTURE_PALETTE_60_KOS,GL_SHARED_TEXTURE_PALETTE_61_KOS,GL_SHARED_TEXTURE_PALETTE_62_KOS,GL_SHARED_TEXTURE_PALETTE_63_KOS,
         0};
 
-    //GLint validInternalFormats[] = {GL_RGB8, GL_RGBA8,GL_RGBA4, 0};
-    GLint validFormats[] = {GL_RGB, GL_RGBA,GL_RGB5_A1,GL_RGB5_A1,GL_RGB565_KOS,GL_RGBA4, 0};
+    GLint validInternalFormats[] = {GL_RGB8, GL_RGBA8, GL_RGBA4, 0};
+    GLint validFormats[] = {GL_RGB, GL_RGBA,GL_RGB5_A1, GL_RGB5_A1, GL_RGB565_KOS, GL_RGBA4, 0};
     GLint validTypes[] = {GL_UNSIGNED_BYTE, GL_BYTE, GL_UNSIGNED_SHORT, GL_SHORT, 0};
 
     if(_glCheckValidEnum(target, validTargets, __func__) != 0) {
         return;
     }
 
-    /*ozzy:let's consider internalFormat param as a hint coz it's already set into gldcConfig
     if(_glCheckValidEnum(internalFormat, validInternalFormats, __func__) != 0) {
         return;
     }
-    */
-
 
     switch(format){
         case GL_PALETTE4_RGBA8_OES:
@@ -1697,7 +1683,6 @@ GLAPI void APIENTRY glColorTableEXT(GLenum target, GLenum internalFormat, GLsize
 
     }
 
-
     if(_glCheckValidEnum(format, validFormats, __func__) != 0) {
         return;
     }
@@ -1717,7 +1702,7 @@ GLAPI void APIENTRY glColorTableEXT(GLenum target, GLenum internalFormat, GLsize
     assert(sourceStride > -1);
 
     TextureConversionFunc convert = _determineConversion(
-        INTERNAL_PALETTE_FORMAT, //was previously forced to GL_RGBA8
+        INTERNAL_PALETTE_FORMAT,
         format,
         type
     );
