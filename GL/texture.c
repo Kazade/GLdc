@@ -18,17 +18,18 @@
 #define CLAMP_U (1<<1)
 #define CLAMP_V (1<<0)
 
-static TextureObject* TEXTURE_UNITS[MAX_TEXTURE_UNITS] = {NULL, NULL};
+static TextureObject* TEXTURE_UNITS[MAX_GLDC_TEXTURE_UNITS] = {NULL, NULL};
 static NamedArray TEXTURE_OBJECTS;
 GLubyte ACTIVE_TEXTURE = 0;
 
-static TexturePalette* SHARED_PALETTES[4] = {NULL, NULL, NULL, NULL};
+static TexturePalette* SHARED_PALETTES[MAX_GLDC_SHARED_PALETTES];
 
 static GLuint _determinePVRFormat(GLint internalFormat, GLenum type);
 
-static GLboolean BANKS_USED[4];  // Each time a 256 colour bank is used, this is set to true
-static GLboolean SUBBANKS_USED[4][16]; // 4 counts of the used 16 colour banks within the 256 ones
-static GLenum INTERNAL_PALETTE_FORMAT = GL_RGBA4;
+static GLboolean BANKS_USED[MAX_GLDC_PALETTE_SLOTS];  // Each time a 256 colour bank is used, this is set to true
+static GLboolean SUBBANKS_USED[MAX_GLDC_PALETTE_SLOTS][MAX_GLDC_4BPP_PALETTE_SLOTS]; // 4 counts of the used 16 colour banks within the 256 ones
+
+static GLenum INTERNAL_PALETTE_FORMAT = GL_RGBA8;
 
 static void* YALLOC_BASE = NULL;
 static size_t YALLOC_SIZE = 0;
@@ -63,20 +64,21 @@ static GLshort _glGenPaletteSlot(GLushort size) {
     assert(size == 16 || size == 256);
 
     if(size == 16) {
-        for(i = 0; i < 4; ++i) {
-            for(j = 0; j < 16; ++j) {
+        for(i = 0; i < MAX_GLDC_PALETTE_SLOTS; ++i) {
+            for(j = 0; j < MAX_GLDC_4BPP_PALETTE_SLOTS; ++j) {
                 if(!SUBBANKS_USED[i][j]) {
                     BANKS_USED[i] = GL_TRUE;
                     SUBBANKS_USED[i][j] = GL_TRUE;
-                    return (i * 16) + j;
+                    return (i * MAX_GLDC_4BPP_PALETTE_SLOTS) + j;
                 }
             }
         }
-    } else {
-        for(i = 0; i < 4; ++i) {
+    }
+    else {
+        for(i = 0; i < MAX_GLDC_PALETTE_SLOTS; ++i) {
             if(!BANKS_USED[i]) {
                 BANKS_USED[i] = GL_TRUE;
-                for(j = 0; j < 16; ++j) {
+                for(j = 0; j < MAX_GLDC_4BPP_PALETTE_SLOTS; ++j) {
                     SUBBANKS_USED[i][j] = GL_TRUE;
                 }
                 return i;
@@ -88,25 +90,54 @@ static GLshort _glGenPaletteSlot(GLushort size) {
     return -1;
 }
 
-static void _glReleasePaletteSlot(GLshort slot, GLushort size) {
-    GLushort i;
+GLushort _glFreePaletteSlots(GLushort size)
+{
+    GLushort i, j , slots = 0;
 
     assert(size == 16 || size == 256);
+
     if(size == 16) {
-        GLushort bank = slot / 4;
-        GLushort subbank = slot % 4;
+        for(i = 0; i < MAX_GLDC_PALETTE_SLOTS; ++i) {
+            for(j = 0; j < MAX_GLDC_4BPP_PALETTE_SLOTS; ++j) {
+                if(!SUBBANKS_USED[i][j]) {
+                    slots++;
+                }
+            }
+        }
+    } else {
+        for(i = 0; i < MAX_GLDC_PALETTE_SLOTS; ++i) {
+            if(!BANKS_USED[i]) {
+                slots++;
+            }
+        }
+    }
+
+    return slots;
+}
+
+static void _glReleasePaletteSlot(GLshort slot, GLushort size)
+{
+    GLushort i, j;
+
+    assert(size == 16 || size == 256);
+
+
+    if (size == 16) {
+        GLushort bank = slot / MAX_GLDC_PALETTE_SLOTS;
+        GLushort subbank = slot % MAX_GLDC_PALETTE_SLOTS;
 
         SUBBANKS_USED[bank][subbank] = GL_FALSE;
-        for(i = 0; i < 16; ++i) {
-            if(SUBBANKS_USED[bank][i]) {
+
+        for (i = 0; i < MAX_GLDC_4BPP_PALETTE_SLOTS; ++i) {
+            if (SUBBANKS_USED[bank][i]) {
                 return;
             }
         }
-
         BANKS_USED[bank] = GL_FALSE;
-    } else {
+    }
+    else {
         BANKS_USED[slot] = GL_FALSE;
-        for(i = 0; i < 16; ++i) {
+        for (i = 0; i < MAX_GLDC_4BPP_PALETTE_SLOTS; ++i) {
             SUBBANKS_USED[slot][i] = GL_FALSE;
         }
     }
@@ -139,6 +170,30 @@ static void GPUTextureTwiddle8PPP(void* src, void* dst, uint32_t w, uint32_t h) 
     }
 }
 
+static void GPUTextureTwiddle4PPP(void* src, void* dst, uint32_t w, uint32_t h) {
+    uint32_t x, y, yout, min, mask;
+
+    min = MIN(w, h);
+    mask = min - 1;
+
+	uint8_t* pixels;
+    uint16_t* vtex;
+    pixels = (uint8_t*) src;
+    vtex = (uint16_t*) dst;
+
+    for(y = 0; y < h; y += 2) {
+        yout = y;
+        for (x = 0; x < w; x += 2) {
+            vtex[TWIDOUT((x & mask) / 2, (yout & mask) / 2) +
+                (x / min + yout / min) * min * min / 4] =
+            vtex[TWIDOUT((x & mask) / 2, (yout & mask) / 2) +
+                (x / min + yout / min) * min * min / 4] =
+                ((pixels[(x + y * w) >> 1] & 15) << 8) | ((pixels[(x + (y + 1) * w) >> 1] & 15) << 12) |
+                ((pixels[(x + y * w) >> 1] >> 4) << 0) | ((pixels[(x + (y + 1) * w) >> 1] >> 4) << 4);
+        }
+    }
+}
+
 static void GPUTextureTwiddle16BPP(void * src, void* dst, uint32_t w, uint32_t h) {
     uint32_t x, y, yout, min, mask;
 
@@ -161,39 +216,55 @@ static void GPUTextureTwiddle16BPP(void * src, void* dst, uint32_t w, uint32_t h
 }
 
 TexturePalette* _glGetSharedPalette(GLshort bank) {
-    assert(bank >= 0 && bank < 4);
+    assert(bank >= 0 && bank < MAX_GLDC_SHARED_PALETTES);
     return SHARED_PALETTES[bank];
 }
-
 void _glSetInternalPaletteFormat(GLenum val) {
     INTERNAL_PALETTE_FORMAT = val;
 
-    if(INTERNAL_PALETTE_FORMAT == GL_RGBA4) {
-        GPUSetPaletteFormat(GPU_PAL_ARGB4444);
-    } else {
-        assert(INTERNAL_PALETTE_FORMAT == GL_RGBA8);
-        GPUSetPaletteFormat(GPU_PAL_ARGB8888);
+    switch(INTERNAL_PALETTE_FORMAT){
+        case GL_RGBA8:
+            GPUSetPaletteFormat(GPU_PAL_ARGB8888);
+            break;
+        case GL_RGBA4:
+            GPUSetPaletteFormat(GPU_PAL_ARGB4444);
+            break;
+         case GL_RGB5_A1:
+                GPUSetPaletteFormat(GPU_PAL_ARGB1555);
+                break;
+         case  GL_RGB565_KOS:
+             GPUSetPaletteFormat(GPU_PAL_RGB565);
+            break;
+         default:
+            assert(0);
+
     }
 }
-
 void _glApplyColorTable(TexturePalette* src) {
-    /*
-     * FIXME:
-     *
-     * - Different palette formats (GL_RGB -> PVR_PAL_RGB565)
-     */
     if(!src || !src->data) {
         return;
     }
 
     GLushort i;
     GLushort offset = src->size * src->bank;
+
     for(i = 0; i < src->width; ++i) {
         GLubyte* entry = &src->data[i * 4];
-        if(INTERNAL_PALETTE_FORMAT == GL_RGBA8) {
-            GPUSetPaletteEntry(offset + i, PACK_ARGB8888(entry[3], entry[0], entry[1], entry[2]));
-        } else {
-            GPUSetPaletteEntry(offset + i, PACK_ARGB4444(entry[3], entry[0], entry[1], entry[2]));
+
+        switch(INTERNAL_PALETTE_FORMAT)
+        {
+            case GL_RGBA8:
+                GPUSetPaletteEntry(offset + i, PACK_ARGB8888(entry[3], entry[0], entry[1], entry[2]));
+                break;
+            case GL_RGBA4:
+                GPUSetPaletteEntry(offset + i, PACK_ARGB4444(entry[3], entry[0], entry[1], entry[2]));
+                break;
+            case GL_RGB5_A1:
+                GPUSetPaletteEntry(offset + i, PACK_ARGB1555(entry[3], entry[0], entry[1], entry[2]));
+                break;
+             case GL_RGB565_KOS:
+                GPUSetPaletteEntry(offset + i, PACK_RGB565(entry[0], entry[1], entry[2]));
+                break;
         }
     }
 }
@@ -364,19 +435,38 @@ static GLuint _glGetMipmapDataSize(TextureObject* obj) {
     return imageSize + offset;
 }
 
+
+void _glResetSharedPalettes()
+{
+    uint32_t i;
+
+    for (i=0; i < MAX_GLDC_SHARED_PALETTES;i++){
+
+        MEMSET4(SHARED_PALETTES[i], 0x0, sizeof(TexturePalette));
+        SHARED_PALETTES[i]->bank = -1;
+    }
+
+    memset((void*) BANKS_USED, 0x0, sizeof(BANKS_USED));
+    memset((void*) SUBBANKS_USED, 0x0, sizeof(SUBBANKS_USED));
+
+}
 GLubyte _glInitTextures() {
+
+    uint32_t i;
+
     named_array_init(&TEXTURE_OBJECTS, sizeof(TextureObject), MAX_TEXTURE_COUNT);
 
     // Reserve zero so that it is never given to anyone as an ID!
     named_array_reserve(&TEXTURE_OBJECTS, 0);
 
-    SHARED_PALETTES[0] = _initTexturePalette();
-    SHARED_PALETTES[1] = _initTexturePalette();
-    SHARED_PALETTES[2] = _initTexturePalette();
-    SHARED_PALETTES[3] = _initTexturePalette();
+    for (i=0; i < MAX_GLDC_SHARED_PALETTES;i++){
+        SHARED_PALETTES[i] = _initTexturePalette();
+    }
 
-    memset((void*) BANKS_USED, 0x0, sizeof(BANKS_USED));
-    memset((void*) SUBBANKS_USED, 0x0, sizeof(SUBBANKS_USED));
+    _glResetSharedPalettes();
+
+    //memset((void*) BANKS_USED, 0x0, sizeof(BANKS_USED));
+    //memset((void*) SUBBANKS_USED, 0x0, sizeof(SUBBANKS_USED));
 
     size_t vram_free = GPUMemoryAvailable();
     YALLOC_SIZE = vram_free - PVR_MEM_BUFFER_SIZE; /* Take all but 64kb VRAM */
@@ -406,7 +496,7 @@ TextureObject* _glGetBoundTexture() {
 void APIENTRY glActiveTextureARB(GLenum texture) {
     TRACE();
 
-    if(texture < GL_TEXTURE0_ARB || texture > GL_TEXTURE0_ARB + MAX_TEXTURE_UNITS) {
+    if(texture < GL_TEXTURE0_ARB || texture > GL_TEXTURE0_ARB + MAX_GLDC_TEXTURE_UNITS) {
         _glKosThrowError(GL_INVALID_ENUM, "glActiveTextureARB");
         return;
     }
@@ -476,6 +566,11 @@ void APIENTRY glDeleteTextures(GLsizei n, GLuint *textures) {
         }
 
         if(txr->palette && txr->palette->data) {
+
+            if (txr->palette->bank > -1) {
+                _glReleasePaletteSlot(txr->palette->bank, txr->palette->size);
+                txr->palette->bank = -1;
+            }
             free(txr->palette->data);
             txr->palette->data = NULL;
         }
@@ -616,6 +711,8 @@ void APIENTRY glCompressedTexImage2DARB(GLenum target,
     }
 
     GLboolean mipmapped = GL_FALSE;
+    //GLboolean paletted = GL_FALSE;
+    GLbyte *ptr = (GLbyte*)data;
 
     switch(internalFormat) {
         case GL_COMPRESSED_ARGB_1555_VQ_KOS:
@@ -633,6 +730,50 @@ void APIENTRY glCompressedTexImage2DARB(GLenum target,
         case GL_COMPRESSED_RGB_565_VQ_MIPMAP_TWID_KOS:
             mipmapped = GL_TRUE;
         break;
+        case GL_PALETTE4_RGB8_OES:
+            glColorTableEXT(GL_TEXTURE_2D, GL_RGBA8, 16, internalFormat, GL_UNSIGNED_BYTE, data);
+            ptr += 16*3;
+            glTexImage2D(GL_TEXTURE_2D, level, GL_COLOR_INDEX4_EXT, width, height, border, GL_COLOR_INDEX, GL_UNSIGNED_BYTE, ptr);
+            return;
+
+        case GL_PALETTE4_RGBA8_OES:
+            glColorTableEXT(GL_TEXTURE_2D, GL_RGBA8, 16, internalFormat, GL_UNSIGNED_BYTE, data);
+            ptr += 16*4;
+            glTexImage2D(GL_TEXTURE_2D, level, GL_COLOR_INDEX4_EXT, width, height, border, GL_COLOR_INDEX, GL_UNSIGNED_BYTE, ptr);
+            return;
+
+        case GL_PALETTE4_R5_G6_B5_OES:
+        case GL_PALETTE4_RGBA4_OES:
+        case GL_PALETTE4_RGB5_A1_OES:
+            glColorTableEXT(GL_TEXTURE_2D, GL_RGBA8, 16, internalFormat, GL_UNSIGNED_BYTE, data);
+            ptr += 16*2;
+            glTexImage2D(GL_TEXTURE_2D, level, GL_COLOR_INDEX4_EXT, width, height, border, GL_COLOR_INDEX, GL_UNSIGNED_BYTE, ptr);
+            return;
+
+        case GL_PALETTE8_RGB8_OES:
+            glColorTableEXT(GL_TEXTURE_2D, GL_RGBA8, 256, internalFormat, GL_UNSIGNED_BYTE, data);
+            ptr += 256*3;
+            glTexImage2D(GL_TEXTURE_2D, level, GL_COLOR_INDEX8_EXT, width, height, border, GL_COLOR_INDEX, GL_UNSIGNED_BYTE, ptr);
+            return;
+
+
+        case GL_PALETTE8_RGBA8_OES:
+        //
+            glColorTableEXT(GL_TEXTURE_2D, GL_RGBA8, 256, internalFormat, GL_UNSIGNED_BYTE, data);
+            ptr += 256*4;
+            glTexImage2D(GL_TEXTURE_2D, level, GL_COLOR_INDEX8_EXT, width, height, border, GL_COLOR_INDEX, GL_UNSIGNED_BYTE, ptr);
+            return;
+
+
+        case GL_PALETTE8_RGBA4_OES:
+        case GL_PALETTE8_RGB5_A1_OES:
+        case GL_PALETTE8_R5_G6_B5_OES:
+
+            glColorTableEXT(GL_TEXTURE_2D, GL_RGBA8, 256, internalFormat, GL_UNSIGNED_BYTE, data);
+            ptr += 256*2;
+            glTexImage2D(GL_TEXTURE_2D, level, GL_COLOR_INDEX8_EXT, width, height, border, GL_COLOR_INDEX, GL_UNSIGNED_BYTE, ptr);
+            return;
+
         default: {
             _glKosThrowError(GL_INVALID_OPERATION, __func__);
             return;
@@ -824,8 +965,20 @@ static GLint _cleanInternalFormat(GLint internalFormat) {
 typedef void (*TextureConversionFunc)(const GLubyte*, GLubyte*);
 
 GL_FORCE_INLINE void _rgba8888_to_argb4444(const GLubyte* source, GLubyte* dest) {
-    *((GLushort*) dest) = (source[3] & 0xF0) << 8 | (source[0] & 0xF0) << 4 | (source[1] & 0xF0) | (source[2] & 0xF0) >> 4;
+
+    *((GLushort*) dest) = (source[1] & 0xF0) << 8 | (source[2] & 0xF0) << 4 | (source[0] & 0xF0) | (source[3] & 0xF0) >> 4;
 }
+
+GL_FORCE_INLINE void _rgba8888_to_rgba4444(const GLubyte* source, GLubyte* dest) {
+
+    *((GLushort*) dest) = (source[3] & 0xF0) << 8 | (source[2] & 0xF0) << 4 | (source[1] & 0xF0) | (source[0] & 0xF0) >> 4;
+}
+
+GL_FORCE_INLINE void _rgb888_to_argb4444(const GLubyte* source, GLubyte* dest) {
+
+    *((GLushort*) dest) = 0xF << 8 | (source[0] & 0xF0) << 4 | (source[1] & 0xF0) | (source[2] & 0xF0) >> 4;
+}
+
 
 GL_FORCE_INLINE void _rgba8888_to_rgba8888(const GLubyte* source, GLubyte* dest) {
     /* Noop */
@@ -836,7 +989,15 @@ GL_FORCE_INLINE void _rgba8888_to_rgba8888(const GLubyte* source, GLubyte* dest)
     dst[3] = source[3];
 }
 
+GL_FORCE_INLINE void _rgba4444_to_rgba4444(const GLubyte* source, GLubyte* dest) {
+    /* Noop */
+    GLubyte* dst = (GLubyte*) dest;
+    dst[0] = source[0];
+    dst[1] = source[1];
+}
+
 GL_FORCE_INLINE void _rgba8888_to_rgb565(const GLubyte* source, GLubyte* dest) {
+
     *((GLushort*) dest) = ((source[0] & 0b11111000) << 8) | ((source[1] & 0b11111100) << 3) | (source[2] >> 3);
 }
 
@@ -849,8 +1010,21 @@ GL_FORCE_INLINE void _rgb888_to_rgba8888(const GLubyte* source, GLubyte* dest) {
     dst[3] = 255;
 }
 
+GL_FORCE_INLINE void _rgb888_to_rgba4444(const GLubyte* source, GLubyte* dest) {
+    *((GLushort*) dest) = 0xF << 8 | (source[2] & 0xF0) << 4 | (source[1] & 0xF0) | (source[0] & 0xF0) >> 4;
+}
+
 GL_FORCE_INLINE void _rgb888_to_rgb565(const GLubyte* source, GLubyte* dest) {
     *((GLushort*) dest) = ((source[0] & 0b11111000) << 8) | ((source[1] & 0b11111100) << 3) | (source[2] >> 3);
+}
+
+GL_FORCE_INLINE void _rgb565_to_rgb8888(const GLubyte* source, GLubyte* dest) {
+    GLushort src = *((GLushort*) source);
+
+    dest[3] = (src & 0x1f) << 3;
+    dest[2] = ((src >> 5) & 0x3f) <<2;
+    dest[1] = ((src >> 11) & 0x1f) <<3;
+    dest[0] = 0xff;
 }
 
 GL_FORCE_INLINE void _rgba8888_to_a000(const GLubyte* source, GLubyte* dest) {
@@ -870,10 +1044,20 @@ GL_FORCE_INLINE void _rgba4444_to_rgba8888(const GLubyte* source, GLubyte* dest)
     GLushort src = *((GLushort*) source);
     GLubyte* dst = (GLubyte*) dest;
 
-    dst[0] = ((src & 0xF000) >> 12) * 2;
-    dst[1] = ((src & 0x0F00) >> 8) * 2;
-    dst[2] = ((src & 0x00F0) >> 4) * 2;
-    dst[3] = ((src & 0x000F)) * 2;
+    dst[0] = (src & 0xf) << 4;
+    dst[1] = ((src >> 4) & 0xf) << 4;
+    dst[2] = ((src >> 8) & 0xf) << 4;
+    dst[3] = (src >> 12) << 4;
+}
+
+GL_FORCE_INLINE void _rgba5551_to_rgba8888(const GLubyte* source, GLubyte* dest) {
+    GLushort src = *((GLushort*) source);
+    GLubyte* dst = (GLubyte*) dest;
+
+    dst[0] = (src & 0x1f) << 3;
+    dst[1] = ((src >> 5) & 0x1f) << 3;
+    dst[2] = ((src >> 5) & 0x1f) << 3;
+    dst[3] = (src >> 15) << 7;
 }
 
 GL_FORCE_INLINE void _i8_to_i8(const GLubyte* source, GLubyte* dest) {
@@ -882,8 +1066,10 @@ GL_FORCE_INLINE void _i8_to_i8(const GLubyte* source, GLubyte* dest) {
     *dst = *source;
 }
 
-static inline void _alpha8_to_argb4444(const GLubyte* source, GLubyte* dest) {
-    *((GLushort*) dest) = (*source & 0xF0) << 8 | (0xFF & 0xF0) << 4 | (0xFF & 0xF0) | (0xFF & 0xF0) >> 4;
+static inline void _a8_to_argb4444(const GLubyte* source, GLubyte* dest) {
+    GLushort color = *source & 0xf0;
+    color |= (color >> 4);
+    *((GLushort*) dest) = (color << 8) | color;
 }
 
 static TextureConversionFunc _determineConversion(GLint internalFormat, GLenum format, GLenum type) {
@@ -891,7 +1077,8 @@ static TextureConversionFunc _determineConversion(GLint internalFormat, GLenum f
     case GL_ALPHA: {
         if(format == GL_ALPHA) {
             /* Dreamcast doesn't really support GL_ALPHA internally, so store as argb with each rgb value as white */
-            return _alpha8_to_argb4444;
+            /* Applying alpha values to all channels seems a better option*/
+            return _a8_to_argb4444;
         } else if(type == GL_UNSIGNED_BYTE && format == GL_RGBA) {
             return _rgba8888_to_a000;
         } else if(type == GL_BYTE && format == GL_RGBA) {
@@ -924,19 +1111,43 @@ static TextureConversionFunc _determineConversion(GLint internalFormat, GLenum f
             return _rgba4444_to_argb4444;
         }
     } break;
-    case GL_RGBA8: {
+    case GL_RGBA8:
+    case GL_RGBA4:
+    case GL_RGB5_A1:
+    case GL_RGB565_KOS:
+
         if(type == GL_UNSIGNED_BYTE && format == GL_RGBA) {
             return _rgba8888_to_rgba8888;
-        } else if (type == GL_BYTE && format == GL_RGBA) {
+        }
+        else
+        if (type == GL_BYTE && format == GL_RGBA) {
             return _rgba8888_to_rgba8888;
-        } else if(type == GL_UNSIGNED_BYTE && format == GL_RGB) {
+        }
+        else
+        if(type == GL_UNSIGNED_BYTE && format == GL_RGB) {
             return _rgb888_to_rgba8888;
-        } else if (type == GL_BYTE && format == GL_RGB) {
+        }
+        else
+        if (type == GL_BYTE && format == GL_RGB) {
             return _rgb888_to_rgba8888;
-        } else if(type == GL_UNSIGNED_SHORT_4_4_4_4 && format == GL_RGBA) {
+        }
+        else
+        if(type == GL_UNSIGNED_SHORT_4_4_4_4 && format == GL_RGBA) {
             return _rgba4444_to_rgba8888;
         }
-    } break;
+       else
+        if(type == GL_UNSIGNED_BYTE && format == GL_RGBA4) {
+            return _rgba4444_to_rgba8888;
+        }
+        else
+        if(type == GL_UNSIGNED_BYTE && format == GL_RGB5_A1) {
+            return _rgba5551_to_rgba8888;
+        }
+        else
+        if(type == GL_UNSIGNED_BYTE && format == GL_RGB565_KOS) {
+            return _rgb565_to_rgb8888;
+        }
+     break;
     case GL_COLOR_INDEX8_EXT:
         if(format == GL_COLOR_INDEX) {
             switch(type) {
@@ -1050,6 +1261,12 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
         return;
     }
 
+    if (width > 1024 || height > 1024){
+        INFO_MSG("Invalid texture size");
+        _glKosThrowError(GL_INVALID_VALUE, __func__);
+        return;
+    }
+
     if(format != GL_COLOR_INDEX) {
         if(!_isSupportedFormat(format)) {
             INFO_MSG("Unsupported format");
@@ -1071,7 +1288,7 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
             return;
         }
     } else {
-        if(internalFormat != GL_COLOR_INDEX8_EXT) {
+        if(internalFormat != GL_COLOR_INDEX8_EXT && internalFormat != GL_COLOR_INDEX4_EXT) {
             INFO_MSG("");
             _glKosThrowError(GL_INVALID_ENUM, __func__);
             return;
@@ -1129,7 +1346,7 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
         return;
     }
 
-    GLboolean isPaletted = (internalFormat == GL_COLOR_INDEX8_EXT) ? GL_TRUE : GL_FALSE;
+    GLboolean isPaletted = (internalFormat == GL_COLOR_INDEX8_EXT || internalFormat == GL_COLOR_INDEX4_EXT) ? GL_TRUE : GL_FALSE;
 
     /* Calculate the format that we need to convert the data to */
     GLuint pvr_format = _determinePVRFormat(internalFormat, type);
@@ -1160,6 +1377,11 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
      */
     GLint destStride = isPaletted ? 1 : 2;
     GLuint bytes = (width * height * destStride);
+
+    //special case 4bpp
+    if(internalFormat == GL_COLOR_INDEX4_EXT){
+        bytes >>= 1;
+    }
 
     if(!active->data) {
         assert(active);
@@ -1302,8 +1524,14 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
 
         if(internalFormat == GL_COLOR_INDEX8_EXT) {
             GPUTextureTwiddle8PPP((void*) pixels, targetData, width, height);
-        } else {
-            GPUTextureTwiddle16BPP((void*) pixels, targetData, width, height);
+        }
+        else{
+            if(internalFormat == GL_COLOR_INDEX4_EXT) {
+                GPUTextureTwiddle4PPP((void*) pixels, targetData, width, height);
+            }
+            else {
+                GPUTextureTwiddle16BPP((void*) pixels, targetData, width, height);
+            }
         }
 
         /* We make sure we remove nontwiddled and add twiddled. We could always
@@ -1403,18 +1631,21 @@ void APIENTRY glTexParameterf(GLenum target, GLenum pname, GLfloat param) {
 }
 
 GLAPI void APIENTRY glColorTableEXT(GLenum target, GLenum internalFormat, GLsizei width, GLenum format, GLenum type, const GLvoid *data) {
+
     GLint validTargets[] = {
         GL_TEXTURE_2D,
         GL_SHARED_TEXTURE_PALETTE_EXT,
-        GL_SHARED_TEXTURE_PALETTE_0_KOS,
-        GL_SHARED_TEXTURE_PALETTE_1_KOS,
-        GL_SHARED_TEXTURE_PALETTE_2_KOS,
-        GL_SHARED_TEXTURE_PALETTE_3_KOS,
-        0
-    };
+        GL_SHARED_TEXTURE_PALETTE_0_KOS,GL_SHARED_TEXTURE_PALETTE_1_KOS,GL_SHARED_TEXTURE_PALETTE_2_KOS,GL_SHARED_TEXTURE_PALETTE_3_KOS,GL_SHARED_TEXTURE_PALETTE_4_KOS,GL_SHARED_TEXTURE_PALETTE_5_KOS,GL_SHARED_TEXTURE_PALETTE_6_KOS,GL_SHARED_TEXTURE_PALETTE_7_KOS,GL_SHARED_TEXTURE_PALETTE_8_KOS,GL_SHARED_TEXTURE_PALETTE_9_KOS,
+        GL_SHARED_TEXTURE_PALETTE_10_KOS,GL_SHARED_TEXTURE_PALETTE_11_KOS,GL_SHARED_TEXTURE_PALETTE_12_KOS,GL_SHARED_TEXTURE_PALETTE_13_KOS,GL_SHARED_TEXTURE_PALETTE_14_KOS,GL_SHARED_TEXTURE_PALETTE_15_KOS,GL_SHARED_TEXTURE_PALETTE_16_KOS,GL_SHARED_TEXTURE_PALETTE_17_KOS,GL_SHARED_TEXTURE_PALETTE_18_KOS,GL_SHARED_TEXTURE_PALETTE_19_KOS,
+        GL_SHARED_TEXTURE_PALETTE_20_KOS,GL_SHARED_TEXTURE_PALETTE_21_KOS,GL_SHARED_TEXTURE_PALETTE_22_KOS,GL_SHARED_TEXTURE_PALETTE_23_KOS,GL_SHARED_TEXTURE_PALETTE_24_KOS,GL_SHARED_TEXTURE_PALETTE_25_KOS,GL_SHARED_TEXTURE_PALETTE_26_KOS,GL_SHARED_TEXTURE_PALETTE_27_KOS,GL_SHARED_TEXTURE_PALETTE_28_KOS,GL_SHARED_TEXTURE_PALETTE_29_KOS,
+        GL_SHARED_TEXTURE_PALETTE_30_KOS,GL_SHARED_TEXTURE_PALETTE_31_KOS,GL_SHARED_TEXTURE_PALETTE_32_KOS,GL_SHARED_TEXTURE_PALETTE_33_KOS,GL_SHARED_TEXTURE_PALETTE_34_KOS,GL_SHARED_TEXTURE_PALETTE_35_KOS,GL_SHARED_TEXTURE_PALETTE_36_KOS,GL_SHARED_TEXTURE_PALETTE_37_KOS,GL_SHARED_TEXTURE_PALETTE_38_KOS,GL_SHARED_TEXTURE_PALETTE_39_KOS,
+        GL_SHARED_TEXTURE_PALETTE_40_KOS,GL_SHARED_TEXTURE_PALETTE_41_KOS,GL_SHARED_TEXTURE_PALETTE_42_KOS,GL_SHARED_TEXTURE_PALETTE_43_KOS,GL_SHARED_TEXTURE_PALETTE_44_KOS,GL_SHARED_TEXTURE_PALETTE_45_KOS,GL_SHARED_TEXTURE_PALETTE_46_KOS,GL_SHARED_TEXTURE_PALETTE_47_KOS,GL_SHARED_TEXTURE_PALETTE_48_KOS,GL_SHARED_TEXTURE_PALETTE_49_KOS,
+        GL_SHARED_TEXTURE_PALETTE_50_KOS,GL_SHARED_TEXTURE_PALETTE_51_KOS,GL_SHARED_TEXTURE_PALETTE_52_KOS,GL_SHARED_TEXTURE_PALETTE_53_KOS,GL_SHARED_TEXTURE_PALETTE_54_KOS,GL_SHARED_TEXTURE_PALETTE_55_KOS,GL_SHARED_TEXTURE_PALETTE_56_KOS,GL_SHARED_TEXTURE_PALETTE_57_KOS,GL_SHARED_TEXTURE_PALETTE_58_KOS,GL_SHARED_TEXTURE_PALETTE_59_KOS,
+        GL_SHARED_TEXTURE_PALETTE_60_KOS,GL_SHARED_TEXTURE_PALETTE_61_KOS,GL_SHARED_TEXTURE_PALETTE_62_KOS,GL_SHARED_TEXTURE_PALETTE_63_KOS,
+        0};
 
-    GLint validInternalFormats[] = {GL_RGB8, GL_RGBA8, 0};
-    GLint validFormats[] = {GL_RGB, GL_RGBA, 0};
+    GLint validInternalFormats[] = {GL_RGB8, GL_RGBA8, GL_RGBA4, 0};
+    GLint validFormats[] = {GL_RGB, GL_RGBA,GL_RGB5_A1, GL_RGB5_A1, GL_RGB565_KOS, GL_RGBA4, 0};
     GLint validTypes[] = {GL_UNSIGNED_BYTE, GL_BYTE, GL_UNSIGNED_SHORT, GL_SHORT, 0};
 
     if(_glCheckValidEnum(target, validTargets, __func__) != 0) {
@@ -1423,6 +1654,33 @@ GLAPI void APIENTRY glColorTableEXT(GLenum target, GLenum internalFormat, GLsize
 
     if(_glCheckValidEnum(internalFormat, validInternalFormats, __func__) != 0) {
         return;
+    }
+
+    switch(format){
+        case GL_PALETTE4_RGBA8_OES:
+        case GL_PALETTE8_RGBA8_OES:
+            format = GL_RGBA;
+            break;
+        case GL_PALETTE4_RGB8_OES:
+        case GL_PALETTE8_RGB8_OES:
+            format = GL_RGB;
+            break;
+        case GL_PALETTE4_R5_G6_B5_OES:
+        case GL_PALETTE8_R5_G6_B5_OES:
+        case GL_UNSIGNED_SHORT_5_6_5:
+            format = GL_RGB565_KOS;
+            break;
+        case GL_PALETTE4_RGB5_A1_OES:
+        case GL_PALETTE8_RGB5_A1_OES:
+        case GL_UNSIGNED_SHORT_5_5_5_1:
+            format = GL_RGB5_A1;
+            break;
+        case GL_PALETTE4_RGBA4_OES:
+        case GL_PALETTE8_RGBA4_OES:
+        case GL_UNSIGNED_SHORT_4_4_4_4:
+            format = GL_RGBA4;
+            break;
+
     }
 
     if(_glCheckValidEnum(format, validFormats, __func__) != 0) {
@@ -1444,7 +1702,7 @@ GLAPI void APIENTRY glColorTableEXT(GLenum target, GLenum internalFormat, GLsize
     assert(sourceStride > -1);
 
     TextureConversionFunc convert = _determineConversion(
-        GL_RGBA8,  /* We always store palettes in this format */
+        INTERNAL_PALETTE_FORMAT,
         format,
         type
     );
@@ -1456,21 +1714,25 @@ GLAPI void APIENTRY glColorTableEXT(GLenum target, GLenum internalFormat, GLsize
 
     TexturePalette* palette = NULL;
 
+    GLboolean sharedPaletteUsed = GL_FALSE;
+
     /* Custom extension - allow uploading to one of 4 custom palettes */
     if(target == GL_SHARED_TEXTURE_PALETTE_EXT || target == GL_SHARED_TEXTURE_PALETTE_0_KOS) {
         palette = SHARED_PALETTES[0];
-    } else if(target == GL_SHARED_TEXTURE_PALETTE_1_KOS) {
-        palette = SHARED_PALETTES[1];
-    } else if(target == GL_SHARED_TEXTURE_PALETTE_2_KOS) {
-        palette = SHARED_PALETTES[2];
-    } else if(target == GL_SHARED_TEXTURE_PALETTE_3_KOS) {
-        palette = SHARED_PALETTES[3];
-    } else {
+        sharedPaletteUsed = GL_TRUE;
+    }
+
+    for (GLbyte i = 1; i < MAX_GLDC_SHARED_PALETTES; ++i) {
+        if (target == GL_SHARED_TEXTURE_PALETTE_0_KOS + i) {
+            palette = SHARED_PALETTES[i];
+            sharedPaletteUsed = GL_TRUE;
+        }
+    }
+    if (sharedPaletteUsed == GL_FALSE){
         TextureObject* active = _glGetBoundTexture();
         if(!active->palette) {
             active->palette = _initTexturePalette();
         }
-
         palette = active->palette;
     }
 
@@ -1622,6 +1884,9 @@ GLAPI void APIENTRY glReadPixels(GLint x, GLint y, GLsizei width, GLsizei height
     _GL_UNUSED(type);
     _GL_UNUSED(pixels);
     assert(0 && "Not Implemented");
+}
+GLuint _glMaxTextureMemory() {
+    return YALLOC_SIZE;
 }
 
 GLuint _glFreeTextureMemory() {

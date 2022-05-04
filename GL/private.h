@@ -14,6 +14,11 @@
 #include "../containers/aligned_vector.h"
 #include "../containers/named_array.h"
 
+#define MAX_GLDC_4BPP_PALETTE_SLOTS 16
+#define MAX_GLDC_PALETTE_SLOTS 4
+#define MAX_GLDC_SHARED_PALETTES (MAX_GLDC_PALETTE_SLOTS*MAX_GLDC_4BPP_PALETTE_SLOTS)
+
+
 extern void* memcpy4 (void *dest, const void *src, size_t count);
 
 #define GL_NO_INSTRUMENT inline __attribute__((no_instrument_function))
@@ -508,8 +513,8 @@ GLuint _glFreeContiguousTextureMemory();
 
 void _glApplyScissor(bool force);
 
-#define MAX_TEXTURE_UNITS 2
-#define MAX_LIGHTS 8
+#define MAX_GLDC_TEXTURE_UNITS 2
+#define MAX_GLDC_LIGHTS 8
 
 /* This is from KOS pvr_buffers.c */
 #define PVR_MIN_Z 0.0001f
