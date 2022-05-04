@@ -89,40 +89,7 @@ static GLshort _glGenPaletteSlot(GLushort size) {
     fprintf(stderr, "GL ERROR: No palette slots remain\n");
     return -1;
 }
-#if 0
-static GLshort _glGenSharedPaletteSlot(GLushort size) {
-    GLushort i, j;
-    TextureObject* active = _glGetBoundTexture();
 
-    assert(size == 16 || size == 256);
-
-    if(size == 16) {
-
-        i = active->shared_bank / MAX_GLDC_4BPP_PALETTE_SLOTS;
-        BANKS_USED[i] = GL_TRUE;
-        j = i * MAX_GLDC_4BPP_PALETTE_SLOTS;
-        j = active->shared_bank - j;
-        SUBBANKS_USED[i][j] = GL_TRUE;
-        return (i * MAX_GLDC_4BPP_PALETTE_SLOTS) + j;
-    }
-    else {
-        for(i = 0; i < MAX_GLDC_PALETTE_SLOTS; ++i) {
-            if(!BANKS_USED[i]) {
-                BANKS_USED[i] = GL_TRUE;
-                for(j = 0; j < MAX_GLDC_4BPP_PALETTE_SLOTS; ++j) {
-                    SUBBANKS_USED[i][j] = GL_TRUE;
-                }
-                return i;
-            }
-        }
-    }
-
-    fprintf(stderr, "GL ERROR: No palette slots remain\n");
-    return -1;
-}
-#endif
-
-/* ozzy: used for statistics */
 GLushort _glFreePaletteSlots(GLushort size)
 {
     GLushort i, j , slots = 0;
@@ -1055,10 +1022,9 @@ GL_FORCE_INLINE void _rgb888_to_rgba8888(const GLubyte* source, GLubyte* dest) {
 }
 
 GL_FORCE_INLINE void _rgb888_to_rgba4444(const GLubyte* source, GLubyte* dest) {
-    /* Noop */
-     *((GLushort*) dest) = 0xF << 8 | (source[2] & 0xF0) << 4 | (source[1] & 0xF0) | (source[0] & 0xF0) >> 4;
-
+    *((GLushort*) dest) = 0xF << 8 | (source[2] & 0xF0) << 4 | (source[1] & 0xF0) | (source[0] & 0xF0) >> 4;
 }
+
 GL_FORCE_INLINE void _rgb888_to_rgb565(const GLubyte* source, GLubyte* dest) {
     *((GLushort*) dest) = ((source[0] & 0b11111000) << 8) | ((source[1] & 0b11111100) << 3) | (source[2] >> 3);
 }
@@ -1066,9 +1032,9 @@ GL_FORCE_INLINE void _rgb888_to_rgb565(const GLubyte* source, GLubyte* dest) {
 GL_FORCE_INLINE void _rgb565_to_rgb8888(const GLubyte* source, GLubyte* dest) {
     GLushort src = *((GLushort*) source);
 
-    dest[3] = (src&0x1f)<<3;
-    dest[2] = ((src>>5)&0x3f)<<2;
-    dest[1] = ((src>>11)&0x1f)<<3;
+    dest[3] = (src & 0x1f) << 3;
+    dest[2] = ((src >> 5) & 0x3f) <<2;
+    dest[1] = ((src >> 11) & 0x1f) <<3;
     dest[0] = 0xff;
 }
 
@@ -1089,22 +1055,21 @@ GL_FORCE_INLINE void _rgba4444_to_rgba8888(const GLubyte* source, GLubyte* dest)
     GLushort src = *((GLushort*) source);
     GLubyte* dst = (GLubyte*) dest;
 
-    dst[0] = (src&0xf)<<4;
-    dst[1] = ((src>>4)&0xf) << 4;
-    dst[2] = ((src>>8)&0xf) << 4;
-    dst[3] = (src>>12) << 4;
+    dst[0] = (src & 0xf) << 4;
+    dst[1] = ((src >> 4) & 0xf) << 4;
+    dst[2] = ((src >> 8) & 0xf) << 4;
+    dst[3] = (src >> 12) << 4;
 }
 
 GL_FORCE_INLINE void _rgba5551_to_rgba8888(const GLubyte* source, GLubyte* dest) {
     GLushort src = *((GLushort*) source);
     GLubyte* dst = (GLubyte*) dest;
 
-    dst[0] = (src&0x1f)<<3;
-    dst[1] = ((src>>5)&0x1f) << 3;
-    dst[2] = ((src>>5)&0x1f) << 3;
-    dst[3] = (src>>15) << 7;
+    dst[0] = (src & 0x1f) << 3;
+    dst[1] = ((src >> 5) & 0x1f) << 3;
+    dst[2] = ((src >> 5) & 0x1f) << 3;
+    dst[3] = (src >> 15) << 7;
 }
-
 
 GL_FORCE_INLINE void _i8_to_i8(const GLubyte* source, GLubyte* dest) {
     /* For indexes */
@@ -1112,18 +1077,10 @@ GL_FORCE_INLINE void _i8_to_i8(const GLubyte* source, GLubyte* dest) {
     *dst = *source;
 }
 
-static inline void _alpha8_to_argb4444(const GLubyte* source, GLubyte* dest) {
-    #if 0
-    /*A111*/
-    *((GLushort*) dest) = (*source & 0xF0) << 8 | (0xFF & 0xF0) << 4 | (0xFF & 0xF0) | (0xFF & 0xF0) >> 4;
-    #else
-    //Tested with multi-texturing sample , unit0: texture map unit1:alpha map
-    /* AAAA rather than A111*/
-    GLushort color = *source&0xf0;
-    color |= color>>4;
-
-    *((GLushort*) dest) = (color << 8)|color;
-    #endif
+static inline void _a8_to_argb4444(const GLubyte* source, GLubyte* dest) {
+    GLushort color = *source & 0xf0;
+    color |= (color >> 4);
+    *((GLushort*) dest) = (color << 8) | color;
 }
 
 static TextureConversionFunc _determineConversion(GLint internalFormat, GLenum format, GLenum type) {
@@ -1131,8 +1088,8 @@ static TextureConversionFunc _determineConversion(GLint internalFormat, GLenum f
     case GL_ALPHA: {
         if(format == GL_ALPHA) {
             /* Dreamcast doesn't really support GL_ALPHA internally, so store as argb with each rgb value as white */
-            /* Ozzy : applying alpha values to all channels seems a better option*/
-            return _alpha8_to_argb4444;
+            /* Applying alpha values to all channels seems a better option*/
+            return _a8_to_argb4444;
         } else if(type == GL_UNSIGNED_BYTE && format == GL_RGBA) {
             return _rgba8888_to_a000;
         } else if(type == GL_BYTE && format == GL_RGBA) {
@@ -1812,16 +1769,7 @@ GLAPI void APIENTRY glColorTableEXT(GLenum target, GLenum internalFormat, GLsize
     palette->size = (width > 16) ? 256 : 16;
     assert(palette->size == 16 || palette->size == 256);
 
-    #if 0
-    if (sharedPaletteUsed == GL_FALSE){
-        palette->bank = _glGenPaletteSlot(palette->size);
-    }
-    else{
-        palette->bank = _glGenSharedPaletteSlot(palette->size);
-    }
-    #else
     palette->bank = _glGenPaletteSlot(palette->size);
-    #endif
 
     if(palette->bank < 0) {
         /* We ran out of slots! */
