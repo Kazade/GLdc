@@ -88,6 +88,7 @@ GLAPI void APIENTRY glKosInitConfig(GLdcConfig* config);
 GLAPI void APIENTRY glKosInitEx(GLdcConfig* config);
 GLAPI void APIENTRY glKosSwapBuffers();
 
+
 /*
  * CUSTOM EXTENSION multiple_shared_palette_KOS
  *
@@ -107,20 +108,90 @@ GLAPI void APIENTRY glKosSwapBuffers();
  * by default textures use shared palette 0.
 */
 
+
 #define GL_SHARED_TEXTURE_PALETTE_0_KOS             0xEEFC
 #define GL_SHARED_TEXTURE_PALETTE_1_KOS             0xEEFD
 #define GL_SHARED_TEXTURE_PALETTE_2_KOS             0xEEFE
 #define GL_SHARED_TEXTURE_PALETTE_3_KOS             0xEEFF
+#define GL_SHARED_TEXTURE_PALETTE_4_KOS             0xEF00
+#define GL_SHARED_TEXTURE_PALETTE_5_KOS             0xEF01
+#define GL_SHARED_TEXTURE_PALETTE_6_KOS             0xEF02
+#define GL_SHARED_TEXTURE_PALETTE_7_KOS             0xEF03
+#define GL_SHARED_TEXTURE_PALETTE_8_KOS             0xEF04
+#define GL_SHARED_TEXTURE_PALETTE_9_KOS             0xEF05
+
+#define GL_SHARED_TEXTURE_PALETTE_10_KOS             0xEF06
+#define GL_SHARED_TEXTURE_PALETTE_11_KOS             0xEF07
+#define GL_SHARED_TEXTURE_PALETTE_12_KOS             0xEF08
+#define GL_SHARED_TEXTURE_PALETTE_13_KOS             0xEF09
+#define GL_SHARED_TEXTURE_PALETTE_14_KOS             0xEF0A
+#define GL_SHARED_TEXTURE_PALETTE_15_KOS             0xEF0B
+#define GL_SHARED_TEXTURE_PALETTE_16_KOS             0xEF0C
+#define GL_SHARED_TEXTURE_PALETTE_17_KOS             0xEF0D
+#define GL_SHARED_TEXTURE_PALETTE_18_KOS             0xEF0E
+#define GL_SHARED_TEXTURE_PALETTE_19_KOS             0xEF0F
+
+#define GL_SHARED_TEXTURE_PALETTE_20_KOS             0xEF10
+#define GL_SHARED_TEXTURE_PALETTE_21_KOS             0xEF11
+#define GL_SHARED_TEXTURE_PALETTE_22_KOS             0xEF12
+#define GL_SHARED_TEXTURE_PALETTE_23_KOS             0xEF13
+#define GL_SHARED_TEXTURE_PALETTE_24_KOS             0xEF14
+#define GL_SHARED_TEXTURE_PALETTE_25_KOS             0xEF15
+#define GL_SHARED_TEXTURE_PALETTE_26_KOS             0xEF16
+#define GL_SHARED_TEXTURE_PALETTE_27_KOS             0xEF17
+#define GL_SHARED_TEXTURE_PALETTE_28_KOS             0xEF18
+#define GL_SHARED_TEXTURE_PALETTE_29_KOS             0xEF19
+
+#define GL_SHARED_TEXTURE_PALETTE_30_KOS             0xEF1A
+#define GL_SHARED_TEXTURE_PALETTE_31_KOS             0xEF1B
+#define GL_SHARED_TEXTURE_PALETTE_32_KOS             0xEF1C
+#define GL_SHARED_TEXTURE_PALETTE_33_KOS             0xEF1D
+#define GL_SHARED_TEXTURE_PALETTE_34_KOS             0xEF1E
+#define GL_SHARED_TEXTURE_PALETTE_35_KOS             0xEF1F
+#define GL_SHARED_TEXTURE_PALETTE_36_KOS             0xEF20
+#define GL_SHARED_TEXTURE_PALETTE_37_KOS             0xEF21
+#define GL_SHARED_TEXTURE_PALETTE_38_KOS             0xEF22
+#define GL_SHARED_TEXTURE_PALETTE_39_KOS             0xEF23
+
+#define GL_SHARED_TEXTURE_PALETTE_40_KOS             0xEF24
+#define GL_SHARED_TEXTURE_PALETTE_41_KOS             0xEF25
+#define GL_SHARED_TEXTURE_PALETTE_42_KOS             0xEF26
+#define GL_SHARED_TEXTURE_PALETTE_43_KOS             0xEF27
+#define GL_SHARED_TEXTURE_PALETTE_44_KOS             0xEF28
+#define GL_SHARED_TEXTURE_PALETTE_45_KOS             0xEF29
+#define GL_SHARED_TEXTURE_PALETTE_46_KOS             0xEF2A
+#define GL_SHARED_TEXTURE_PALETTE_47_KOS             0xEF2B
+#define GL_SHARED_TEXTURE_PALETTE_48_KOS             0xEF2C
+#define GL_SHARED_TEXTURE_PALETTE_49_KOS             0xEF2D
+
+#define GL_SHARED_TEXTURE_PALETTE_50_KOS             0xEF2E
+#define GL_SHARED_TEXTURE_PALETTE_51_KOS             0xEF2F
+#define GL_SHARED_TEXTURE_PALETTE_52_KOS             0xEF30
+#define GL_SHARED_TEXTURE_PALETTE_53_KOS             0xEF31
+#define GL_SHARED_TEXTURE_PALETTE_54_KOS             0xEF32
+#define GL_SHARED_TEXTURE_PALETTE_55_KOS             0xEF33
+#define GL_SHARED_TEXTURE_PALETTE_56_KOS             0xEF34
+#define GL_SHARED_TEXTURE_PALETTE_57_KOS             0xEF35
+#define GL_SHARED_TEXTURE_PALETTE_58_KOS             0xEF36
+#define GL_SHARED_TEXTURE_PALETTE_59_KOS             0xEF37
+
+#define GL_SHARED_TEXTURE_PALETTE_60_KOS             0xEF38
+#define GL_SHARED_TEXTURE_PALETTE_61_KOS             0xEF39
+#define GL_SHARED_TEXTURE_PALETTE_62_KOS             0xEF3A
+#define GL_SHARED_TEXTURE_PALETTE_63_KOS             0xEF3B
 
 /* Pass to glTexParameteri to set the shared bank */
-#define GL_SHARED_TEXTURE_BANK_KOS                  0xEF00
+#define GL_SHARED_TEXTURE_BANK_KOS                  0xEF3C
 
 /* Memory allocation extension (GL_KOS_texture_memory_management) */
 GLAPI GLvoid APIENTRY glDefragmentTextureMemory_KOS(void);
 
-#define GL_FREE_TEXTURE_MEMORY_KOS                  0xEF01
-#define GL_USED_TEXTURE_MEMORY_KOS                  0xEF02
-#define GL_FREE_CONTIGUOUS_TEXTURE_MEMORY_KOS       0xEF03
+#define GL_FREE_TEXTURE_MEMORY_KOS                  0xEF3D
+#define GL_USED_TEXTURE_MEMORY_KOS                  0xEF3E
+#define GL_FREE_CONTIGUOUS_TEXTURE_MEMORY_KOS       0xEF3F
+
+//for palette internal format (glfcConfig)
+#define GL_RGB565_KOS                               0xEF40
 
 __END_DECLS
 

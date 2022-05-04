@@ -236,9 +236,20 @@ void _glUpdatePVRTextureContext(PolyContext *context, GLshort textureUnit) {
         if(tx1->isPaletted) {
             if(_glIsSharedTexturePaletteEnabled()) {
                 TexturePalette* palette = _glGetSharedPalette(tx1->shared_bank);
-                context->txr.format |= GPUPaletteSelect8BPP(palette->bank);
-            } else {
-                context->txr.format |= GPUPaletteSelect8BPP((tx1->palette) ? tx1->palette->bank : 0);
+                if (palette->size  != 16){
+                    context->txr.format |= GPUPaletteSelect8BPP(palette->bank);
+                }
+                else{
+                    context->txr.format |= GPUPaletteSelect4BPP(palette->bank);
+                }
+            }
+            else {
+                if (tx1->palette->size != 16){
+                    context->txr.format |= GPUPaletteSelect8BPP((tx1->palette) ? tx1->palette->bank : 0);
+                }
+                else{
+                    context->txr.format |= GPUPaletteSelect4BPP((tx1->palette) ? tx1->palette->bank : 0);
+                }
             }
         }
 
@@ -291,7 +302,7 @@ void _glInitContext() {
     glDisable(GL_LIGHTING);
 
     GLubyte i;
-    for(i = 0; i < MAX_LIGHTS; ++i) {
+    for(i = 0; i < MAX_GLDC_LIGHTS; ++i) {
         glDisable(GL_LIGHT0 + i);
     }
 }
@@ -739,7 +750,7 @@ void APIENTRY glGetFloatv(GLenum pname, GLfloat* params) {
 void APIENTRY glGetIntegerv(GLenum pname, GLint *params) {
     switch(pname) {
         case GL_MAX_LIGHTS:
-            *params = MAX_LIGHTS;
+            *params = MAX_GLDC_LIGHTS;
         break;
         case GL_TEXTURE_BINDING_2D:
             *params = (_glGetBoundTexture()) ? _glGetBoundTexture()->index : 0;
@@ -799,7 +810,7 @@ const GLubyte *glGetString(GLenum name) {
             return (const GLubyte*) "1.2 (partial) - GLdc 1.1";
 
         case GL_EXTENSIONS:
-            return (const GLubyte*) "GL_ARB_framebuffer_object, GL_ARB_multitexture, GL_ARB_texture_rg, GL_EXT_paletted_texture, GL_EXT_shared_texture_palette, GL_KOS_multiple_shared_palette, GL_ARB_vertex_array_bgra, GL_ARB_vertex_type_2_10_10_10_rev, GL_KOS_texture_memory_management, GL_ATI_meminfo";
+            return (const GLubyte*)"GL_ARB_framebuffer_object, GL_ARB_multitexture, GL_ARB_texture_rg, GL_OES_compressed_paletted_texture,GL_EXT_paletted_texture, GL_EXT_shared_texture_palette, GL_KOS_multiple_shared_palette, GL_ARB_vertex_array_bgra, GL_ARB_vertex_type_2_10_10_10_rev, GL_KOS_texture_memory_management, GL_ATI_meminfo";
     }
 
     return (const GLubyte*) "GL_KOS_ERROR: ENUM Unsupported\n";

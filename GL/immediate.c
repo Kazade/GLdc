@@ -175,7 +175,7 @@ void APIENTRY glVertex3f(GLfloat x, GLfloat y, GLfloat z) {
 
     vert->x = x;
     vert->y = y;
-    vert->z = z;    
+    vert->z = z;
     vert->u = UV_COORD[0];
     vert->v = UV_COORD[1];
     vert->s = ST_COORD[0];
