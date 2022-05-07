@@ -775,6 +775,7 @@ void APIENTRY glCompressedTexImage2DARB(GLenum target,
             return;
 
         default: {
+            fprintf(stderr, "Unsupported internalFormat: %d\n", internalFormat);
             _glKosThrowError(GL_INVALID_OPERATION, __func__);
             return;
         }

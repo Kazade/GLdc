@@ -274,6 +274,12 @@ void APIENTRY glGenerateMipmapEXT(GLenum target) {
         return;
     }
 
+    if((tex->color & GPU_TXRFMT_PAL4BPP) == GPU_TXRFMT_PAL4BPP) {
+        fprintf(stderr, "[GL ERROR] Mipmap generation not supported for 4BPP paletted textures\n");
+        _glKosThrowError(GL_INVALID_OPERATION, __func__);
+        return;
+    }
+
     if((tex->color & GPU_TXRFMT_NONTWIDDLED) == GPU_TXRFMT_NONTWIDDLED) {
         /* glTexImage2D should twiddle internally textures in nearly all cases
          * so this error is unlikely */
@@ -321,10 +327,10 @@ void APIENTRY glGenerateMipmapEXT(GLenum target) {
 }
 
 /* generate mipmaps for any image provided by the user and then pass them to OpenGL */
-GLAPI GLint APIENTRY gluBuild2DMipmaps(GLenum target, GLint internalFormat,
+GLAPI GLvoid APIENTRY gluBuild2DMipmaps(GLenum target, GLint internalFormat,
                                        GLsizei width, GLsizei height,
                                        GLenum format, GLenum type, const void *data){
-    /* 2d texture, level of detail 0 (normal), 3 components (red, green, blue), 
+    /* 2d texture, level of detail 0 (normal), 3 components (red, green, blue),
 	 width & height of the image, border 0 (normal), rgb color data,
 	 unsigned byte data, and finally the data itself. */
     glTexImage2D(GL_TEXTURE_2D, 0, 3, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
