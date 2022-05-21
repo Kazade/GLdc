@@ -117,10 +117,9 @@ GLushort _glFreePaletteSlots(GLushort size)
 
 static void _glReleasePaletteSlot(GLshort slot, GLushort size)
 {
-    GLushort i, j;
+    GLushort i;
 
     assert(size == 16 || size == 256);
-
 
     if (size == 16) {
         GLushort bank = slot / MAX_GLDC_PALETTE_SLOTS;
@@ -966,13 +965,11 @@ static GLint _cleanInternalFormat(GLint internalFormat) {
 typedef void (*TextureConversionFunc)(const GLubyte*, GLubyte*);
 
 GL_FORCE_INLINE void _rgba8888_to_argb4444(const GLubyte* source, GLubyte* dest) {
-
-    *((GLushort*) dest) = (source[1] & 0xF0) << 8 | (source[2] & 0xF0) << 4 | (source[0] & 0xF0) | (source[3] & 0xF0) >> 4;
+    *((GLushort*) dest) = (source[3] & 0xF0) << 8 | (source[0] & 0xF0) << 4 | (source[1] & 0xF0) | (source[2] & 0xF0) >> 4;
 }
 
 GL_FORCE_INLINE void _rgba8888_to_rgba4444(const GLubyte* source, GLubyte* dest) {
-
-    *((GLushort*) dest) = (source[3] & 0xF0) << 8 | (source[2] & 0xF0) << 4 | (source[1] & 0xF0) | (source[0] & 0xF0) >> 4;
+    *((GLushort*) dest) = (source[1] & 0xF0) << 8 | (source[2] & 0xF0) << 4 | (source[0] & 0xF0) | (source[3] & 0xF0) >> 4;
 }
 
 GL_FORCE_INLINE void _rgb888_to_argb4444(const GLubyte* source, GLubyte* dest) {
