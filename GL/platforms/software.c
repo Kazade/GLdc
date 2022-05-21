@@ -185,16 +185,15 @@ void SceneFinish() {
     SDL_RenderPresent(RENDERER);
 
     /* Only sensible place to hook the quit signal */
-
-    SDL_Event e = {0};
-
-    while (SDL_PollEvent(&e))
-      switch (e.type) {
-        case SDL_QUIT:
-          exit(0);
-          break;
-        default:
-          break;
+    SDL_Event e;
+    while (SDL_PollEvent(&e)) {
+        switch (e.type) {
+            case SDL_QUIT:
+              exit(0);
+              break;
+            default:
+              break;
+        }
     }
 }
 
