@@ -13,19 +13,30 @@
 #include "GL/glext.h"
 #include "GL/glkos.h"
 
+/* using 4bpp textures from BMP files instead of 8bpp from PCX files */
+#define USE_16C_PALETTE
+
 #ifdef __DREAMCAST__
     #include <kos.h>
     extern uint8 romdisk[];
     KOS_INIT_ROMDISK(romdisk);
-    #define IMG_PATH       "/rd/NeHe.pcx"
-    #define IMG_ALPHA_PATH "/rd/NeHe-Alpha.pcx"
-#else
-    #define IMG_PATH       "../samples/paletted_pcx/romdisk/NeHe.pcx"
-    #define IMG_ALPHA_PATH "../samples/paletted_pcx/romdisk/NeHe-Alpha.pcx"
-#endif
 
-/* using 4bpp textures from BMP files instead of 8bpp from PCX files */
-#define USE_16C_PALETTE
+    #ifdef USE_16C_PALETTE
+        #define IMG_PATH       "/rd/NeHe.bmp"
+        #define IMG_ALPHA_PATH "/rd/NeHe-Alpha.bmp"
+    #else
+        #define IMG_PATH       "/rd/NeHe.pcx"
+        #define IMG_ALPHA_PATH "/rd/NeHe-Alpha.pcx"
+    #endif
+#else
+    #ifdef USE_16C_PALETTE
+        #define IMG_PATH       "../samples/paletted_pcx/romdisk/NeHe.bmp"
+        #define IMG_ALPHA_PATH "../samples/paletted_pcx/romdisk/NeHe-Alpha.bmp"
+    #else
+        #define IMG_PATH       "../samples/paletted_pcx/romdisk/NeHe.pcx"
+        #define IMG_ALPHA_PATH "../samples/paletted_pcx/romdisk/NeHe-Alpha.pcx"
+    #endif
+#endif
 
 /* floats for x rotation, y rotation, z rotation */
 float xrot, yrot, zrot;
@@ -145,7 +156,7 @@ int LoadPalettedPCX(const char* filename, Image* image) {
     return 1;
 }
 
-#else 
+#else
 
 #define BMP_BI_RGB			0L
 #define BMP_BI_UNCOMPRESSED	0L
@@ -159,7 +170,7 @@ int LoadPalettedPCX(const char* filename, Image* image) {
 typedef struct BITMAP_FILE_HEADER
 {
 	uint16_t	Type;
-	uint32_t	Size; 
+	uint32_t	Size;
 	uint16_t	Reserved1;
 	uint16_t	Reserved2;
 	uint32_t	OffBits;
@@ -346,7 +357,7 @@ int LoadPalettedBMP(const char* filename, Image* image)
 
 	bytes = sizeof(char) * image->width * image->height;
 	/* 4bpp is half byte size*/
-	bytes >>= 1; 
+	bytes >>= 1;
 
 	image->data = (char*)malloc(bytes);
 	if (image->data == NULL) {
@@ -365,7 +376,7 @@ int LoadPalettedBMP(const char* filename, Image* image)
 }
 
 
-#endif 
+#endif
 
 // Load Bitmaps And Convert To Textures
 void LoadGLTextures() {
@@ -381,11 +392,11 @@ void LoadGLTextures() {
         exit(1);
     }
 #else
-    if (!LoadPalettedBMP("/rd/NeHe.bmp", &image1)) {
+    if (!LoadPalettedBMP(IMG_PATH, &image1)) {
 	exit(1);
     }
 
-    if (!LoadPalettedBMP("/rd/NeHe-Alpha.bmp", &image2)) {
+    if (!LoadPalettedBMP(IMG_ALPHA_PATH, &image2)) {
 	exit(1);
     }
 #endif
