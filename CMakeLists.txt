@@ -21,14 +21,12 @@ set(CMAKE_C_STANDARD 99)
 include_directories(include)
 
 if(NOT PLATFORM_DREAMCAST)
-    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -m32")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -m32")
     set(FIND_LIBRARY_USE_LIB32_PATHS true)
     set(FIND_LIBRARY_USE_LIB64_PATHS false)
 endif()
 
 set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -O3 --fast-math -fexpensive-optimizations -funroll-all-loops")
-set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -O0 -g")
+set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -O0 -g -Wall -Wextra")
 
 set(
     SOURCES
@@ -78,6 +76,14 @@ else()
 endif()
 
 add_library(GLdc STATIC ${SOURCES})
+
+if(NOT PLATFORM_DREAMCAST)
+set_target_properties(GLdc PROPERTIES
+    COMPILE_OPTIONS "-m32"
+    LINK_OPTIONS "-m32"
+)
+endif()
+
 link_libraries(m)
 
 include_directories(include)
@@ -116,6 +122,11 @@ function(gen_sample sample)
         else()
             message("No such romdisk for sample: ${sample} at 'samples/${sample}/romdisk'")
         endif()
+    else()
+        set_target_properties(${sample} PROPERTIES
+            COMPILE_OPTIONS "-m32"
+            LINK_OPTIONS "-m32"
+        )
     endif()
 endfunction()
 
