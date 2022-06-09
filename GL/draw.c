@@ -933,16 +933,6 @@ static void transform(SubmissionTarget* target) {
     TransformVertices(vertex, target->count);
 }
 
-static void clip(SubmissionTarget* target) {
-    TRACE();
-
-    /* Perform clipping, generating new vertices as necessary */
-    _glClipTriangleStrip(target, _glGetShadeModel() == GL_FLAT);
-
-    /* Reset the count now that we may have added vertices */
-    target->count = target->output->vector.size - target->start_offset;
-}
-
 static void mat_transform3(const float* xyz, const float* xyzOut, const uint32_t count, const uint32_t inStride, const uint32_t outStride) {
     const uint8_t* dataIn = (const uint8_t*) xyz;
     uint8_t* dataOut = (uint8_t*) xyzOut;
@@ -1170,39 +1160,6 @@ GL_FORCE_INLINE void submitVertices(GLenum mode, GLsizei first, GLuint count, GL
         /* OK eye-space work done, now move into clip space */
         _glMatrixLoadProjection();
         transform(target);
-    }
-
-    if(_glIsClippingEnabled()) {
-#if DEBUG_CLIPPING
-        uint32_t i = 0;
-        fprintf(stderr, "=========\n");
-
-        for(i = 0; i < target->count; ++i) {
-            Vertex* v = aligned_vector_at(&target->output->vector, target->start_offset + i);
-            if(v->flags == 0xe0000000 || v->flags == 0xf0000000) {
-                fprintf(stderr, "(%f, %f, %f, %f) -> %x\n", v->xyz[0], v->xyz[1], v->xyz[2], v->w, v->flags);
-            } else {
-                fprintf(stderr, "%x\n", *((uint32_t*)v));
-            }
-        }
-#endif
-
-        clip(target);
-
-        assert(extras.size == target->count);
-
-#if DEBUG_CLIPPING
-        fprintf(stderr, "--------\n");
-        for(i = 0; i < target->count; ++i) {
-            Vertex* v = aligned_vector_at(&target->output->vector, target->start_offset + i);
-            if(v->flags == 0xe0000000 || v->flags == 0xf0000000) {
-                fprintf(stderr, "(%f, %f, %f, %f) -> %x\n", v->xyz[0], v->xyz[1], v->xyz[2], v->w, v->flags);
-            } else {
-                fprintf(stderr, "%x\n", *((uint32_t*)v));
-            }
-        }
-#endif
-
     }
 
     push(_glSubmissionTargetHeader(target), GL_FALSE, target->output, 0);

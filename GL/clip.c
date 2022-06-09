@@ -251,7 +251,7 @@ void _glClipTriangleStrip(SubmissionTarget* target, uint8_t fladeShade) {
          */
 
 #define _VERT_VISIBLE(v) \
-    (v->w >= 0 && v->xyz[2] >= -v->w) \
+    (v->xyz[2] > -v->w) \
 
         uint8_t visible = (
             (_VERT_VISIBLE(v1) ? 4 : 0) |
