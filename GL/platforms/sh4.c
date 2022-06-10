@@ -71,6 +71,12 @@ GL_FORCE_INLINE void _glPerspectiveDivideVertex(Vertex* vertex, const float h) {
 static uint32_t *d;  // SQ target
 
 GL_FORCE_INLINE void _glSubmitHeaderOrVertex(const Vertex* v) {
+#ifndef NDEBUG
+    assert(!isnan(v->xyz[2]));
+    assert(!isnan(v->w));
+    assert(v->xyz[2] > 0.0f);
+#endif
+
     uint32_t *s = (uint32_t*) v;
     __asm__("pref @%0" : : "r"(s + 8));  /* prefetch 32 bytes for next loop */
     d[0] = *(s++);
@@ -91,7 +97,21 @@ static struct {
 } triangle[3];
 
 static int tri_count = 0;
+static int strip_count = 0;
 
+GL_FORCE_INLINE void interpolateColour(const uint8_t* v1, const uint8_t* v2, const float t, uint8_t* out) {
+    const int MASK1 = 0x00FF00FF;
+    const int MASK2 = 0xFF00FF00;
+
+    const int f2 = 256 * t;
+    const int f1 = 256 - f2;
+
+    const uint32_t a = *(uint32_t*) v1;
+    const uint32_t b = *(uint32_t*) v2;
+
+    *((uint32_t*) out) = (((((a & MASK1) * f1) + ((b & MASK1) * f2)) >> 8) & MASK1) |
+            (((((a & MASK2) * f1) + ((b & MASK2) * f2)) >> 8) & MASK2);
+}
 
 GL_FORCE_INLINE void _glClipEdge(const Vertex* v1, const Vertex* v2, Vertex* vout) {
     /* Clipping time! */
@@ -108,10 +128,7 @@ GL_FORCE_INLINE void _glClipEdge(const Vertex* v1, const Vertex* v2, Vertex* vou
     vout->uv[0] = MATH_fmac(v2->uv[0] - v1->uv[0], t, v1->uv[0]);
     vout->uv[1] = MATH_fmac(v2->uv[1] - v1->uv[1], t, v1->uv[1]);
 
-    vout->bgra[0] = 0xFF;
-    vout->bgra[1] = 0xFF;
-    vout->bgra[2] = 0xFF;
-    vout->bgra[3] = 0xFF;
+    interpolateColour(v1->bgra, v2->bgra, t, vout->bgra);
 }
 
 GL_FORCE_INLINE void ClearTriangle() {
@@ -119,9 +136,16 @@ GL_FORCE_INLINE void ClearTriangle() {
 }
 
 GL_FORCE_INLINE void ShiftTriangle() {
+    if(!tri_count) {
+        return;
+    }
+
     tri_count--;
-    triangle[0] = triangle[1];
-    triangle[1] = triangle[2];
+    if(strip_count % 2 == 0) {
+        triangle[1] = triangle[2];
+    } else {
+        triangle[0] = triangle[2];
+    }
 
 #ifndef NDEBUG
     triangle[2].v = NULL;
@@ -141,8 +165,7 @@ void SceneListSubmit(void* src, int n) {
     const float h = GetVideoMode()->height;
 
     tri_count = 0;
-
-    int strip_count = 0;
+    strip_count = 0;
 
     for(int i = 0; i < n; ++i) {
         PREFETCH(vertex + 1);
@@ -175,9 +198,16 @@ void SceneListSubmit(void* src, int n) {
             /* All the vertices are visible! We divide and submit v0, then shift */
             _glPerspectiveDivideVertex(triangle[0].v, h);
             _glSubmitHeaderOrVertex(triangle[0].v);
-        } else if(!visible_mask) {
-            /* None visible, just shift for the next in the strip */
-        } else {
+
+            if(is_last_in_strip) {
+                _glPerspectiveDivideVertex(triangle[1].v, h);
+                _glSubmitHeaderOrVertex(triangle[1].v);
+                _glPerspectiveDivideVertex(triangle[2].v, h);
+                _glSubmitHeaderOrVertex(triangle[2].v);
+                ClearTriangle();
+                strip_count = 0;
+            }
+        } else if(visible_mask) {
             /* Clipping time!
 
                 There are 6 distinct possibilities when clipping a triangle. 3 of them result
@@ -193,7 +223,6 @@ void SceneListSubmit(void* src, int n) {
             */
 
             Vertex tmp0, tmp1, tmp2, tmp3;
-
             switch(visible_mask) {
                 case 1: {
                     /* 0, 0a, 2a */
@@ -321,16 +350,6 @@ void SceneListSubmit(void* src, int n) {
         /* If this was the last vertex in the strip, we're done with the
         strip so we need to wipe out the tri_count */
         ShiftTriangle();
-
-        if(is_last_in_strip) {
-            for(int i = 0; i < tri_count; ++i) {
-                if(triangle[i].visible) {
-                    _glPerspectiveDivideVertex(triangle[i].v, h);
-                    _glSubmitHeaderOrVertex(triangle[i].v);
-                }
-            }
-            ClearTriangle();
-        }
         ++vertex;
     }
     /* Wait for both store queues to complete */
