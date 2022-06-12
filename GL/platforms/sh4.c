@@ -180,7 +180,7 @@ void SceneListSubmit(void* src, int n) {
         if(tri_count < 3) {
             if(likely(glIsVertex(vertex->flags))) {
                 triangle[tri_count].v = vertex;
-                triangle[tri_count].visible = vertex->xyz[2] > -vertex->w;
+                triangle[tri_count].visible = vertex->xyz[2] >= -vertex->w;
                 tri_count++;
                 strip_count++;
             } else {
@@ -226,118 +226,124 @@ void SceneListSubmit(void* src, int n) {
                 be used in a subsequent triangle in the strip and would end up being double divided.
             */
 
-            Vertex tmp0, tmp1, tmp2, tmp3;
+            Vertex tmp;
             switch(visible_mask) {
                 case 1: {
                     /* 0, 0a, 2a */
-                    tmp0 = *triangle[0].v;
-                    _glClipEdge(triangle[0].v, triangle[1].v, &tmp1);
-                    _glClipEdge(triangle[2].v, triangle[0].v, &tmp2);
+                    tmp = *triangle[0].v;
+                    tmp.flags = GPU_CMD_VERTEX;
+                    _glPerspectiveDivideVertex(&tmp, h);
+                    _glSubmitHeaderOrVertex(&tmp);
 
-                    _glPerspectiveDivideVertex(&tmp0, h);
-                    _glPerspectiveDivideVertex(&tmp1, h);
-                    _glPerspectiveDivideVertex(&tmp2, h);
+                    _glClipEdge(triangle[0].v, triangle[1].v, &tmp);
+                    tmp.flags = GPU_CMD_VERTEX;
+                    _glPerspectiveDivideVertex(&tmp, h);
+                    _glSubmitHeaderOrVertex(&tmp);
 
-                    tmp0.flags = tmp1.flags = GPU_CMD_VERTEX;
-                    tmp2.flags = GPU_CMD_VERTEX_EOL;
-
-                    _glSubmitHeaderOrVertex(&tmp0);
-                    _glSubmitHeaderOrVertex(&tmp1);
-                    _glSubmitHeaderOrVertex(&tmp2);
+                    _glClipEdge(triangle[2].v, triangle[0].v, &tmp);
+                    tmp.flags = GPU_CMD_VERTEX_EOL;
+                    _glPerspectiveDivideVertex(&tmp, h);
+                    _glSubmitHeaderOrVertex(&tmp);
                 } break;
                 case 2: {
                     /* 0a, 1, 1a */
-                    _glClipEdge(triangle[0].v, triangle[1].v, &tmp0);
-                    tmp1 = *triangle[1].v;
-                    _glClipEdge(triangle[1].v, triangle[2].v, &tmp2);
+                    _glClipEdge(triangle[0].v, triangle[1].v, &tmp);
+                    tmp.flags = GPU_CMD_VERTEX;
+                    _glPerspectiveDivideVertex(&tmp, h);
+                    _glSubmitHeaderOrVertex(&tmp);
 
-                    _glPerspectiveDivideVertex(&tmp0, h);
-                    _glPerspectiveDivideVertex(&tmp1, h);
-                    _glPerspectiveDivideVertex(&tmp2, h);
+                    tmp = *triangle[1].v;
+                    tmp.flags = GPU_CMD_VERTEX;
+                    _glPerspectiveDivideVertex(&tmp, h);
+                    _glSubmitHeaderOrVertex(&tmp);
 
-                    tmp0.flags = tmp1.flags = GPU_CMD_VERTEX;
-                    tmp2.flags = GPU_CMD_VERTEX_EOL;
-
-                    _glSubmitHeaderOrVertex(&tmp0);
-                    _glSubmitHeaderOrVertex(&tmp1);
-                    _glSubmitHeaderOrVertex(&tmp2);
+                    _glClipEdge(triangle[1].v, triangle[2].v, &tmp);
+                    tmp.flags = GPU_CMD_VERTEX_EOL;
+                    _glPerspectiveDivideVertex(&tmp, h);
+                    _glSubmitHeaderOrVertex(&tmp);
                 } break;
                 case 3: {
                     /* 0, 1, 2a, 1a */
-                    tmp0 = *triangle[0].v;
-                    tmp1 = *triangle[1].v;
-                    _glClipEdge(triangle[2].v, triangle[0].v, &tmp2);
-                    _glClipEdge(triangle[1].v, triangle[2].v, &tmp3);
+                    tmp = *triangle[0].v;
+                    tmp.flags = GPU_CMD_VERTEX;
+                    _glPerspectiveDivideVertex(&tmp, h);
+                    _glSubmitHeaderOrVertex(&tmp);
 
-                    _glPerspectiveDivideVertex(&tmp0, h);
-                    _glPerspectiveDivideVertex(&tmp1, h);
-                    _glPerspectiveDivideVertex(&tmp2, h);
-                    _glPerspectiveDivideVertex(&tmp3, h);
+                    tmp = *triangle[1].v;
+                    tmp.flags = GPU_CMD_VERTEX;
+                    _glPerspectiveDivideVertex(&tmp, h);
+                    _glSubmitHeaderOrVertex(&tmp);
 
-                    tmp0.flags = tmp1.flags = tmp2.flags = GPU_CMD_VERTEX;
-                    tmp3.flags = GPU_CMD_VERTEX_EOL;
+                    _glClipEdge(triangle[2].v, triangle[0].v, &tmp);
+                    tmp.flags = GPU_CMD_VERTEX;
+                    _glPerspectiveDivideVertex(&tmp, h);
+                    _glSubmitHeaderOrVertex(&tmp);
 
-                    _glSubmitHeaderOrVertex(&tmp0);
-                    _glSubmitHeaderOrVertex(&tmp1);
-                    _glSubmitHeaderOrVertex(&tmp2);
-                    _glSubmitHeaderOrVertex(&tmp3);
+                    _glClipEdge(triangle[1].v, triangle[2].v, &tmp);
+                    tmp.flags = GPU_CMD_VERTEX_EOL;
+                    _glPerspectiveDivideVertex(&tmp, h);
+                    _glSubmitHeaderOrVertex(&tmp);
                 } break;
                 case 4: {
                     /* 1a, 2, 2a */
-                    _glClipEdge(triangle[1].v, triangle[2].v, &tmp0);
-                    tmp1 = *triangle[2].v;
-                    _glClipEdge(triangle[2].v, triangle[0].v, &tmp2);
+                    _glClipEdge(triangle[1].v, triangle[2].v, &tmp);
+                    tmp.flags = GPU_CMD_VERTEX;
+                    _glPerspectiveDivideVertex(&tmp, h);
+                    _glSubmitHeaderOrVertex(&tmp);
 
-                    _glPerspectiveDivideVertex(&tmp0, h);
-                    _glPerspectiveDivideVertex(&tmp1, h);
-                    _glPerspectiveDivideVertex(&tmp2, h);
+                    tmp = *triangle[2].v;
+                    tmp.flags = GPU_CMD_VERTEX;
+                    _glPerspectiveDivideVertex(&tmp, h);
+                    _glSubmitHeaderOrVertex(&tmp);
 
-                    tmp0.flags = tmp1.flags = GPU_CMD_VERTEX;
-                    tmp2.flags = GPU_CMD_VERTEX_EOL;
-
-                    _glSubmitHeaderOrVertex(&tmp0);
-                    _glSubmitHeaderOrVertex(&tmp1);
-                    _glSubmitHeaderOrVertex(&tmp2);
+                    _glClipEdge(triangle[2].v, triangle[0].v, &tmp);
+                    tmp.flags = GPU_CMD_VERTEX_EOL;
+                    _glPerspectiveDivideVertex(&tmp, h);
+                    _glSubmitHeaderOrVertex(&tmp);
                 } break;
                 case 5: {
                     /* 0, 0a, 2, 1a */
-                    tmp0 = *triangle[0].v;
-                    _glClipEdge(triangle[0].v, triangle[1].v, &tmp1);
-                    tmp2 = *triangle[2].v;
-                    _glClipEdge(triangle[1].v, triangle[2].v, &tmp3);
+                    tmp = *triangle[0].v;
+                    tmp.flags = GPU_CMD_VERTEX;
+                    _glPerspectiveDivideVertex(&tmp, h);
+                    _glSubmitHeaderOrVertex(&tmp);
 
-                    _glPerspectiveDivideVertex(&tmp0, h);
-                    _glPerspectiveDivideVertex(&tmp1, h);
-                    _glPerspectiveDivideVertex(&tmp2, h);
-                    _glPerspectiveDivideVertex(&tmp3, h);
+                    _glClipEdge(triangle[0].v, triangle[1].v, &tmp);
+                    tmp.flags = GPU_CMD_VERTEX;
+                    _glPerspectiveDivideVertex(&tmp, h);
+                    _glSubmitHeaderOrVertex(&tmp);
 
-                    tmp0.flags = tmp1.flags = tmp2.flags = GPU_CMD_VERTEX;
-                    tmp3.flags = GPU_CMD_VERTEX_EOL;
+                    tmp = *triangle[2].v;
+                    tmp.flags = GPU_CMD_VERTEX;
+                    _glPerspectiveDivideVertex(&tmp, h);
+                    _glSubmitHeaderOrVertex(&tmp);
 
-                    _glSubmitHeaderOrVertex(&tmp0);
-                    _glSubmitHeaderOrVertex(&tmp1);
-                    _glSubmitHeaderOrVertex(&tmp2);
-                    _glSubmitHeaderOrVertex(&tmp3);
+                    _glClipEdge(triangle[1].v, triangle[2].v, &tmp);
+                    tmp.flags = GPU_CMD_VERTEX;
+                    _glPerspectiveDivideVertex(&tmp, h);
+                    _glSubmitHeaderOrVertex(&tmp);
                 } break;
                 case 6: {
                     /* 0a, 1, 2a, 2 */
-                    _glClipEdge(triangle[0].v, triangle[1].v, &tmp0);
-                    tmp1 = *triangle[1].v;
-                    _glClipEdge(triangle[2].v, triangle[0].v, &tmp2);
-                    tmp3 = *triangle[2].v;
+                    _glClipEdge(triangle[0].v, triangle[1].v, &tmp);
+                    tmp.flags = GPU_CMD_VERTEX;
+                    _glPerspectiveDivideVertex(&tmp, h);
+                    _glSubmitHeaderOrVertex(&tmp);
 
-                    _glPerspectiveDivideVertex(&tmp0, h);
-                    _glPerspectiveDivideVertex(&tmp1, h);
-                    _glPerspectiveDivideVertex(&tmp2, h);
-                    _glPerspectiveDivideVertex(&tmp3, h);
+                    tmp = *triangle[1].v;
+                    tmp.flags = GPU_CMD_VERTEX;
+                    _glPerspectiveDivideVertex(&tmp, h);
+                    _glSubmitHeaderOrVertex(&tmp);
 
-                    tmp0.flags = tmp1.flags = tmp2.flags = GPU_CMD_VERTEX;
-                    tmp3.flags = GPU_CMD_VERTEX_EOL;
+                    _glClipEdge(triangle[2].v, triangle[0].v, &tmp);
+                    tmp.flags = GPU_CMD_VERTEX;
+                    _glPerspectiveDivideVertex(&tmp, h);
+                    _glSubmitHeaderOrVertex(&tmp);
 
-                    _glSubmitHeaderOrVertex(&tmp0);
-                    _glSubmitHeaderOrVertex(&tmp1);
-                    _glSubmitHeaderOrVertex(&tmp2);
-                    _glSubmitHeaderOrVertex(&tmp3);
+                    tmp = *triangle[2].v;
+                    tmp.flags = GPU_CMD_VERTEX_EOL;
+                    _glPerspectiveDivideVertex(&tmp, h);
+                    _glSubmitHeaderOrVertex(&tmp);
                 } break;
                 default:
                 break;
