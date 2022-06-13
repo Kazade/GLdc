@@ -18,6 +18,8 @@ static GLenum FRONT_FACE = GL_CCW;
 static GLboolean CULLING_ENABLED = GL_FALSE;
 static GLboolean COLOR_MATERIAL_ENABLED = GL_FALSE;
 
+GLboolean ZNEAR_CLIPPING_ENABLED = GL_TRUE;
+
 GLboolean LIGHTING_ENABLED = GL_FALSE;
 
 /* Is the shared texture palette enabled? */
@@ -356,7 +358,7 @@ GLAPI void APIENTRY glEnable(GLenum cap) {
             _glEnableLight(cap & 0xF, GL_TRUE);
         break;
         case GL_NEARZ_CLIPPING_KOS:
-            _glEnableClipping(GL_TRUE);
+            ZNEAR_CLIPPING_ENABLED = GL_TRUE;
         break;
         case GL_POLYGON_OFFSET_POINT:
         case GL_POLYGON_OFFSET_LINE:
@@ -418,7 +420,7 @@ GLAPI void APIENTRY glDisable(GLenum cap) {
             _glEnableLight(cap & 0xF, GL_FALSE);
         break;
         case GL_NEARZ_CLIPPING_KOS:
-            _glEnableClipping(GL_FALSE);
+            ZNEAR_CLIPPING_ENABLED = GL_FALSE;
         break;
         case GL_POLYGON_OFFSET_POINT:
         case GL_POLYGON_OFFSET_LINE:

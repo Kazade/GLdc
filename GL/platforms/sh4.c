@@ -188,6 +188,22 @@ void SceneListSubmit(void* src, int n) {
 
     const float h = GetVideoMode()->height;
 
+    if(!ZNEAR_CLIPPING_ENABLED) {
+        for(int i = 0; i < n; ++i, ++vertex) {
+            PREFETCH(vertex + 1);
+            if(glIsVertex(vertex->flags)) {
+                _glPerspectiveDivideVertex(vertex, h);
+            }
+            _glSubmitHeaderOrVertex(vertex);
+        }
+
+        /* Wait for both store queues to complete */
+        d = (uint32_t *)0xe0000000;
+        d[0] = d[8] = 0;
+
+        return;
+    }
+
     tri_count = 0;
     strip_count = 0;
 

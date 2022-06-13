@@ -279,9 +279,6 @@ typedef enum {
 
 struct SubmissionTarget;
 
-float _glClipLineToNearZ(const Vertex* v1, const Vertex* v2, Vertex* vout);
-void _glClipTriangleStrip(SubmissionTarget* target, uint8_t fladeShade);
-
 PolyList* _glOpaquePolyList();
 PolyList* _glPunchThruPolyList();
 PolyList *_glTransparentPolyList();
@@ -384,6 +381,8 @@ GL_FORCE_INLINE PolyList* _glActivePolyList() {
 GLboolean _glIsMipmapComplete(const TextureObject* obj);
 GLubyte* _glGetMipmapLocation(const TextureObject* obj, GLuint level);
 GLuint _glGetMipmapLevelCount(const TextureObject* obj);
+
+extern GLboolean ZNEAR_CLIPPING_ENABLED;
 
 extern GLboolean LIGHTING_ENABLED;
 GLboolean _glIsLightingEnabled();

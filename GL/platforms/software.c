@@ -260,6 +260,19 @@ void SceneListSubmit(void* src, int n) {
 
     const float h = GetVideoMode()->height;
 
+    /* If Z-clipping is disabled, just fire everything over to the buffer */
+    if(!ZNEAR_CLIPPING_ENABLED) {
+        for(int i = 0; i < n; ++i, ++vertex) {
+            PREFETCH(vertex + 1);
+            if(glIsVertex(vertex->flags)) {
+                _glPerspectiveDivideVertex(vertex, h);
+            }
+            _glSubmitHeaderOrVertex(vertex);
+        }
+
+        return;
+    }
+
     tri_count = 0;
     strip_count = 0;
 
