@@ -33,7 +33,6 @@ set(
     containers/aligned_vector.c
     containers/named_array.c
     containers/stack.c
-    GL/clip.c
     GL/draw.c
     GL/error.c
     GL/flush.c
