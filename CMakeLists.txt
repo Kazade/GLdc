@@ -33,7 +33,6 @@ set(
     containers/aligned_vector.c
     containers/named_array.c
     containers/stack.c
-    GL/clip.c
     GL/draw.c
     GL/error.c
     GL/flush.c
@@ -148,6 +147,7 @@ gen_sample(nehe06 samples/nehe06/main.c samples/loadbmp.c)
 gen_sample(nehe06_vq samples/nehe06_vq/main.c)
 gen_sample(nehe06_4444twid samples/nehe06_4444twid/main.c)
 gen_sample(nehe08 samples/nehe08/main.c samples/nehe08/pvr-texture.c)
+gen_sample(nehe10 samples/nehe10/main.c samples/loadbmp.c)
 gen_sample(nehe20 samples/nehe20/main.c samples/loadbmp.c)
 gen_sample(ortho2d samples/ortho2d/main.c)
 gen_sample(paletted samples/paletted/main.c)

@@ -20,6 +20,7 @@ void InitGL(int Width, int Height)	        // We call this right after our OpenG
     glEnable(GL_DEPTH_TEST);			// Enables Depth Testing
     glShadeModel(GL_SMOOTH);			// Enables Smooth Color Shading
     glEnable(GL_TEXTURE_2D);
+    glEnable(GL_CULL_FACE);
 
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();				// Reset The Projection Matrix

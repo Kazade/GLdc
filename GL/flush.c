@@ -88,108 +88,19 @@ void APIENTRY glKosInit() {
     glKosInitEx(&config);
 }
 
-#define likely(x)      __builtin_expect(!!(x), 1)
-#define unlikely(x)    __builtin_expect(!!(x), 0)
-
-GL_FORCE_INLINE bool glIsVertex(const float flags) {
-    return flags == GPU_CMD_VERTEX_EOL || flags == GPU_CMD_VERTEX;
-}
-
-
-GL_FORCE_INLINE void glPerspectiveDivideStandard(void* src, uint32_t n) {
-    TRACE();
-
-    /* Perform perspective divide on each vertex */
-    Vertex* vertex = (Vertex*) src;
-    PREFETCH(vertex + 1);
-
-    const float h = GetVideoMode()->height;
-
-    while(n--) {
-        PREFETCH(vertex + 2);
-
-        if(likely(glIsVertex(vertex->flags))) {
-            const float f = MATH_Fast_Invert(vertex->w);
-
-            /* Convert to NDC and apply viewport */
-            vertex->xyz[0] = __builtin_fmaf(
-                VIEWPORT.hwidth, vertex->xyz[0] * f, VIEWPORT.x_plus_hwidth
-            );
-
-            vertex->xyz[1] = h - __builtin_fmaf(
-                VIEWPORT.hheight, vertex->xyz[1] * f, VIEWPORT.y_plus_hheight
-            );
-
-            /* Orthographic projections need to use invZ otherwise we lose
-            the depth information. As w == 1, and clip-space range is -w to +w
-            we add 1.0 to the Z to bring it into range. We add a little extra to
-            avoid a divide by zero.
-            */
-            if(unlikely(vertex->w == 1.0f)) {
-                vertex->xyz[2] = MATH_Fast_Invert(1.0001f + vertex->xyz[2]);
-            } else {
-                vertex->xyz[2] = f;
-            }
-        }
-
-        ++vertex;
-    }
-}
-
-GL_FORCE_INLINE void glPerspectiveDivideFastMode(void* src, uint32_t n) {
-    TRACE();
-
-    /* Perform perspective divide on each vertex */
-    Vertex* vertex = (Vertex*) src;
-
-    const float h = GetVideoMode()->height;
-
-    while(n--) {
-        PREFETCH(vertex + 1);
-
-        if(likely(glIsVertex(vertex->flags))) {
-            const float f = MATH_Fast_Invert(vertex->w);
-
-            /* Convert to NDC and apply viewport */
-            vertex->xyz[0] = MATH_fmac(
-                VIEWPORT.hwidth, vertex->xyz[0] * f, VIEWPORT.x_plus_hwidth
-            );
-
-            vertex->xyz[1] = h - MATH_fmac(
-                VIEWPORT.hheight, vertex->xyz[1] * f, VIEWPORT.y_plus_hheight
-            );
-
-            vertex->xyz[2] = f;
-        }
-
-        ++vertex;
-    }
-}
-
-GL_FORCE_INLINE void glPerspectiveDivide(void* src, uint32_t n) {
-#if FAST_MODE
-        glPerspectiveDivideFastMode(src, n);
-#else
-        glPerspectiveDivideStandard(src, n);
-#endif
-}
-
 void APIENTRY glKosSwapBuffers() {
     TRACE();
 
     SceneBegin();
         SceneListBegin(GPU_LIST_OP_POLY);
-        glPerspectiveDivide(OP_LIST.vector.data, OP_LIST.vector.size);
         SceneListSubmit(OP_LIST.vector.data, OP_LIST.vector.size);
         SceneListFinish();
 
         SceneListBegin(GPU_LIST_PT_POLY);
-        glPerspectiveDivide(PT_LIST.vector.data, PT_LIST.vector.size);
         SceneListSubmit(PT_LIST.vector.data, PT_LIST.vector.size);
         SceneListFinish();
 
         SceneListBegin(GPU_LIST_TR_POLY);
-        glPerspectiveDivide(TR_LIST.vector.data, TR_LIST.vector.size);
         SceneListSubmit(TR_LIST.vector.data, TR_LIST.vector.size);
         SceneListFinish();
     SceneFinish();
