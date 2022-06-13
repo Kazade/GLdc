@@ -1,6 +1,9 @@
 #include "../platform.h"
 #include "sh4.h"
 
+
+#define CLIP_DEBUG 0
+
 #define TA_SQ_ADDR (unsigned int *)(void *) \
     (0xe0000000 | (((unsigned long)0x10000000) & 0x03ffffe0))
 
@@ -76,6 +79,10 @@ GL_FORCE_INLINE void _glSubmitHeaderOrVertex(const Vertex* v) {
     assert(!isnan(v->w));
 #endif
 
+#if CLIP_DEBUG
+    printf("Submitting: %x (%x)\n", v, v->flags);
+#endif
+
     uint32_t *s = (uint32_t*) v;
     __asm__("pref @%0" : : "r"(s + 8));  /* prefetch 32 bytes for next loop */
     d[0] = *(s++);
@@ -145,17 +152,30 @@ GL_FORCE_INLINE void ShiftTriangle() {
     }
 
     tri_count--;
-    if(strip_count % 2 == 0) {
-        triangle[1] = triangle[2];
-    } else {
-        triangle[0] = triangle[2];
-    }
+    triangle[0] = triangle[1];
+    triangle[1] = triangle[2];
 
 #ifndef NDEBUG
     triangle[2].v = NULL;
     triangle[2].visible = false;
 #endif
 }
+
+
+GL_FORCE_INLINE void ShiftRotateTriangle() {
+    if(!tri_count) {
+        return;
+    }
+
+    if(triangle[0].v < triangle[1].v) {
+        triangle[0] = triangle[2];
+    } else {
+        triangle[1] = triangle[2];
+    }
+
+    tri_count--;
+}
+
 
 void SceneListSubmit(void* src, int n) {
     /* Do everything, everywhere, all at once */
@@ -171,7 +191,11 @@ void SceneListSubmit(void* src, int n) {
     tri_count = 0;
     strip_count = 0;
 
-    for(int i = 0; i < n; ++i) {
+#if CLIP_DEBUG
+    printf("----\n");
+#endif
+
+    for(int i = 0; i < n; ++i, ++vertex) {
         PREFETCH(vertex + 1);
 
         bool is_last_in_strip = glIsLastVertex(vertex->flags);
@@ -191,26 +215,35 @@ void SceneListSubmit(void* src, int n) {
             }
 
             if(tri_count < 3) {
-                ++vertex;
                 continue;
             }
         }
 
+#if CLIP_DEBUG
+        printf("SC: %d\n", strip_count);
+#endif
+
         /* If we got here, then triangle contains 3 vertices */
         int visible_mask = triangle[0].visible | (triangle[1].visible << 1) | (triangle[2].visible << 2);
         if(visible_mask == 7) {
+#if CLIP_DEBUG
+            printf("Visible\n");
+#endif
             /* All the vertices are visible! We divide and submit v0, then shift */
-            _glPerspectiveDivideVertex(triangle[0].v, h);
-            _glSubmitHeaderOrVertex(triangle[0].v);
+            _glPerspectiveDivideVertex(vertex - 2, h);
+            _glSubmitHeaderOrVertex(vertex - 2);
 
             if(is_last_in_strip) {
-                _glPerspectiveDivideVertex(triangle[1].v, h);
-                _glSubmitHeaderOrVertex(triangle[1].v);
-                _glPerspectiveDivideVertex(triangle[2].v, h);
-                _glSubmitHeaderOrVertex(triangle[2].v);
-                ClearTriangle();
+                _glPerspectiveDivideVertex(vertex - 1, h);
+                _glSubmitHeaderOrVertex(vertex - 1);
+                _glPerspectiveDivideVertex(vertex, h);
+                _glSubmitHeaderOrVertex(vertex);
+                tri_count = 0;
                 strip_count = 0;
             }
+
+            ShiftRotateTriangle();
+
         } else if(visible_mask) {
             /* Clipping time!
 
@@ -225,8 +258,26 @@ void SceneListSubmit(void* src, int n) {
                 Unfortunately we have to copy vertices here, because if we persp-divide a vertex it may
                 be used in a subsequent triangle in the strip and would end up being double divided.
             */
-
+#if CLIP_DEBUG
+            printf("Clip: %d, SC: %d\n", visible_mask, strip_count);
+            printf("%d, %d, %d\n", triangle[0].v - (Vertex*) src - 1, triangle[1].v - (Vertex*) src - 1, triangle[2].v - (Vertex*) src - 1);
+#endif
             Vertex tmp;
+            if(strip_count > 3) {
+#if CLIP_DEBUG
+                printf("Flush\n");
+#endif
+                tmp = *(vertex - 2);
+                /* If we had triangles ahead of this one, submit and finalize */
+                _glPerspectiveDivideVertex(&tmp, h);
+                _glSubmitHeaderOrVertex(&tmp);
+
+                tmp = *(vertex - 1);
+                tmp.flags = GPU_CMD_VERTEX_EOL;
+                _glPerspectiveDivideVertex(&tmp, h);
+                _glSubmitHeaderOrVertex(&tmp);
+            }
+
             switch(visible_mask) {
                 case 1: {
                     /* 0, 0a, 2a */
@@ -319,7 +370,7 @@ void SceneListSubmit(void* src, int n) {
                     _glSubmitHeaderOrVertex(&tmp);
 
                     _glClipEdge(triangle[1].v, triangle[2].v, &tmp);
-                    tmp.flags = GPU_CMD_VERTEX;
+                    tmp.flags = GPU_CMD_VERTEX_EOL;
                     _glPerspectiveDivideVertex(&tmp, h);
                     _glSubmitHeaderOrVertex(&tmp);
                 } break;
@@ -354,14 +405,22 @@ void SceneListSubmit(void* src, int n) {
             if(is_last_in_strip) {
                 tri_count = 0;
                 strip_count = 0;
+            } else {
+                ShiftRotateTriangle();
+                strip_count = 2;
             }
-        }
+        } else {
+            /* Invisible? Move to the next in the strip */
 
-        /* If this was the last vertex in the strip, we're done with the
-        strip so we need to wipe out the tri_count */
-        ShiftTriangle();
-        ++vertex;
+            if(is_last_in_strip) {
+                tri_count = 0;
+                strip_count = 0;
+            }
+            strip_count = 2;
+            ShiftRotateTriangle();
+        }
     }
+
     /* Wait for both store queues to complete */
     d = (uint32_t *)0xe0000000;
     d[0] = d[8] = 0;
