@@ -594,8 +594,6 @@ static void _readPositionData(ReadDiffuseFunc func, const GLuint first, const GL
         func(vptr, (GLubyte*) pos);
         it->flags = GPU_CMD_VERTEX;
 
-        TransformVertex((const float*) pos, &w, it->xyz, &it->w);
-
         vptr += vstride;
         ++it;
     }
