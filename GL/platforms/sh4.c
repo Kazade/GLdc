@@ -4,15 +4,15 @@
 
 #define CLIP_DEBUG 0
 
-#define TA_SQ_ADDR (unsigned int *)(void *) \
-    (0xe0000000 | (((unsigned long)0x10000000) & 0x03ffffe0))
-
-#define QACRTA ((((unsigned int)0x10000000)>>26)<<2)&0x1c
-
 #define PVR_VERTEX_BUF_SIZE 2560 * 256
 
 #define likely(x)      __builtin_expect(!!(x), 1)
 #define unlikely(x)    __builtin_expect(!!(x), 0)
+
+#define SQ_BASE_ADDRESS 0xe0000000
+
+static volatile uint32_t* PVR_LMMODE0 = (uint32_t*) 0xA05F6884;
+
 
 GL_FORCE_INLINE bool glIsVertex(const float flags) {
     return flags == GPU_CMD_VERTEX_EOL || flags == GPU_CMD_VERTEX;
@@ -21,7 +21,6 @@ GL_FORCE_INLINE bool glIsVertex(const float flags) {
 GL_FORCE_INLINE bool glIsLastVertex(const float flags) {
     return flags == GPU_CMD_VERTEX_EOL;
 }
-
 
 void InitGPU(_Bool autosort, _Bool fsaa) {
     pvr_init_params_t params = {
@@ -39,8 +38,9 @@ void InitGPU(_Bool autosort, _Bool fsaa) {
 void SceneBegin() {
     pvr_wait_ready();
     pvr_scene_begin();
-    QACR0 = QACRTA;
-    QACR1 = QACRTA;
+
+    QACR0 = 0x11;  /* Enable the direct texture path by setting the higher two bits */
+    QACR1 = 0x11;
 }
 
 void SceneListBegin(GPUList list) {
@@ -176,12 +176,16 @@ GL_FORCE_INLINE void ShiftRotateTriangle() {
     tri_count--;
 }
 
+#define SPAN_SORT_CFG 0x005F8030
 
 void SceneListSubmit(void* src, int n) {
     /* Do everything, everywhere, all at once */
+    PVR_SET(SPAN_SORT_CFG, 0x0);
 
     /* Prep store queues */
-    d = (uint32_t*) TA_SQ_ADDR;
+    d = (uint32_t*) SQ_BASE_ADDRESS;
+
+    *PVR_LMMODE0 = 0x0; /* Enable 64bit mode */
 
     /* Perform perspective divide on each vertex */
     Vertex* vertex = (Vertex*) src;
@@ -198,7 +202,7 @@ void SceneListSubmit(void* src, int n) {
         }
 
         /* Wait for both store queues to complete */
-        d = (uint32_t *)0xe0000000;
+        d = (uint32_t *) SQ_BASE_ADDRESS;
         d[0] = d[8] = 0;
 
         return;
