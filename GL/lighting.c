@@ -1,4 +1,3 @@
-#include <assert.h>
 #include <stdio.h>
 #include <string.h>
 #include <math.h>
@@ -144,7 +143,7 @@ void APIENTRY glLightModeli(GLenum pname, const GLint param) {
 void APIENTRY glLightModelfv(GLenum pname, const GLfloat *params) {
     switch(pname) {
         case GL_LIGHT_MODEL_AMBIENT: {
-            memcpy(SCENE_AMBIENT, params, sizeof(GLfloat) * 4);
+            for(int i = 0; i < 4; ++i) SCENE_AMBIENT[i] = params[i];
             _glPrecalcLightingValues(SCENE_AMBIENT_MASK);
         } break;
         case GL_LIGHT_MODEL_LOCAL_VIEWER:
@@ -393,7 +392,7 @@ GL_FORCE_INLINE float faster_pow2(const float p) {
 }
 
 GL_FORCE_INLINE float faster_log2(const float x) {
-    assert(x >= 0.0f);
+    gl_assert(x >= 0.0f);
 
     const union { float f; uint32_t i; } vx = { x };
     const float y = (float) (vx.i) * 1.1920928955078125e-7f;

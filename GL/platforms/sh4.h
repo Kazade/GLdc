@@ -31,7 +31,7 @@
 #define FASTCPY(dst, src, bytes) \
     do { \
         if(bytes % 32 == 0 && ((uintptr_t) src % 4) == 0) { \
-            assert(((uintptr_t) dst) % 32 == 0); \
+            gl_assert(((uintptr_t) dst) % 32 == 0); \
             sq_cpy(dst, src, bytes); \
         } else { \
             memcpy(dst, src, bytes); \

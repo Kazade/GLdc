@@ -75,8 +75,8 @@ static uint32_t *d;  // SQ target
 
 GL_FORCE_INLINE void _glSubmitHeaderOrVertex(const Vertex* v) {
 #ifndef NDEBUG
-    assert(!isnan(v->xyz[2]));
-    assert(!isnan(v->w));
+    gl_assert(!isnan(v->xyz[2]));
+    gl_assert(!isnan(v->w));
 #endif
 
 #if CLIP_DEBUG

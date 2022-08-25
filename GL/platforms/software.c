@@ -164,8 +164,8 @@ GL_FORCE_INLINE void _glPerspectiveDivideVertex(Vertex* vertex, const float h) {
 GL_FORCE_INLINE void _glSubmitHeaderOrVertex(const Vertex* v) {
 #ifndef NDEBUG
     if(glIsVertex(v->flags)) {
-        assert(!isnan(v->xyz[2]));
-        assert(!isnan(v->w));
+        gl_assert(!isnan(v->xyz[2]));
+        gl_assert(!isnan(v->w));
     }
 #endif
 

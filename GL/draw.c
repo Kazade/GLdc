@@ -3,7 +3,6 @@
 #include <string.h>
 #include <stdlib.h>
 #include <math.h>
-#include <assert.h>
 
 #include "private.h"
 #include "platform.h"
@@ -260,37 +259,37 @@ static void _fillZero2f(const GLubyte* __restrict__ input, GLubyte* __restrict__
 static void _readVertexData3usARGB(const GLubyte* input, GLubyte* output) {
     _GL_UNUSED(input);
     _GL_UNUSED(output);
-    assert(0 && "Not Implemented");
+    gl_assert(0 && "Not Implemented");
 }
 
 static void _readVertexData3uiARGB(const GLubyte* input, GLubyte* output) {
     _GL_UNUSED(input);
     _GL_UNUSED(output);
-    assert(0 && "Not Implemented");
+    gl_assert(0 && "Not Implemented");
 }
 
 static void _readVertexData4usARGB(const GLubyte* input, GLubyte* output) {
     _GL_UNUSED(input);
     _GL_UNUSED(output);
-    assert(0 && "Not Implemented");
+    gl_assert(0 && "Not Implemented");
 }
 
 static void _readVertexData4uiARGB(const GLubyte* input, GLubyte* output) {
     _GL_UNUSED(input);
     _GL_UNUSED(output);
-    assert(0 && "Not Implemented");
+    gl_assert(0 && "Not Implemented");
 }
 
 static void _readVertexData4usRevARGB(const GLubyte* input, GLubyte* output) {
     _GL_UNUSED(input);
     _GL_UNUSED(output);
-    assert(0 && "Not Implemented");
+    gl_assert(0 && "Not Implemented");
 }
 
 static void _readVertexData4uiRevARGB(const GLubyte* input, GLubyte* output) {
     _GL_UNUSED(input);
     _GL_UNUSED(output);
-    assert(0 && "Not Implemented");
+    gl_assert(0 && "Not Implemented");
 }
 
 GLuint* _glGetEnabledAttributes() {
@@ -394,12 +393,12 @@ GL_FORCE_INLINE void transformNormalToEyeSpace(GLfloat* normal) {
 }
 
 GL_FORCE_INLINE PolyHeader *_glSubmissionTargetHeader(SubmissionTarget* target) {
-    assert(target->header_offset < target->output->vector.size);
+    gl_assert(target->header_offset < target->output->vector.size);
     return aligned_vector_at(&target->output->vector, target->header_offset);
 }
 
 GL_INLINE_DEBUG Vertex* _glSubmissionTargetStart(SubmissionTarget* target) {
-    assert(target->start_offset < target->output->vector.size);
+    gl_assert(target->start_offset < target->output->vector.size);
     return aligned_vector_at(&target->output->vector, target->start_offset);
 }
 
@@ -438,7 +437,7 @@ GL_FORCE_INLINE void genTriangleStrip(Vertex* output, GLuint count) {
 }
 
 static void genTriangleFan(Vertex* output, GLuint count) {
-    assert(count <= 255);
+    gl_assert(count <= 255);
 
     Vertex* dst = output + (((count - 2) * 3) - 1);
     Vertex* src = output + (count - 1);
@@ -583,74 +582,60 @@ ReadNormalFunc calcReadNormalFunc() {
     }
 }
 
-static void _readPositionData(ReadDiffuseFunc func, const GLuint first, const GLuint count, const Vertex* output) {
+static void _readPositionData(ReadDiffuseFunc func, const GLuint first, const GLuint count, Vertex* it) {
     const GLsizei vstride = ATTRIB_POINTERS.vertex.stride;
     const GLubyte* vptr = ((GLubyte*) ATTRIB_POINTERS.vertex.ptr + (first * vstride));
 
-    GLubyte* out = (GLubyte*) output[0].xyz;
-    uint32_t* flags;
+    float pos[3];
+    float w = 0.0f;
 
     ITERATE(count) {
         PREFETCH(vptr + vstride);
+        func(vptr, (GLubyte*) pos);
+        it->flags = GPU_CMD_VERTEX;
 
-        func(vptr, out);
+        TransformVertex((const float*) pos, &w, it->xyz, &it->w);
+
         vptr += vstride;
-
-        /* Set the flags which are 4 bytes before the position. Doing it here saves
-         * an additional loop */
-        flags = (uint32_t*) out - 1;
-        *flags = GPU_CMD_VERTEX;
-
-        out += sizeof(Vertex);
+        ++it;
     }
 }
 
-static void _readUVData(ReadUVFunc func, const GLuint first, const GLuint count, const Vertex* output) {
+static void _readUVData(ReadUVFunc func, const GLuint first, const GLuint count, Vertex* it) {
     const GLsizei uvstride = ATTRIB_POINTERS.uv.stride;
     const GLubyte* uvptr = ((GLubyte*) ATTRIB_POINTERS.uv.ptr + (first * uvstride));
-
-    GLubyte* out = (GLubyte*) output[0].uv;
 
     ITERATE(count) {
         PREFETCH(uvptr + uvstride);
 
-        func(uvptr, out);
+        func(uvptr, (GLubyte*) it->uv);
         uvptr += uvstride;
-        out += sizeof(Vertex);
+        ++it;
     }
 }
 
-static void _readSTData(ReadUVFunc func, const GLuint first, const GLuint count, const VertexExtra* extra) {
+static void _readSTData(ReadUVFunc func, const GLuint first, const GLuint count, VertexExtra* it) {
     const GLsizei ststride = ATTRIB_POINTERS.st.stride;
     const GLubyte* stptr = ((GLubyte*) ATTRIB_POINTERS.st.ptr + (first * ststride));
 
-    GLubyte* out = (GLubyte*) extra[0].st;
-
     ITERATE(count) {
         PREFETCH(stptr + ststride);
-
-        func(stptr, out);
+        func(stptr, (GLubyte*) it->st);
         stptr += ststride;
-        out += sizeof(VertexExtra);
+        ++it;
     }
 }
 
-static void _readNormalData(ReadNormalFunc func, const GLuint first, const GLuint count, const VertexExtra* extra) {
+static void _readNormalData(ReadNormalFunc func, const GLuint first, const GLuint count, VertexExtra* it) {
     const GLsizei nstride = ATTRIB_POINTERS.normal.stride;
     const GLubyte* nptr = ((GLubyte*) ATTRIB_POINTERS.normal.ptr + (first * nstride));
 
-    GLubyte* out = (GLubyte*) extra[0].nxyz;
-
     ITERATE(count) {
-        func(nptr, out);
+        func(nptr, (GLubyte*) it->nxyz);
         nptr += nstride;
-        out += sizeof(VertexExtra);
-    }
 
-    if(_glIsNormalizeEnabled()) {
-        GLubyte* ptr = (GLubyte*) extra->nxyz;
-        ITERATE(count) {
-            GLfloat* n = (GLfloat*) ptr;
+        if(_glIsNormalizeEnabled()) {
+            GLfloat* n = (GLfloat*) it->nxyz;
             float temp = n[0] * n[0];
             temp = MATH_fmac(n[1], n[1], temp);
             temp = MATH_fmac(n[2], n[2], temp);
@@ -659,9 +644,9 @@ static void _readNormalData(ReadNormalFunc func, const GLuint first, const GLuin
             n[0] *= ilength;
             n[1] *= ilength;
             n[2] *= ilength;
-
-            ptr += sizeof(VertexExtra);
         }
+
+        ++it;
     }
 }
 
@@ -669,18 +654,15 @@ GL_FORCE_INLINE GLuint diffusePointerSize() {
     return (ATTRIB_POINTERS.colour.size == GL_BGRA) ? 4 : ATTRIB_POINTERS.colour.size;
 }
 
-static void _readDiffuseData(ReadDiffuseFunc func, const GLuint first, const GLuint count, const Vertex* output) {
+static void _readDiffuseData(ReadDiffuseFunc func, const GLuint first, const GLuint count, Vertex* it) {
     const GLuint cstride = ATTRIB_POINTERS.colour.stride;
     const GLubyte* cptr = ((GLubyte*) ATTRIB_POINTERS.colour.ptr) + (first * cstride);
 
-    GLubyte* out = (GLubyte*) output[0].bgra;
-
     ITERATE(count) {
         PREFETCH(cptr + cstride);
-
-        func(cptr, out);
+        func(cptr, it->bgra);
         cptr += cstride;
-        out += sizeof(Vertex);
+        ++it;
     }
 }
 
@@ -864,11 +846,11 @@ static void generateArrays(SubmissionTarget* target, const GLsizei first, const 
     Vertex* start = _glSubmissionTargetStart(target);
     VertexExtra* ve = aligned_vector_at(target->extras, 0);
 
-    ReadPositionFunc pfunc = calcReadPositionFunc();
-    ReadDiffuseFunc dfunc = calcReadDiffuseFunc();
-    ReadUVFunc uvfunc = calcReadUVFunc();
-    ReadNormalFunc nfunc = calcReadNormalFunc();
-    ReadUVFunc stfunc = calcReadSTFunc();
+    const ReadPositionFunc pfunc = calcReadPositionFunc();
+    const ReadDiffuseFunc dfunc = calcReadDiffuseFunc();
+    const ReadUVFunc uvfunc = calcReadUVFunc();
+    const ReadNormalFunc nfunc = calcReadNormalFunc();
+    const ReadUVFunc stfunc = calcReadSTFunc();
 
     _readPositionData(pfunc, first, count, start);
     _readDiffuseData(dfunc, first, count, start);
@@ -920,7 +902,7 @@ static void generate(SubmissionTarget* target, const GLenum mode, const GLsizei 
         genTriangleStrip(it, count);
         break;
     default:
-        assert(0 && "Not Implemented");
+        gl_assert(0 && "Not Implemented");
     }
 }
 
@@ -1042,7 +1024,7 @@ GL_FORCE_INLINE void push(PolyHeader* header, GLboolean multiTextureHeader, Poly
     _glUpdatePVRTextureContext(&cxt, textureUnit);
 
     if(multiTextureHeader) {
-        assert(cxt.list_type == GPU_LIST_TR_POLY);
+        gl_assert(cxt.list_type == GPU_LIST_TR_POLY);
 
         cxt.gen.alpha = GPU_ALPHA_ENABLE;
         cxt.txr.alpha = GPU_TXRALPHA_ENABLE;
@@ -1117,14 +1099,14 @@ GL_FORCE_INLINE void submitVertices(GLenum mode, GLsizei first, GLuint count, GL
     }
 
     // We don't handle this any further, so just make sure we never pass it down */
-    assert(mode != GL_POLYGON);
+    gl_assert(mode != GL_POLYGON);
 
     target->output = _glActivePolyList();
     target->count = (mode == GL_TRIANGLE_FAN) ? ((count - 2) * 3) : count;
     target->header_offset = target->output->vector.size;
     target->start_offset = target->header_offset + 1;
 
-    assert(target->count);
+    gl_assert(target->count);
 
     /* Make sure we have enough room for all the "extra" data */
     aligned_vector_resize(&extras, target->count);
@@ -1192,7 +1174,7 @@ GL_FORCE_INLINE void submitVertices(GLenum mode, GLsizei first, GLuint count, GL
         &_glTransparentPolyList()->vector, (Vertex*) _glSubmissionTargetHeader(target), target->count + 1
     );
 
-    assert(vertex);
+    gl_assert(vertex);
 
     PolyHeader* mtHeader = (PolyHeader*) vertex++;
 

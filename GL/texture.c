@@ -3,7 +3,6 @@
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <assert.h>
 #include <string.h>
 
 #include "config.h"
@@ -44,14 +43,14 @@ static void* yalloc_alloc_and_defrag(size_t size) {
         ret = yalloc_alloc(YALLOC_BASE, size);
     }
 
-    assert(ret && "Out of PVR memory!");
+    gl_assert(ret && "Out of PVR memory!");
 
     return ret;
 }
 
 static TexturePalette* _initTexturePalette() {
     TexturePalette* palette = (TexturePalette*) malloc(sizeof(TexturePalette));
-    assert(palette);
+    gl_assert(palette);
 
     MEMSET4(palette, 0x0, sizeof(TexturePalette));
     palette->bank = -1;
@@ -61,7 +60,7 @@ static TexturePalette* _initTexturePalette() {
 static GLshort _glGenPaletteSlot(GLushort size) {
     GLushort i, j;
 
-    assert(size == 16 || size == 256);
+    gl_assert(size == 16 || size == 256);
 
     if(size == 16) {
         for(i = 0; i < MAX_GLDC_PALETTE_SLOTS; ++i) {
@@ -94,7 +93,7 @@ GLushort _glFreePaletteSlots(GLushort size)
 {
     GLushort i, j , slots = 0;
 
-    assert(size == 16 || size == 256);
+    gl_assert(size == 16 || size == 256);
 
     if(size == 16) {
         for(i = 0; i < MAX_GLDC_PALETTE_SLOTS; ++i) {
@@ -119,7 +118,7 @@ static void _glReleasePaletteSlot(GLshort slot, GLushort size)
 {
     GLushort i;
 
-    assert(size == 16 || size == 256);
+    gl_assert(size == 16 || size == 256);
 
     if (size == 16) {
         GLushort bank = slot / MAX_GLDC_PALETTE_SLOTS;
@@ -215,7 +214,7 @@ static void GPUTextureTwiddle16BPP(void * src, void* dst, uint32_t w, uint32_t h
 }
 
 TexturePalette* _glGetSharedPalette(GLshort bank) {
-    assert(bank >= 0 && bank < MAX_GLDC_SHARED_PALETTES);
+    gl_assert(bank >= 0 && bank < MAX_GLDC_SHARED_PALETTES);
     return SHARED_PALETTES[bank];
 }
 void _glSetInternalPaletteFormat(GLenum val) {
@@ -235,7 +234,7 @@ void _glSetInternalPaletteFormat(GLenum val) {
              GPUSetPaletteFormat(GPU_PAL_RGB565);
             break;
          default:
-            assert(0);
+            gl_assert(0);
 
     }
 }
@@ -473,7 +472,7 @@ GLubyte _glInitTextures() {
 
 #ifdef __DREAMCAST__
     /* Ensure memory is aligned */
-    assert((uintptr_t) YALLOC_BASE % 32 == 0);
+    gl_assert((uintptr_t) YALLOC_BASE % 32 == 0);
 #endif
 
     yalloc_init(YALLOC_BASE, YALLOC_SIZE);
@@ -536,7 +535,7 @@ void APIENTRY glGenTextures(GLsizei n, GLuint *textures) {
         GLuint id = 0;
         TextureObject* txr = (TextureObject*) named_array_alloc(&TEXTURE_OBJECTS, &id);
 
-        assert(id);  // Generated IDs must never be zero
+        gl_assert(id);  // Generated IDs must never be zero
 
         _glInitializeTextureObject(txr, id);
 
@@ -805,7 +804,7 @@ void APIENTRY glCompressedTexImage2DARB(GLenum target,
 
     active->data = yalloc_alloc_and_defrag(imageSize);
 
-    assert(active->data);  // Debug assert
+    gl_assert(active->data);  // Debug assert
 
     if(!active->data) {  // Release, bail out "gracefully"
         _glKosThrowError(GL_OUT_OF_MEMORY, __func__);
@@ -1226,7 +1225,7 @@ void _glAllocateSpaceForMipmaps(TextureObject* active) {
 
     active->data = yalloc_alloc_and_defrag(bytes);
 
-    assert(active->data);
+    gl_assert(active->data);
     if(!active->data) {
         free(temp);
         return;
@@ -1313,7 +1312,7 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
     } else {
         /* Mipmap Errors, kos crashes if 1x1 */
         if((h < 2) || (w < 2)){
-            assert(TEXTURE_UNITS[ACTIVE_TEXTURE]);
+            gl_assert(TEXTURE_UNITS[ACTIVE_TEXTURE]);
             TEXTURE_UNITS[ACTIVE_TEXTURE]->mipmap |= (1 << level);
             return;
         }
@@ -1351,7 +1350,7 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
 
     TextureObject* active = TEXTURE_UNITS[ACTIVE_TEXTURE];
 
-    assert(active);
+    gl_assert(active);
 
     if(active->data && (level == 0)) {
         /* pre-existing texture - check if changed */
@@ -1382,10 +1381,10 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
     }
 
     if(!active->data) {
-        assert(active);
-        assert(width);
-        assert(height);
-        assert(destStride);
+        gl_assert(active);
+        gl_assert(width);
+        gl_assert(height);
+        gl_assert(destStride);
 
         /* need texture memory */
         active->width   = width;
@@ -1397,7 +1396,7 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
         active->dataStride = destStride;
         active->baseDataSize = bytes;
 
-        assert(bytes);
+        gl_assert(bytes);
 
         if(level > 0) {
             /* If we're uploading a mipmap level, we need to allocate the full amount of space */
@@ -1416,7 +1415,7 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
         _glAllocateSpaceForMipmaps(active);
     }
 
-    assert(active->data);
+    gl_assert(active->data);
 
     /* If we run out of PVR memory just return */
     if(!active->data) {
@@ -1462,7 +1461,7 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
     }
 
     GLubyte* targetData = (active->baseDataOffset == 0) ? active->data : _glGetMipmapLocation(active, level);
-    assert(targetData);
+    gl_assert(targetData);
 
     GLubyte* conversionBuffer = NULL;
 
@@ -1470,9 +1469,9 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
         /* No data? Do nothing! */
         return;
     } else if(!needsConversion && !needsTwiddling) {
-        assert(targetData);
-        assert(data);
-        assert(bytes);
+        gl_assert(targetData);
+        gl_assert(data);
+        gl_assert(bytes);
 
         /* No conversion? Just copy the data, and the pvr_format is correct */
         FASTCPY(targetData, data, bytes);
@@ -1491,7 +1490,7 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
         }
 
         GLint stride = _determineStride(format, type);
-        assert(stride > -1);
+        gl_assert(stride > -1);
 
         if(stride == -1) {
             INFO_MSG("Stride was not detected\n");
@@ -1504,8 +1503,8 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
         GLubyte* dest = conversionBuffer;
         const GLubyte* source = data;
 
-        assert(conversionBuffer);
-        assert(source);
+        gl_assert(conversionBuffer);
+        gl_assert(source);
 
         /* Perform the conversion */
         GLuint i;
@@ -1538,7 +1537,7 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
         active->color &= ~(1 << 26);
     } else {
         /* We should only get here if we converted twiddled data... which is never currently */
-        assert(conversionBuffer);
+        gl_assert(conversionBuffer);
 
         // We've already converted the data and we
         // don't need to twiddle it!
@@ -1697,7 +1696,7 @@ GLAPI void APIENTRY glColorTableEXT(GLenum target, GLenum internalFormat, GLsize
 
     GLint sourceStride = _determineStride(format, type);
 
-    assert(sourceStride > -1);
+    gl_assert(sourceStride > -1);
 
     TextureConversionFunc convert = _determineConversion(
         INTERNAL_PALETTE_FORMAT,
@@ -1734,7 +1733,7 @@ GLAPI void APIENTRY glColorTableEXT(GLenum target, GLenum internalFormat, GLsize
         palette = active->palette;
     }
 
-    assert(palette);
+    gl_assert(palette);
 
     if(target) {
         free(palette->data);
@@ -1750,7 +1749,7 @@ GLAPI void APIENTRY glColorTableEXT(GLenum target, GLenum internalFormat, GLsize
     palette->format = format;
     palette->width = width;
     palette->size = (width > 16) ? 256 : 16;
-    assert(palette->size == 16 || palette->size == 256);
+    gl_assert(palette->size == 16 || palette->size == 256);
 
     palette->bank = _glGenPaletteSlot(palette->size);
 
@@ -1766,8 +1765,8 @@ GLAPI void APIENTRY glColorTableEXT(GLenum target, GLenum internalFormat, GLsize
     GLubyte* src = (GLubyte*) data;
     GLubyte* dst = (GLubyte*) palette->data;
 
-    assert(src);
-    assert(dst);
+    gl_assert(src);
+    gl_assert(dst);
 
     /* Transform and copy the source palette to the texture */
     GLushort i = 0;
@@ -1825,7 +1824,7 @@ GLAPI void APIENTRY glTexSubImage2D(
     _GL_UNUSED(format);
     _GL_UNUSED(type);
     _GL_UNUSED(pixels);
-    assert(0 && "Not Implemented");
+    gl_assert(0 && "Not Implemented");
 }
 
 GLAPI void APIENTRY glCopyTexSubImage2D(GLenum target, GLint level, GLint xoffset, GLint yoffset, GLint x, GLint y, GLsizei width, GLsizei height) {
@@ -1837,7 +1836,7 @@ GLAPI void APIENTRY glCopyTexSubImage2D(GLenum target, GLint level, GLint xoffse
     _GL_UNUSED(y);
     _GL_UNUSED(width);
     _GL_UNUSED(height);
-    assert(0 && "Not Implemented");
+    gl_assert(0 && "Not Implemented");
 }
 
 GLAPI void APIENTRY glCopyTexSubImage1D(GLenum target, GLint level, GLint xoffset, GLint x, GLint y, GLsizei width) {
@@ -1847,7 +1846,7 @@ GLAPI void APIENTRY glCopyTexSubImage1D(GLenum target, GLint level, GLint xoffse
     _GL_UNUSED(x);
     _GL_UNUSED(y);
     _GL_UNUSED(width);
-    assert(0 && "Not Implemented");
+    gl_assert(0 && "Not Implemented");
 }
 
 GLAPI void APIENTRY glCopyTexImage2D(GLenum target, GLint level, GLenum internalformat, GLint x, GLint y, GLsizei width, GLsizei height, GLint border) {
@@ -1859,7 +1858,7 @@ GLAPI void APIENTRY glCopyTexImage2D(GLenum target, GLint level, GLenum internal
     _GL_UNUSED(width);
     _GL_UNUSED(height);
     _GL_UNUSED(border);
-    assert(0 && "Not Implemented");
+    gl_assert(0 && "Not Implemented");
 }
 
 GLAPI void APIENTRY glCopyTexImage1D(GLenum target, GLint level, GLenum internalformat, GLint x, GLint y, GLsizei width, GLint border) {
@@ -1870,7 +1869,7 @@ GLAPI void APIENTRY glCopyTexImage1D(GLenum target, GLint level, GLenum internal
     _GL_UNUSED(y);
     _GL_UNUSED(width);
     _GL_UNUSED(border);
-    assert(0 && "Not Implemented");
+    gl_assert(0 && "Not Implemented");
 }
 
 GLAPI void APIENTRY glReadPixels(GLint x, GLint y, GLsizei width, GLsizei height, GLenum format, GLenum type, GLvoid *pixels) {
@@ -1881,7 +1880,7 @@ GLAPI void APIENTRY glReadPixels(GLint x, GLint y, GLsizei width, GLsizei height
     _GL_UNUSED(format);
     _GL_UNUSED(type);
     _GL_UNUSED(pixels);
-    assert(0 && "Not Implemented");
+    gl_assert(0 && "Not Implemented");
 }
 GLuint _glMaxTextureMemory() {
     return YALLOC_SIZE;

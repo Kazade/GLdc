@@ -275,7 +275,7 @@ void APIENTRY glEnd() {
 #ifndef NDEBUG
     // Immediate mode should always activate the fast path
     GLuint fastPathEnabled = _glRecalcFastPath();
-    assert(fastPathEnabled);
+    gl_assert(fastPathEnabled);
 #else
     /* If we're not debugging, set to true - we assume we haven't broken it! */
     FAST_PATH_ENABLED = GL_TRUE;

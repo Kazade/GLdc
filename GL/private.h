@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include <stdio.h>
 
+#include "gl_assert.h"
 #include "platform.h"
 #include "types.h"
 
