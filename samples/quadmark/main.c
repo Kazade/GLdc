@@ -68,6 +68,7 @@ int check_start() {
 }
 
 void setup() {
+    //PVR needs to warm up for a frame, or results will be low
     glKosInit();
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
@@ -76,6 +77,10 @@ void setup() {
     glLoadIdentity();
 
     glDisable(GL_NEARZ_CLIPPING_KOS);
+
+    pvr_wait_ready();
+    pvr_scene_begin();
+    pvr_scene_finish();
 }
 
 void do_frame() {

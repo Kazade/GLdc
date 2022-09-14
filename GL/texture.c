@@ -161,9 +161,11 @@ static void GPUTextureTwiddle8PPP(void* src, void* dst, uint32_t w, uint32_t h) 
     for(y = 0; y < h; y += 2) {
         yout = y;
         for(x = 0; x < w; x++) {
-            vtex[TWIDOUT((yout & mask) / 2, x & mask) +
-                 (x / min + yout / min)*min * min / 2] =
-                     pixels[y * w + x] | (pixels[(y + 1) * w + x] << 8);
+            int32_t idx = TWIDOUT((yout & mask) / 2, x & mask) +
+                 (x / min + yout / min)*min * min / 2;
+
+            gl_assert(idx < (w * h));
+            vtex[idx] = pixels[y * w + x] | (pixels[(y + 1) * w + x] << 8);
         }
     }
 }
@@ -1719,7 +1721,7 @@ GLAPI void APIENTRY glColorTableEXT(GLenum target, GLenum internalFormat, GLsize
         sharedPaletteUsed = GL_TRUE;
     }
 
-    for (GLbyte i = 1; i < MAX_GLDC_SHARED_PALETTES; ++i) {
+    for (GLubyte i = 1; i < MAX_GLDC_SHARED_PALETTES; ++i) {
         if (target == GL_SHARED_TEXTURE_PALETTE_0_KOS + i) {
             palette = SHARED_PALETTES[i];
             sharedPaletteUsed = GL_TRUE;

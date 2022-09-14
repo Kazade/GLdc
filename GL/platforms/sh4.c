@@ -47,8 +47,13 @@ void SceneListBegin(GPUList list) {
     pvr_list_begin(list);
 }
 
+GL_FORCE_INLINE float _glFastInvert(float x) {
+    const float sgn = (x > 0) - (x < 0);
+    return sgn * MATH_fsrra(x * x);
+}
+
 GL_FORCE_INLINE void _glPerspectiveDivideVertex(Vertex* vertex, const float h) {
-    const float f = MATH_Fast_Invert(vertex->w);
+    const float f = _glFastInvert(vertex->w);
 
     /* Convert to NDC and apply viewport */
     vertex->xyz[0] = __builtin_fmaf(
@@ -65,7 +70,7 @@ GL_FORCE_INLINE void _glPerspectiveDivideVertex(Vertex* vertex, const float h) {
     avoid a divide by zero.
     */
     if(unlikely(vertex->w == 1.0f)) {
-        vertex->xyz[2] = MATH_Fast_Invert(1.0001f + vertex->xyz[2]);
+        vertex->xyz[2] = _glFastInvert(1.0001f + vertex->xyz[2]);
     } else {
         vertex->xyz[2] = f;
     }
