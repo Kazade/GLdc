@@ -49,7 +49,7 @@ void SceneListBegin(GPUList list) {
 
 GL_FORCE_INLINE float _glFastInvert(float x) {
     const float sgn = (x > 0) - (x < 0);
-    return sgn * MATH_fsrra(x * x);
+    return sgn * (1.f / __builtin_sqrtf(x * x));
 }
 
 GL_FORCE_INLINE void _glPerspectiveDivideVertex(Vertex* vertex, const float h) {

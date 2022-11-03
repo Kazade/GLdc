@@ -25,7 +25,7 @@ if(NOT PLATFORM_DREAMCAST)
     set(FIND_LIBRARY_USE_LIB64_PATHS false)
 endif()
 
-set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -O3 --fast-math -fexpensive-optimizations -funroll-all-loops")
+set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -O3 -mfsrra -ffp-contract=fast -mfsca -ffast-math -fexpensive-optimizations -funroll-all-loops")
 set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -O0 -g -Wall -Wextra")
 
 set(
