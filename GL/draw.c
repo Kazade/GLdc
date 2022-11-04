@@ -866,14 +866,15 @@ static void generate(SubmissionTarget* target, const GLenum mode, const GLsizei 
         if(indices) {
             generateElementsFastPath(target, first, count, indices, type);
         } else {
-            if(mode == GL_QUADS) {
-                generateArraysFastPath_QUADS(target, first, count);
-                return;  // Don't need to do any more processing
-            } else if(mode == GL_TRIANGLES) {
-                generateArraysFastPath_TRIS(target, first, count);
-                return; // Don't need to do any more processing
-            } else {
-                generateArraysFastPath_ALL(target, first, count);
+            switch(mode) {
+                case GL_QUADS:
+                    generateArraysFastPath_QUADS(target, first, count);
+                    return;  // Don't need to do any more processing
+                case GL_TRIANGLES:
+                    generateArraysFastPath_TRIS(target, first, count);
+                    return; // Don't need to do any more processing
+                default:
+                    generateArraysFastPath_ALL(target, first, count);
             }
         }
     } else {
@@ -1088,12 +1089,18 @@ GL_FORCE_INLINE void submitVertices(GLenum mode, GLsizei first, GLuint count, GL
      * We optimise the triangle and quad cases.
      */
     if(mode == GL_POLYGON) {
-        if(count == 3) {
-            mode = GL_TRIANGLES;
-        } else if(count == 4) {
-            mode = GL_QUADS;
-        } else {
-            mode = GL_TRIANGLE_FAN;
+        switch(count) {
+            case 2:
+                mode = GL_LINES;
+            break;
+            case 3:
+                mode = GL_TRIANGLES;
+            break;
+            case 4:
+                mode = GL_QUADS;
+            break;
+            default:
+                mode = GL_TRIANGLE_FAN;
         }
     }
 
