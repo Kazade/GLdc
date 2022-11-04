@@ -290,6 +290,7 @@ void _glInitLights();
 void _glInitImmediateMode(GLuint initial_size);
 void _glInitMatrices();
 void _glInitFramebuffers();
+void _glInitSubmissionTarget();
 
 void _glMatrixLoadNormal();
 void _glMatrixLoadModelView();

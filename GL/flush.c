@@ -58,6 +58,7 @@ void APIENTRY glKosInitEx(GLdcConfig* config) {
 
     AUTOSORT_ENABLED = config->autosort_enabled;
 
+    _glInitSubmissionTarget();
     _glInitMatrices();
     _glInitAttributePointers();
     _glInitContext();

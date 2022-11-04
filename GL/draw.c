@@ -1049,7 +1049,28 @@ GL_FORCE_INLINE void push(PolyHeader* header, GLboolean multiTextureHeader, Poly
 
 #define DEBUG_CLIPPING 0
 
+
+static AlignedVector VERTEX_EXTRAS;
+static SubmissionTarget SUBMISSION_TARGET;
+
+
+void _glInitSubmissionTarget() {
+    SubmissionTarget* target = &SUBMISSION_TARGET;
+
+    target->extras = NULL;
+    target->count = 0;
+    target->output = NULL;
+    target->header_offset = target->start_offset = 0;
+
+    aligned_vector_init(&VERTEX_EXTRAS, sizeof(VertexExtra));
+    target->extras = &VERTEX_EXTRAS;
+}
+
+
 GL_FORCE_INLINE void submitVertices(GLenum mode, GLsizei first, GLuint count, GLenum type, const GLvoid* indices) {
+    SubmissionTarget* const target = &SUBMISSION_TARGET;
+    AlignedVector* const extras = target->extras;
+
     TRACE();
 
     /* Do nothing if vertices aren't enabled */
@@ -1060,26 +1081,6 @@ GL_FORCE_INLINE void submitVertices(GLenum mode, GLsizei first, GLuint count, GL
     /* No vertices? Do nothing */
     if(!count) {
         return;
-    }
-
-    if(mode == GL_LINE_STRIP || mode == GL_LINES) {
-        fprintf(stderr, "Line drawing is currently unsupported\n");
-        return;
-    }
-
-    static SubmissionTarget* target = NULL;
-    static AlignedVector extras;
-
-    /* Initialization of the target and extras */
-    if(!target) {
-        target = (SubmissionTarget*) malloc(sizeof(SubmissionTarget));
-        target->extras = NULL;
-        target->count = 0;
-        target->output = NULL;
-        target->header_offset = target->start_offset = 0;
-
-        aligned_vector_init(&extras, sizeof(VertexExtra));
-        target->extras = &extras;
     }
 
     /* Polygons are treated as triangle fans, the only time this would be a
@@ -1096,6 +1097,11 @@ GL_FORCE_INLINE void submitVertices(GLenum mode, GLsizei first, GLuint count, GL
         }
     }
 
+    if(mode == GL_LINE_STRIP || mode == GL_LINES) {
+        fprintf(stderr, "Line drawing is currently unsupported\n");
+        return;
+    }
+
     // We don't handle this any further, so just make sure we never pass it down */
     gl_assert(mode != GL_POLYGON);
 
@@ -1107,7 +1113,7 @@ GL_FORCE_INLINE void submitVertices(GLenum mode, GLsizei first, GLuint count, GL
     gl_assert(target->count);
 
     /* Make sure we have enough room for all the "extra" data */
-    aligned_vector_resize(&extras, target->count);
+    aligned_vector_resize(extras, target->count);
 
     /* Make room for the vertices and header */
     aligned_vector_extend(&target->output->vector, target->count + 1);
