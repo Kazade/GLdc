@@ -78,9 +78,11 @@ void setup() {
 
     glDisable(GL_NEARZ_CLIPPING_KOS);
 
+#ifdef __DREAMCAST__
     pvr_wait_ready();
     pvr_scene_begin();
     pvr_scene_finish();
+#endif
 }
 
 void do_frame() {
