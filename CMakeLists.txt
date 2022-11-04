@@ -23,9 +23,11 @@ include_directories(include)
 if(NOT PLATFORM_DREAMCAST)
     set(FIND_LIBRARY_USE_LIB32_PATHS true)
     set(FIND_LIBRARY_USE_LIB64_PATHS false)
+else()
+    set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -mfsrra -ffp-contract=fast -mfsca -ffast-math")
 endif()
 
-set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -O3 -mfsrra -ffp-contract=fast -mfsca -ffast-math -fexpensive-optimizations -funroll-all-loops")
+set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -O3 -fexpensive-optimizations")
 set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -O0 -g -Wall -Wextra")
 
 set(
