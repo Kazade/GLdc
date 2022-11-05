@@ -47,11 +47,12 @@ void SceneListBegin(GPUList list) {
     pvr_list_begin(list);
 }
 
+__attribute__((optimize("O3", "fast-math")))
 GL_FORCE_INLINE float _glFastInvert(float x) {
-    const float sgn = (x > 0) - (x < 0);
-    return sgn * (1.f / __builtin_sqrtf(x * x));
+    return (1.f / __builtin_sqrtf(x * x));
 }
 
+__attribute__((optimize("O3", "fast-math")))
 GL_FORCE_INLINE void _glPerspectiveDivideVertex(Vertex* vertex, const float h) {
     const float f = _glFastInvert(vertex->w);
 
@@ -69,11 +70,8 @@ GL_FORCE_INLINE void _glPerspectiveDivideVertex(Vertex* vertex, const float h) {
     we add 1.0 to the Z to bring it into range. We add a little extra to
     avoid a divide by zero.
     */
-    if(unlikely(vertex->w == 1.0f)) {
-        vertex->xyz[2] = _glFastInvert(1.0001f + vertex->xyz[2]);
-    } else {
-        vertex->xyz[2] = f;
-    }
+
+    vertex->xyz[2] = (vertex->w == 1.0f) ? _glFastInvert(1.0001f + vertex->xyz[2]) : f;
 }
 
 static uint32_t *d;  // SQ target
