@@ -1,5 +1,4 @@
 #include <stdio.h>
-#include <assert.h>
 
 #include "private.h"
 
@@ -197,7 +196,7 @@ static GL_NO_INSTRUMENT GLboolean _glCalculateAverageTexel(GLuint pvrFormat, con
 
         *d1 = PACK_ARGB4444(a, r, g, b);
     } else {
-        assert(format == ARGB1555);
+        gl_assert(format == ARGB1555);
 
         GLushort* s1 = (GLushort*) src1;
         GLushort* s2 = (GLushort*) src2;
@@ -246,8 +245,8 @@ GLboolean _glGenerateMipmapTwiddled(const GLuint pvrFormat, const GLubyte* prevD
         const GLubyte* s4 = s3 + stride;
         GLubyte* t = &thisData[j * stride];
 
-        assert(s4 < prevData + (lastHeight * lastWidth * stride));
-        assert(t < thisData + (thisHeight * thisWidth * stride));
+        gl_assert(s4 < prevData + (lastHeight * lastWidth * stride));
+        gl_assert(t < thisData + (thisHeight * thisWidth * stride));
 
         _glCalculateAverageTexel(pvrFormat, s1, s2, s3, s4, t);
     }
@@ -270,6 +269,12 @@ void APIENTRY glGenerateMipmapEXT(GLenum target) {
 
     if(tex->width != tex->height) {
         fprintf(stderr, "[GL ERROR] Mipmaps cannot be supported on non-square textures\n");
+        _glKosThrowError(GL_INVALID_OPERATION, __func__);
+        return;
+    }
+
+    if((tex->color & GPU_TXRFMT_PAL4BPP) == GPU_TXRFMT_PAL4BPP) {
+        fprintf(stderr, "[GL ERROR] Mipmap generation not supported for 4BPP paletted textures\n");
         _glKosThrowError(GL_INVALID_OPERATION, __func__);
         return;
     }
@@ -317,7 +322,19 @@ void APIENTRY glGenerateMipmapEXT(GLenum target) {
         prevHeight = thisHeight;
     }
 
-    assert(_glIsMipmapComplete(tex));
+    gl_assert(_glIsMipmapComplete(tex));
+}
+
+/* generate mipmaps for any image provided by the user and then pass them to OpenGL */
+GLAPI GLvoid APIENTRY gluBuild2DMipmaps(GLenum target, GLint internalFormat,
+                                       GLsizei width, GLsizei height,
+                                       GLenum format, GLenum type, const void *data){
+    /* 2d texture, level of detail 0 (normal), 3 components (red, green, blue),
+	 width & height of the image, border 0 (normal), rgb color data,
+	 unsigned byte data, and finally the data itself. */
+    glTexImage2D(GL_TEXTURE_2D, 0, 3, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
+
+    glGenerateMipmapEXT(GL_TEXTURE_2D);
 }
 
 GLenum APIENTRY glCheckFramebufferStatusEXT(GLenum target) {

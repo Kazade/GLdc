@@ -12,8 +12,13 @@
 #include "GL/glu.h"
 #include "GL/glkos.h"
 
+#ifdef __DREAMCAST__
 extern uint8_t romdisk[];
 KOS_INIT_ROMDISK(romdisk);
+#define IMG_PATH "/rd/NeHe.tex"
+#else
+#define IMG_PATH "../samples/paletted/romdisk/NeHe.tex"
+#endif
 
 /* floats for x rotation, y rotation, z rotation */
 float xrot, yrot, zrot;
@@ -75,7 +80,7 @@ int LoadPalettedTex(const char* filename, Image* image) {
     } palette_header;
     fread(&palette_header, sizeof(palette_header), 1, filein);
 
-    image->palette = (unsigned int*) malloc(sizeof(unsigned int) * palette_header.numcolors);
+    image->palette = (char*) malloc(sizeof(unsigned int) * palette_header.numcolors);
     image->palette_width = palette_header.numcolors;
 
     fread(image->palette, sizeof(unsigned int), palette_header.numcolors, filein);
@@ -111,7 +116,7 @@ void LoadGLTextures() {
         exit(0);
     }
 
-    if (!LoadPalettedTex("/rd/NeHe.tex", image1)) {
+    if (!LoadPalettedTex(IMG_PATH, image1)) {
         exit(1);
     }
 

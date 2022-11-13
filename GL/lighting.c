@@ -1,4 +1,3 @@
-#include <assert.h>
 #include <stdio.h>
 #include <string.h>
 #include <math.h>
@@ -27,7 +26,7 @@ static GLenum COLOR_MATERIAL_MODE = GL_AMBIENT_AND_DIFFUSE;
 
 static GLenum COLOR_MATERIAL_MASK = AMBIENT_MASK | DIFFUSE_MASK;
 
-static LightSource LIGHTS[MAX_LIGHTS];
+static LightSource LIGHTS[MAX_GLDC_LIGHTS];
 static GLuint ENABLED_LIGHT_COUNT = 0;
 static Material MATERIAL;
 
@@ -37,7 +36,7 @@ static void recalcEnabledLights() {
     GLubyte i;
 
     ENABLED_LIGHT_COUNT = 0;
-    for(i = 0; i < MAX_LIGHTS; ++i) {
+    for(i = 0; i < MAX_GLDC_LIGHTS; ++i) {
         if(LIGHTS[i].isEnabled) {
             ENABLED_LIGHT_COUNT++;
         }
@@ -57,7 +56,7 @@ void _glInitLights() {
     MATERIAL.exponent = 0.0f;
 
     GLubyte i;
-    for(i = 0; i < MAX_LIGHTS; ++i) {
+    for(i = 0; i < MAX_GLDC_LIGHTS; ++i) {
         memcpy(LIGHTS[i].ambient, ZERO, sizeof(GLfloat) * 4);
         memcpy(LIGHTS[i].diffuse, ONE, sizeof(GLfloat) * 4);
         memcpy(LIGHTS[i].specular, ONE, sizeof(GLfloat) * 4);
@@ -97,7 +96,7 @@ GL_FORCE_INLINE void _glPrecalcLightingValues(GLuint mask) {
     GLshort i;
 
     if(mask & AMBIENT_MASK) {
-        for(i = 0; i < MAX_LIGHTS; ++i) {
+        for(i = 0; i < MAX_GLDC_LIGHTS; ++i) {
             LIGHTS[i].ambientMaterial[0] = LIGHTS[i].ambient[0] * MATERIAL.ambient[0];
             LIGHTS[i].ambientMaterial[1] = LIGHTS[i].ambient[1] * MATERIAL.ambient[1];
             LIGHTS[i].ambientMaterial[2] = LIGHTS[i].ambient[2] * MATERIAL.ambient[2];
@@ -106,7 +105,7 @@ GL_FORCE_INLINE void _glPrecalcLightingValues(GLuint mask) {
     }
 
     if(mask & DIFFUSE_MASK) {
-        for(i = 0; i < MAX_LIGHTS; ++i) {
+        for(i = 0; i < MAX_GLDC_LIGHTS; ++i) {
             LIGHTS[i].diffuseMaterial[0] = LIGHTS[i].diffuse[0] * MATERIAL.diffuse[0];
             LIGHTS[i].diffuseMaterial[1] = LIGHTS[i].diffuse[1] * MATERIAL.diffuse[1];
             LIGHTS[i].diffuseMaterial[2] = LIGHTS[i].diffuse[2] * MATERIAL.diffuse[2];
@@ -115,7 +114,7 @@ GL_FORCE_INLINE void _glPrecalcLightingValues(GLuint mask) {
     }
 
     if(mask & SPECULAR_MASK) {
-        for(i = 0; i < MAX_LIGHTS; ++i) {
+        for(i = 0; i < MAX_GLDC_LIGHTS; ++i) {
             LIGHTS[i].specularMaterial[0] = LIGHTS[i].specular[0] * MATERIAL.specular[0];
             LIGHTS[i].specularMaterial[1] = LIGHTS[i].specular[1] * MATERIAL.specular[1];
             LIGHTS[i].specularMaterial[2] = LIGHTS[i].specular[2] * MATERIAL.specular[2];
@@ -144,7 +143,7 @@ void APIENTRY glLightModeli(GLenum pname, const GLint param) {
 void APIENTRY glLightModelfv(GLenum pname, const GLfloat *params) {
     switch(pname) {
         case GL_LIGHT_MODEL_AMBIENT: {
-            memcpy(SCENE_AMBIENT, params, sizeof(GLfloat) * 4);
+            for(int i = 0; i < 4; ++i) SCENE_AMBIENT[i] = params[i];
             _glPrecalcLightingValues(SCENE_AMBIENT_MASK);
         } break;
         case GL_LIGHT_MODEL_LOCAL_VIEWER:
@@ -173,7 +172,7 @@ void APIENTRY glLightModeliv(GLenum pname, const GLint* params) {
 void APIENTRY glLightfv(GLenum light, GLenum pname, const GLfloat *params) {
     GLubyte idx = light & 0xF;
 
-    if(idx >= MAX_LIGHTS) {
+    if(idx >= MAX_GLDC_LIGHTS) {
         return;
     }
 
@@ -227,7 +226,7 @@ void APIENTRY glLightfv(GLenum light, GLenum pname, const GLfloat *params) {
 void APIENTRY glLightf(GLenum light, GLenum pname, GLfloat param) {
     GLubyte idx = light & 0xF;
 
-    if(idx >= MAX_LIGHTS) {
+    if(idx >= MAX_GLDC_LIGHTS) {
         return;
     }
 
@@ -393,7 +392,7 @@ GL_FORCE_INLINE float faster_pow2(const float p) {
 }
 
 GL_FORCE_INLINE float faster_log2(const float x) {
-    assert(x >= 0.0f);
+    gl_assert(x >= 0.0f);
 
     const union { float f; uint32_t i; } vx = { x };
     const float y = (float) (vx.i) * 1.1920928955078125e-7f;
@@ -495,7 +494,7 @@ void _glPerformLighting(Vertex* vertices, EyeSpaceData* es, const uint32_t count
         const float Ny = data->n[1];
         const float Nz = data->n[2];
 
-        for(i = 0; i < MAX_LIGHTS; ++i) {
+        for(i = 0; i < MAX_GLDC_LIGHTS; ++i) {
             if(!LIGHTS[i].isEnabled) {
                 continue;
             }

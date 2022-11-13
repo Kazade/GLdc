@@ -2,6 +2,7 @@
 #include <time.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <math.h>
 
 #ifdef __DREAMCAST__
 #include <kos.h>
@@ -14,103 +15,18 @@
 #ifdef __DREAMCAST__
 extern uint8 romdisk[];
 KOS_INIT_ROMDISK(romdisk);
+#define IMAGE_FILENAME "/rd/flag1.bmp"
+#else
+#define IMAGE_FILENAME "../samples/lerabot01/romdisk/flag1.bmp"
 #endif
+
+#include "../loadbmp.h"
 
 /* floats for x rotation, y rotation, z rotation */
 float xrot, yrot, zrot;
 
 /* storage for one texture  */
 int texture[1];
-
-/* Image type - contains height, width, and data */
-struct Image {
-    unsigned long sizeX;
-    unsigned long sizeY;
-    char *data;
-};
-typedef struct Image Image;
-
-// quick and dirty bitmap loader...for 24 bit bitmaps with 1 plane only.
-// See http://www.dcs.ed.ac.uk/~mxr/gfx/2d/BMP.txt for more info.
-int ImageLoad(char *filename, Image *image) {
-    FILE *file;
-    unsigned long size;                 // size of the image in bytes.
-    unsigned long i;                    // standard counter.
-    unsigned short int planes;          // number of planes in image (must be 1)
-    unsigned short int bpp;             // number of bits per pixel (must be 24)
-    char temp;                          // temporary color storage for bgr-rgb conversion.
-
-    // make sure the file is there.
-    if ((file = fopen(filename, "rb"))==NULL)
-    {
-        printf("File Not Found : %s\n",filename);
-        return 0;
-    }
-
-    // seek through the bmp header, up to the width/height:
-    fseek(file, 18, SEEK_CUR);
-
-    // read the width
-    if ((i = fread(&image->sizeX, 4, 1, file)) != 1) {
-        printf("Error reading width from %s.\n", filename);
-        return 0;
-    }
-    printf("Width of %s: %lu\n", filename, image->sizeX);
-
-    // read the height
-    if ((i = fread(&image->sizeY, 4, 1, file)) != 1) {
-        printf("Error reading height from %s.\n", filename);
-        return 0;
-    }
-    printf("Height of %s: %lu\n", filename, image->sizeY);
-
-    // calculate the size (assuming 24 bits or 3 bytes per pixel).
-    size = image->sizeX * image->sizeY * 3;
-
-    // read the planes
-    if ((fread(&planes, 2, 1, file)) != 1) {
-        printf("Error reading planes from %s.\n", filename);
-        return 0;
-    }
-    if (planes != 1) {
-        printf("Planes from %s is not 1: %u\n", filename, planes);
-        return 0;
-    }
-
-    // read the bpp
-    if ((i = fread(&bpp, 2, 1, file)) != 1) {
-        printf("Error reading bpp from %s.\n", filename);
-        return 0;
-    }
-    if (bpp != 24) {
-        printf("Bpp from %s is not 24: %u\n", filename, bpp);
-        return 0;
-    }
-
-    // seek past the rest of the bitmap header.
-    fseek(file, 24, SEEK_CUR);
-
-    // read the data.
-    image->data = (char *) malloc(size);
-    if (image->data == NULL) {
-        printf("Error allocating memory for color-corrected image data");
-        return 0;
-    }
-
-    if ((i = fread(image->data, size, 1, file)) != 1) {
-        printf(stderr, "Error reading image data from %s.\n", filename);
-        return 0;
-    }
-
-    for (i=0;i<size;i+=3) { // reverse all of the colors. (bgr -> rgb)
-        temp = image->data[i];
-        image->data[i] = image->data[i+2];
-        image->data[i+2] = temp;
-    }
-
-    // we're done.
-    return 1;
-}
 
 // Load Bitmaps And Convert To Textures
 void LoadGLTextures() {
@@ -124,7 +40,7 @@ void LoadGLTextures() {
         exit(0);
     }
 
-    if (!ImageLoad("/rd/flag1.bmp", image1)) {
+    if (!ImageLoad(IMAGE_FILENAME, image1)) {
         exit(1);
     }
 
@@ -311,7 +227,7 @@ void DrawGLScene()
     DrawTexturedQuad(texture[0], l1_pos[0], l1_pos[1], l1_pos[2]);
 
     for (int i = 0; i < 5; i++)
-      DrawTexturedQuad(texture[0], i * 20, 0.0f, 0.0f); // Draw the textured quad.
+      DrawTexturedQuad(texture[0], i * 20, 0.0f, 0.1f); // Draw the textured quad.
     // swap buffers to display, since we're double buffered.
     glKosSwapBuffers();
 

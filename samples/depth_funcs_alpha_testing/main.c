@@ -9,8 +9,14 @@
 
 //$KOS_BASE/utils/texconv/texconv  --in disk.png --format ARGB4444 --preview disk_preview.png --out disk.dtex
 
+#ifdef __DREAMCAST__
 extern uint8_t romdisk[];
 KOS_INIT_ROMDISK(romdisk);
+#define IMAGE_FILENAME "/rd/disk_1555.dtex"
+#else
+#define IMAGE_FILENAME "../samples/depth_funcs/alpha_testing/romdisk/disk_1555.dtex"
+#endif
+
 texture t;
 int 	blendActive = -1;
 /* floats for x rotation, y rotation, z rotation */
@@ -122,7 +128,7 @@ int main(int argc, char **argv)
     InitGL(640, 480);
 
     //loads a dtex texture. see the /romdisk folder for more files
-    dtex_to_gl_texture(&t, "/rd/disk_1555.dtex");
+    dtex_to_gl_texture(&t, IMAGE_FILENAME);
     ReSizeGLScene(640, 480);
     DrawGLScene();
     while(1) {

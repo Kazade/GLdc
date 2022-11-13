@@ -13,10 +13,29 @@
 #include "GL/glext.h"
 #include "GL/glkos.h"
 
+/* using 4bpp textures from BMP files instead of 8bpp from PCX files */
+#define USE_16C_PALETTE
+
 #ifdef __DREAMCAST__
     #include <kos.h>
     extern uint8 romdisk[];
     KOS_INIT_ROMDISK(romdisk);
+
+    #ifdef USE_16C_PALETTE
+        #define IMG_PATH       "/rd/NeHe.bmp"
+        #define IMG_ALPHA_PATH "/rd/NeHe-Alpha.bmp"
+    #else
+        #define IMG_PATH       "/rd/NeHe.pcx"
+        #define IMG_ALPHA_PATH "/rd/NeHe-Alpha.pcx"
+    #endif
+#else
+    #ifdef USE_16C_PALETTE
+        #define IMG_PATH       "../samples/paletted_pcx/romdisk/NeHe.bmp"
+        #define IMG_ALPHA_PATH "../samples/paletted_pcx/romdisk/NeHe-Alpha.bmp"
+    #else
+        #define IMG_PATH       "../samples/paletted_pcx/romdisk/NeHe.pcx"
+        #define IMG_ALPHA_PATH "../samples/paletted_pcx/romdisk/NeHe-Alpha.pcx"
+    #endif
 #endif
 
 /* floats for x rotation, y rotation, z rotation */
@@ -25,12 +44,14 @@ float xrot, yrot, zrot;
 int textures[3];
 
 typedef struct {
-    unsigned int height;
-    unsigned int width;
-    unsigned int palette_width;
+	uint32_t height;
+	uint32_t width;
+	uint32_t palette_width;
     char* palette;
     char* data;
 } Image;
+
+#ifndef  USE_16C_PALETTE
 
 #pragma pack(push)
 #pragma pack(1)
@@ -135,18 +156,250 @@ int LoadPalettedPCX(const char* filename, Image* image) {
     return 1;
 }
 
+#else
+
+#define BMP_BI_RGB			0L
+#define BMP_BI_UNCOMPRESSED	0L
+#define BMP_BI_RLE8			1L
+#define BMP_BI_RLE4			2L
+#define BMP_BI_BITFIELDS	3L
+
+#pragma pack(push)
+#pragma pack(1)
+
+typedef struct BITMAP_FILE_HEADER
+{
+	uint16_t	Type;
+	uint32_t	Size;
+	uint16_t	Reserved1;
+	uint16_t	Reserved2;
+	uint32_t	OffBits;
+} BITMAP_FILE_HEADER;
+
+typedef struct BITMAP_INFO_HEADER
+{
+	uint32_t	Size;
+	int32_t		Width;
+	int32_t		Height;
+	uint16_t	Planes;
+	uint16_t	BitCount;
+	uint32_t	Compression;
+	uint32_t	SizeImage;
+	int32_t		XPelsPerMeter;
+	int32_t		YPelsPerMeter;
+	uint32_t	ClrUsed;
+	uint32_t	ClrImportant;
+} BITMAP_INFO_HEADER;
+
+typedef struct RGB_QUAD
+{
+	uint8_t	Blue;
+	uint8_t	Green;
+	uint8_t	Red;
+	uint8_t	Reserved;
+} RGB_QUAD;
+
+typedef struct BITMAP_INFO
+{
+	BITMAP_INFO_HEADER	Header;
+	RGB_QUAD			Colors[1];
+} BITMAP_INFO;
+
+#pragma pack(pop)
+
+/* some global variables used to load a 4bpp BMP file */
+static BITMAP_FILE_HEADER	BmpFileHeader;
+static BITMAP_INFO_HEADER	BmpInfoHeader;
+static RGB_QUAD			BmpRgbQuad[256];
+static uint8_t				BmpPal[256 * 3];
+
+int BMP_Infos(FILE *pFile, uint32_t *width, uint32_t *height)
+{
+	if (!pFile)
+		return 0;
+
+	if (fread(&BmpFileHeader.Type, 1, 2, pFile) != 2)
+		return 0;
+	if (fread(&BmpFileHeader.Size, 1, 4, pFile) != 4)
+		return 0;
+	if (fread(&BmpFileHeader.Reserved1, 1, 2, pFile) != 2)
+		return 0;
+	if (fread(&BmpFileHeader.Reserved2, 1, 2, pFile) != 2)
+		return 0;
+	if (fread(&BmpFileHeader.OffBits, 1, 4, pFile) != 4)
+		return 0;
+	if (fread(&BmpInfoHeader.Size, 1, 4, pFile) != 4)
+		return 0;
+	if (fread(&BmpInfoHeader.Width, 1, 4, pFile) != 4)
+		return 0;
+	if (fread(&BmpInfoHeader.Height, 1, 4, pFile) != 4)
+		return 0;
+	if (fread(&BmpInfoHeader.Planes, 1, 2, pFile) != 2)
+		return 0;
+	if (fread(&BmpInfoHeader.BitCount, 1, 2, pFile) != 2)
+		return 0;
+	if (fread(&BmpInfoHeader.Compression, 1, 4, pFile) != 4)
+		return 0;
+	if (fread(&BmpInfoHeader.SizeImage, 1, 4, pFile) != 4)
+		return 0;
+	if (fread(&BmpInfoHeader.XPelsPerMeter, 1, 4, pFile) != 4)
+		return 0;
+	if (fread(&BmpInfoHeader.YPelsPerMeter, 1, 4, pFile) != 4)
+		return 0;
+	if (fread(&BmpInfoHeader.ClrUsed, 1, 4, pFile) != 4)
+		return 0;
+	if (fread(&BmpInfoHeader.ClrImportant, 1, 4, pFile) != 4)
+		return 0;
+
+	*width = (uint32_t)BmpInfoHeader.Width;
+	*height = (uint32_t)BmpInfoHeader.Height;
+
+	return 1;
+}
+
+
+int BMP_GetPalette(FILE *pFile)
+{
+	int32_t	i,bitCount;
+
+	if (BmpInfoHeader.BitCount == 4) {
+
+		if (!BmpInfoHeader.ClrImportant) {
+			BmpInfoHeader.ClrImportant = 16;
+		}
+		bitCount = BmpInfoHeader.ClrImportant * sizeof(RGB_QUAD);
+
+		if (fread(BmpRgbQuad, 1, bitCount, pFile) != bitCount){
+			return 0;
+		}
+
+		for (i = 0; i < BmpInfoHeader.ClrImportant; i++) {
+
+			BmpPal[i * 3] = (uint8_t)BmpRgbQuad[i].Red;
+			BmpPal[i * 3 + 1] = (uint8_t)BmpRgbQuad[i].Green;
+			BmpPal[i * 3 + 2] = (uint8_t)BmpRgbQuad[i].Blue;
+		}
+		return 1;
+	}
+	return 0;
+}
+
+/* maybe not the best BMP loader... */
+int BMP_Depack(FILE *pFile,char *pZone)
+{
+	char	PadRead[4];
+	int32_t	i, j, Offset, PadSize, pix, c;
+
+	if (BmpInfoHeader.Compression != BMP_BI_RGB)
+		return 0;
+
+	PadSize = (BmpInfoHeader.Width & 3);
+
+	PadSize = (4 - (BmpInfoHeader.Width & 3)) & 3;
+
+	for (i = BmpInfoHeader.Height - 1; (i > -1); i--) {
+		Offset = i * BmpInfoHeader.Width / 2;
+
+		if (PadSize < 4) {
+			for (j = 0; (j < BmpInfoHeader.Width / 2); j++) {
+				if (!fread(&c, 1, 1, pFile)) {
+					return 0;
+				}
+				pZone[Offset + j] = c;
+			}
+		}
+
+		if (PadSize) {
+			if (fread(PadRead, PadSize, 1, pFile) != PadSize) {
+				return 0;
+			}
+		}
+	}
+
+	if (i != -1) {
+		return 0;
+	}
+
+	return 1;
+}
+
+
+int LoadPalettedBMP(const char* filename, Image* image)
+{
+	FILE *fp;
+	uint32_t bytes;
+
+	if (filename == NULL || image == NULL) {
+		printf("Invalid NULL argument\n");
+		return 0;
+	}
+
+	fp = fopen(filename, "rb");
+	if (fp == NULL) {
+		printf("Unable to open file\n");
+		return 0;
+	}
+
+	if (!BMP_Infos(fp, &image->width, &image->height)) {
+		printf("Error reading BMP:%s header\n",filename);
+		return 0;
+	}
+
+	if (!BMP_GetPalette(fp)) {
+		printf("Only 16c BMP are supported for this sample");
+		return 0;
+	}
+
+	/* store palette information */
+	image->palette = BmpPal;
+	image->palette_width = 16;
+
+
+	bytes = sizeof(char) * image->width * image->height;
+	/* 4bpp is half byte size*/
+	bytes >>= 1;
+
+	image->data = (char*)malloc(bytes);
+	if (image->data == NULL) {
+		printf("Error allocating image data");
+		return 0;
+	}
+
+	if (!BMP_Depack(fp, image->data)) {
+		printf("Error depacking BMP:%s",filename);
+		return 0;
+	}
+
+	fclose(fp);
+
+	return 1;
+}
+
+
+#endif
+
 // Load Bitmaps And Convert To Textures
 void LoadGLTextures() {
     // Load Texture
     Image image1, image2;
 
-    if(!LoadPalettedPCX("/rd/NeHe.pcx", &image1)) {
+#ifndef USE_16C_PALETTE
+    if(!LoadPalettedPCX(IMG_PATH, &image1)) {
         exit(1);
     }
 
-    if(!LoadPalettedPCX("/rd/NeHe-Alpha.pcx", &image2)) {
+    if(!LoadPalettedPCX(IMG_ALPHA_PATH, &image2)) {
         exit(1);
     }
+#else
+    if (!LoadPalettedBMP(IMG_PATH, &image1)) {
+	exit(1);
+    }
+
+    if (!LoadPalettedBMP(IMG_ALPHA_PATH, &image2)) {
+	exit(1);
+    }
+#endif
 
     glEnable(GL_SHARED_TEXTURE_PALETTE_EXT);
 
@@ -173,7 +426,11 @@ void LoadGLTextures() {
 
     // 2d texture, level of detail 0 (normal), 3 components (red, green, blue), x size from image, y size from image,
     // border 0 (normal), rgb color data, unsigned byte data, and finally the data itself.
+#ifndef USE_16C_PALETTE
     glTexImage2D(GL_TEXTURE_2D, 0, GL_COLOR_INDEX8_EXT, image1.width, image1.height, 0, GL_COLOR_INDEX, GL_UNSIGNED_BYTE, image1.data);
+#else
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_COLOR_INDEX4_EXT, image1.width, image1.height, 0, GL_COLOR_INDEX, GL_UNSIGNED_BYTE, image1.data);
+#endif
 
     glBindTexture(GL_TEXTURE_2D, textures[1]);   // 2d texture (x and y size)
     glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER, GL_LINEAR); // scale linearly when image bigger than texture
@@ -184,7 +441,11 @@ void LoadGLTextures() {
 
     // 2d texture, level of detail 0 (normal), 3 components (red, green, blue), x size from image, y size from image,
     // border 0 (normal), rgb color data, unsigned byte data, and finally the data itself.
+#ifndef USE_16C_PALETTE
     glTexImage2D(GL_TEXTURE_2D, 0, GL_COLOR_INDEX8_EXT, image1.width, image1.height, 0, GL_COLOR_INDEX, GL_UNSIGNED_BYTE, image1.data);
+#else
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_COLOR_INDEX4_EXT, image1.width, image1.height, 0, GL_COLOR_INDEX, GL_UNSIGNED_BYTE, image1.data);
+#endif
 
     glBindTexture(GL_TEXTURE_2D, textures[2]);
     glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER, GL_NEAREST);
@@ -199,8 +460,11 @@ void LoadGLTextures() {
     }
 
     glColorTableEXT(GL_TEXTURE_2D, GL_RGBA8, image2.palette_width, GL_RGBA, GL_UNSIGNED_BYTE, new_palette);
-
+#ifndef USE_16C_PALETTE
     glTexImage2D(GL_TEXTURE_2D, 0, GL_COLOR_INDEX8_EXT, image2.width, image2.height, 0, GL_COLOR_INDEX, GL_UNSIGNED_BYTE, image2.data);
+#else
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_COLOR_INDEX4_EXT, image2.width, image2.height, 0, GL_COLOR_INDEX, GL_UNSIGNED_BYTE, image2.data);
+#endif
 }
 
 /* A general OpenGL initialization function.  Sets all of the initial parameters. */

@@ -6,9 +6,9 @@ PolyList OP_LIST;
 PolyList PT_LIST;
 PolyList TR_LIST;
 
-/** Don't fully comply to the GL standard to make some performance
- *  gains. Specifically glDepthRange will be ignored, and the final
- *  Z coordinate will be invW and not between 0 and 1.
+/**
+ *  FAST_MODE will use invW for all Z coordinates sent to the
+ *  GPU.
  *
  *  This will break orthographic mode so default is FALSE
  **/
@@ -46,7 +46,7 @@ void APIENTRY glKosInitConfig(GLdcConfig* config) {
     config->initial_pt_capacity = 512 * 3;
     config->initial_tr_capacity = 1024 * 3;
     config->initial_immediate_capacity = 1024 * 3;
-    config->internal_palette_format = GL_RGBA4;
+    config->internal_palette_format = GL_RGBA8;
 }
 
 void APIENTRY glKosInitEx(GLdcConfig* config) {
@@ -58,6 +58,7 @@ void APIENTRY glKosInitEx(GLdcConfig* config) {
 
     AUTOSORT_ENABLED = config->autosort_enabled;
 
+    _glInitSubmissionTarget();
     _glInitMatrices();
     _glInitAttributePointers();
     _glInitContext();
@@ -88,113 +89,27 @@ void APIENTRY glKosInit() {
     glKosInitEx(&config);
 }
 
-#define likely(x)      __builtin_expect(!!(x), 1)
-#define unlikely(x)    __builtin_expect(!!(x), 0)
-
-GL_FORCE_INLINE bool glIsVertex(const float flags) {
-    return flags == GPU_CMD_VERTEX_EOL || flags == GPU_CMD_VERTEX;
-}
-
-
-GL_FORCE_INLINE void glPerspectiveDivideStandard(void* src, uint32_t n) {
-    TRACE();
-
-    /* Perform perspective divide on each vertex */
-    Vertex* vertex = (Vertex*) src;
-    PREFETCH(vertex + 1);
-
-    const float h = GetVideoMode()->height;
-
-    while(n--) {
-        PREFETCH(vertex + 2);
-
-        if(likely(glIsVertex(vertex->flags))) {
-            const float f = MATH_Fast_Invert(vertex->w);
-
-            /* Convert to NDC and apply viewport */
-            vertex->xyz[0] = __builtin_fmaf(
-                VIEWPORT.hwidth, vertex->xyz[0] * f, VIEWPORT.x_plus_hwidth
-            );
-
-            vertex->xyz[1] = h - __builtin_fmaf(
-                VIEWPORT.hheight, vertex->xyz[1] * f, VIEWPORT.y_plus_hheight
-            );
-
-            /* FIXME: Apply depth range */
-
-            /* After multiplying by 'f', the Z coordinate is between
-            * -1 and 1. We then need to shift it into a value > 0.00001f
-            * where the larger value becomes smaller and vice-versa (because
-            * the PVR works backwards).
-            *
-            * If we multipled the lowest value (-1) by -1 it becomes 1, if
-            * we multiply the lowest value (1) by -1 it becomes, then we need
-            * to add 1 to get it in the range 0 - 2. Then we add a little offset
-            * and this approach means we can just use FMAC.
-            * */
-            vertex->xyz[2] = __builtin_fmaf((vertex->xyz[2] * f), -1.0f, 1.00001f);
-        }
-
-        ++vertex;
-    }
-}
-
-GL_FORCE_INLINE void glPerspectiveDivideFastMode(void* src, uint32_t n) {
-    TRACE();
-
-    /* Perform perspective divide on each vertex */
-    Vertex* vertex = (Vertex*) src;
-
-    const float h = GetVideoMode()->height;
-
-    while(n--) {
-        PREFETCH(vertex + 1);
-
-        if(likely(glIsVertex(vertex->flags))) {
-            const float f = MATH_Fast_Invert(vertex->w);
-
-            /* Convert to NDC and apply viewport */
-            vertex->xyz[0] = MATH_fmac(
-                VIEWPORT.hwidth, vertex->xyz[0] * f, VIEWPORT.x_plus_hwidth
-            );
-
-            vertex->xyz[1] = h - MATH_fmac(
-                VIEWPORT.hheight, vertex->xyz[1] * f, VIEWPORT.y_plus_hheight
-            );
-
-            vertex->xyz[2] = f;
-        }
-
-        ++vertex;
-    }
-}
-
-GL_FORCE_INLINE void glPerspectiveDivide(void* src, uint32_t n) {
-#if FAST_MODE
-        glPerspectiveDivideFastMode(src, n);
-#else
-        glPerspectiveDivideStandard(src, n);
-#endif
-}
-
 void APIENTRY glKosSwapBuffers() {
     TRACE();
 
     SceneBegin();
-        SceneListBegin(GPU_LIST_OP_POLY);
-        glPerspectiveDivide(OP_LIST.vector.data, OP_LIST.vector.size);
-        SceneListSubmit(OP_LIST.vector.data, OP_LIST.vector.size);
-        SceneListFinish();
+        if(OP_LIST.vector.size > 2) {
+            SceneListBegin(GPU_LIST_OP_POLY);
+            SceneListSubmit(OP_LIST.vector.data, OP_LIST.vector.size);
+            SceneListFinish();
+        }
 
-        SceneListBegin(GPU_LIST_PT_POLY);
-        glPerspectiveDivide(PT_LIST.vector.data, PT_LIST.vector.size);
-        SceneListSubmit(PT_LIST.vector.data, PT_LIST.vector.size);
-        SceneListFinish();
+        if(PT_LIST.vector.size > 2) {
+            SceneListBegin(GPU_LIST_PT_POLY);
+            SceneListSubmit(PT_LIST.vector.data, PT_LIST.vector.size);
+            SceneListFinish();
+        }
 
-        SceneListBegin(GPU_LIST_TR_POLY);
-        glPerspectiveDivide(TR_LIST.vector.data, TR_LIST.vector.size);
-        SceneListSubmit(TR_LIST.vector.data, TR_LIST.vector.size);
-        SceneListFinish();
+        if(TR_LIST.vector.size > 2) {
+            SceneListBegin(GPU_LIST_TR_POLY);
+            SceneListSubmit(TR_LIST.vector.data, TR_LIST.vector.size);
+            SceneListFinish();
+        }
     SceneFinish();
 
     aligned_vector_clear(&OP_LIST.vector);

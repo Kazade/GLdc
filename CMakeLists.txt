@@ -21,21 +21,20 @@ set(CMAKE_C_STANDARD 99)
 include_directories(include)
 
 if(NOT PLATFORM_DREAMCAST)
-    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -m32")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -m32")
     set(FIND_LIBRARY_USE_LIB32_PATHS true)
     set(FIND_LIBRARY_USE_LIB64_PATHS false)
+else()
+    set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -mfsrra -ffp-contract=fast -mfsca -ffast-math")
 endif()
 
-set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -O3 --fast-math -fexpensive-optimizations -funroll-all-loops")
-set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -O0 -g")
+set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -O3 -fexpensive-optimizations")
+set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -O0 -g -Wall -Wextra")
 
 set(
     SOURCES
     containers/aligned_vector.c
     containers/named_array.c
     containers/stack.c
-    GL/clip.c
     GL/draw.c
     GL/error.c
     GL/flush.c
@@ -78,6 +77,14 @@ else()
 endif()
 
 add_library(GLdc STATIC ${SOURCES})
+
+if(NOT PLATFORM_DREAMCAST)
+set_target_properties(GLdc PROPERTIES
+    COMPILE_OPTIONS "-m32"
+    LINK_OPTIONS "-m32"
+)
+endif()
+
 link_libraries(m)
 
 include_directories(include)
@@ -116,6 +123,11 @@ function(gen_sample sample)
         else()
             message("No such romdisk for sample: ${sample} at 'samples/${sample}/romdisk'")
         endif()
+    else()
+        set_target_properties(${sample} PROPERTIES
+            COMPILE_OPTIONS "-m32"
+            LINK_OPTIONS "-m32"
+        )
     endif()
 endfunction()
 
@@ -123,10 +135,9 @@ gen_sample(blend_test samples/blend_test/main.c)
 gen_sample(depth_funcs samples/depth_funcs/main.c)
 gen_sample(depth_funcs_alpha_testing samples/depth_funcs_alpha_testing/main.c samples/depth_funcs_alpha_testing/gl_png.c)
 gen_sample(depth_funcs_ortho samples/depth_funcs_ortho/main.c)
-gen_sample(lerabot01 samples/lerabot01/main.c)
-gen_sample(lerabot_blend_test samples/lerabot_blend_test/main.c)
-gen_sample(lights samples/lights/main.c)
-gen_sample(mipmap samples/mipmap/main.c)
+gen_sample(lerabot01 samples/lerabot01/main.c samples/loadbmp.c)
+gen_sample(lights samples/lights/main.c samples/loadbmp.c)
+gen_sample(mipmap samples/mipmap/main.c samples/loadbmp.c)
 gen_sample(multitexture_arrays samples/multitexture_arrays/main.c samples/multitexture_arrays/pvr-texture.c)
 gen_sample(nehe02 samples/nehe02/main.c)
 gen_sample(nehe02de samples/nehe02de/main.c)
@@ -134,11 +145,12 @@ gen_sample(nehe02va samples/nehe02va/main.c)
 gen_sample(nehe03 samples/nehe03/main.c)
 gen_sample(nehe04 samples/nehe04/main.c)
 gen_sample(nehe05 samples/nehe05/main.c)
-gen_sample(nehe06 samples/nehe06/main.c)
+gen_sample(nehe06 samples/nehe06/main.c samples/loadbmp.c)
 gen_sample(nehe06_vq samples/nehe06_vq/main.c)
 gen_sample(nehe06_4444twid samples/nehe06_4444twid/main.c)
 gen_sample(nehe08 samples/nehe08/main.c samples/nehe08/pvr-texture.c)
-gen_sample(nehe20 samples/nehe20/main.c)
+gen_sample(nehe10 samples/nehe10/main.c samples/loadbmp.c)
+gen_sample(nehe20 samples/nehe20/main.c samples/loadbmp.c)
 gen_sample(ortho2d samples/ortho2d/main.c)
 gen_sample(paletted samples/paletted/main.c)
 gen_sample(paletted_pcx samples/paletted_pcx/main.c)

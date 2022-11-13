@@ -288,11 +288,19 @@ void APIENTRY glFrustum(GLfloat left, GLfloat right,
 
 /* Multiply the current matrix by an arbitrary matrix */
 void glMultMatrixf(const GLfloat *m) {
-    Matrix4x4 TEMP;
-    MEMCPY4(TEMP, m, sizeof(Matrix4x4));
+    Matrix4x4 TEMP __attribute__((aligned(32)));
+    const Matrix4x4 *pMatrix;
+
+    if (((GLint)m)&0xf){ /* Unaligned matrix */
+        pMatrix = &TEMP;
+        MEMCPY4(TEMP, m, sizeof(Matrix4x4));
+    }
+    else{
+        pMatrix = (const Matrix4x4*) m;
+    }
 
     UploadMatrix4x4(stack_top(MATRIX_STACKS + MATRIX_IDX));
-    MultiplyMatrix4x4((const Matrix4x4*) &TEMP);
+    MultiplyMatrix4x4(pMatrix);
     DownloadMatrix4x4(stack_top(MATRIX_STACKS + MATRIX_IDX));
 
     if(MATRIX_MODE == GL_MODELVIEW) {

@@ -3,7 +3,8 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <stdbool.h>
-#include <assert.h>
+
+#include "gl_assert.h"
 
 #define MEMSET(dst, v, size) memset((dst), (v), (size))
 

@@ -36,9 +36,20 @@ __BEGIN_DECLS
 #define GL_CW               0x0900
 #define GL_CCW              0x0901
 
+#define GL_NONE             0
+#define GL_FRONT_LEFT       0x0400
+#define GL_FRONT_RIGHT      0x0401
+#define GL_BACK_LEFT        0x0402
+#define GL_BACK_RIGHT       0x0403
 #define GL_FRONT            0x0404
 #define GL_BACK             0x0405
+#define GL_LEFT             0x0406
+#define GL_RIGHT            0x0407
 #define GL_FRONT_AND_BACK   0x0408
+#define GL_AUX0             0x0409
+#define GL_AUX1             0x040A
+#define GL_AUX2             0x040B
+#define GL_AUX3             0x040C
 #define GL_CULL_FACE        0x0B44
 #define GL_CULL_FACE_MODE   0x0B45
 #define GL_FRONT_FACE       0x0B46
@@ -46,6 +57,12 @@ __BEGIN_DECLS
 /* Scissor box */
 #define GL_SCISSOR_TEST     0x0008      /* capability bit */
 #define GL_SCISSOR_BOX      0x0C10
+
+/* Stencil actions */
+#define GL_KEEP             0x1E00
+#define GL_INCR             0x1E02
+#define GL_DECR             0x1E03
+#define GL_INVERT           0x150A
 
 /* Matrix modes */
 #define GL_MATRIX_MODE      0x0BA0
@@ -177,6 +194,14 @@ __BEGIN_DECLS
 #define GL_TEXTURE_BIT                          0x00040000
 #define GL_SCISSOR_BIT                          0x00080000
 #define GL_ALL_ATTRIB_BITS                      0x000FFFFF
+
+/* Clip planes */
+#define GL_CLIP_PLANE0      0x3000
+#define GL_CLIP_PLANE1      0x3001
+#define GL_CLIP_PLANE2      0x3002
+#define GL_CLIP_PLANE3      0x3003
+#define GL_CLIP_PLANE4      0x3004
+#define GL_CLIP_PLANE5      0x3005
 
 /* Fog */
 #define GL_FOG              0x0004      /* capability bit */
@@ -395,6 +420,7 @@ __BEGIN_DECLS
 #define GLsizei  unsigned int
 #define GLfixed  const unsigned int
 #define GLclampf float
+#define GLclampd float
 #define GLubyte  unsigned char
 #define GLbitfield unsigned int
 #define GLboolean  unsigned char
@@ -402,15 +428,30 @@ __BEGIN_DECLS
 #define GL_TRUE    1
 
 /* Stubs for portability */
+#define GL_LINE_SMOOTH                    0x0B20
 #define GL_ALPHA_TEST                     0x0BC0
 #define GL_STENCIL_TEST                   0x0B90
+#define GL_STENCIL_WRITEMASK              0x0B98
+#define GL_INDEX_WRITEMASK                0x0C21
+#define GL_COLOR_WRITEMASK                0x0C23
+#define GL_UNPACK_SWAP_BYTES              0x0CF0
+#define GL_UNPACK_LSB_FIRST               0x0CF1
+#define GL_UNPACK_ROW_LENGTH              0x0CF2
+#define GL_UNPACK_SKIP_ROWS               0x0CF3
+#define GL_UNPACK_SKIP_PIXELS             0x0CF4
 #define GL_UNPACK_ALIGNMENT               0x0CF5
+#define GL_PACK_SWAP_BYTES                0x0D00
+#define GL_PACK_LSB_FIRST                 0x0D01
+#define GL_PACK_ROW_LENGTH                0x0D02
+#define GL_PACK_SKIP_ROWS                 0x0D03
+#define GL_PACK_SKIP_PIXELS               0x0D04
+#define GL_PACK_ALIGNMENT                 0x0D05
 
 #define GLAPI extern
 #define APIENTRY
 
-GLAPI void APIENTRY glFlush();
-GLAPI void APIENTRY glFinish();
+GLAPI void APIENTRY glFlush(void);
+GLAPI void APIENTRY glFinish(void);
 
 /* Start Submission of Primitive Data */
 /* Currently Supported Primitive Types:
@@ -422,15 +463,18 @@ GLAPI void APIENTRY glFinish();
 GLAPI void APIENTRY glBegin(GLenum mode);
 
 /* Finish Submission of Primitive Data */
-GLAPI void APIENTRY glEnd();
+GLAPI void APIENTRY glEnd(void);
 
 /* Primitive Texture Coordinate Submission */
+GLAPI void APIENTRY glTexCoord1f(GLfloat u);
+GLAPI void APIENTRY glTexCoord1fv(const GLfloat *u);
 GLAPI void APIENTRY glTexCoord2f(GLfloat u, GLfloat v);
 GLAPI void APIENTRY glTexCoord2fv(const GLfloat *uv);
 
 /* Primitive Color Submission */
 GLAPI void APIENTRY glColor1ui(GLuint argb);
 GLAPI void APIENTRY glColor4ub(GLubyte r, GLubyte  g, GLubyte b, GLubyte a);
+GLAPI void APIENTRY glColor4ubv(const GLubyte *v);
 GLAPI void APIENTRY glColor3f(GLfloat r, GLfloat g, GLfloat b);
 GLAPI void APIENTRY glColor3ub(GLubyte r, GLubyte  g, GLubyte b);
 GLAPI void APIENTRY glColor3ubv(const GLubyte *v);
@@ -511,6 +555,7 @@ GLAPI void APIENTRY glBlendFunc(GLenum sfactor, GLenum dfactor);
 
 /* Texturing */
 GLAPI void APIENTRY glTexParameteri(GLenum target, GLenum pname, GLint param);
+GLAPI void APIENTRY glTexParameterf(GLenum target, GLenum pname, GLfloat param);
 GLAPI void APIENTRY glTexEnvi(GLenum target, GLenum pname, GLint param);
 GLAPI void APIENTRY glTexEnvf(GLenum target, GLenum pname, GLfloat param);
 
@@ -584,15 +629,15 @@ GLAPI void APIENTRY glDisableClientState(GLenum cap);
 
 GLAPI void APIENTRY glMatrixMode(GLenum mode);
 
-GLAPI void APIENTRY glLoadIdentity();
+GLAPI void APIENTRY glLoadIdentity(void);
 
 GLAPI void APIENTRY glLoadMatrixf(const GLfloat *m);
 GLAPI void APIENTRY glLoadTransposeMatrixf(const GLfloat *m);
 GLAPI void APIENTRY glMultMatrixf(const GLfloat *m);
 GLAPI void APIENTRY glMultTransposeMatrixf(const GLfloat *m);
 
-GLAPI void APIENTRY glPushMatrix();
-GLAPI void APIENTRY glPopMatrix();
+GLAPI void APIENTRY glPushMatrix(void);
+GLAPI void APIENTRY glPopMatrix(void);
 
 GLAPI void APIENTRY glTranslatef(GLfloat x, GLfloat y, GLfloat z);
 #define glTranslated glTranslatef
@@ -653,10 +698,15 @@ GLAPI GLenum APIENTRY glGetError(void);
 /* Non Operational Stubs for portability */
 GLAPI void APIENTRY glAlphaFunc(GLenum func, GLclampf ref);
 GLAPI void APIENTRY glLineWidth(GLfloat width);
+GLAPI void APIENTRY glPolygonMode(GLenum face, GLenum mode);
 GLAPI void APIENTRY glPolygonOffset(GLfloat factor, GLfloat units);
-GLAPI void APIENTRY glGetTexParameteriv(GLenum target, GLenum pname, GLint * params);
+GLAPI void APIENTRY glGetTexParameterfv(GLenum target, GLenum pname, GLfloat *params);
+GLAPI void APIENTRY glGetTexParameteriv(GLenum target, GLenum pname, GLint *params);
 GLAPI void APIENTRY glColorMask(GLboolean red, GLboolean green, GLboolean blue, GLboolean alpha);
 GLAPI void APIENTRY glPixelStorei(GLenum pname, GLint param);
+GLAPI void APIENTRY glStencilFunc(GLenum func, GLint ref, GLuint mask);
+GLAPI void APIENTRY glStencilOp(GLenum sfail, GLenum dpfail, GLenum dppass);
+GLAPI void APIENTRY glGetTexImage(GLenum tex, GLint lod, GLenum format, GLenum type, GLvoid* img);
 
 __END_DECLS
 

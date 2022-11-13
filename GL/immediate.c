@@ -104,6 +104,15 @@ void APIENTRY glColor4ub(GLubyte r, GLubyte  g, GLubyte b, GLubyte a) {
     COLOR[B8IDX] = b;
 }
 
+void APIENTRY glColor4ubv(const GLubyte *v) {
+    IM_ENABLED_VERTEX_ATTRIBUTES |= DIFFUSE_ENABLED_FLAG;
+
+    COLOR[A8IDX] = v[3];
+    COLOR[R8IDX] = v[0];
+    COLOR[G8IDX] = v[1];
+    COLOR[B8IDX] = v[2];
+}
+
 void APIENTRY glColor4fv(const GLfloat* v) {
     IM_ENABLED_VERTEX_ATTRIBUTES |= DIFFUSE_ENABLED_FLAG;
 
@@ -166,7 +175,7 @@ void APIENTRY glVertex3f(GLfloat x, GLfloat y, GLfloat z) {
 
     vert->x = x;
     vert->y = y;
-    vert->z = z;    
+    vert->z = z;
     vert->u = UV_COORD[0];
     vert->v = UV_COORD[1];
     vert->s = ST_COORD[0];
@@ -215,6 +224,16 @@ void APIENTRY glMultiTexCoord2fARB(GLenum target, GLfloat s, GLfloat t) {
     }
 }
 
+void APIENTRY glTexCoord1f(GLfloat u) {
+    IM_ENABLED_VERTEX_ATTRIBUTES |= UV_ENABLED_FLAG;
+    UV_COORD[0] = u;
+    UV_COORD[1] = 0.0f;
+}
+
+void APIENTRY glTexCoord1fv(const GLfloat* v) {
+    glTexCoord1f(v[0]);
+}
+
 void APIENTRY glTexCoord2f(GLfloat u, GLfloat v) {
     IM_ENABLED_VERTEX_ATTRIBUTES |= UV_ENABLED_FLAG;
     UV_COORD[0] = u;
@@ -256,7 +275,7 @@ void APIENTRY glEnd() {
 #ifndef NDEBUG
     // Immediate mode should always activate the fast path
     GLuint fastPathEnabled = _glRecalcFastPath();
-    assert(fastPathEnabled);
+    gl_assert(fastPathEnabled);
 #else
     /* If we're not debugging, set to true - we assume we haven't broken it! */
     FAST_PATH_ENABLED = GL_TRUE;

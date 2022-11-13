@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include <stdio.h>
 
+#include "gl_assert.h"
 #include "platform.h"
 #include "types.h"
 
@@ -13,6 +14,11 @@
 
 #include "../containers/aligned_vector.h"
 #include "../containers/named_array.h"
+
+#define MAX_GLDC_4BPP_PALETTE_SLOTS 16
+#define MAX_GLDC_PALETTE_SLOTS 4
+#define MAX_GLDC_SHARED_PALETTES (MAX_GLDC_PALETTE_SLOTS*MAX_GLDC_4BPP_PALETTE_SLOTS)
+
 
 extern void* memcpy4 (void *dest, const void *src, size_t count);
 
@@ -274,9 +280,6 @@ typedef enum {
 
 struct SubmissionTarget;
 
-float _glClipLineToNearZ(const Vertex* v1, const Vertex* v2, Vertex* vout);
-void _glClipTriangleStrip(SubmissionTarget* target, uint8_t fladeShade);
-
 PolyList* _glOpaquePolyList();
 PolyList* _glPunchThruPolyList();
 PolyList *_glTransparentPolyList();
@@ -287,6 +290,7 @@ void _glInitLights();
 void _glInitImmediateMode(GLuint initial_size);
 void _glInitMatrices();
 void _glInitFramebuffers();
+void _glInitSubmissionTarget();
 
 void _glMatrixLoadNormal();
 void _glMatrixLoadModelView();
@@ -379,6 +383,8 @@ GL_FORCE_INLINE PolyList* _glActivePolyList() {
 GLboolean _glIsMipmapComplete(const TextureObject* obj);
 GLubyte* _glGetMipmapLocation(const TextureObject* obj, GLuint level);
 GLuint _glGetMipmapLevelCount(const TextureObject* obj);
+
+extern GLboolean ZNEAR_CLIPPING_ENABLED;
 
 extern GLboolean LIGHTING_ENABLED;
 GLboolean _glIsLightingEnabled();
@@ -508,8 +514,8 @@ GLuint _glFreeContiguousTextureMemory();
 
 void _glApplyScissor(bool force);
 
-#define MAX_TEXTURE_UNITS 2
-#define MAX_LIGHTS 8
+#define MAX_GLDC_TEXTURE_UNITS 2
+#define MAX_GLDC_LIGHTS 8
 
 /* This is from KOS pvr_buffers.c */
 #define PVR_MIN_Z 0.0001f

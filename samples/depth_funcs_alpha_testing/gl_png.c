@@ -181,9 +181,9 @@ int dtex_to_gl_texture(texture *tex, char* filename) {
 		tex->blend_dest = GL_ONE_MINUS_SRC_ALPHA;
 		strcpy(tex->path, filename);
 
-		printf("Texture size: %d x %d\n", image->sizeX, image->sizeY);
+		printf("Texture size: %lu x %lu\n", image->sizeX, image->sizeY);
 		printf("Texture ratio: %d\n", ratio);
-		printf("Texture size: %d x %d\n", image->sizeX, image->sizeY);
+		printf("Texture size: %lu x %lu\n", image->sizeX, image->sizeY);
 		printf("Texture %s loaded\n", tex->path);
 
 		return(1);

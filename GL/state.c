@@ -18,6 +18,8 @@ static GLenum FRONT_FACE = GL_CCW;
 static GLboolean CULLING_ENABLED = GL_FALSE;
 static GLboolean COLOR_MATERIAL_ENABLED = GL_FALSE;
 
+GLboolean ZNEAR_CLIPPING_ENABLED = GL_TRUE;
+
 GLboolean LIGHTING_ENABLED = GL_FALSE;
 
 /* Is the shared texture palette enabled? */
@@ -236,9 +238,20 @@ void _glUpdatePVRTextureContext(PolyContext *context, GLshort textureUnit) {
         if(tx1->isPaletted) {
             if(_glIsSharedTexturePaletteEnabled()) {
                 TexturePalette* palette = _glGetSharedPalette(tx1->shared_bank);
-                context->txr.format |= GPUPaletteSelect8BPP(palette->bank);
-            } else {
-                context->txr.format |= GPUPaletteSelect8BPP((tx1->palette) ? tx1->palette->bank : 0);
+                if (palette->size  != 16){
+                    context->txr.format |= GPUPaletteSelect8BPP(palette->bank);
+                }
+                else{
+                    context->txr.format |= GPUPaletteSelect4BPP(palette->bank);
+                }
+            }
+            else {
+                if (tx1->palette->size != 16){
+                    context->txr.format |= GPUPaletteSelect8BPP((tx1->palette) ? tx1->palette->bank : 0);
+                }
+                else{
+                    context->txr.format |= GPUPaletteSelect4BPP((tx1->palette) ? tx1->palette->bank : 0);
+                }
             }
         }
 
@@ -276,6 +289,7 @@ void _glInitContext() {
     glClearDepth(1.0f);
     glDepthFunc(GL_LESS);
     glDepthMask(GL_TRUE);
+    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
     glFrontFace(GL_CCW);
     glCullFace(GL_BACK);
     glShadeModel(GL_SMOOTH);
@@ -290,7 +304,7 @@ void _glInitContext() {
     glDisable(GL_LIGHTING);
 
     GLubyte i;
-    for(i = 0; i < MAX_LIGHTS; ++i) {
+    for(i = 0; i < MAX_GLDC_LIGHTS; ++i) {
         glDisable(GL_LIGHT0 + i);
     }
 }
@@ -344,7 +358,7 @@ GLAPI void APIENTRY glEnable(GLenum cap) {
             _glEnableLight(cap & 0xF, GL_TRUE);
         break;
         case GL_NEARZ_CLIPPING_KOS:
-            _glEnableClipping(GL_TRUE);
+            ZNEAR_CLIPPING_ENABLED = GL_TRUE;
         break;
         case GL_POLYGON_OFFSET_POINT:
         case GL_POLYGON_OFFSET_LINE:
@@ -406,7 +420,7 @@ GLAPI void APIENTRY glDisable(GLenum cap) {
             _glEnableLight(cap & 0xF, GL_FALSE);
         break;
         case GL_NEARZ_CLIPPING_KOS:
-            _glEnableClipping(GL_FALSE);
+            ZNEAR_CLIPPING_ENABLED = GL_FALSE;
         break;
         case GL_POLYGON_OFFSET_POINT:
         case GL_POLYGON_OFFSET_LINE:
@@ -480,6 +494,12 @@ GLAPI void APIENTRY glHint(GLenum target, GLenum mode) {
     }
 }
 
+/* Polygon Rasterization Mode */
+GLAPI void APIENTRY glPolygonMode(GLenum face, GLenum mode) {
+    _GL_UNUSED(face);
+    _GL_UNUSED(mode);
+}
+
 /* Culling */
 GLAPI void APIENTRY glFrontFace(GLenum mode) {
     FRONT_FACE = mode;
@@ -529,6 +549,12 @@ void glLineWidth(GLfloat width) {
 void glPolygonOffset(GLfloat factor, GLfloat units) {
     OFFSET_FACTOR = factor;
     OFFSET_UNITS = units;
+}
+
+void glGetTexParameterfv(GLenum target, GLenum pname, GLfloat *params) {
+    _GL_UNUSED(target);
+    _GL_UNUSED(pname);
+    _GL_UNUSED(params);
 }
 
 void glGetTexParameteriv(GLenum target, GLenum pname, GLint *params) {
@@ -630,6 +656,18 @@ void _glApplyScissor(bool force) {
     SCISSOR_RECT.applied = true;
 }
 
+void glStencilFunc(GLenum func, GLint ref, GLuint mask) {
+    _GL_UNUSED(func);
+    _GL_UNUSED(ref);
+    _GL_UNUSED(mask);
+}
+
+void glStencilOp(GLenum sfail, GLenum dpfail, GLenum dppass) {
+    _GL_UNUSED(sfail);
+    _GL_UNUSED(dpfail);
+    _GL_UNUSED(dppass);
+}
+
 GLboolean APIENTRY glIsEnabled(GLenum cap) {
     switch(cap) {
     case GL_DEPTH_TEST:
@@ -714,7 +752,7 @@ void APIENTRY glGetFloatv(GLenum pname, GLfloat* params) {
 void APIENTRY glGetIntegerv(GLenum pname, GLint *params) {
     switch(pname) {
         case GL_MAX_LIGHTS:
-            *params = MAX_LIGHTS;
+            *params = MAX_GLDC_LIGHTS;
         break;
         case GL_TEXTURE_BINDING_2D:
             *params = (_glGetBoundTexture()) ? _glGetBoundTexture()->index : 0;
@@ -774,7 +812,7 @@ const GLubyte *glGetString(GLenum name) {
             return (const GLubyte*) "1.2 (partial) - GLdc 1.1";
 
         case GL_EXTENSIONS:
-            return (const GLubyte*) "GL_ARB_framebuffer_object, GL_ARB_multitexture, GL_ARB_texture_rg, GL_EXT_paletted_texture, GL_EXT_shared_texture_palette, GL_KOS_multiple_shared_palette, GL_ARB_vertex_array_bgra, GL_ARB_vertex_type_2_10_10_10_rev, GL_KOS_texture_memory_management, GL_ATI_meminfo";
+            return (const GLubyte*)"GL_ARB_framebuffer_object, GL_ARB_multitexture, GL_ARB_texture_rg, GL_OES_compressed_paletted_texture, GL_EXT_paletted_texture, GL_EXT_shared_texture_palette, GL_KOS_multiple_shared_palette, GL_ARB_vertex_array_bgra, GL_ARB_vertex_type_2_10_10_10_rev, GL_KOS_texture_memory_management, GL_ATI_meminfo";
     }
 
     return (const GLubyte*) "GL_KOS_ERROR: ENUM Unsupported\n";
