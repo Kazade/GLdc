@@ -1034,6 +1034,9 @@ GL_FORCE_INLINE void push(PolyHeader* header, GLboolean multiTextureHeader, Poly
 
     CompilePolyHeader(header, &cxt);
 
+    /* Force bits 18 and 19 on to switch to 6 triangle strips */
+    header->cmd |= 0xC0000;
+
     /* Post-process the vertex list */
     /*
      * This is currently unnecessary. aligned_vector memsets the allocated objects
