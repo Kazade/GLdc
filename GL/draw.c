@@ -999,7 +999,7 @@ GL_FORCE_INLINE void divide(SubmissionTarget* target) {
     }
 }
 
-GL_FORCE_INLINE void push(PolyHeader* header, GLboolean multiTextureHeader, PolyList* activePolyList, GLshort textureUnit) {
+GL_FORCE_INLINE void apply_poly_header(PolyHeader* header, GLboolean multiTextureHeader, PolyList* activePolyList, GLshort textureUnit) {
     TRACE();
 
     // Compile the header
@@ -1128,6 +1128,8 @@ GL_FORCE_INLINE void submitVertices(GLenum mode, GLsizei first, GLuint count, GL
     /* Make room for the vertices and header */
     aligned_vector_extend(&target->output->vector, target->count + 1);
 
+    apply_poly_header(_glSubmissionTargetHeader(target), GL_FALSE, target->output, 0);
+
     /* If we're lighting, then we need to do some work in
      * eye-space, so we only transform vertices by the modelview
      * matrix, and then later multiply by projection.
@@ -1157,8 +1159,6 @@ GL_FORCE_INLINE void submitVertices(GLenum mode, GLsizei first, GLuint count, GL
         _glMatrixLoadProjection();
         transform(target);
     }
-
-    push(_glSubmissionTargetHeader(target), GL_FALSE, target->output, 0);
 
     /*
        Now, if multitexturing is enabled, we want to send exactly the same vertices again, except:
@@ -1191,6 +1191,8 @@ GL_FORCE_INLINE void submitVertices(GLenum mode, GLsizei first, GLuint count, GL
     gl_assert(vertex);
 
     PolyHeader* mtHeader = (PolyHeader*) vertex++;
+    /* Send the buffer again to the transparent list */
+    apply_poly_header(mtHeader, GL_TRUE, _glTransparentPolyList(), 1);
 
     /* Replace the UV coordinates with the ST ones */
     VertexExtra* ve = aligned_vector_at(target->extras, 0);
@@ -1200,9 +1202,6 @@ GL_FORCE_INLINE void submitVertices(GLenum mode, GLsizei first, GLuint count, GL
         ++vertex;
         ++ve;
     }
-
-    /* Send the buffer again to the transparent list */
-    push(mtHeader, GL_TRUE, _glTransparentPolyList(), 1);
 }
 
 void APIENTRY glDrawElements(GLenum mode, GLsizei count, GLenum type, const GLvoid* indices) {
