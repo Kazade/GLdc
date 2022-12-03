@@ -49,7 +49,7 @@ void _glApplyScissor(bool force);
 
 static int _calc_pvr_face_culling() {
     if(!CULLING_ENABLED) {
-        return GPU_CULLING_NONE;
+        return GPU_CULLING_SMALL;
     } else {
         if(CULL_FACE == GL_BACK) {
             return (FRONT_FACE == GL_CW) ? GPU_CULLING_CCW : GPU_CULLING_CW;
