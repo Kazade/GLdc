@@ -1593,6 +1593,7 @@ void APIENTRY glTexParameteri(GLenum target, GLenum pname, GLint param) {
             break;
             case GL_TEXTURE_WRAP_S:
                 switch(param) {
+                    case GL_CLAMP_TO_EDGE:
                     case GL_CLAMP:
                         active->uv_clamp |= CLAMP_U;
                         break;
@@ -1606,6 +1607,7 @@ void APIENTRY glTexParameteri(GLenum target, GLenum pname, GLint param) {
 
             case GL_TEXTURE_WRAP_T:
                 switch(param) {
+                    case GL_CLAMP_TO_EDGE:
                     case GL_CLAMP:
                         active->uv_clamp |= CLAMP_V;
                         break;
