@@ -100,7 +100,7 @@ void do_frame() {
     glKosSwapBuffers();
 }
 
-time_t start;
+time_t begin;
 void switch_tests(int ppf) {
     printf("Beginning new test: %d polys per frame (%d per second at 60fps)\n",
            ppf * 3, ppf * 3 * 60);
@@ -113,8 +113,8 @@ void check_switch() {
 
     now = time(NULL);
 
-    if(now >= (start + 5)) {
-        start = time(NULL);
+    if(now >= (begin + 5)) {
+        begin = time(NULL);
         printf("  Average Frame Rate: ~%f fps (%d pps)\n", avgfps, (int)(polycnt * avgfps * 2));
 
         switch(phase) {
@@ -165,7 +165,7 @@ int main(int argc, char **argv) {
 
     /* Start off with something obscene */
     switch_tests(200000 / 60);
-    start = time(NULL);
+    begin = time(NULL);
 
     for(;;) {
         if(check_start())
