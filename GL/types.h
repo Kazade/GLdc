@@ -13,4 +13,4 @@ typedef struct {
      * but we're not using that for now, so having W here makes the code
      * simpler */
     float w;
-} Vertex;
+} __attribute__ ((aligned (32))) Vertex;
