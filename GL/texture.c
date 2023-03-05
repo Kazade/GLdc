@@ -1215,12 +1215,15 @@ void _glAllocateSpaceForMipmaps(TextureObject* active) {
     GLuint size = active->baseDataSize;
 
     /* Copy the data out of the pvr and back to ram */
-    GLubyte* temp = (GLubyte*) malloc(size);
-    memcpy(temp, active->data, size);
+    GLubyte* temp = NULL;
+    if(active->data) {
+        temp = (GLubyte*) malloc(size);
+        memcpy(temp, active->data, size);
 
-    /* Free the PVR data */
-    yalloc_free(YALLOC_BASE, active->data);
-    active->data = NULL;
+        /* Free the PVR data */
+        yalloc_free(YALLOC_BASE, active->data);
+        active->data = NULL;
+    }
 
     /* Figure out how much room to allocate for mipmaps */
     GLuint bytes = _glGetMipmapDataSize(active);
@@ -1228,16 +1231,14 @@ void _glAllocateSpaceForMipmaps(TextureObject* active) {
     active->data = yalloc_alloc_and_defrag(bytes);
 
     gl_assert(active->data);
-    if(!active->data) {
+
+    if(temp) {
+        /* If there was existing data, then copy it where it should go */
+        memcpy(_glGetMipmapLocation(active, 0), temp, size);
+
+        /* We no longer need this */
         free(temp);
-        return;
     }
-
-    /* If there was existing data, then copy it where it should go */
-    memcpy(_glGetMipmapLocation(active, 0), temp, size);
-
-    /* We no longer need this */
-    free(temp);
 
     /* Set the data offset depending on whether or not this is a
      * paletted texure */
