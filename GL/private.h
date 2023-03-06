@@ -251,7 +251,7 @@ typedef struct {
  * when a realloc could invalidate pointers. This structure holds all the information
  * we need on the target vertex array to allow passing around to the various stages (e.g. generate/clip etc.)
  */
-typedef struct {
+typedef struct __attribute__((aligned(32))) {
     PolyList* output;
     uint32_t header_offset; // The offset of the header in the output list
     uint32_t start_offset; // The offset into the output list

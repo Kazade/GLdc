@@ -100,7 +100,7 @@ GL_FORCE_INLINE void _glSubmitHeaderOrVertex(const Vertex* v) {
     d += 8;
 }
 
-static struct {
+static struct __attribute__((aligned(32))) {
     Vertex* v;
     int visible;
 } triangle[3];
@@ -182,6 +182,8 @@ GL_FORCE_INLINE void ShiftRotateTriangle() {
 #define SPAN_SORT_CFG 0x005F8030
 
 void SceneListSubmit(void* src, int n) {
+    Vertex __attribute__((aligned(32))) tmp;
+
     /* Do everything, everywhere, all at once */
     PVR_SET(SPAN_SORT_CFG, 0x0);
 

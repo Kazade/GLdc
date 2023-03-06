@@ -25,10 +25,10 @@ static inline void* memalign(size_t alignment, size_t size) {
 #endif
 
 typedef struct {
-    unsigned int size;
-    unsigned int capacity;
-    unsigned char* data;
-    unsigned int element_size;
+    uint8_t* __attribute__((aligned(32))) data;
+    uint32_t size;
+    uint32_t capacity;
+    uint32_t element_size;
 } AlignedVector;
 
 #define ALIGNED_VECTOR_CHUNK_SIZE 256u
