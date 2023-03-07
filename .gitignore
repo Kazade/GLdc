@@ -9,3 +9,5 @@ dc-build.sh
 build/*
 builddir/*
 version.[c|h]
+pcbuild/*
+dcbuild/*

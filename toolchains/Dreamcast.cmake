@@ -49,7 +49,7 @@ ENDIF()
 add_link_options(-L$ENV{KOS_BASE}/lib/dreamcast)
 link_libraries(-Wl,--start-group -lstdc++ -lkallisti -lc -lgcc -Wl,--end-group m)
 
-SET(CMAKE_EXECUTABLE_SUFFIX ".elf")
+SET(CMAKE_EXECUTABLE_SUFFIX_C ".elf")
 SET(CMAKE_EXECUTABLE_SUFFIX_CXX ".elf")
 
 ADD_DEFINITIONS(
