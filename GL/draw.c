@@ -997,40 +997,140 @@ GL_FORCE_INLINE void divide(SubmissionTarget* target) {
     }
 }
 
+GL_FORCE_INLINE int _calc_pvr_face_culling() {
+    if(!_glIsCullingEnabled()) {
+        return GPU_CULLING_SMALL;
+    } else {
+        if(_glGetCullFace() == GL_BACK) {
+            return (_glGetFrontFace() == GL_CW) ? GPU_CULLING_CCW : GPU_CULLING_CW;
+        } else {
+            return (_glGetFrontFace() == GL_CCW) ? GPU_CULLING_CCW : GPU_CULLING_CW;
+        }
+    }
+}
+
+GL_FORCE_INLINE int _calc_pvr_depth_test() {
+    if(!_glIsDepthTestEnabled()) {
+        return GPU_DEPTHCMP_ALWAYS;
+    }
+
+    switch(_glGetDepthFunc()) {
+        case GL_NEVER:
+            return GPU_DEPTHCMP_NEVER;
+        case GL_LESS:
+            return GPU_DEPTHCMP_GREATER;
+        case GL_EQUAL:
+            return GPU_DEPTHCMP_EQUAL;
+        case GL_LEQUAL:
+            return GPU_DEPTHCMP_GEQUAL;
+        case GL_GREATER:
+            return GPU_DEPTHCMP_LESS;
+        case GL_NOTEQUAL:
+            return GPU_DEPTHCMP_NOTEQUAL;
+        case GL_GEQUAL:
+            return GPU_DEPTHCMP_LEQUAL;
+        break;
+        case GL_ALWAYS:
+        default:
+            return GPU_DEPTHCMP_ALWAYS;
+    }
+}
+
+GL_FORCE_INLINE int _calcPVRBlendFactor(GLenum factor) {
+    switch(factor) {
+    case GL_ZERO:
+        return GPU_BLEND_ZERO;
+    case GL_SRC_ALPHA:
+        return GPU_BLEND_SRCALPHA;
+    case GL_DST_COLOR:
+        return GPU_BLEND_DESTCOLOR;
+    case GL_DST_ALPHA:
+        return GPU_BLEND_DESTALPHA;
+    case GL_ONE_MINUS_DST_COLOR:
+        return GPU_BLEND_INVDESTCOLOR;
+    case GL_ONE_MINUS_SRC_ALPHA:
+        return GPU_BLEND_INVSRCALPHA;
+    case GL_ONE_MINUS_DST_ALPHA:
+        return GPU_BLEND_INVDESTALPHA;
+    case GL_ONE:
+        return GPU_BLEND_ONE;
+    default:
+        fprintf(stderr, "Invalid blend mode: %u\n", (unsigned int) factor);
+        return GPU_BLEND_ONE;
+    }
+}
+
+
+GL_FORCE_INLINE void _updatePVRBlend(PolyContext* context) {
+    if(_glIsBlendingEnabled() || _glIsAlphaTestEnabled()) {
+        context->gen.alpha = GPU_ALPHA_ENABLE;
+    } else {
+        context->gen.alpha = GPU_ALPHA_DISABLE;
+    }
+
+    context->blend.src = _calcPVRBlendFactor(_glGetBlendSourceFactor());
+    context->blend.dst = _calcPVRBlendFactor(_glGetBlendDestFactor());
+}
+
 GL_FORCE_INLINE void apply_poly_header(PolyHeader* header, GLboolean multiTextureHeader, PolyList* activePolyList, GLshort textureUnit) {
     TRACE();
 
     // Compile the header
-    PolyContext cxt = *_glGetPVRContext();
-    cxt.list_type = activePolyList->list_type;
+    PolyContext ctx;
+    memset(&ctx, 0, sizeof(PolyContext));
 
-    if(cxt.list_type == GPU_LIST_OP_POLY) {
-        /* Opaque polys are always one/zero */
-        cxt.blend.src = GPU_BLEND_ONE;
-        cxt.blend.dst = GPU_BLEND_ZERO;
-    } else if(cxt.list_type == GPU_LIST_PT_POLY) {
-        /* Punch-through polys require fixed blending and depth modes */
-        cxt.blend.src = GPU_BLEND_SRCALPHA;
-        cxt.blend.dst = GPU_BLEND_INVSRCALPHA;
-        cxt.depth.comparison = GPU_DEPTHCMP_LEQUAL;
-    } else if(cxt.list_type == GPU_LIST_TR_POLY && AUTOSORT_ENABLED) {
-        /* Autosort mode requires this mode for transparent polys */
-        cxt.depth.comparison = GPU_DEPTHCMP_GEQUAL;
+    ctx.list_type = activePolyList->list_type;
+    ctx.fmt.color = GPU_CLRFMT_ARGBPACKED;
+    ctx.fmt.uv = GPU_UVFMT_32BIT;
+    ctx.gen.color_clamp = GPU_CLRCLAMP_DISABLE;
+
+    ctx.gen.culling = _calc_pvr_face_culling();
+    ctx.depth.comparison = _calc_pvr_depth_test();
+    ctx.depth.write = _glIsDepthWriteEnabled() ? GPU_DEPTHWRITE_ENABLE : GPU_DEPTHWRITE_DISABLE;
+
+    ctx.gen.shading = (_glGetShadeModel() == GL_SMOOTH) ? GPU_SHADE_GOURAUD : GPU_SHADE_FLAT;
+
+    if(_glIsScissorTestEnabled()) {
+        ctx.gen.clip_mode = GPU_USERCLIP_INSIDE;
+    } else {
+        ctx.gen.clip_mode = GPU_USERCLIP_DISABLE;
     }
 
-    _glUpdatePVRTextureContext(&cxt, textureUnit);
+    if(_glIsFogEnabled()) {
+        ctx.gen.fog_type = GPU_FOG_TABLE;
+    } else {
+        ctx.gen.fog_type = GPU_FOG_DISABLE;
+    }
+
+    _updatePVRBlend(&ctx);
+
+    if(ctx.list_type == GPU_LIST_OP_POLY) {
+        /* Opaque polys are always one/zero */
+        ctx.blend.src = GPU_BLEND_ONE;
+        ctx.blend.dst = GPU_BLEND_ZERO;
+    } else if(ctx.list_type == GPU_LIST_PT_POLY) {
+        /* Punch-through polys require fixed blending and depth modes */
+        ctx.blend.src = GPU_BLEND_SRCALPHA;
+        ctx.blend.dst = GPU_BLEND_INVSRCALPHA;
+        ctx.depth.comparison = GPU_DEPTHCMP_LEQUAL;
+    } else if(ctx.list_type == GPU_LIST_TR_POLY && AUTOSORT_ENABLED) {
+        /* Autosort mode requires this mode for transparent polys */
+        ctx.depth.comparison = GPU_DEPTHCMP_GEQUAL;
+    }
+
+    _glUpdatePVRTextureContext(&ctx, textureUnit);
 
     if(multiTextureHeader) {
-        gl_assert(cxt.list_type == GPU_LIST_TR_POLY);
+        gl_assert(ctx.list_type == GPU_LIST_TR_POLY);
 
-        cxt.gen.alpha = GPU_ALPHA_ENABLE;
-        cxt.txr.alpha = GPU_TXRALPHA_ENABLE;
-        cxt.blend.src = GPU_BLEND_ZERO;
-        cxt.blend.dst = GPU_BLEND_DESTCOLOR;
-        cxt.depth.comparison = GPU_DEPTHCMP_EQUAL;
+        ctx.gen.alpha = GPU_ALPHA_ENABLE;
+        ctx.txr.alpha = GPU_TXRALPHA_ENABLE;
+        ctx.blend.src = GPU_BLEND_ZERO;
+        ctx.blend.dst = GPU_BLEND_DESTCOLOR;
+        ctx.depth.comparison = GPU_DEPTHCMP_EQUAL;
     }
 
-    CompilePolyHeader(header, &cxt);
+    CompilePolyHeader(header, &ctx);
 
     /* Force bits 18 and 19 on to switch to 6 triangle strips */
     header->cmd |= 0xC0000;
@@ -1110,13 +1210,16 @@ GL_FORCE_INLINE void submitVertices(GLenum mode, GLsizei first, GLuint count, GL
         return;
     }
 
+    GLboolean header_required = (target->output->vector.size == 0) || _glGPUStateIsDirty();
+
+
     // We don't handle this any further, so just make sure we never pass it down */
     gl_assert(mode != GL_POLYGON);
 
     target->output = _glActivePolyList();
     target->count = (mode == GL_TRIANGLE_FAN) ? ((count - 2) * 3) : count;
     target->header_offset = target->output->vector.size;
-    target->start_offset = target->header_offset + 1;
+    target->start_offset = target->header_offset + (header_required);
 
     gl_assert(target->count);
 
@@ -1124,9 +1227,12 @@ GL_FORCE_INLINE void submitVertices(GLenum mode, GLsizei first, GLuint count, GL
     aligned_vector_resize(extras, target->count);
 
     /* Make room for the vertices and header */
-    aligned_vector_extend(&target->output->vector, target->count + 1);
+    aligned_vector_extend(&target->output->vector, target->count + (header_required));
 
-    apply_poly_header(_glSubmissionTargetHeader(target), GL_FALSE, target->output, 0);
+    if(header_required) {
+        apply_poly_header(_glSubmissionTargetHeader(target), GL_FALSE, target->output, 0);
+        _glGPUStateMarkClean();
+    }
 
     /* If we're lighting, then we need to do some work in
      * eye-space, so we only transform vertices by the modelview
@@ -1158,48 +1264,48 @@ GL_FORCE_INLINE void submitVertices(GLenum mode, GLsizei first, GLuint count, GL
         transform(target);
     }
 
-    /*
-       Now, if multitexturing is enabled, we want to send exactly the same vertices again, except:
-       - We want to enable blending, and send them to the TR list
-       - We want to set the depth func to GL_EQUAL
-       - We want to set the second texture ID
-       - We want to set the uv coordinates to the passed st ones
-    */
+    // /*
+    //    Now, if multitexturing is enabled, we want to send exactly the same vertices again, except:
+    //    - We want to enable blending, and send them to the TR list
+    //    - We want to set the depth func to GL_EQUAL
+    //    - We want to set the second texture ID
+    //    - We want to set the uv coordinates to the passed st ones
+    // */
 
-    if(!TEXTURES_ENABLED[1]) {
-        /* Multitexture actively disabled */
-        return;
-    }
+    // if(!TEXTURES_ENABLED[1]) {
+    //     /* Multitexture actively disabled */
+    //     return;
+    // }
 
-    TextureObject* texture1 = _glGetTexture1();
+    // TextureObject* texture1 = _glGetTexture1();
 
-    /* Multitexture implicitly disabled */
-    if(!texture1 || ((ENABLED_VERTEX_ATTRIBUTES & ST_ENABLED_FLAG) != ST_ENABLED_FLAG)) {
-        /* Multitexture actively disabled */
-        return;
-    }
+    // /* Multitexture implicitly disabled */
+    // if(!texture1 || ((ENABLED_VERTEX_ATTRIBUTES & ST_ENABLED_FLAG) != ST_ENABLED_FLAG)) {
+    //     /* Multitexture actively disabled */
+    //     return;
+    // }
 
-    /* Push back a copy of the list to the transparent poly list, including the header
-        (hence the + 1)
-    */
-    Vertex* vertex = aligned_vector_push_back(
-        &_glTransparentPolyList()->vector, (Vertex*) _glSubmissionTargetHeader(target), target->count + 1
-    );
+    // /* Push back a copy of the list to the transparent poly list, including the header
+    //     (hence the + 1)
+    // */
+    // Vertex* vertex = aligned_vector_push_back(
+    //     &_glTransparentPolyList()->vector, (Vertex*) _glSubmissionTargetHeader(target), target->count + 1
+    // );
 
-    gl_assert(vertex);
+    // gl_assert(vertex);
 
-    PolyHeader* mtHeader = (PolyHeader*) vertex++;
-    /* Send the buffer again to the transparent list */
-    apply_poly_header(mtHeader, GL_TRUE, _glTransparentPolyList(), 1);
+    // PolyHeader* mtHeader = (PolyHeader*) vertex++;
+    // /* Send the buffer again to the transparent list */
+    // apply_poly_header(mtHeader, GL_TRUE, _glTransparentPolyList(), 1);
 
-    /* Replace the UV coordinates with the ST ones */
-    VertexExtra* ve = aligned_vector_at(target->extras, 0);
-    ITERATE(target->count) {
-        vertex->uv[0] = ve->st[0];
-        vertex->uv[1] = ve->st[1];
-        ++vertex;
-        ++ve;
-    }
+    // /* Replace the UV coordinates with the ST ones */
+    // VertexExtra* ve = aligned_vector_at(target->extras, 0);
+    // ITERATE(target->count) {
+    //     vertex->uv[0] = ve->st[0];
+    //     vertex->uv[1] = ve->st[1];
+    //     ++vertex;
+    //     ++ve;
+    // }
 }
 
 void APIENTRY glDrawElements(GLenum mode, GLsizei count, GLenum type, const GLvoid* indices) {

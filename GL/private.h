@@ -306,7 +306,6 @@ Matrix4x4* _glGetModelViewMatrix();
 
 void _glWipeTextureOnFramebuffers(GLuint texture);
 
-PolyContext* _glGetPVRContext();
 GLubyte _glInitTextures();
 
 void _glUpdatePVRTextureContext(PolyContext* context, GLshort textureUnit);
@@ -356,6 +355,16 @@ void _glApplyColorTable(TexturePalette *palette);
 
 GLboolean _glIsBlendingEnabled();
 GLboolean _glIsAlphaTestEnabled();
+GLboolean _glIsCullingEnabled();
+GLboolean _glIsDepthTestEnabled();
+GLboolean _glIsDepthWriteEnabled();
+GLboolean _glIsScissorTestEnabled();
+GLboolean _glIsFogEnabled();
+GLenum _glGetDepthFunc();
+GLenum _glGetCullFace();
+GLenum _glGetFrontFace();
+GLenum _glGetBlendSourceFactor();
+GLenum _glGetBlendDestFactor();
 
 extern PolyList OP_LIST;
 extern PolyList PT_LIST;
@@ -513,6 +522,9 @@ void _glRecalcEnabledLights();
 GLfloat* _glLightModelSceneAmbient();
 LightSource* _glLightAt(GLuint i);
 GLboolean _glNearZClippingEnabled();
+
+GLboolean _glGPUStateIsDirty();
+void _glGPUStateMarkClean();
 
 #define MAX_GLDC_TEXTURE_UNITS 2
 #define MAX_GLDC_LIGHTS 8
