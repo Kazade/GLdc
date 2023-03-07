@@ -13,8 +13,11 @@ GLuint ENABLED_VERTEX_ATTRIBUTES = 0;
 GLuint FAST_PATH_ENABLED = GL_FALSE;
 
 static GLubyte ACTIVE_CLIENT_TEXTURE = 0;
+static const float ONE_OVER_TWO_FIVE_FIVE = 1.0f / 255.0f;
 
 extern inline GLuint _glRecalcFastPath();
+
+extern GLboolean AUTOSORT_ENABLED;
 
 #define ITERATE(count) \
     GLuint i = count; \
@@ -116,8 +119,6 @@ static void _readVertexData3ui3f(const GLubyte* in, GLubyte* out) {
 
 
 static void _readVertexData3ub3f(const GLubyte* input, GLubyte* out) {
-    const float ONE_OVER_TWO_FIVE_FIVE = 1.0f / 255.0f;
-
     float* output = (float*) out;
 
     output[0] = input[0] * ONE_OVER_TWO_FIVE_FIVE;
@@ -138,8 +139,6 @@ static void _readVertexData2f3f(const GLubyte* in, GLubyte* out) {
 }
 
 static void _readVertexData2ub3f(const GLubyte* input, GLubyte* out) {
-    const float ONE_OVER_TWO_FIVE_FIVE = 1.0f / 255.0f;
-
     float* output = (float*) out;
 
     output[0] = input[0] * ONE_OVER_TWO_FIVE_FIVE;
@@ -173,7 +172,6 @@ static void _readVertexData2ui2f(const GLubyte* in, GLubyte* out) {
 }
 
 static void _readVertexData2ub2f(const GLubyte* input, GLubyte* out) {
-    const float ONE_OVER_TWO_FIVE_FIVE = 1.0f / 255.0f;
     float* output = (float*) out;
 
     output[0] = input[0] * ONE_OVER_TWO_FIVE_FIVE;
@@ -1137,7 +1135,7 @@ GL_FORCE_INLINE void submitVertices(GLenum mode, GLsizei first, GLuint count, GL
      * If we're not doing lighting though we can optimise by taking
      * vertices straight to clip-space */
 
-    if(LIGHTING_ENABLED) {
+    if(_glIsLightingEnabled()) {
         _glMatrixLoadModelView();
     } else {
         _glMatrixLoadModelViewProjection();
@@ -1152,7 +1150,7 @@ GL_FORCE_INLINE void submitVertices(GLenum mode, GLsizei first, GLuint count, GL
         transform(target);
     }
 
-    if(LIGHTING_ENABLED){
+    if(_glIsLightingEnabled()){
         light(target);
 
         /* OK eye-space work done, now move into clip space */

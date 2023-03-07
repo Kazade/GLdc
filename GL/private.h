@@ -354,26 +354,17 @@ void _glSetInternalPaletteFormat(GLenum val);
 GLboolean _glIsSharedTexturePaletteEnabled();
 void _glApplyColorTable(TexturePalette *palette);
 
-extern GLboolean BLEND_ENABLED;
-extern GLboolean ALPHA_TEST_ENABLED;
-extern GLboolean AUTOSORT_ENABLED;
-
-GL_FORCE_INLINE GLboolean _glIsBlendingEnabled() {
-    return BLEND_ENABLED;
-}
-
-GL_FORCE_INLINE GLboolean _glIsAlphaTestEnabled() {
-    return ALPHA_TEST_ENABLED;
-}
+GLboolean _glIsBlendingEnabled();
+GLboolean _glIsAlphaTestEnabled();
 
 extern PolyList OP_LIST;
 extern PolyList PT_LIST;
 extern PolyList TR_LIST;
 
 GL_FORCE_INLINE PolyList* _glActivePolyList() {
-    if(BLEND_ENABLED) {
+    if(_glIsBlendingEnabled()) {
         return &TR_LIST;
-    } else if(ALPHA_TEST_ENABLED) {
+    } else if(_glIsAlphaTestEnabled()) {
         return &PT_LIST;
     } else {
         return &OP_LIST;
@@ -383,13 +374,9 @@ GL_FORCE_INLINE PolyList* _glActivePolyList() {
 GLboolean _glIsMipmapComplete(const TextureObject* obj);
 GLubyte* _glGetMipmapLocation(const TextureObject* obj, GLuint level);
 GLuint _glGetMipmapLevelCount(const TextureObject* obj);
-
-extern GLboolean ZNEAR_CLIPPING_ENABLED;
-
-extern GLboolean LIGHTING_ENABLED;
 GLboolean _glIsLightingEnabled();
 
-void _glEnableLight(GLubyte light, unsigned char value);
+void _glEnableLight(GLubyte light, GLboolean value);
 GLboolean _glIsColorMaterialEnabled();
 
 GLboolean _glIsNormalizeEnabled();
@@ -513,9 +500,29 @@ GLuint _glUsedTextureMemory();
 GLuint _glFreeContiguousTextureMemory();
 
 void _glApplyScissor(bool force);
+void _glSetColorMaterialMask(GLenum mask);
+void _glSetColorMaterialMode(GLenum mode);
+GLenum _glColorMaterialMode();
+
+Material* _glActiveMaterial();
+void _glSetLightModelViewerInEyeCoordinates(GLboolean v);
+void _glSetLightModelSceneAmbient(const GLfloat* v);
+void _glSetLightModelColorControl(GLint v);
+GLuint _glEnabledLightCount();
+void _glRecalcEnabledLights();
+GLfloat* _glLightModelSceneAmbient();
+LightSource* _glLightAt(GLuint i);
+GLboolean _glNearZClippingEnabled();
 
 #define MAX_GLDC_TEXTURE_UNITS 2
 #define MAX_GLDC_LIGHTS 8
+
+#define AMBIENT_MASK 1
+#define DIFFUSE_MASK 2
+#define EMISSION_MASK 4
+#define SPECULAR_MASK 8
+#define SCENE_AMBIENT_MASK 16
+
 
 /* This is from KOS pvr_buffers.c */
 #define PVR_MIN_Z 0.0001f
