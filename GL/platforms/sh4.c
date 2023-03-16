@@ -47,12 +47,10 @@ void SceneListBegin(GPUList list) {
     pvr_list_begin(list);
 }
 
-__attribute__((optimize("O3", "fast-math")))
 GL_FORCE_INLINE float _glFastInvert(float x) {
     return (1.f / __builtin_sqrtf(x * x));
 }
 
-__attribute__((optimize("O3", "fast-math")))
 GL_FORCE_INLINE void _glPerspectiveDivideVertex(Vertex* vertex, const float h) {
     const float f = _glFastInvert(vertex->w);
 
@@ -107,17 +105,16 @@ static int tri_count = 0;
 static int strip_count = 0;
 
 GL_FORCE_INLINE void interpolateColour(const uint8_t* v1, const uint8_t* v2, const float t, uint8_t* out) {
-    const int MASK1 = 0x00FF00FF;
-    const int MASK2 = 0xFF00FF00;
+    const static int MASK1 = 0x00FF00FF;
+    const static int MASK2 = 0xFF00FF00;
 
-    const int f2 = 256 * t;
+    const uint32_t* a = (uint32_t*) v1;
+    const uint32_t* b = (uint32_t*) v2;
+    const int f2 = 256.0f * t;
     const int f1 = 256 - f2;
 
-    const uint32_t a = *(uint32_t*) v1;
-    const uint32_t b = *(uint32_t*) v2;
-
-    *((uint32_t*) out) = (((((a & MASK1) * f1) + ((b & MASK1) * f2)) >> 8) & MASK1) |
-            (((((a & MASK2) * f1) + ((b & MASK2) * f2)) >> 8) & MASK2);
+    *((uint32_t*) out) = (((((*a & MASK1) * f1) + ((*b & MASK1) * f2)) >> 8) & MASK1) |
+            (((((*a & MASK2) * f1) + ((*b & MASK2) * f2)) >> 8) & MASK2);
 }
 
 GL_FORCE_INLINE void _glClipEdge(const Vertex* v1, const Vertex* v2, Vertex* vout) {
@@ -135,13 +132,13 @@ GL_FORCE_INLINE void _glClipEdge(const Vertex* v1, const Vertex* v2, Vertex* vou
     t = (t > 1.0f) ? 1.0f : t;
     t = (t < 0.0f) ? 0.0f : t;
 
-    vout->xyz[0] = __builtin_fmaf(v2->xyz[0] - v1->xyz[0], t, v1->xyz[0]);
-    vout->xyz[1] = __builtin_fmaf(v2->xyz[1] - v1->xyz[1], t, v1->xyz[1]);
-    vout->xyz[2] = __builtin_fmaf(v2->xyz[2] - v1->xyz[2], t, v1->xyz[2]);
-    vout->w = __builtin_fmaf(v2->w - v1->w, t, v1->w);
+    vout->xyz[0] = fmaf(v2->xyz[0] - v1->xyz[0], t, v1->xyz[0]);
+    vout->xyz[1] = fmaf(v2->xyz[1] - v1->xyz[1], t, v1->xyz[1]);
+    vout->xyz[2] = fmaf(v2->xyz[2] - v1->xyz[2], t, v1->xyz[2]);
+    vout->w = fmaf(v2->w - v1->w, t, v1->w);
 
-    vout->uv[0] = __builtin_fmaf(v2->uv[0] - v1->uv[0], t, v1->uv[0]);
-    vout->uv[1] = __builtin_fmaf(v2->uv[1] - v1->uv[1], t, v1->uv[1]);
+    vout->uv[0] = fmaf(v2->uv[0] - v1->uv[0], t, v1->uv[0]);
+    vout->uv[1] = fmaf(v2->uv[1] - v1->uv[1], t, v1->uv[1]);
 
     interpolateColour(v1->bgra, v2->bgra, t, vout->bgra);
 }
