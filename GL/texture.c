@@ -607,6 +607,8 @@ void APIENTRY glBindTexture(GLenum  target, GLuint texture) {
     } else {
         TEXTURE_UNITS[ACTIVE_TEXTURE] = NULL;
     }
+
+    _glGPUStateMarkDirty();
 }
 
 void APIENTRY glTexEnvi(GLenum target, GLenum pname, GLint param) {
@@ -668,6 +670,8 @@ void APIENTRY glTexEnvi(GLenum target, GLenum pname, GLint param) {
         default:
            break;
     }
+
+    _glGPUStateMarkDirty();
 }
 
 void APIENTRY glTexEnvf(GLenum target, GLenum pname, GLfloat param) {
@@ -1626,6 +1630,8 @@ void APIENTRY glTexParameteri(GLenum target, GLenum pname, GLint param) {
                 break;
         }
     }
+
+    _glGPUStateMarkDirty();
 }
 
 void APIENTRY glTexParameterf(GLenum target, GLenum pname, GLfloat param) {
@@ -1783,6 +1789,8 @@ GLAPI void APIENTRY glColorTableEXT(GLenum target, GLenum internalFormat, GLsize
     }
 
     _glApplyColorTable(palette);
+
+    _glGPUStateMarkDirty();
 }
 
 GLAPI void APIENTRY glColorSubTableEXT(GLenum target, GLsizei start, GLsizei count, GLenum format, GLenum type, const GLvoid *data) {

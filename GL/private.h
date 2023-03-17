@@ -525,6 +525,7 @@ GLboolean _glNearZClippingEnabled();
 
 GLboolean _glGPUStateIsDirty();
 void _glGPUStateMarkClean();
+void _glGPUStateMarkDirty();
 
 #define MAX_GLDC_TEXTURE_UNITS 2
 #define MAX_GLDC_LIGHTS 8

@@ -90,6 +90,10 @@ void _glGPUStateMarkClean() {
     GPUState.is_dirty = GL_FALSE;
 }
 
+void _glGPUStateMarkDirty() {
+    GPUState.is_dirty = GL_TRUE;
+}
+
 GLboolean _glGPUStateIsDirty() {
     return GPUState.is_dirty;
 }
@@ -160,10 +164,8 @@ GLboolean _glIsScissorTestEnabled() {
 }
 
 void _glRecalcEnabledLights() {
-    GLubyte i;
-
     GPUState.enabled_light_count = 0;
-    for(int i = 0; i < MAX_GLDC_LIGHTS; ++i) {
+    for(GLubyte i = 0; i < MAX_GLDC_LIGHTS; ++i) {
         if(_glLightAt(i)->isEnabled) {
             GPUState.enabled_light_count++;
         }
@@ -389,41 +391,68 @@ void _glInitContext() {
 }
 
 GLAPI void APIENTRY glEnable(GLenum cap) {
-    GLboolean was_dirty = GPUState.is_dirty;
-
-    GPUState.is_dirty = GL_TRUE;
-
     switch(cap) {
         case GL_TEXTURE_2D:
-            TEXTURES_ENABLED[_glGetActiveTexture()] = GL_TRUE;
+            if(TEXTURES_ENABLED[_glGetActiveTexture()] != GL_TRUE) {
+                TEXTURES_ENABLED[_glGetActiveTexture()] = GL_TRUE;
+                GPUState.is_dirty = GL_TRUE;
+            }
         break;
         case GL_CULL_FACE: {
-            GPUState.cull_face = GL_TRUE;
+            if(GPUState.cull_face != GL_TRUE) {
+                GPUState.cull_face = GL_TRUE;
+                GPUState.is_dirty = GL_TRUE;
+            }
+
         } break;
         case GL_DEPTH_TEST: {
-            GPUState.depth_test_enabled = GL_TRUE;
+            if(GPUState.depth_test_enabled != GL_TRUE) {
+                GPUState.depth_test_enabled = GL_TRUE;
+                GPUState.is_dirty = GL_TRUE;
+            }
         } break;
         case GL_BLEND: {
-            GPUState.blend_enabled = GL_TRUE;
+            if(GPUState.blend_enabled != GL_TRUE) {
+                GPUState.blend_enabled = GL_TRUE;
+                GPUState.is_dirty = GL_TRUE;
+            }
         } break;
         case GL_SCISSOR_TEST: {
-            GPUState.scissor_test_enabled = GL_TRUE;
+            if(GPUState.scissor_test_enabled != GL_TRUE) {
+                GPUState.scissor_test_enabled = GL_TRUE;
+                GPUState.is_dirty = GL_TRUE;
+            }
         } break;
         case GL_LIGHTING: {
-            GPUState.lighting_enabled = GL_TRUE;
+            if(GPUState.lighting_enabled != GL_TRUE) {
+                GPUState.lighting_enabled = GL_TRUE;
+                GPUState.is_dirty = GL_TRUE;
+            }
         } break;
         case GL_FOG:
-            GPUState.fog_enabled = GL_TRUE;
+            if(GPUState.fog_enabled != GL_TRUE) {
+                GPUState.fog_enabled = GL_TRUE;
+                GPUState.is_dirty = GL_TRUE;
+            }
         break;
         case GL_COLOR_MATERIAL:
-            GPUState.color_material_enabled = GL_TRUE;
+            if(GPUState.color_material_enabled != GL_TRUE) {
+                GPUState.color_material_enabled = GL_TRUE;
+                GPUState.is_dirty = GL_TRUE;
+            }
         break;
         case GL_SHARED_TEXTURE_PALETTE_EXT: {
-            GPUState.shared_palette_enabled = GL_TRUE;
+            if(GPUState.shared_palette_enabled != GL_TRUE) {
+                GPUState.shared_palette_enabled = GL_TRUE;
+                GPUState.is_dirty = GL_TRUE;
+            }
         }
         break;
         case GL_ALPHA_TEST: {
-            GPUState.alpha_test_enabled = GL_TRUE;
+            if(GPUState.alpha_test_enabled != GL_TRUE) {
+                GPUState.alpha_test_enabled = GL_TRUE;
+                GPUState.is_dirty = GL_TRUE;
+            }
         } break;
         case GL_LIGHT0:
         case GL_LIGHT1:
@@ -432,62 +461,102 @@ GLAPI void APIENTRY glEnable(GLenum cap) {
         case GL_LIGHT4:
         case GL_LIGHT5:
         case GL_LIGHT6:
-        case GL_LIGHT7:
-            _glLightAt(cap & 0xF)->isEnabled = GL_TRUE;
-            _glRecalcEnabledLights();
+        case GL_LIGHT7: {
+            LightSource* ptr = _glLightAt(cap & 0xF);
+            if(ptr->isEnabled != GL_TRUE) {
+                ptr->isEnabled = GL_TRUE;
+                _glRecalcEnabledLights();
+            }
+        }
         break;
         case GL_NEARZ_CLIPPING_KOS:
-            GPUState.znear_clipping_enabled = GL_TRUE;
+            if(GPUState.znear_clipping_enabled != GL_TRUE) {
+                GPUState.znear_clipping_enabled = GL_TRUE;
+                GPUState.is_dirty = GL_TRUE;
+            }
         break;
         case GL_POLYGON_OFFSET_POINT:
         case GL_POLYGON_OFFSET_LINE:
         case GL_POLYGON_OFFSET_FILL:
-            GPUState.polygon_offset_enabled = GL_TRUE;
+            if(GPUState.polygon_offset_enabled != GL_TRUE) {
+                GPUState.polygon_offset_enabled = GL_TRUE;
+                GPUState.is_dirty = GL_TRUE;
+            }
         break;
         case GL_NORMALIZE:
-            GPUState.normalize_enabled = GL_TRUE;
+            if(GPUState.normalize_enabled != GL_TRUE) {
+                GPUState.normalize_enabled = GL_TRUE;
+                GPUState.is_dirty = GL_TRUE;
+            }
         break;
     default:
-        GPUState.is_dirty = was_dirty;
         break;
     }
 }
 
 GLAPI void APIENTRY glDisable(GLenum cap) {
-    GLboolean was_dirty = GPUState.is_dirty;
-    GPUState.is_dirty = GL_TRUE;
-
     switch(cap) {
-        case GL_TEXTURE_2D: {
-            TEXTURES_ENABLED[_glGetActiveTexture()] = GL_FALSE;
-        } break;
+        case GL_TEXTURE_2D:
+            if(TEXTURES_ENABLED[_glGetActiveTexture()] != GL_FALSE) {
+                TEXTURES_ENABLED[_glGetActiveTexture()] = GL_FALSE;
+                GPUState.is_dirty = GL_TRUE;
+            }
+        break;
         case GL_CULL_FACE: {
-            GPUState.culling_enabled = GL_FALSE;
+            if(GPUState.cull_face != GL_FALSE) {
+                GPUState.cull_face = GL_FALSE;
+                GPUState.is_dirty = GL_TRUE;
+            }
+
         } break;
         case GL_DEPTH_TEST: {
-            GPUState.depth_test_enabled = GL_FALSE;
+            if(GPUState.depth_test_enabled != GL_FALSE) {
+                GPUState.depth_test_enabled = GL_FALSE;
+                GPUState.is_dirty = GL_TRUE;
+            }
         } break;
-        case GL_BLEND:
-            GPUState.blend_enabled = GL_FALSE;
-        break;
+        case GL_BLEND: {
+            if(GPUState.blend_enabled != GL_FALSE) {
+                GPUState.blend_enabled = GL_FALSE;
+                GPUState.is_dirty = GL_TRUE;
+            }
+        } break;
         case GL_SCISSOR_TEST: {
-            GPUState.scissor_test_enabled = GL_FALSE;
+            if(GPUState.scissor_test_enabled != GL_FALSE) {
+                GPUState.scissor_test_enabled = GL_FALSE;
+                GPUState.is_dirty = GL_TRUE;
+            }
         } break;
         case GL_LIGHTING: {
-            GPUState.lighting_enabled = GL_FALSE;
+            if(GPUState.lighting_enabled != GL_FALSE) {
+                GPUState.lighting_enabled = GL_FALSE;
+                GPUState.is_dirty = GL_TRUE;
+            }
         } break;
         case GL_FOG:
-            GPUState.fog_enabled = GL_FALSE;
+            if(GPUState.fog_enabled != GL_FALSE) {
+                GPUState.fog_enabled = GL_FALSE;
+                GPUState.is_dirty = GL_TRUE;
+            }
         break;
         case GL_COLOR_MATERIAL:
-            GPUState.color_material_enabled = GL_FALSE;
+            if(GPUState.color_material_enabled != GL_FALSE) {
+                GPUState.color_material_enabled = GL_FALSE;
+                GPUState.is_dirty = GL_TRUE;
+            }
         break;
         case GL_SHARED_TEXTURE_PALETTE_EXT: {
-            GPUState.shared_palette_enabled = GL_FALSE;
+            if(GPUState.shared_palette_enabled != GL_FALSE) {
+                GPUState.shared_palette_enabled = GL_FALSE;
+                GPUState.is_dirty = GL_TRUE;
+            }
         }
         break;
         case GL_ALPHA_TEST: {
-            GPUState.alpha_test_enabled = GL_FALSE;
+            if(GPUState.alpha_test_enabled != GL_FALSE) {
+                GPUState.alpha_test_enabled = GL_FALSE;
+                GPUState.is_dirty = GL_TRUE;
+            }
         } break;
         case GL_LIGHT0:
         case GL_LIGHT1:
@@ -497,21 +566,32 @@ GLAPI void APIENTRY glDisable(GLenum cap) {
         case GL_LIGHT5:
         case GL_LIGHT6:
         case GL_LIGHT7:
-            _glEnableLight(cap & 0xF, GL_FALSE);
+            if(GPUState.lights[cap & 0xF].isEnabled) {
+                _glEnableLight(cap & 0xF, GL_FALSE);
+                GPUState.is_dirty = GL_TRUE;
+            }
         break;
         case GL_NEARZ_CLIPPING_KOS:
-            GPUState.znear_clipping_enabled = GL_FALSE;
+            if(GPUState.znear_clipping_enabled != GL_FALSE) {
+                GPUState.znear_clipping_enabled = GL_FALSE;
+                GPUState.is_dirty = GL_TRUE;
+            }
         break;
         case GL_POLYGON_OFFSET_POINT:
         case GL_POLYGON_OFFSET_LINE:
         case GL_POLYGON_OFFSET_FILL:
-            GPUState.polygon_offset_enabled = GL_FALSE;
+            if(GPUState.polygon_offset_enabled != GL_FALSE) {
+                GPUState.polygon_offset_enabled = GL_FALSE;
+                GPUState.is_dirty = GL_TRUE;
+            }
         break;
         case GL_NORMALIZE:
-            GPUState.normalize_enabled = GL_FALSE;
+            if(GPUState.normalize_enabled != GL_FALSE) {
+                GPUState.normalize_enabled = GL_FALSE;
+                GPUState.is_dirty = GL_TRUE;
+            }
         break;
     default:
-        GPUState.is_dirty = was_dirty;
         break;
     }
 }
@@ -558,13 +638,17 @@ GLAPI void APIENTRY glReadBuffer(GLenum mode) {
 }
 
 GLAPI void APIENTRY glDepthMask(GLboolean flag) {
-    GPUState.depth_mask_enabled = flag;
-    GPUState.is_dirty = GL_TRUE;
+    if(GPUState.depth_mask_enabled != flag) {
+        GPUState.depth_mask_enabled = flag;
+        GPUState.is_dirty = GL_TRUE;
+    }
 }
 
 GLAPI void APIENTRY glDepthFunc(GLenum func) {
-    GPUState.depth_func = func;
-    GPUState.is_dirty = GL_TRUE;
+    if(GPUState.depth_func != func) {
+        GPUState.depth_func = func;
+        GPUState.is_dirty = GL_TRUE;
+    }
 }
 
 /* Hints */
@@ -584,26 +668,34 @@ GLAPI void APIENTRY glPolygonMode(GLenum face, GLenum mode) {
 
 /* Culling */
 GLAPI void APIENTRY glFrontFace(GLenum mode) {
-    GPUState.front_face = mode;
-    GPUState.is_dirty = GL_TRUE;
+    if(GPUState.front_face != mode) {
+        GPUState.front_face = mode;
+        GPUState.is_dirty = GL_TRUE;
+    }
 }
 
 GLAPI void APIENTRY glCullFace(GLenum mode) {
-    GPUState.cull_face = mode;
-    GPUState.is_dirty = GL_TRUE;
+    if(GPUState.cull_face != mode) {
+        GPUState.cull_face = mode;
+        GPUState.is_dirty = GL_TRUE;
+    }
 }
 
 /* Shading - Flat or Goraud */
 GLAPI void APIENTRY glShadeModel(GLenum mode) {
-    GPUState.shade_model = mode;
-    GPUState.is_dirty = GL_TRUE;
+    if(GPUState.shade_model != mode) {
+        GPUState.shade_model = mode;
+        GPUState.is_dirty = GL_TRUE;
+    }
 }
 
 /* Blending */
 GLAPI void APIENTRY glBlendFunc(GLenum sfactor, GLenum dfactor) {
-    GPUState.blend_sfactor = sfactor;
-    GPUState.blend_dfactor = dfactor;
-    GPUState.is_dirty = GL_TRUE;
+    if(GPUState.blend_dfactor != dfactor || GPUState.blend_sfactor != sfactor) {
+        GPUState.blend_sfactor = sfactor;
+        GPUState.blend_dfactor = dfactor;
+        GPUState.is_dirty = GL_TRUE;
+    }
 }
 
 
