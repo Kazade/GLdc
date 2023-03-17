@@ -104,33 +104,26 @@ static struct __attribute__((aligned(32))) {
 static int tri_count = 0;
 static int strip_count = 0;
 
-GL_FORCE_INLINE void interpolateColour(const uint8_t* v1, const uint8_t* v2, const float t, uint8_t* out) {
-    const static int MASK1 = 0x00FF00FF;
-    const static int MASK2 = 0xFF00FF00;
+GL_FORCE_INLINE void interpolateColour(const uint32_t* a, const uint32_t* b, const float t, uint32_t* out) {
+    const static uint32_t MASK1 = 0x00FF00FF;
+    const static uint32_t MASK2 = 0xFF00FF00;
 
-    const uint32_t* a = (uint32_t*) v1;
-    const uint32_t* b = (uint32_t*) v2;
-    const int f2 = 256.0f * t;
-    const int f1 = 256 - f2;
+    const uint32_t f2 = 256 * t;
+    const uint32_t f1 = 256 - f2;
 
-    *((uint32_t*) out) = (((((*a & MASK1) * f1) + ((*b & MASK1) * f2)) >> 8) & MASK1) |
+    *out = (((((*a & MASK1) * f1) + ((*b & MASK1) * f2)) >> 8) & MASK1) |
             (((((*a & MASK2) * f1) + ((*b & MASK2) * f2)) >> 8) & MASK2);
 }
 
-GL_FORCE_INLINE void _glClipEdge(const Vertex* v1, const Vertex* v2, Vertex* vout) {
-    static const float E [] = {
-        0.00001f, -0.00001f
-    };
-
+static inline void _glClipEdge(const Vertex* v1, const Vertex* v2, Vertex* vout) {
     /* Clipping time! */
     const float d0 = v1->w + v1->xyz[2];
     const float d1 = v2->w + v2->xyz[2];
-    const float epsilon = E[d0 < d1];
-
-    float t = MATH_Fast_Divide(d0, (d0 - d1)) + epsilon;
-
-    t = (t > 1.0f) ? 1.0f : t;
-    t = (t < 0.0f) ? 0.0f : t;
+    const float sign = ((2.0f * (d1 < d0)) - 1.0f);
+    const float epsilon = -0.00001f * sign;
+    const float n = (d0 - d1);
+    const float r = (1.f / sqrtf(n * n)) * sign;
+    float t = fmaf(r, d0, epsilon);
 
     vout->xyz[0] = fmaf(v2->xyz[0] - v1->xyz[0], t, v1->xyz[0]);
     vout->xyz[1] = fmaf(v2->xyz[1] - v1->xyz[1], t, v1->xyz[1]);
@@ -140,7 +133,7 @@ GL_FORCE_INLINE void _glClipEdge(const Vertex* v1, const Vertex* v2, Vertex* vou
     vout->uv[0] = fmaf(v2->uv[0] - v1->uv[0], t, v1->uv[0]);
     vout->uv[1] = fmaf(v2->uv[1] - v1->uv[1], t, v1->uv[1]);
 
-    interpolateColour(v1->bgra, v2->bgra, t, vout->bgra);
+    interpolateColour((uint32_t*) v1->bgra, (uint32_t*) v2->bgra, t, (uint32_t*) vout->bgra);
 }
 
 GL_FORCE_INLINE void ClearTriangle() {
