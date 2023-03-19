@@ -69,7 +69,11 @@ int check_start() {
 
 void setup() {
     //PVR needs to warm up for a frame, or results will be low
-    glKosInit();
+    GLdcConfig config;
+    glKosInitConfig(&config);
+    config.initial_op_capacity = 7000 * 4;
+    config.initial_immediate_capacity = 7000 * 4;
+    glKosInitEx(&config);
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
     glOrtho(0, 640, 0, 480, -100, 100);

@@ -193,5 +193,59 @@ GLAPI GLvoid APIENTRY glDefragmentTextureMemory_KOS(void);
 //for palette internal format (glfcConfig)
 #define GL_RGB565_KOS                               0xEF40
 
+/**
+ * This is a custom extension to OpenGL that allows submitting data
+ * directly in the expected format and alignment of the Dreamcast PowerVR
+ * chip.
+ *
+ * Vertices sent to via this API should be 4-byte aligned (ideally 32) and
+ * use the following layout:
+ *
+ * uint32_t padding; // (Space for the PVR command header)
+ * float xyz[3]; // Pos
+ * float uv[2];  // Tex coord
+ * uint8_t bgra[4]; // Vertex color
+ * uint8_t obgra[4]; // Offset color (currently unused)
+ *
+ * This layout is 32 bytes in size and is copied directly into the PVR command stream.
+ *
+ * However, GL also allows for other attributes: normals, and secondary texture coordinates.
+ *
+ * For that reason, you can use this API to submit vertices in an "extended" format which
+ * is as follows:
+ *
+ * uint32_t header; // PVR command header
+ * float xyz[3]; // Pos
+ * float uv[2];  // Tex coord
+ * uint8_t bgra[4]; // Vertex color
+ * uint8_t obgra[4]; // Offset color (currently unused)
+ * float nxyz[3]; // Normal
+ * float st[2]; // Secondary texture coords
+ * uint32_t padding[3]; // Internal use.
+ */
+
+/* Draw polygons by directly copying the vertices into the PVR command stream. Transformation
+   will happen as usual. Enabled client state *is NOT* respected.
+   ERRORS:
+
+    - GL_INVALID_ENUM is generated if mode is not an accepted value (GL_TRIANGLES, GL_QUADS, GL_TRIANGLE_STRIP are accepted)
+    - GL_INVALID_VALUE is generated if count is negative
+    - GL_INVALID_VALUE is generated if data is NULL
+*/
+void glDrawPVRArrays32KOS(GLenum mode, GLint first, GLsizei count, void* data);
+
+/* Draw polygons by directly copying the vertices into the PVR command stream. Transformation
+   will happen as usual. Enabled client state *is NOT* respected. This uses the extended vertex format which includes
+   normals and secondary texture coordinates.
+
+   ERRORS:
+
+    - GL_INVALID_ENUM is generated if mode is not an accepted value (GL_TRIANGLES, GL_QUADS, GL_TRIANGLE_STRIP are accepted)
+    - GL_INVALID_VALUE is generated if count is negative
+    - GL_INVALID_VALUE is generated if data is NULL
+*/
+void glDrawPVRArrays64KOS(GLenum mode, GLint first, GLsizei count, void* data);
+
+
 __END_DECLS
 

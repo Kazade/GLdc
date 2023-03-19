@@ -1170,6 +1170,8 @@ void _glInitSubmissionTarget() {
 
 
 GL_FORCE_INLINE void submitVertices(GLenum mode, GLsizei first, GLuint count, GLenum type, const GLvoid* indices) {
+    gl_assert(mode != GL_POLYGON);
+
     SubmissionTarget* const target = &SUBMISSION_TARGET;
     AlignedVector* const extras = target->extras;
 
@@ -1185,36 +1187,7 @@ GL_FORCE_INLINE void submitVertices(GLenum mode, GLsizei first, GLuint count, GL
         return;
     }
 
-    /* Polygons are treated as triangle fans, the only time this would be a
-     * problem is if we supported glPolygonMode(..., GL_LINE) but we don't.
-     * We optimise the triangle and quad cases.
-     */
-    if(mode == GL_POLYGON) {
-        switch(count) {
-            case 2:
-                mode = GL_LINES;
-            break;
-            case 3:
-                mode = GL_TRIANGLES;
-            break;
-            case 4:
-                mode = GL_QUADS;
-            break;
-            default:
-                mode = GL_TRIANGLE_FAN;
-        }
-    }
-
-    if(mode == GL_LINE_STRIP || mode == GL_LINES) {
-        fprintf(stderr, "Line drawing is currently unsupported\n");
-        return;
-    }
-
     GLboolean header_required = (target->output->vector.size == 0) || _glGPUStateIsDirty();
-
-
-    // We don't handle this any further, so just make sure we never pass it down */
-    gl_assert(mode != GL_POLYGON);
 
     target->output = _glActivePolyList();
     target->count = (mode == GL_TRIANGLE_FAN) ? ((count - 2) * 3) : count;
@@ -1308,10 +1281,44 @@ GL_FORCE_INLINE void submitVertices(GLenum mode, GLsizei first, GLuint count, GL
     // }
 }
 
+static GLenum convertModeIfNecessary(GLenum mode, GLsizei count) {
+    /* Polygons are treated as triangle fans, the only time this would be a
+     * problem is if we supported glPolygonMode(..., GL_LINE) but we don't.
+     * We optimise the triangle and quad cases.
+     */
+    if(mode == GL_POLYGON) {
+        switch(count) {
+            case 2:
+                mode = GL_LINES;
+            break;
+            case 3:
+                mode = GL_TRIANGLES;
+            break;
+            case 4:
+                mode = GL_QUADS;
+            break;
+            default:
+                mode = GL_TRIANGLE_FAN;
+        }
+    }
+
+    if(mode == GL_LINE_STRIP || mode == GL_LINES) {
+        _glKosThrowError(GL_INVALID_VALUE, __func__);
+        return GL_NONE;
+    }
+
+    return mode;
+}
+
 void APIENTRY glDrawElements(GLenum mode, GLsizei count, GLenum type, const GLvoid* indices) {
     TRACE();
 
     if(_glCheckImmediateModeInactive(__func__)) {
+        return;
+    }
+
+    mode = convertModeIfNecessary(mode, count);
+    if(mode == GL_NONE) {
         return;
     }
 
@@ -1325,7 +1332,167 @@ void APIENTRY glDrawArrays(GLenum mode, GLint first, GLsizei count) {
         return;
     }
 
+    mode = convertModeIfNecessary(mode, count);
+    if(mode == GL_NONE) {
+        return;
+    }
+
     submitVertices(mode, first, count, GL_UNSIGNED_INT, NULL);
+}
+
+static void glDrawPVRArrays(GLenum mode, GLsizei stride, GLint first, GLsizei count, void* data) {
+    GLint validTypes[] = {
+        GL_TRIANGLES,
+        GL_QUADS,
+        GL_TRIANGLE_STRIP,
+        0
+    };
+
+    if(_glCheckValidEnum(mode, validTypes, __func__) != 0) {
+        return;
+    }
+
+    SubmissionTarget* const target = &SUBMISSION_TARGET;
+    AlignedVector* const extras = target->extras;
+
+    GLboolean header_required = (target->output->vector.size == 0) || _glGPUStateIsDirty();
+
+    target->output = _glActivePolyList();
+    target->count = (mode == GL_TRIANGLE_FAN) ? ((count - 2) * 3) : count;
+    target->header_offset = target->output->vector.size;
+    target->start_offset = target->header_offset + (header_required);
+
+    gl_assert(target->count);
+
+    /* Make sure we have enough room for all the "extra" data */
+    aligned_vector_resize(extras, target->count);
+
+    /* Make room for the vertices and header */
+    aligned_vector_extend(&target->output->vector, target->count + (header_required));
+
+    if(header_required) {
+        apply_poly_header(_glSubmissionTargetHeader(target), GL_FALSE, target->output, 0);
+        _glGPUStateMarkClean();
+    }
+
+    PREFETCH(data + (first * 32));
+
+    if(_glIsLightingEnabled()) {
+        _glMatrixLoadModelView();
+    } else {
+        _glMatrixLoadModelViewProjection();
+    }
+
+#define DO_TRANSFORM() \
+    do { \
+        Vertex* v = _glSubmissionTargetStart(target); \
+        VertexExtra* ve = aligned_vector_at(target->extras, 0); \
+        float w = 1.0f; \
+        if(mode == GL_QUADS) { \
+            const static uint32_t flags [] = { \
+                GPU_CMD_VERTEX, GPU_CMD_VERTEX, GPU_CMD_VERTEX_EOL, GPU_CMD_VERTEX \
+            }; \
+            for(int_fast32_t i = 0; i < count; ++i, ++v) { \
+                v->flags = flags[(i % 4)]; \
+                TransformVertex(v->xyz, &w, v->xyz, &v->w); \
+            } \
+            v = _glSubmissionTargetStart(target); \
+            Vertex* prev = (v + 2); \
+            v += 3; \
+            for(int_fast32_t i = 0; i < count; i +=4, v +=4, prev += 4) { \
+                const Vertex t = (*prev); \
+                *(prev) = *((v)); \
+                *((v)) = t; \
+            } \
+        } else if(mode == GL_TRIANGLES) { \
+            const static uint32_t flags [] = { \
+                GPU_CMD_VERTEX, GPU_CMD_VERTEX, GPU_CMD_VERTEX_EOL \
+            }; \
+            for(int_fast32_t i = 0; i < count; ++i, ++v) { \
+                PREFETCH(v + 3); \
+                TransformVertex(v->xyz, &w, v->xyz, &v->w); \
+                v->flags = flags[(i % 3)]; \
+            } \
+        } else { \
+            for(int_fast32_t i = 0; i < count; ++i, ++v) { \
+                PREFETCH(v + 6); \
+                TransformVertex(v->xyz, &w, v->xyz, &v->w); \
+                v->flags = GPU_CMD_VERTEX; \
+            } \
+            (v - 1)->flags = GPU_CMD_VERTEX_EOL; \
+        } \
+    } while(0)
+
+
+    if(stride == 32) {
+        uint8_t* src = (uint8_t*) data;
+        /* Copy the data directly */
+        sq_cpy(_glSubmissionTargetStart(target), src + (first * 32), count * 32);
+
+        DO_TRANSFORM();
+    } else {
+        assert(stride == 64);
+
+        struct {
+            uint32_t data[8];
+        }* src = data + (first * 32);
+
+        Vertex* dst = aligned_vector_at(&target->output->vector, target->start_offset);
+        VertexExtra* dst2 = aligned_vector_at(target->extras, 0);
+
+        for(int i = 0; i < count - 6; ++i) {
+            PREFETCH(src + 2);
+            *dst = *((Vertex*) src++);
+            dst++;
+            *dst2 = *((VertexExtra*) src++);
+            dst2++;
+        }
+
+        PREFETCH(_glSubmissionTargetStart(target));
+        PREFETCH(aligned_vector_at(target->extras, 0));
+
+        for(int i = count - 6; i < count; ++i) {
+            *dst = *((Vertex*) src++);
+            dst++;
+            *dst2 = *((VertexExtra*) src++);
+            dst2++;
+        }
+
+        DO_TRANSFORM();
+    }
+}
+
+
+void APIENTRY glDrawPVRArrays32KOS(GLenum mode, GLint first, GLsizei count, void* data) {
+    TRACE();
+
+    if(_glCheckImmediateModeInactive(__func__)) {
+        return;
+    }
+
+    mode = convertModeIfNecessary(mode, count);
+    if(mode == GL_NONE) {
+        _glKosThrowError(GL_INVALID_VALUE, __func__);
+        return;
+    }
+
+    glDrawPVRArrays(mode, 32, first, count, data);
+}
+
+void APIENTRY glDrawPVRArrays64KOS(GLenum mode, GLint first, GLsizei count, void* data) {
+    TRACE();
+
+    if(_glCheckImmediateModeInactive(__func__)) {
+        return;
+    }
+
+    mode = convertModeIfNecessary(mode, count);
+    if(mode == GL_NONE) {
+        _glKosThrowError(GL_INVALID_VALUE, __func__);
+        return;
+    }
+
+    glDrawPVRArrays(mode, 64, first, count, data);
 }
 
 void APIENTRY glEnableClientState(GLenum cap) {

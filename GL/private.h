@@ -245,6 +245,8 @@ do {                 \
 typedef struct {
     float nxyz[3];
     float st[2];
+    float w;
+    uint32_t padding[2];
 } VertexExtra;
 
 /* Generating PVR vertices from the user-submitted data gets complicated, particularly

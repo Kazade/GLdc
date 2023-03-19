@@ -9,7 +9,7 @@
 #include "GL/glu.h"
 #include "GL/glkos.h"
 
-#define TERRAIN_SIZE 100
+#define TERRAIN_SIZE 75
 #define TERRAIN_SCALE 1.0f
 #define TERRAIN_HEIGHT_SCALE 1.0f
 
@@ -155,11 +155,23 @@ int main(int argc, char **argv)
     InitGL(640, 480);
     ReSizeGLScene(640, 480);
 
+    uint64_t us = timer_us_gettime64();
+    uint32_t frames = 0;
     while(1) {
         if(check_start())
             break;
 
         DrawGLScene();
+
+        ++frames;
+        uint64_t now = timer_us_gettime64();
+        uint64_t diff = (now - us);
+        if(diff > 5000000) {
+            printf("FPS: %f\n", ((float) frames) / 5.0f);
+            fflush(stdout);
+            frames = 0;
+            us = now;
+        }
     }
 
     return 0;
