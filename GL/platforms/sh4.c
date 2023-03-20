@@ -72,7 +72,7 @@ GL_FORCE_INLINE void _glPerspectiveDivideVertex(Vertex* vertex, const float h) {
     vertex->xyz[2] = (vertex->w == 1.0f) ? _glFastInvert(1.0001f + vertex->xyz[2]) : f;
 }
 
-GL_FORCE_INLINE void _glSubmitHeaderOrVertex(uint32_t* d, const Vertex* v) {
+GL_FORCE_INLINE void _glSubmitHeaderOrVertex(uint32_t* d, const uint32_t* s) {
 #ifndef NDEBUG
     gl_assert(!isnan(v->xyz[2]));
     gl_assert(!isnan(v->w));
@@ -81,8 +81,6 @@ GL_FORCE_INLINE void _glSubmitHeaderOrVertex(uint32_t* d, const Vertex* v) {
 #if CLIP_DEBUG
     printf("Submitting: %x (%x)\n", v, v->flags);
 #endif
-
-    uint32_t *s = (uint32_t*) v;
     __asm__("pref @%0" : : "r"(s + 8));  /* prefetch 32 bytes for next loop */
     d[0] = *(s++);
     d[1] = *(s++);
@@ -172,36 +170,27 @@ GL_FORCE_INLINE void ShiftRotateTriangle() {
 
 #define SPAN_SORT_CFG 0x005F8030
 
-void SceneListSubmit(void* src, int n) {
+static inline void submit_unclipped(uint32_t* d, Vertex* vertex, int n) {
     const float h = GetVideoMode()->height;
 
-    PVR_SET(SPAN_SORT_CFG, 0x0);
-
-    uint32_t *d = (uint32_t*) SQ_BASE_ADDRESS;
-    *PVR_LMMODE0 = 0x0; /* Enable 64bit mode */
-
-    Vertex __attribute__((aligned(32))) tmp;
-
-    /* Perform perspective divide on each vertex */
-    Vertex* vertex = (Vertex*) src;
-
-    if(!_glNearZClippingEnabled()) {
-        /* Prep store queues */
-
-        for(int i = 0; i < n; ++i, ++vertex) {
-            PREFETCH(vertex + 1);
-            if(glIsVertex(vertex->flags)) {
-                _glPerspectiveDivideVertex(vertex, h);
-            }
-            _glSubmitHeaderOrVertex(d, vertex);
+    for(int i = 0; i < n; ++i, ++vertex) {
+        PREFETCH(vertex + 1);
+        if(glIsVertex(vertex->flags)) {
+            _glPerspectiveDivideVertex(vertex, h);
         }
-
-        /* Wait for both store queues to complete */
-        d = (uint32_t *) SQ_BASE_ADDRESS;
-        d[0] = d[8] = 0;
-
-        return;
+        _glSubmitHeaderOrVertex(d, (const uint32_t*) vertex);
     }
+
+    /* Wait for both store queues to complete */
+    d = (uint32_t *) SQ_BASE_ADDRESS;
+    d[0] = d[8] = 0;
+
+    return;
+}
+
+static inline void submit_clipped(uint32_t* d, Vertex* vertex, int n) {
+    static Vertex __attribute__((aligned(32))) tmp;
+    const float h = GetVideoMode()->height;
 
     tri_count = 0;
     strip_count = 0;
@@ -226,7 +215,7 @@ void SceneListSubmit(void* src, int n) {
                 /* We hit a header */
                 tri_count = 0;
                 strip_count = 0;
-                _glSubmitHeaderOrVertex(d, vertex);
+                _glSubmitHeaderOrVertex(d, (const uint32_t*) vertex);
                 continue;
             }
         }
@@ -257,11 +246,11 @@ void SceneListSubmit(void* src, int n) {
         tmp = *(vertex - 2); \
         /* If we had triangles ahead of this one, submit and finalize */ \
         _glPerspectiveDivideVertex(&tmp, h); \
-        _glSubmitHeaderOrVertex(d, &tmp); \
+        _glSubmitHeaderOrVertex(d, (const uint32_t*) &tmp); \
         tmp = *(vertex - 1); \
         tmp.flags = GPU_CMD_VERTEX_EOL; \
         _glPerspectiveDivideVertex(&tmp, h); \
-        _glSubmitHeaderOrVertex(d, &tmp); \
+        _glSubmitHeaderOrVertex(d, (const uint32_t*) &tmp); \
     }
 
         bool is_last_in_strip = glIsLastVertex(vertex->flags);
@@ -273,17 +262,17 @@ void SceneListSubmit(void* src, int n) {
                 tmp = *triangle[0].v;
                 tmp.flags = GPU_CMD_VERTEX;
                 _glPerspectiveDivideVertex(&tmp, h);
-                _glSubmitHeaderOrVertex(d, &tmp);
+                _glSubmitHeaderOrVertex(d, (const uint32_t*) &tmp);
 
                 _glClipEdge(triangle[0].v, triangle[1].v, &tmp);
                 tmp.flags = GPU_CMD_VERTEX;
                 _glPerspectiveDivideVertex(&tmp, h);
-                _glSubmitHeaderOrVertex(d, &tmp);
+                _glSubmitHeaderOrVertex(d, (const uint32_t*) &tmp);
 
                 _glClipEdge(triangle[2].v, triangle[0].v, &tmp);
                 tmp.flags = GPU_CMD_VERTEX_EOL;
                 _glPerspectiveDivideVertex(&tmp, h);
-                _glSubmitHeaderOrVertex(d, &tmp);
+                _glSubmitHeaderOrVertex(d, (const uint32_t*) &tmp);
             } break;
             case 2: {
                 SUBMIT_QUEUED();
@@ -291,17 +280,17 @@ void SceneListSubmit(void* src, int n) {
                 _glClipEdge(triangle[0].v, triangle[1].v, &tmp);
                 tmp.flags = GPU_CMD_VERTEX;
                 _glPerspectiveDivideVertex(&tmp, h);
-                _glSubmitHeaderOrVertex(d, &tmp);
+                _glSubmitHeaderOrVertex(d, (const uint32_t*) &tmp);
 
                 tmp = *triangle[1].v;
                 tmp.flags = GPU_CMD_VERTEX;
                 _glPerspectiveDivideVertex(&tmp, h);
-                _glSubmitHeaderOrVertex(d, &tmp);
+                _glSubmitHeaderOrVertex(d, (const uint32_t*) &tmp);
 
                 _glClipEdge(triangle[1].v, triangle[2].v, &tmp);
                 tmp.flags = GPU_CMD_VERTEX_EOL;
                 _glPerspectiveDivideVertex(&tmp, h);
-                _glSubmitHeaderOrVertex(d, &tmp);
+                _glSubmitHeaderOrVertex(d, (const uint32_t*) &tmp);
             } break;
             case 3: {
                 SUBMIT_QUEUED();
@@ -309,22 +298,22 @@ void SceneListSubmit(void* src, int n) {
                 tmp = *triangle[0].v;
                 tmp.flags = GPU_CMD_VERTEX;
                 _glPerspectiveDivideVertex(&tmp, h);
-                _glSubmitHeaderOrVertex(d, &tmp);
+                _glSubmitHeaderOrVertex(d, (const uint32_t*) &tmp);
 
                 tmp = *triangle[1].v;
                 tmp.flags = GPU_CMD_VERTEX;
                 _glPerspectiveDivideVertex(&tmp, h);
-                _glSubmitHeaderOrVertex(d, &tmp);
+                _glSubmitHeaderOrVertex(d, (const uint32_t*) &tmp);
 
                 _glClipEdge(triangle[2].v, triangle[0].v, &tmp);
                 tmp.flags = GPU_CMD_VERTEX;
                 _glPerspectiveDivideVertex(&tmp, h);
-                _glSubmitHeaderOrVertex(d, &tmp);
+                _glSubmitHeaderOrVertex(d, (const uint32_t*) &tmp);
 
                 _glClipEdge(triangle[1].v, triangle[2].v, &tmp);
                 tmp.flags = GPU_CMD_VERTEX_EOL;
                 _glPerspectiveDivideVertex(&tmp, h);
-                _glSubmitHeaderOrVertex(d, &tmp);
+                _glSubmitHeaderOrVertex(d, (const uint32_t*) &tmp);
             } break;
             case 4: {
                 SUBMIT_QUEUED();
@@ -332,17 +321,17 @@ void SceneListSubmit(void* src, int n) {
                 _glClipEdge(triangle[1].v, triangle[2].v, &tmp);
                 tmp.flags = GPU_CMD_VERTEX;
                 _glPerspectiveDivideVertex(&tmp, h);
-                _glSubmitHeaderOrVertex(d, &tmp);
+                _glSubmitHeaderOrVertex(d, (const uint32_t*) &tmp);
 
                 tmp = *triangle[2].v;
                 tmp.flags = GPU_CMD_VERTEX;
                 _glPerspectiveDivideVertex(&tmp, h);
-                _glSubmitHeaderOrVertex(d, &tmp);
+                _glSubmitHeaderOrVertex(d, (const uint32_t*) &tmp);
 
                 _glClipEdge(triangle[2].v, triangle[0].v, &tmp);
                 tmp.flags = GPU_CMD_VERTEX_EOL;
                 _glPerspectiveDivideVertex(&tmp, h);
-                _glSubmitHeaderOrVertex(d, &tmp);
+                _glSubmitHeaderOrVertex(d, (const uint32_t*) &tmp);
             } break;
             case 5: {
                 SUBMIT_QUEUED();
@@ -350,22 +339,22 @@ void SceneListSubmit(void* src, int n) {
                 tmp = *triangle[0].v;
                 tmp.flags = GPU_CMD_VERTEX;
                 _glPerspectiveDivideVertex(&tmp, h);
-                _glSubmitHeaderOrVertex(d, &tmp);
+                _glSubmitHeaderOrVertex(d, (const uint32_t*) &tmp);
 
                 _glClipEdge(triangle[0].v, triangle[1].v, &tmp);
                 tmp.flags = GPU_CMD_VERTEX;
                 _glPerspectiveDivideVertex(&tmp, h);
-                _glSubmitHeaderOrVertex(d, &tmp);
+                _glSubmitHeaderOrVertex(d, (const uint32_t*) &tmp);
 
                 tmp = *triangle[2].v;
                 tmp.flags = GPU_CMD_VERTEX;
                 _glPerspectiveDivideVertex(&tmp, h);
-                _glSubmitHeaderOrVertex(d, &tmp);
+                _glSubmitHeaderOrVertex(d, (const uint32_t*) &tmp);
 
                 _glClipEdge(triangle[1].v, triangle[2].v, &tmp);
                 tmp.flags = GPU_CMD_VERTEX_EOL;
                 _glPerspectiveDivideVertex(&tmp, h);
-                _glSubmitHeaderOrVertex(d, &tmp);
+                _glSubmitHeaderOrVertex(d, (const uint32_t*) &tmp);
             } break;
             case 6: {
                 SUBMIT_QUEUED();
@@ -373,33 +362,33 @@ void SceneListSubmit(void* src, int n) {
                 _glClipEdge(triangle[0].v, triangle[1].v, &tmp);
                 tmp.flags = GPU_CMD_VERTEX;
                 _glPerspectiveDivideVertex(&tmp, h);
-                _glSubmitHeaderOrVertex(d, &tmp);
+                _glSubmitHeaderOrVertex(d, (const uint32_t*) &tmp);
 
                 tmp = *triangle[1].v;
                 tmp.flags = GPU_CMD_VERTEX;
                 _glPerspectiveDivideVertex(&tmp, h);
-                _glSubmitHeaderOrVertex(d, &tmp);
+                _glSubmitHeaderOrVertex(d, (const uint32_t*) &tmp);
 
                 _glClipEdge(triangle[2].v, triangle[0].v, &tmp);
                 tmp.flags = GPU_CMD_VERTEX;
                 _glPerspectiveDivideVertex(&tmp, h);
-                _glSubmitHeaderOrVertex(d, &tmp);
+                _glSubmitHeaderOrVertex(d, (const uint32_t*) &tmp);
 
                 tmp = *triangle[2].v;
                 tmp.flags = GPU_CMD_VERTEX_EOL;
                 _glPerspectiveDivideVertex(&tmp, h);
-                _glSubmitHeaderOrVertex(d, &tmp);
+                _glSubmitHeaderOrVertex(d, (const uint32_t*) &tmp);
             } break;
             case 7: {
                 /* All the vertices are visible! We divide and submit v0, then shift */
                 _glPerspectiveDivideVertex(vertex - 2, h);
-                _glSubmitHeaderOrVertex(d, vertex - 2);
+                _glSubmitHeaderOrVertex(d, (const uint32_t*) (vertex - 2));
 
                 if(is_last_in_strip) {
                     _glPerspectiveDivideVertex(vertex - 1, h);
-                    _glSubmitHeaderOrVertex(d, vertex - 1);
+                    _glSubmitHeaderOrVertex(d, (const uint32_t*) (vertex - 1));
                     _glPerspectiveDivideVertex(vertex, h);
-                    _glSubmitHeaderOrVertex(d, vertex);
+                    _glSubmitHeaderOrVertex(d, (const uint32_t*) vertex);
                     tri_count = 0;
                     strip_count = 0;
                 }
@@ -426,6 +415,25 @@ void SceneListSubmit(void* src, int n) {
     /* Wait for both store queues to complete */
     d = (uint32_t *)0xe0000000;
     d[0] = d[8] = 0;
+}
+
+void SceneListSubmit(void* src, int n) {
+    PVR_SET(SPAN_SORT_CFG, 0x0);
+
+    uint32_t *d = (uint32_t*) SQ_BASE_ADDRESS;
+
+    *PVR_LMMODE0 = 0x0; /* Enable 64bit mode */
+    *((volatile int *)0xA05F6888) = 1;
+
+    /* Perform perspective divide on each vertex */
+    Vertex* vertex = (Vertex*) src;
+
+    if(!_glNearZClippingEnabled()) {
+        /* Prep store queues */
+        submit_unclipped(d, vertex, n);
+    } else {
+        submit_clipped(d, vertex, n);
+    }
 }
 
 void SceneListFinish() {

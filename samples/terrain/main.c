@@ -155,8 +155,10 @@ int main(int argc, char **argv)
     InitGL(640, 480);
     ReSizeGLScene(640, 480);
 
-    uint64_t us = timer_us_gettime64();
+    uint64_t accum = 0;
+    uint64_t last_time = timer_us_gettime64();
     uint32_t frames = 0;
+
     while(1) {
         if(check_start())
             break;
@@ -165,12 +167,16 @@ int main(int argc, char **argv)
 
         ++frames;
         uint64_t now = timer_us_gettime64();
-        uint64_t diff = (now - us);
-        if(diff > 5000000) {
+        uint64_t diff = (now - last_time);
+        last_time = now;
+        accum += diff;
+
+        if(accum > 5000000) {
+            printf("Frame time: %f\n", (float)accum / frames / 1000000.0f);
             printf("FPS: %f\n", ((float) frames) / 5.0f);
             fflush(stdout);
             frames = 0;
-            us = now;
+            accum = 0;
         }
     }
 

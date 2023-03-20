@@ -236,7 +236,8 @@ void glDrawPVRArrays32KOS(GLenum mode, GLint first, GLsizei count, void* data);
 
 /* Draw polygons by directly copying the vertices into the PVR command stream. Transformation
    will happen as usual. Enabled client state *is NOT* respected. This uses the extended vertex format which includes
-   normals and secondary texture coordinates.
+   normals and secondary texture coordinates. These will only take effect if you've enabled secondary texture coordinates
+   with glEnable (for ST) or enabled lighting (for normals). GL_NORMALIZE is not respected.
 
    ERRORS:
 
