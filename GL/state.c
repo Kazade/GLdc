@@ -180,6 +180,10 @@ void _glSetLightModelSceneAmbient(const GLfloat* v) {
     vec4cpy(GPUState.scene_ambient, v);
 }
 
+GLfloat* _glGetLightModelSceneAmbient() {
+    return GPUState.scene_ambient;
+}
+
 void _glSetLightModelColorControl(GLint v) {
     GPUState.color_control = v;
 }

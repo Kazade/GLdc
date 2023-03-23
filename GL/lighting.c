@@ -124,8 +124,10 @@ void APIENTRY glLightModeli(GLenum pname, const GLint param) {
 void APIENTRY glLightModelfv(GLenum pname, const GLfloat *params) {
     switch(pname) {
         case GL_LIGHT_MODEL_AMBIENT: {
-            _glSetLightModelSceneAmbient(params);
-            _glPrecalcLightingValues(SCENE_AMBIENT_MASK);
+            if(memcmp(_glGetLightModelSceneAmbient(), params, sizeof(float) * 4) != 0) {
+                _glSetLightModelSceneAmbient(params);
+                _glPrecalcLightingValues(SCENE_AMBIENT_MASK);
+            }
         } break;
         case GL_LIGHT_MODEL_LOCAL_VIEWER:
             _glSetLightModelViewerInEyeCoordinates((*params) ? GL_TRUE : GL_FALSE);
@@ -164,18 +166,28 @@ void APIENTRY glLightfv(GLenum light, GLenum pname, const GLfloat *params) {
 
     LightSource* l = _glLightAt(idx);
 
+    GLboolean rebuild = GL_FALSE;
+
     switch(pname) {
         case GL_AMBIENT:
-            memcpy(l->ambient, params, sizeof(GLfloat) * 4);
+            rebuild = memcmp(l->ambient, params, sizeof(GLfloat) * 4) != 0;
+            if(rebuild) {
+                memcpy(l->ambient, params, sizeof(GLfloat) * 4);
+            }
         break;
         case GL_DIFFUSE:
-            memcpy(l->diffuse, params, sizeof(GLfloat) * 4);
+            rebuild = memcmp(l->diffuse, params, sizeof(GLfloat) * 4) != 0;
+            if(rebuild) {
+                memcpy(l->diffuse, params, sizeof(GLfloat) * 4);
+            }
         break;
         case GL_SPECULAR:
-            memcpy(l->specular, params, sizeof(GLfloat) * 4);
+            rebuild = memcmp(l->specular, params, sizeof(GLfloat) * 4) != 0;
+            if(rebuild) {
+                memcpy(l->specular, params, sizeof(GLfloat) * 4);
+            }
         break;
         case GL_POSITION: {
-            _glMatrixLoadModelView();
             memcpy(l->position, params, sizeof(GLfloat) * 4);
 
             l->isDirectional = params[3] == 0.0f;
@@ -183,6 +195,7 @@ void APIENTRY glLightfv(GLenum light, GLenum pname, const GLfloat *params) {
             if(l->isDirectional) {
                 //FIXME: Do we need to rotate directional lights?
             } else {
+                _glMatrixLoadModelView();
                 TransformVec3(l->position);
             }
         }
@@ -204,7 +217,10 @@ void APIENTRY glLightfv(GLenum light, GLenum pname, const GLfloat *params) {
         return;
     }
 
-    _glPrecalcLightingValues(mask);
+    if(rebuild) {
+        _glPrecalcLightingValues(mask);
+    }
+
 }
 
 void APIENTRY glLightf(GLenum light, GLenum pname, GLfloat param) {
@@ -258,25 +274,47 @@ void APIENTRY glMaterialfv(GLenum face, GLenum pname, const GLfloat *params) {
 
     Material* material = _glActiveMaterial();
 
+    GLboolean rebuild = GL_FALSE;
+
     switch(pname) {
         case GL_SHININESS:
             glMaterialf(face, pname, *params);
+            rebuild = GL_TRUE;
         break;
-        case GL_AMBIENT:
-            vec4cpy(material->ambient, params);
-        break;
+        case GL_AMBIENT: {
+            if(memcmp(material->ambient, params, sizeof(float) * 4) != 0) {
+                vec4cpy(material->ambient, params);
+                rebuild = GL_TRUE;
+            }
+        } break;
         case GL_DIFFUSE:
-            vec4cpy(material->diffuse, params);
+            if(memcmp(material->diffuse, params, sizeof(float) * 4) != 0) {
+                vec4cpy(material->diffuse, params);
+                rebuild = GL_TRUE;
+            }
         break;
         case GL_SPECULAR:
-            vec4cpy(material->specular, params);
+            if(memcmp(material->specular, params, sizeof(float) * 4) != 0) {
+                vec4cpy(material->specular, params);
+                rebuild = GL_TRUE;
+            }
         break;
         case GL_EMISSION:
-            vec4cpy(material->emissive, params);
+            if(memcmp(material->emissive, params, sizeof(float) * 4) != 0) {
+                vec4cpy(material->emissive, params);
+                rebuild = GL_TRUE;
+            }
         break;
         case GL_AMBIENT_AND_DIFFUSE: {
-            vec4cpy(material->ambient, params);
-            vec4cpy(material->diffuse, params);
+            rebuild = (
+                memcmp(material->ambient, params, sizeof(float) * 4) != 0 ||
+                memcmp(material->diffuse, params, sizeof(float) * 4) != 0
+            );
+
+            if(rebuild) {
+                vec4cpy(material->ambient, params);
+                vec4cpy(material->diffuse, params);
+            }
         } break;
         case GL_COLOR_INDEXES:
         default: {
@@ -285,13 +323,15 @@ void APIENTRY glMaterialfv(GLenum face, GLenum pname, const GLfloat *params) {
         }
     }
 
-    GLuint updateMask = (pname == GL_AMBIENT) ? AMBIENT_MASK:
-                        (pname == GL_DIFFUSE) ? DIFFUSE_MASK:
-                        (pname == GL_SPECULAR) ? SPECULAR_MASK:
-                        (pname == GL_EMISSION) ? EMISSION_MASK:
-                        (pname == GL_AMBIENT_AND_DIFFUSE) ? AMBIENT_MASK | DIFFUSE_MASK : 0;
+    if(rebuild) {
+        GLuint updateMask = (pname == GL_AMBIENT) ? AMBIENT_MASK:
+                            (pname == GL_DIFFUSE) ? DIFFUSE_MASK:
+                            (pname == GL_SPECULAR) ? SPECULAR_MASK:
+                            (pname == GL_EMISSION) ? EMISSION_MASK:
+                            (pname == GL_AMBIENT_AND_DIFFUSE) ? AMBIENT_MASK | DIFFUSE_MASK : 0;
 
-    _glPrecalcLightingValues(updateMask);
+        _glPrecalcLightingValues(updateMask);
+    }
 }
 
 void APIENTRY glColorMaterial(GLenum face, GLenum mode) {

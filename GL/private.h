@@ -520,6 +520,7 @@ void _glSetLightModelColorControl(GLint v);
 GLuint _glEnabledLightCount();
 void _glRecalcEnabledLights();
 GLfloat* _glLightModelSceneAmbient();
+GLfloat* _glGetLightModelSceneAmbient();
 LightSource* _glLightAt(GLuint i);
 GLboolean _glNearZClippingEnabled();
 
