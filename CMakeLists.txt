@@ -170,6 +170,7 @@ gen_sample(zclip_triangle samples/zclip_triangle/main.c)
 gen_sample(zclip_trianglestrip samples/zclip_trianglestrip/main.c)
 gen_sample(scissor samples/scissor/main.c)
 gen_sample(polymark samples/polymark/main.c)
+gen_sample(cubes samples/cubes/main.cpp)
 
 
 if(PLATFORM_DREAMCAST)
