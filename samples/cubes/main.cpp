@@ -1,3 +1,4 @@
+#include <cstdio>
 #include <stdbool.h>
 #include <stdlib.h>
 #include <time.h>
