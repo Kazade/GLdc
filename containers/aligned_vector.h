@@ -3,6 +3,7 @@
 #include <assert.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdint.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -17,22 +18,6 @@ static inline void* memalign(size_t alignment, size_t size) {
     #include <malloc.h>
 #endif
 
-#ifdef __DREAMCAST__
-#include <kos/string.h>
-#define AV_MEMCPY4 memcpy4
-#else
-#define AV_MEMCPY4 memcpy
-#endif
-
-typedef struct {
-    unsigned int size;
-    unsigned int capacity;
-    unsigned char* data;
-    unsigned int element_size;
-} AlignedVector;
-
-#define ALIGNED_VECTOR_CHUNK_SIZE 256u
-
 #ifdef __cplusplus
 #define AV_FORCE_INLINE static inline
 #else
@@ -40,6 +25,54 @@ typedef struct {
 #define AV_INLINE_DEBUG AV_NO_INSTRUMENT __attribute__((always_inline))
 #define AV_FORCE_INLINE static AV_INLINE_DEBUG
 #endif
+
+
+#ifdef __DREAMCAST__
+#include <kos/string.h>
+
+AV_FORCE_INLINE void *AV_MEMCPY4(void *dest, const void *src, size_t len)
+{
+  if(!len)
+  {
+    return dest;
+  }
+
+  const uint8_t *s = (uint8_t *)src;
+  uint8_t *d = (uint8_t *)dest;
+
+  uint32_t diff = (uint32_t)d - (uint32_t)(s + 1); // extra offset because input gets incremented before output is calculated
+  // Underflow would be like adding a negative offset
+
+  // Can use 'd' as a scratch reg now
+  asm volatile (
+    "clrs\n" // Align for parallelism (CO) - SH4a use "stc SR, Rn" instead with a dummy Rn
+  ".align 2\n"
+  "0:\n\t"
+    "dt %[size]\n\t" // (--len) ? 0 -> T : 1 -> T (EX 1)
+    "mov.b @%[in]+, %[scratch]\n\t" // scratch = *(s++) (LS 1/2)
+    "bf.s 0b\n\t" // while(s != nexts) aka while(!T) (BR 1/2)
+    " mov.b %[scratch], @(%[offset], %[in])\n" // *(datatype_of_s*) ((char*)s + diff) = scratch, where src + diff = dest (LS 1)
+    : [in] "+&r" ((uint32_t)s), [scratch] "=&r" ((uint32_t)d), [size] "+&r" (len) // outputs
+    : [offset] "z" (diff) // inputs
+    : "t", "memory" // clobbers
+  );
+
+  return dest;
+}
+
+#else
+#define AV_MEMCPY4 memcpy
+#endif
+
+typedef struct {
+    uint8_t* __attribute__((aligned(32))) data;
+    uint32_t size;
+    uint32_t capacity;
+    uint32_t element_size;
+} AlignedVector;
+
+#define ALIGNED_VECTOR_CHUNK_SIZE 256u
+
 
 #define ROUND_TO_CHUNK_SIZE(v) \
     ((((v) + ALIGNED_VECTOR_CHUNK_SIZE - 1) / ALIGNED_VECTOR_CHUNK_SIZE) * ALIGNED_VECTOR_CHUNK_SIZE)

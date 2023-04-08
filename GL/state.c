@@ -4,136 +4,228 @@
 
 #include "private.h"
 
-static PolyContext GL_CONTEXT;
 
-PolyContext *_glGetPVRContext() {
-    return &GL_CONTEXT;
-}
+static struct {
+    GLboolean is_dirty;
 
 /* We can't just use the GL_CONTEXT for this state as the two
  * GL states are combined, so we store them separately and then
  * calculate the appropriate PVR state from them. */
-static GLenum CULL_FACE = GL_BACK;
-static GLenum FRONT_FACE = GL_CCW;
-static GLboolean CULLING_ENABLED = GL_FALSE;
-static GLboolean COLOR_MATERIAL_ENABLED = GL_FALSE;
+    GLenum depth_func;
+    GLboolean depth_test_enabled;
+    GLenum cull_face;
+    GLenum front_face;
+    GLboolean culling_enabled;
+    GLboolean color_material_enabled;
+    GLboolean znear_clipping_enabled;
+    GLboolean lighting_enabled;
+    GLboolean shared_palette_enabled;
+    GLboolean alpha_test_enabled;
+    GLboolean polygon_offset_enabled;
+    GLboolean normalize_enabled;
+    GLboolean scissor_test_enabled;
+    GLboolean fog_enabled;
+    GLboolean depth_mask_enabled;
 
-GLboolean ZNEAR_CLIPPING_ENABLED = GL_TRUE;
+    struct {
+        GLint x;
+        GLint y;
+        GLsizei width;
+        GLsizei height;
+        GLboolean applied;
+    } scissor_rect;
 
-GLboolean LIGHTING_ENABLED = GL_FALSE;
+    GLenum blend_sfactor;
+    GLenum blend_dfactor;
+    GLboolean blend_enabled;
+    GLfloat offset_factor;
+    GLfloat offset_units;
 
-/* Is the shared texture palette enabled? */
-static GLboolean SHARED_PALETTE_ENABLED = GL_FALSE;
+    GLfloat scene_ambient[4];
+    GLboolean viewer_in_eye_coords;
+    GLenum color_control;
+    GLenum color_material_mode;
+    GLenum color_material_mask;
 
-GLboolean ALPHA_TEST_ENABLED = GL_FALSE;
+    LightSource lights[MAX_GLDC_LIGHTS];
+    GLuint enabled_light_count;
+    Material material;
 
-static GLboolean POLYGON_OFFSET_ENABLED = GL_FALSE;
-
-static GLboolean NORMALIZE_ENABLED = GL_FALSE;
-
-static struct {
-    GLint x;
-    GLint y;
-    GLsizei width;
-    GLsizei height;
-    GLboolean applied;
-} SCISSOR_RECT = {
-    0, 0, 640, 480, false
+    GLenum shade_model;
+} GPUState = {
+    .is_dirty = GL_TRUE,
+    .depth_func = GL_LESS,
+    .depth_test_enabled = GL_FALSE,
+    .cull_face = GL_BACK,
+    .front_face = GL_CCW,
+    .culling_enabled = GL_FALSE,
+    .color_material_enabled = GL_FALSE,
+    .znear_clipping_enabled = GL_TRUE,
+    .lighting_enabled = GL_FALSE,
+    .shared_palette_enabled = GL_FALSE,
+    .alpha_test_enabled = GL_FALSE,
+    .polygon_offset_enabled = GL_FALSE,
+    .normalize_enabled = GL_FALSE,
+    .scissor_test_enabled = GL_FALSE,
+    .fog_enabled = GL_FALSE,
+    .depth_mask_enabled = GL_FALSE,
+    .scissor_rect = {0, 0, 640, 480, false},
+    .blend_sfactor = GL_ONE,
+    .blend_dfactor = GL_ZERO,
+    .blend_enabled = GL_FALSE,
+    .offset_factor = 0.0f,
+    .offset_units = 0.0f,
+    .scene_ambient = {0.2f, 0.2f, 0.2f, 1.0f},
+    .viewer_in_eye_coords = GL_TRUE,
+    .color_control = GL_SINGLE_COLOR,
+    .color_material_mode = GL_AMBIENT_AND_DIFFUSE,
+    .color_material_mask = AMBIENT_MASK | DIFFUSE_MASK,
+    .lights = {0},
+    .enabled_light_count = 0,
+    .material = {0},
+    .shade_model = GL_SMOOTH
 };
 
-GLboolean _glIsSharedTexturePaletteEnabled() {
-    return SHARED_PALETTE_ENABLED;
+void _glGPUStateMarkClean() {
+    GPUState.is_dirty = GL_FALSE;
 }
 
-void _glApplyScissor(bool force);
+void _glGPUStateMarkDirty() {
+    GPUState.is_dirty = GL_TRUE;
+}
 
-static int _calc_pvr_face_culling() {
-    if(!CULLING_ENABLED) {
-        return GPU_CULLING_NONE;
-    } else {
-        if(CULL_FACE == GL_BACK) {
-            return (FRONT_FACE == GL_CW) ? GPU_CULLING_CCW : GPU_CULLING_CW;
-        } else {
-            return (FRONT_FACE == GL_CCW) ? GPU_CULLING_CCW : GPU_CULLING_CW;
+GLboolean _glGPUStateIsDirty() {
+    return GPUState.is_dirty;
+}
+
+Material* _glActiveMaterial() {
+    return &GPUState.material;
+}
+
+LightSource* _glLightAt(GLuint i) {
+    assert(i < MAX_GLDC_LIGHTS);
+    return &GPUState.lights[i];
+}
+
+void _glEnableLight(GLubyte light, GLboolean value) {
+    GPUState.lights[light].isEnabled = value;
+}
+
+GLboolean _glIsDepthTestEnabled() {
+    return GPUState.depth_test_enabled;
+}
+
+GLenum _glGetDepthFunc() {
+    return GPUState.depth_func;
+}
+
+GLboolean _glIsDepthWriteEnabled() {
+    return GPUState.depth_mask_enabled;
+}
+
+GLenum _glGetShadeModel() {
+    return GPUState.shade_model;
+}
+
+GLuint _glEnabledLightCount() {
+    return GPUState.enabled_light_count;
+}
+
+GLfloat* _glLightModelSceneAmbient() {
+    return GPUState.scene_ambient;
+}
+
+GLboolean _glIsBlendingEnabled() {
+    return GPUState.blend_enabled;
+}
+
+GLboolean _glIsAlphaTestEnabled() {
+    return GPUState.alpha_test_enabled;
+}
+
+GLboolean _glIsCullingEnabled() {
+    return GPUState.culling_enabled;
+}
+
+GLenum _glGetCullFace() {
+    return GPUState.cull_face;
+}
+
+GLenum _glGetFrontFace() {
+    return GPUState.front_face;
+}
+
+GLboolean _glIsFogEnabled() {
+    return GPUState.fog_enabled;
+}
+
+GLboolean _glIsScissorTestEnabled() {
+    return GPUState.scissor_test_enabled;
+}
+
+void _glRecalcEnabledLights() {
+    GPUState.enabled_light_count = 0;
+    for(GLubyte i = 0; i < MAX_GLDC_LIGHTS; ++i) {
+        if(_glLightAt(i)->isEnabled) {
+            GPUState.enabled_light_count++;
         }
     }
 }
 
-static GLenum DEPTH_FUNC = GL_LESS;
-static GLboolean DEPTH_TEST_ENABLED = GL_FALSE;
-
-static int _calc_pvr_depth_test() {
-    if(!DEPTH_TEST_ENABLED) {
-        return GPU_DEPTHCMP_ALWAYS;
-    }
-
-    switch(DEPTH_FUNC) {
-        case GL_NEVER:
-            return GPU_DEPTHCMP_NEVER;
-        case GL_LESS:
-            return GPU_DEPTHCMP_GREATER;
-        case GL_EQUAL:
-            return GPU_DEPTHCMP_EQUAL;
-        case GL_LEQUAL:
-            return GPU_DEPTHCMP_GEQUAL;
-        case GL_GREATER:
-            return GPU_DEPTHCMP_LESS;
-        case GL_NOTEQUAL:
-            return GPU_DEPTHCMP_NOTEQUAL;
-        case GL_GEQUAL:
-            return GPU_DEPTHCMP_LEQUAL;
-        break;
-        case GL_ALWAYS:
-        default:
-            return GPU_DEPTHCMP_ALWAYS;
-    }
+void _glSetLightModelViewerInEyeCoordinates(GLboolean v) {
+    GPUState.viewer_in_eye_coords = v;
 }
 
-static GLenum BLEND_SFACTOR = GL_ONE;
-static GLenum BLEND_DFACTOR = GL_ZERO;
-GLboolean BLEND_ENABLED = GL_FALSE;
+void _glSetLightModelSceneAmbient(const GLfloat* v) {
+    vec4cpy(GPUState.scene_ambient, v);
+}
 
-static GLfloat OFFSET_FACTOR = 0.0f;
-static GLfloat OFFSET_UNITS = 0.0f;
+GLfloat* _glGetLightModelSceneAmbient() {
+    return GPUState.scene_ambient;
+}
+
+void _glSetLightModelColorControl(GLint v) {
+    GPUState.color_control = v;
+}
+
+GLenum _glColorMaterialMask() {
+    return GPUState.color_material_mask;
+}
+
+void _glSetColorMaterialMask(GLenum mask) {
+    GPUState.color_material_mask = mask;
+}
+
+void _glSetColorMaterialMode(GLenum mode) {
+    GPUState.color_material_mode = mode;
+}
+
+GLenum _glColorMaterialMode() {
+    return GPUState.color_material_mode;
+}
+
+GLboolean _glIsSharedTexturePaletteEnabled() {
+    return GPUState.shared_palette_enabled;
+}
+
+GLboolean _glNearZClippingEnabled() {
+    return GPUState.znear_clipping_enabled;
+}
+
+void _glApplyScissor(bool force);
 
 GLboolean _glIsNormalizeEnabled() {
-    return NORMALIZE_ENABLED;
+    return GPUState.normalize_enabled;
 }
 
-static int _calcPVRBlendFactor(GLenum factor) {
-    switch(factor) {
-    case GL_ZERO:
-        return GPU_BLEND_ZERO;
-    case GL_SRC_ALPHA:
-        return GPU_BLEND_SRCALPHA;
-    case GL_DST_COLOR:
-        return GPU_BLEND_DESTCOLOR;
-    case GL_DST_ALPHA:
-        return GPU_BLEND_DESTALPHA;
-    case GL_ONE_MINUS_DST_COLOR:
-        return GPU_BLEND_INVDESTCOLOR;
-    case GL_ONE_MINUS_SRC_ALPHA:
-        return GPU_BLEND_INVSRCALPHA;
-    case GL_ONE_MINUS_DST_ALPHA:
-        return GPU_BLEND_INVDESTALPHA;
-    case GL_ONE:
-        return GPU_BLEND_ONE;
-    default:
-        fprintf(stderr, "Invalid blend mode: %u\n", (unsigned int) factor);
-        return GPU_BLEND_ONE;
-    }
+GLenum _glGetBlendSourceFactor() {
+    return GPUState.blend_sfactor;
 }
 
-static void _updatePVRBlend(PolyContext* context) {
-    if(BLEND_ENABLED || ALPHA_TEST_ENABLED) {
-        context->gen.alpha = GPU_ALPHA_ENABLE;
-    } else {
-        context->gen.alpha = GPU_ALPHA_DISABLE;
-    }
-
-    context->blend.src = _calcPVRBlendFactor(BLEND_SFACTOR);
-    context->blend.dst = _calcPVRBlendFactor(BLEND_DFACTOR);
+GLenum _glGetBlendDestFactor() {
+    return GPUState.blend_dfactor;
 }
+
 
 GLboolean _glCheckValidEnum(GLint param, GLint* values, const char* func) {
     GLubyte found = 0;
@@ -167,7 +259,7 @@ void _glUpdatePVRTextureContext(PolyContext *context, GLshort textureUnit) {
         return;
     }
 
-    context->txr.alpha = (BLEND_ENABLED || ALPHA_TEST_ENABLED) ? GPU_TXRALPHA_ENABLE : GPU_TXRALPHA_DISABLE;
+    context->txr.alpha = (GPUState.blend_enabled || GPUState.alpha_test_enabled) ? GPU_TXRALPHA_ENABLE : GPU_TXRALPHA_DISABLE;
 
     GLuint filter = GPU_FILTER_NEAREST;
     GLboolean enableMipmaps = GL_FALSE;
@@ -262,29 +354,22 @@ void _glUpdatePVRTextureContext(PolyContext *context, GLshort textureUnit) {
 }
 
 GLboolean _glIsLightingEnabled() {
-    return LIGHTING_ENABLED;
+    return GPUState.lighting_enabled;
 }
 
 GLboolean _glIsColorMaterialEnabled() {
-    return COLOR_MATERIAL_ENABLED;
+    return GPUState.color_material_enabled;
 }
 
 static GLfloat CLEAR_COLOUR[3];
 
 void _glInitContext() {
-    memset(&GL_CONTEXT, 0, sizeof(PolyContext));
-
-    GL_CONTEXT.list_type = GPU_LIST_OP_POLY;
-    GL_CONTEXT.fmt.color = GPU_CLRFMT_ARGBPACKED;
-    GL_CONTEXT.fmt.uv = GPU_UVFMT_32BIT;
-    GL_CONTEXT.gen.color_clamp = GPU_CLRCLAMP_DISABLE;
-
     const VideoMode* mode = GetVideoMode();
 
-    SCISSOR_RECT.x = 0;
-    SCISSOR_RECT.y = 0;
-    SCISSOR_RECT.width = mode->width;
-    SCISSOR_RECT.height = mode->height;
+    GPUState.scissor_rect.x = 0;
+    GPUState.scissor_rect.y = 0;
+    GPUState.scissor_rect.width = mode->width;
+    GPUState.scissor_rect.height = mode->height;
 
     glClearDepth(1.0f);
     glDepthFunc(GL_LESS);
@@ -312,40 +397,66 @@ void _glInitContext() {
 GLAPI void APIENTRY glEnable(GLenum cap) {
     switch(cap) {
         case GL_TEXTURE_2D:
-            TEXTURES_ENABLED[_glGetActiveTexture()] = GL_TRUE;
+            if(TEXTURES_ENABLED[_glGetActiveTexture()] != GL_TRUE) {
+                TEXTURES_ENABLED[_glGetActiveTexture()] = GL_TRUE;
+                GPUState.is_dirty = GL_TRUE;
+            }
         break;
         case GL_CULL_FACE: {
-            CULLING_ENABLED = GL_TRUE;
-            GL_CONTEXT.gen.culling = _calc_pvr_face_culling();
+            if(GPUState.cull_face != GL_TRUE) {
+                GPUState.cull_face = GL_TRUE;
+                GPUState.is_dirty = GL_TRUE;
+            }
+
         } break;
         case GL_DEPTH_TEST: {
-            DEPTH_TEST_ENABLED = GL_TRUE;
-            GL_CONTEXT.depth.comparison = _calc_pvr_depth_test();
+            if(GPUState.depth_test_enabled != GL_TRUE) {
+                GPUState.depth_test_enabled = GL_TRUE;
+                GPUState.is_dirty = GL_TRUE;
+            }
         } break;
         case GL_BLEND: {
-            BLEND_ENABLED = GL_TRUE;
-            _updatePVRBlend(&GL_CONTEXT);
+            if(GPUState.blend_enabled != GL_TRUE) {
+                GPUState.blend_enabled = GL_TRUE;
+                GPUState.is_dirty = GL_TRUE;
+            }
         } break;
         case GL_SCISSOR_TEST: {
-            GL_CONTEXT.gen.clip_mode = GPU_USERCLIP_INSIDE;
-            _glApplyScissor(false);
+            if(GPUState.scissor_test_enabled != GL_TRUE) {
+                GPUState.scissor_test_enabled = GL_TRUE;
+                GPUState.is_dirty = GL_TRUE;
+            }
         } break;
         case GL_LIGHTING: {
-            LIGHTING_ENABLED = GL_TRUE;
+            if(GPUState.lighting_enabled != GL_TRUE) {
+                GPUState.lighting_enabled = GL_TRUE;
+                GPUState.is_dirty = GL_TRUE;
+            }
         } break;
         case GL_FOG:
-            GL_CONTEXT.gen.fog_type = GPU_FOG_TABLE;
+            if(GPUState.fog_enabled != GL_TRUE) {
+                GPUState.fog_enabled = GL_TRUE;
+                GPUState.is_dirty = GL_TRUE;
+            }
         break;
         case GL_COLOR_MATERIAL:
-            COLOR_MATERIAL_ENABLED = GL_TRUE;
+            if(GPUState.color_material_enabled != GL_TRUE) {
+                GPUState.color_material_enabled = GL_TRUE;
+                GPUState.is_dirty = GL_TRUE;
+            }
         break;
         case GL_SHARED_TEXTURE_PALETTE_EXT: {
-            SHARED_PALETTE_ENABLED = GL_TRUE;
+            if(GPUState.shared_palette_enabled != GL_TRUE) {
+                GPUState.shared_palette_enabled = GL_TRUE;
+                GPUState.is_dirty = GL_TRUE;
+            }
         }
         break;
         case GL_ALPHA_TEST: {
-            ALPHA_TEST_ENABLED = GL_TRUE;
-            _updatePVRBlend(&GL_CONTEXT);
+            if(GPUState.alpha_test_enabled != GL_TRUE) {
+                GPUState.alpha_test_enabled = GL_TRUE;
+                GPUState.is_dirty = GL_TRUE;
+            }
         } break;
         case GL_LIGHT0:
         case GL_LIGHT1:
@@ -354,19 +465,33 @@ GLAPI void APIENTRY glEnable(GLenum cap) {
         case GL_LIGHT4:
         case GL_LIGHT5:
         case GL_LIGHT6:
-        case GL_LIGHT7:
-            _glEnableLight(cap & 0xF, GL_TRUE);
+        case GL_LIGHT7: {
+            LightSource* ptr = _glLightAt(cap & 0xF);
+            if(ptr->isEnabled != GL_TRUE) {
+                ptr->isEnabled = GL_TRUE;
+                _glRecalcEnabledLights();
+            }
+        }
         break;
         case GL_NEARZ_CLIPPING_KOS:
-            ZNEAR_CLIPPING_ENABLED = GL_TRUE;
+            if(GPUState.znear_clipping_enabled != GL_TRUE) {
+                GPUState.znear_clipping_enabled = GL_TRUE;
+                GPUState.is_dirty = GL_TRUE;
+            }
         break;
         case GL_POLYGON_OFFSET_POINT:
         case GL_POLYGON_OFFSET_LINE:
         case GL_POLYGON_OFFSET_FILL:
-            POLYGON_OFFSET_ENABLED = GL_TRUE;
+            if(GPUState.polygon_offset_enabled != GL_TRUE) {
+                GPUState.polygon_offset_enabled = GL_TRUE;
+                GPUState.is_dirty = GL_TRUE;
+            }
         break;
         case GL_NORMALIZE:
-            NORMALIZE_ENABLED = GL_TRUE;
+            if(GPUState.normalize_enabled != GL_TRUE) {
+                GPUState.normalize_enabled = GL_TRUE;
+                GPUState.is_dirty = GL_TRUE;
+            }
         break;
     default:
         break;
@@ -375,39 +500,67 @@ GLAPI void APIENTRY glEnable(GLenum cap) {
 
 GLAPI void APIENTRY glDisable(GLenum cap) {
     switch(cap) {
-        case GL_TEXTURE_2D: {
-            TEXTURES_ENABLED[_glGetActiveTexture()] = GL_FALSE;
-        } break;
+        case GL_TEXTURE_2D:
+            if(TEXTURES_ENABLED[_glGetActiveTexture()] != GL_FALSE) {
+                TEXTURES_ENABLED[_glGetActiveTexture()] = GL_FALSE;
+                GPUState.is_dirty = GL_TRUE;
+            }
+        break;
         case GL_CULL_FACE: {
-            CULLING_ENABLED = GL_FALSE;
-            GL_CONTEXT.gen.culling = _calc_pvr_face_culling();
+            if(GPUState.cull_face != GL_FALSE) {
+                GPUState.cull_face = GL_FALSE;
+                GPUState.is_dirty = GL_TRUE;
+            }
+
         } break;
         case GL_DEPTH_TEST: {
-            DEPTH_TEST_ENABLED = GL_FALSE;
-            GL_CONTEXT.depth.comparison = _calc_pvr_depth_test();
+            if(GPUState.depth_test_enabled != GL_FALSE) {
+                GPUState.depth_test_enabled = GL_FALSE;
+                GPUState.is_dirty = GL_TRUE;
+            }
         } break;
-        case GL_BLEND:
-            BLEND_ENABLED = GL_FALSE;
-            _updatePVRBlend(&GL_CONTEXT);
-        break;
+        case GL_BLEND: {
+            if(GPUState.blend_enabled != GL_FALSE) {
+                GPUState.blend_enabled = GL_FALSE;
+                GPUState.is_dirty = GL_TRUE;
+            }
+        } break;
         case GL_SCISSOR_TEST: {
-            GL_CONTEXT.gen.clip_mode = GPU_USERCLIP_DISABLE;
+            if(GPUState.scissor_test_enabled != GL_FALSE) {
+                GPUState.scissor_test_enabled = GL_FALSE;
+                GPUState.is_dirty = GL_TRUE;
+            }
         } break;
         case GL_LIGHTING: {
-            LIGHTING_ENABLED = GL_FALSE;
+            if(GPUState.lighting_enabled != GL_FALSE) {
+                GPUState.lighting_enabled = GL_FALSE;
+                GPUState.is_dirty = GL_TRUE;
+            }
         } break;
         case GL_FOG:
-            GL_CONTEXT.gen.fog_type = GPU_FOG_DISABLE;
+            if(GPUState.fog_enabled != GL_FALSE) {
+                GPUState.fog_enabled = GL_FALSE;
+                GPUState.is_dirty = GL_TRUE;
+            }
         break;
         case GL_COLOR_MATERIAL:
-            COLOR_MATERIAL_ENABLED = GL_FALSE;
+            if(GPUState.color_material_enabled != GL_FALSE) {
+                GPUState.color_material_enabled = GL_FALSE;
+                GPUState.is_dirty = GL_TRUE;
+            }
         break;
         case GL_SHARED_TEXTURE_PALETTE_EXT: {
-            SHARED_PALETTE_ENABLED = GL_FALSE;
+            if(GPUState.shared_palette_enabled != GL_FALSE) {
+                GPUState.shared_palette_enabled = GL_FALSE;
+                GPUState.is_dirty = GL_TRUE;
+            }
         }
         break;
         case GL_ALPHA_TEST: {
-            ALPHA_TEST_ENABLED = GL_FALSE;
+            if(GPUState.alpha_test_enabled != GL_FALSE) {
+                GPUState.alpha_test_enabled = GL_FALSE;
+                GPUState.is_dirty = GL_TRUE;
+            }
         } break;
         case GL_LIGHT0:
         case GL_LIGHT1:
@@ -417,18 +570,30 @@ GLAPI void APIENTRY glDisable(GLenum cap) {
         case GL_LIGHT5:
         case GL_LIGHT6:
         case GL_LIGHT7:
-            _glEnableLight(cap & 0xF, GL_FALSE);
+            if(GPUState.lights[cap & 0xF].isEnabled) {
+                _glEnableLight(cap & 0xF, GL_FALSE);
+                GPUState.is_dirty = GL_TRUE;
+            }
         break;
         case GL_NEARZ_CLIPPING_KOS:
-            ZNEAR_CLIPPING_ENABLED = GL_FALSE;
+            if(GPUState.znear_clipping_enabled != GL_FALSE) {
+                GPUState.znear_clipping_enabled = GL_FALSE;
+                GPUState.is_dirty = GL_TRUE;
+            }
         break;
         case GL_POLYGON_OFFSET_POINT:
         case GL_POLYGON_OFFSET_LINE:
         case GL_POLYGON_OFFSET_FILL:
-            POLYGON_OFFSET_ENABLED = GL_FALSE;
+            if(GPUState.polygon_offset_enabled != GL_FALSE) {
+                GPUState.polygon_offset_enabled = GL_FALSE;
+                GPUState.is_dirty = GL_TRUE;
+            }
         break;
         case GL_NORMALIZE:
-            NORMALIZE_ENABLED = GL_FALSE;
+            if(GPUState.normalize_enabled != GL_FALSE) {
+                GPUState.normalize_enabled = GL_FALSE;
+                GPUState.is_dirty = GL_TRUE;
+            }
         break;
     default:
         break;
@@ -477,12 +642,17 @@ GLAPI void APIENTRY glReadBuffer(GLenum mode) {
 }
 
 GLAPI void APIENTRY glDepthMask(GLboolean flag) {
-    GL_CONTEXT.depth.write = (flag == GL_TRUE) ? GPU_DEPTHWRITE_ENABLE : GPU_DEPTHWRITE_DISABLE;
+    if(GPUState.depth_mask_enabled != flag) {
+        GPUState.depth_mask_enabled = flag;
+        GPUState.is_dirty = GL_TRUE;
+    }
 }
 
 GLAPI void APIENTRY glDepthFunc(GLenum func) {
-    DEPTH_FUNC = func;
-    GL_CONTEXT.depth.comparison = _calc_pvr_depth_test();
+    if(GPUState.depth_func != func) {
+        GPUState.depth_func = func;
+        GPUState.is_dirty = GL_TRUE;
+    }
 }
 
 /* Hints */
@@ -502,29 +672,34 @@ GLAPI void APIENTRY glPolygonMode(GLenum face, GLenum mode) {
 
 /* Culling */
 GLAPI void APIENTRY glFrontFace(GLenum mode) {
-    FRONT_FACE = mode;
-    GL_CONTEXT.gen.culling = _calc_pvr_face_culling();
+    if(GPUState.front_face != mode) {
+        GPUState.front_face = mode;
+        GPUState.is_dirty = GL_TRUE;
+    }
 }
 
 GLAPI void APIENTRY glCullFace(GLenum mode) {
-    CULL_FACE = mode;
-    GL_CONTEXT.gen.culling = _calc_pvr_face_culling();
-}
-
-GLenum _glGetShadeModel() {
-    return (GL_CONTEXT.gen.shading == GPU_SHADE_FLAT) ? GL_FLAT : GL_SMOOTH;
+    if(GPUState.cull_face != mode) {
+        GPUState.cull_face = mode;
+        GPUState.is_dirty = GL_TRUE;
+    }
 }
 
 /* Shading - Flat or Goraud */
 GLAPI void APIENTRY glShadeModel(GLenum mode) {
-    GL_CONTEXT.gen.shading = (mode == GL_SMOOTH) ? GPU_SHADE_GOURAUD : GPU_SHADE_FLAT;
+    if(GPUState.shade_model != mode) {
+        GPUState.shade_model = mode;
+        GPUState.is_dirty = GL_TRUE;
+    }
 }
 
 /* Blending */
 GLAPI void APIENTRY glBlendFunc(GLenum sfactor, GLenum dfactor) {
-    BLEND_SFACTOR = sfactor;
-    BLEND_DFACTOR = dfactor;
-    _updatePVRBlend(&GL_CONTEXT);
+    if(GPUState.blend_dfactor != dfactor || GPUState.blend_sfactor != sfactor) {
+        GPUState.blend_sfactor = sfactor;
+        GPUState.blend_dfactor = dfactor;
+        GPUState.is_dirty = GL_TRUE;
+    }
 }
 
 
@@ -547,8 +722,9 @@ void glLineWidth(GLfloat width) {
 }
 
 void glPolygonOffset(GLfloat factor, GLfloat units) {
-    OFFSET_FACTOR = factor;
-    OFFSET_UNITS = units;
+    GPUState.offset_factor = factor;
+    GPUState.offset_units = units;
+    GPUState.is_dirty = GL_TRUE;
 }
 
 void glGetTexParameterfv(GLenum target, GLenum pname, GLfloat *params) {
@@ -577,18 +753,20 @@ void glPixelStorei(GLenum pname, GLint param) {
 
 
 void APIENTRY glScissor(GLint x, GLint y, GLsizei width, GLsizei height) {
-    if(SCISSOR_RECT.x == x &&
-        SCISSOR_RECT.y == y &&
-        SCISSOR_RECT.width == width &&
-        SCISSOR_RECT.height == height) {
+
+    if(GPUState.scissor_rect.x == x &&
+        GPUState.scissor_rect.y == y &&
+        GPUState.scissor_rect.width == width &&
+        GPUState.scissor_rect.height == height) {
         return;
     }
 
-    SCISSOR_RECT.x = x;
-    SCISSOR_RECT.y = y;
-    SCISSOR_RECT.width = width;
-    SCISSOR_RECT.height = height;
-    SCISSOR_RECT.applied = false;
+    GPUState.scissor_rect.x = x;
+    GPUState.scissor_rect.y = y;
+    GPUState.scissor_rect.width = width;
+    GPUState.scissor_rect.height = height;
+    GPUState.scissor_rect.applied = false;
+    GPUState.is_dirty = GL_TRUE; // FIXME: do we need this?
 
     _glApplyScissor(false);
 }
@@ -618,12 +796,12 @@ void APIENTRY glScissor(GLint x, GLint y, GLsizei width, GLsizei height) {
 */
 void _glApplyScissor(bool force) {
     /* Don't do anyting if clipping is disabled */
-    if(GL_CONTEXT.gen.clip_mode == GPU_USERCLIP_DISABLE) {
+    if(!GPUState.scissor_test_enabled) {
         return;
     }
 
     /* Don't apply if we already applied - nothing changed */
-    if(SCISSOR_RECT.applied && !force) {
+    if(GPUState.scissor_rect.applied && !force) {
         return;
     }
 
@@ -633,27 +811,31 @@ void _glApplyScissor(bool force) {
 
     const VideoMode* vid_mode = GetVideoMode();
 
-    GLsizei scissor_width = MAX(MIN(SCISSOR_RECT.width, vid_mode->width), 0);
-    GLsizei scissor_height = MAX(MIN(SCISSOR_RECT.height, vid_mode->height), 0);
+    GLsizei scissor_width = MAX(MIN(GPUState.scissor_rect.width, vid_mode->width), 0);
+    GLsizei scissor_height = MAX(MIN(GPUState.scissor_rect.height, vid_mode->height), 0);
 
     /* force the origin to the lower left-hand corner of the screen */
-    miny = (vid_mode->height - scissor_height) - SCISSOR_RECT.y;
-    maxx = (scissor_width + SCISSOR_RECT.x);
+    miny = (vid_mode->height - scissor_height) - GPUState.scissor_rect.y;
+    maxx = (scissor_width + GPUState.scissor_rect.x);
     maxy = (scissor_height + miny);
 
     /* load command structure while mapping screen coords to TA tiles */
     c.flags = GPU_CMD_USERCLIP;
     c.d1 = c.d2 = c.d3 = 0;
-    c.sx = CLAMP(SCISSOR_RECT.x / 32, 0, vid_mode->width / 32);
-    c.sy = CLAMP(miny / 32, 0, vid_mode->height / 32);
-    c.ex = CLAMP((maxx / 32) - 1, 0, vid_mode->width / 32);
-    c.ey = CLAMP((maxy / 32) - 1, 0, vid_mode->height / 32);
+
+    uint16_t vw = vid_mode->width >> 5;
+    uint16_t vh = vid_mode->height >> 5;
+
+    c.sx = CLAMP(GPUState.scissor_rect.x >> 5, 0, vw);
+    c.sy = CLAMP(miny >> 5, 0, vh);
+    c.ex = CLAMP((maxx >> 5) - 1, 0, vw);
+    c.ey = CLAMP((maxy >> 5) - 1, 0, vh);
 
     aligned_vector_push_back(&_glOpaquePolyList()->vector, &c, 1);
     aligned_vector_push_back(&_glPunchThruPolyList()->vector, &c, 1);
     aligned_vector_push_back(&_glTransparentPolyList()->vector, &c, 1);
 
-    SCISSOR_RECT.applied = true;
+    GPUState.scissor_rect.applied = true;
 }
 
 void glStencilFunc(GLenum func, GLint ref, GLuint mask) {
@@ -671,19 +853,19 @@ void glStencilOp(GLenum sfail, GLenum dpfail, GLenum dppass) {
 GLboolean APIENTRY glIsEnabled(GLenum cap) {
     switch(cap) {
     case GL_DEPTH_TEST:
-        return DEPTH_TEST_ENABLED;
+        return GPUState.depth_test_enabled;
     case GL_SCISSOR_TEST:
-        return GL_CONTEXT.gen.clip_mode == GPU_USERCLIP_INSIDE;
+        return GPUState.scissor_test_enabled;
     case GL_CULL_FACE:
-        return CULLING_ENABLED;
+        return GPUState.culling_enabled;
     case GL_LIGHTING:
-        return LIGHTING_ENABLED;
+        return GPUState.lighting_enabled;
     case GL_BLEND:
-        return BLEND_ENABLED;
+        return GPUState.blend_enabled;
     case GL_POLYGON_OFFSET_POINT:
     case GL_POLYGON_OFFSET_LINE:
     case GL_POLYGON_OFFSET_FILL:
-        return POLYGON_OFFSET_ENABLED;
+        return GPUState.polygon_offset_enabled;
     }
 
     return GL_FALSE;
@@ -738,10 +920,10 @@ void APIENTRY glGetFloatv(GLenum pname, GLfloat* params) {
             MEMCPY4(params, _glGetModelViewMatrix(), sizeof(float) * 16);
         break;
         case GL_POLYGON_OFFSET_FACTOR:
-            *params = OFFSET_FACTOR;
+            *params = GPUState.offset_factor;
         break;
         case GL_POLYGON_OFFSET_UNITS:
-            *params = OFFSET_UNITS;
+            *params = GPUState.offset_units;
         break;
         default:
             _glKosThrowError(GL_INVALID_ENUM, __func__);
@@ -758,13 +940,13 @@ void APIENTRY glGetIntegerv(GLenum pname, GLint *params) {
             *params = (_glGetBoundTexture()) ? _glGetBoundTexture()->index : 0;
         break;
         case GL_DEPTH_FUNC:
-            *params = DEPTH_FUNC;
+            *params = GPUState.depth_func;
         break;
         case GL_BLEND_SRC:
-            *params = BLEND_SFACTOR;
+            *params = GPUState.blend_sfactor;
         break;
         case GL_BLEND_DST:
-            *params = BLEND_DFACTOR;
+            *params = GPUState.blend_dfactor;
         break;
         case GL_MAX_TEXTURE_SIZE:
             *params = MAX_TEXTURE_SIZE;

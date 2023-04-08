@@ -251,7 +251,7 @@ typedef struct {
  * when a realloc could invalidate pointers. This structure holds all the information
  * we need on the target vertex array to allow passing around to the various stages (e.g. generate/clip etc.)
  */
-typedef struct {
+typedef struct __attribute__((aligned(32))) {
     PolyList* output;
     uint32_t header_offset; // The offset of the header in the output list
     uint32_t start_offset; // The offset into the output list
@@ -306,7 +306,6 @@ Matrix4x4* _glGetModelViewMatrix();
 
 void _glWipeTextureOnFramebuffers(GLuint texture);
 
-PolyContext* _glGetPVRContext();
 GLubyte _glInitTextures();
 
 void _glUpdatePVRTextureContext(PolyContext* context, GLshort textureUnit);
@@ -354,26 +353,27 @@ void _glSetInternalPaletteFormat(GLenum val);
 GLboolean _glIsSharedTexturePaletteEnabled();
 void _glApplyColorTable(TexturePalette *palette);
 
-extern GLboolean BLEND_ENABLED;
-extern GLboolean ALPHA_TEST_ENABLED;
-extern GLboolean AUTOSORT_ENABLED;
-
-GL_FORCE_INLINE GLboolean _glIsBlendingEnabled() {
-    return BLEND_ENABLED;
-}
-
-GL_FORCE_INLINE GLboolean _glIsAlphaTestEnabled() {
-    return ALPHA_TEST_ENABLED;
-}
+GLboolean _glIsBlendingEnabled();
+GLboolean _glIsAlphaTestEnabled();
+GLboolean _glIsCullingEnabled();
+GLboolean _glIsDepthTestEnabled();
+GLboolean _glIsDepthWriteEnabled();
+GLboolean _glIsScissorTestEnabled();
+GLboolean _glIsFogEnabled();
+GLenum _glGetDepthFunc();
+GLenum _glGetCullFace();
+GLenum _glGetFrontFace();
+GLenum _glGetBlendSourceFactor();
+GLenum _glGetBlendDestFactor();
 
 extern PolyList OP_LIST;
 extern PolyList PT_LIST;
 extern PolyList TR_LIST;
 
 GL_FORCE_INLINE PolyList* _glActivePolyList() {
-    if(BLEND_ENABLED) {
+    if(_glIsBlendingEnabled()) {
         return &TR_LIST;
-    } else if(ALPHA_TEST_ENABLED) {
+    } else if(_glIsAlphaTestEnabled()) {
         return &PT_LIST;
     } else {
         return &OP_LIST;
@@ -383,13 +383,9 @@ GL_FORCE_INLINE PolyList* _glActivePolyList() {
 GLboolean _glIsMipmapComplete(const TextureObject* obj);
 GLubyte* _glGetMipmapLocation(const TextureObject* obj, GLuint level);
 GLuint _glGetMipmapLevelCount(const TextureObject* obj);
-
-extern GLboolean ZNEAR_CLIPPING_ENABLED;
-
-extern GLboolean LIGHTING_ENABLED;
 GLboolean _glIsLightingEnabled();
 
-void _glEnableLight(GLubyte light, unsigned char value);
+void _glEnableLight(GLubyte light, GLboolean value);
 GLboolean _glIsColorMaterialEnabled();
 
 GLboolean _glIsNormalizeEnabled();
@@ -513,9 +509,34 @@ GLuint _glUsedTextureMemory();
 GLuint _glFreeContiguousTextureMemory();
 
 void _glApplyScissor(bool force);
+void _glSetColorMaterialMask(GLenum mask);
+void _glSetColorMaterialMode(GLenum mode);
+GLenum _glColorMaterialMode();
+
+Material* _glActiveMaterial();
+void _glSetLightModelViewerInEyeCoordinates(GLboolean v);
+void _glSetLightModelSceneAmbient(const GLfloat* v);
+void _glSetLightModelColorControl(GLint v);
+GLuint _glEnabledLightCount();
+void _glRecalcEnabledLights();
+GLfloat* _glLightModelSceneAmbient();
+GLfloat* _glGetLightModelSceneAmbient();
+LightSource* _glLightAt(GLuint i);
+GLboolean _glNearZClippingEnabled();
+
+GLboolean _glGPUStateIsDirty();
+void _glGPUStateMarkClean();
+void _glGPUStateMarkDirty();
 
 #define MAX_GLDC_TEXTURE_UNITS 2
 #define MAX_GLDC_LIGHTS 8
+
+#define AMBIENT_MASK 1
+#define DIFFUSE_MASK 2
+#define EMISSION_MASK 4
+#define SPECULAR_MASK 8
+#define SCENE_AMBIENT_MASK 16
+
 
 /* This is from KOS pvr_buffers.c */
 #define PVR_MIN_Z 0.0001f

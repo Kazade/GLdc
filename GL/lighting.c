@@ -12,125 +12,106 @@
  * multiplier ends up less than this value */
 #define ATTENUATION_THRESHOLD 100.0f
 
-static GLfloat SCENE_AMBIENT [] = {0.2f, 0.2f, 0.2f, 1.0f};
-static GLboolean VIEWER_IN_EYE_COORDINATES = GL_TRUE;
-static GLenum COLOR_CONTROL = GL_SINGLE_COLOR;
 
-static GLenum COLOR_MATERIAL_MODE = GL_AMBIENT_AND_DIFFUSE;
-
-#define AMBIENT_MASK 1
-#define DIFFUSE_MASK 2
-#define EMISSION_MASK 4
-#define SPECULAR_MASK 8
-#define SCENE_AMBIENT_MASK 16
-
-static GLenum COLOR_MATERIAL_MASK = AMBIENT_MASK | DIFFUSE_MASK;
-
-static LightSource LIGHTS[MAX_GLDC_LIGHTS];
-static GLuint ENABLED_LIGHT_COUNT = 0;
-static Material MATERIAL;
-
-GL_FORCE_INLINE void _glPrecalcLightingValues(GLuint mask);
-
-static void recalcEnabledLights() {
-    GLubyte i;
-
-    ENABLED_LIGHT_COUNT = 0;
-    for(i = 0; i < MAX_GLDC_LIGHTS; ++i) {
-        if(LIGHTS[i].isEnabled) {
-            ENABLED_LIGHT_COUNT++;
-        }
-    }
-}
-
-void _glInitLights() {
-    static GLfloat ONE [] = {1.0f, 1.0f, 1.0f, 1.0f};
-    static GLfloat ZERO [] = {0.0f, 0.0f, 0.0f, 1.0f};
-    static GLfloat PARTIAL [] = {0.2f, 0.2f, 0.2f, 1.0f};
-    static GLfloat MOSTLY [] = {0.8f, 0.8f, 0.8f, 1.0f};
-
-    memcpy(MATERIAL.ambient, PARTIAL, sizeof(GLfloat) * 4);
-    memcpy(MATERIAL.diffuse, MOSTLY, sizeof(GLfloat) * 4);
-    memcpy(MATERIAL.specular, ZERO, sizeof(GLfloat) * 4);
-    memcpy(MATERIAL.emissive, ZERO, sizeof(GLfloat) * 4);
-    MATERIAL.exponent = 0.0f;
-
-    GLubyte i;
-    for(i = 0; i < MAX_GLDC_LIGHTS; ++i) {
-        memcpy(LIGHTS[i].ambient, ZERO, sizeof(GLfloat) * 4);
-        memcpy(LIGHTS[i].diffuse, ONE, sizeof(GLfloat) * 4);
-        memcpy(LIGHTS[i].specular, ONE, sizeof(GLfloat) * 4);
-
-        if(i > 0) {
-            memcpy(LIGHTS[i].diffuse, ZERO, sizeof(GLfloat) * 4);
-            memcpy(LIGHTS[i].specular, ZERO, sizeof(GLfloat) * 4);
-        }
-
-        LIGHTS[i].position[0] = LIGHTS[i].position[1] = LIGHTS[i].position[3] = 0.0f;
-        LIGHTS[i].position[2] = 1.0f;
-        LIGHTS[i].isDirectional = GL_TRUE;
-        LIGHTS[i].isEnabled = GL_FALSE;
-
-        LIGHTS[i].spot_direction[0] = LIGHTS[i].spot_direction[1] = 0.0f;
-        LIGHTS[i].spot_direction[2] = -1.0f;
-
-        LIGHTS[i].spot_exponent = 0.0f;
-        LIGHTS[i].spot_cutoff = 180.0f;
-
-        LIGHTS[i].constant_attenuation = 1.0f;
-        LIGHTS[i].linear_attenuation = 0.0f;
-        LIGHTS[i].quadratic_attenuation = 0.0f;
-    }
-
-    _glPrecalcLightingValues(~0);
-    recalcEnabledLights();
-}
-
-void _glEnableLight(GLubyte light, GLboolean value) {
-    LIGHTS[light].isEnabled = value;
-    recalcEnabledLights();
-}
-
-GL_FORCE_INLINE void _glPrecalcLightingValues(GLuint mask) {
+void _glPrecalcLightingValues(GLuint mask) {
     /* Pre-calculate lighting values */
     GLshort i;
 
+    Material* material = _glActiveMaterial();
+
     if(mask & AMBIENT_MASK) {
         for(i = 0; i < MAX_GLDC_LIGHTS; ++i) {
-            LIGHTS[i].ambientMaterial[0] = LIGHTS[i].ambient[0] * MATERIAL.ambient[0];
-            LIGHTS[i].ambientMaterial[1] = LIGHTS[i].ambient[1] * MATERIAL.ambient[1];
-            LIGHTS[i].ambientMaterial[2] = LIGHTS[i].ambient[2] * MATERIAL.ambient[2];
-            LIGHTS[i].ambientMaterial[3] = LIGHTS[i].ambient[3] * MATERIAL.ambient[3];
+            LightSource* light = _glLightAt(i);
+
+            light->ambientMaterial[0] = light->ambient[0] * material->ambient[0];
+            light->ambientMaterial[1] = light->ambient[1] * material->ambient[1];
+            light->ambientMaterial[2] = light->ambient[2] * material->ambient[2];
+            light->ambientMaterial[3] = light->ambient[3] * material->ambient[3];
+
         }
     }
 
     if(mask & DIFFUSE_MASK) {
         for(i = 0; i < MAX_GLDC_LIGHTS; ++i) {
-            LIGHTS[i].diffuseMaterial[0] = LIGHTS[i].diffuse[0] * MATERIAL.diffuse[0];
-            LIGHTS[i].diffuseMaterial[1] = LIGHTS[i].diffuse[1] * MATERIAL.diffuse[1];
-            LIGHTS[i].diffuseMaterial[2] = LIGHTS[i].diffuse[2] * MATERIAL.diffuse[2];
-            LIGHTS[i].diffuseMaterial[3] = LIGHTS[i].diffuse[3] * MATERIAL.diffuse[3];
+            LightSource* light = _glLightAt(i);
+
+            light->diffuseMaterial[0] = light->diffuse[0] * material->diffuse[0];
+            light->diffuseMaterial[1] = light->diffuse[1] * material->diffuse[1];
+            light->diffuseMaterial[2] = light->diffuse[2] * material->diffuse[2];
+            light->diffuseMaterial[3] = light->diffuse[3] * material->diffuse[3];
         }
     }
 
     if(mask & SPECULAR_MASK) {
         for(i = 0; i < MAX_GLDC_LIGHTS; ++i) {
-            LIGHTS[i].specularMaterial[0] = LIGHTS[i].specular[0] * MATERIAL.specular[0];
-            LIGHTS[i].specularMaterial[1] = LIGHTS[i].specular[1] * MATERIAL.specular[1];
-            LIGHTS[i].specularMaterial[2] = LIGHTS[i].specular[2] * MATERIAL.specular[2];
-            LIGHTS[i].specularMaterial[3] = LIGHTS[i].specular[3] * MATERIAL.specular[3];
+            LightSource* light = _glLightAt(i);
+
+            light->specularMaterial[0] = light->specular[0] * material->specular[0];
+            light->specularMaterial[1] = light->specular[1] * material->specular[1];
+            light->specularMaterial[2] = light->specular[2] * material->specular[2];
+            light->specularMaterial[3] = light->specular[3] * material->specular[3];
         }
     }
 
     /* If ambient or emission are updated, we need to update
      * the base colour. */
     if((mask & AMBIENT_MASK) || (mask & EMISSION_MASK) || (mask & SCENE_AMBIENT_MASK)) {
-        MATERIAL.baseColour[0] = MATH_fmac(SCENE_AMBIENT[0], MATERIAL.ambient[0], MATERIAL.emissive[0]);
-        MATERIAL.baseColour[1] = MATH_fmac(SCENE_AMBIENT[1], MATERIAL.ambient[1], MATERIAL.emissive[1]);
-        MATERIAL.baseColour[2] = MATH_fmac(SCENE_AMBIENT[2], MATERIAL.ambient[2], MATERIAL.emissive[2]);
-        MATERIAL.baseColour[3] = MATH_fmac(SCENE_AMBIENT[3], MATERIAL.ambient[3], MATERIAL.emissive[3]);
+        GLfloat* scene_ambient = _glLightModelSceneAmbient();
+
+        material->baseColour[0] = MATH_fmac(scene_ambient[0], material->ambient[0], material->emissive[0]);
+        material->baseColour[1] = MATH_fmac(scene_ambient[1], material->ambient[1], material->emissive[1]);
+        material->baseColour[2] = MATH_fmac(scene_ambient[2], material->ambient[2], material->emissive[2]);
+        material->baseColour[3] = MATH_fmac(scene_ambient[3], material->ambient[3], material->emissive[3]);
     }
 }
+
+void _glInitLights() {
+    Material* material = _glActiveMaterial();
+
+    static GLfloat ONE [] = {1.0f, 1.0f, 1.0f, 1.0f};
+    static GLfloat ZERO [] = {0.0f, 0.0f, 0.0f, 1.0f};
+    static GLfloat PARTIAL [] = {0.2f, 0.2f, 0.2f, 1.0f};
+    static GLfloat MOSTLY [] = {0.8f, 0.8f, 0.8f, 1.0f};
+
+    memcpy(material->ambient, PARTIAL, sizeof(GLfloat) * 4);
+    memcpy(material->diffuse, MOSTLY, sizeof(GLfloat) * 4);
+    memcpy(material->specular, ZERO, sizeof(GLfloat) * 4);
+    memcpy(material->emissive, ZERO, sizeof(GLfloat) * 4);
+    material->exponent = 0.0f;
+
+    GLubyte i;
+    for(i = 0; i < MAX_GLDC_LIGHTS; ++i) {
+        LightSource* light = _glLightAt(i);
+
+        memcpy(light->ambient, ZERO, sizeof(GLfloat) * 4);
+        memcpy(light->diffuse, ONE, sizeof(GLfloat) * 4);
+        memcpy(light->specular, ONE, sizeof(GLfloat) * 4);
+
+        if(i > 0) {
+            memcpy(light->diffuse, ZERO, sizeof(GLfloat) * 4);
+            memcpy(light->specular, ZERO, sizeof(GLfloat) * 4);
+        }
+
+        light->position[0] = light->position[1] = light->position[3] = 0.0f;
+        light->position[2] = 1.0f;
+        light->isDirectional = GL_TRUE;
+        light->isEnabled = GL_FALSE;
+
+        light->spot_direction[0] = light->spot_direction[1] = 0.0f;
+        light->spot_direction[2] = -1.0f;
+
+        light->spot_exponent = 0.0f;
+        light->spot_cutoff = 180.0f;
+
+        light->constant_attenuation = 1.0f;
+        light->linear_attenuation = 0.0f;
+        light->quadratic_attenuation = 0.0f;
+    }
+
+    _glPrecalcLightingValues(~0);
+    _glRecalcEnabledLights();
+}
+
 
 void APIENTRY glLightModelf(GLenum pname, const GLfloat param) {
     glLightModelfv(pname, &param);
@@ -143,11 +124,13 @@ void APIENTRY glLightModeli(GLenum pname, const GLint param) {
 void APIENTRY glLightModelfv(GLenum pname, const GLfloat *params) {
     switch(pname) {
         case GL_LIGHT_MODEL_AMBIENT: {
-            for(int i = 0; i < 4; ++i) SCENE_AMBIENT[i] = params[i];
-            _glPrecalcLightingValues(SCENE_AMBIENT_MASK);
+            if(memcmp(_glGetLightModelSceneAmbient(), params, sizeof(float) * 4) != 0) {
+                _glSetLightModelSceneAmbient(params);
+                _glPrecalcLightingValues(SCENE_AMBIENT_MASK);
+            }
         } break;
         case GL_LIGHT_MODEL_LOCAL_VIEWER:
-            VIEWER_IN_EYE_COORDINATES = (*params) ? GL_TRUE : GL_FALSE;
+            _glSetLightModelViewerInEyeCoordinates((*params) ? GL_TRUE : GL_FALSE);
         break;
     case GL_LIGHT_MODEL_TWO_SIDE:
         /* Not implemented */
@@ -159,10 +142,10 @@ void APIENTRY glLightModelfv(GLenum pname, const GLfloat *params) {
 void APIENTRY glLightModeliv(GLenum pname, const GLint* params) {
     switch(pname) {
         case GL_LIGHT_MODEL_COLOR_CONTROL:
-            COLOR_CONTROL = *params;
+            _glSetLightModelColorControl(*params);
         break;
         case GL_LIGHT_MODEL_LOCAL_VIEWER:
-            VIEWER_IN_EYE_COORDINATES = (*params) ? GL_TRUE : GL_FALSE;
+            _glSetLightModelViewerInEyeCoordinates((*params) ? GL_TRUE : GL_FALSE);
         break;
     default:
         _glKosThrowError(GL_INVALID_ENUM, __func__);
@@ -173,6 +156,7 @@ void APIENTRY glLightfv(GLenum light, GLenum pname, const GLfloat *params) {
     GLubyte idx = light & 0xF;
 
     if(idx >= MAX_GLDC_LIGHTS) {
+        _glKosThrowError(GL_INVALID_VALUE, __func__);
         return;
     }
 
@@ -180,33 +164,46 @@ void APIENTRY glLightfv(GLenum light, GLenum pname, const GLfloat *params) {
                   (pname == GL_DIFFUSE) ? DIFFUSE_MASK :
                   (pname == GL_SPECULAR) ? SPECULAR_MASK : 0;
 
+    LightSource* l = _glLightAt(idx);
+
+    GLboolean rebuild = GL_FALSE;
+
     switch(pname) {
         case GL_AMBIENT:
-            memcpy(LIGHTS[idx].ambient, params, sizeof(GLfloat) * 4);
+            rebuild = memcmp(l->ambient, params, sizeof(GLfloat) * 4) != 0;
+            if(rebuild) {
+                memcpy(l->ambient, params, sizeof(GLfloat) * 4);
+            }
         break;
         case GL_DIFFUSE:
-            memcpy(LIGHTS[idx].diffuse, params, sizeof(GLfloat) * 4);
+            rebuild = memcmp(l->diffuse, params, sizeof(GLfloat) * 4) != 0;
+            if(rebuild) {
+                memcpy(l->diffuse, params, sizeof(GLfloat) * 4);
+            }
         break;
         case GL_SPECULAR:
-            memcpy(LIGHTS[idx].specular, params, sizeof(GLfloat) * 4);
+            rebuild = memcmp(l->specular, params, sizeof(GLfloat) * 4) != 0;
+            if(rebuild) {
+                memcpy(l->specular, params, sizeof(GLfloat) * 4);
+            }
         break;
         case GL_POSITION: {
-            _glMatrixLoadModelView();
-            memcpy(LIGHTS[idx].position, params, sizeof(GLfloat) * 4);
+            memcpy(l->position, params, sizeof(GLfloat) * 4);
 
-            LIGHTS[idx].isDirectional = params[3] == 0.0f;
+            l->isDirectional = params[3] == 0.0f;
 
-            if(LIGHTS[idx].isDirectional) {
+            if(l->isDirectional) {
                 //FIXME: Do we need to rotate directional lights?
             } else {
-                TransformVec3(LIGHTS[idx].position);
+                _glMatrixLoadModelView();
+                TransformVec3(l->position);
             }
         }
         break;
         case GL_SPOT_DIRECTION: {
-            LIGHTS[idx].spot_direction[0] = params[0];
-            LIGHTS[idx].spot_direction[1] = params[1];
-            LIGHTS[idx].spot_direction[2] = params[2];
+            l->spot_direction[0] = params[0];
+            l->spot_direction[1] = params[1];
+            l->spot_direction[2] = params[2];
         } break;
         case GL_CONSTANT_ATTENUATION:
         case GL_LINEAR_ATTENUATION:
@@ -220,31 +217,36 @@ void APIENTRY glLightfv(GLenum light, GLenum pname, const GLfloat *params) {
         return;
     }
 
-    _glPrecalcLightingValues(mask);
+    if(rebuild) {
+        _glPrecalcLightingValues(mask);
+    }
+
 }
 
 void APIENTRY glLightf(GLenum light, GLenum pname, GLfloat param) {
     GLubyte idx = light & 0xF;
 
     if(idx >= MAX_GLDC_LIGHTS) {
+        _glKosThrowError(GL_INVALID_VALUE, __func__);
         return;
     }
 
+    LightSource* l = _glLightAt(idx);
     switch(pname) {
         case GL_CONSTANT_ATTENUATION:
-            LIGHTS[idx].constant_attenuation = param;
+            l->constant_attenuation = param;
         break;
         case GL_LINEAR_ATTENUATION:
-            LIGHTS[idx].linear_attenuation = param;
+            l->linear_attenuation = param;
         break;
         case GL_QUADRATIC_ATTENUATION:
-            LIGHTS[idx].quadratic_attenuation = param;
+            l->quadratic_attenuation = param;
         break;
         case GL_SPOT_EXPONENT:
-            LIGHTS[idx].spot_exponent = param;
+            l->spot_exponent = param;
         break;
         case GL_SPOT_CUTOFF:
-            LIGHTS[idx].spot_cutoff = param;
+            l->spot_cutoff = param;
         break;
     default:
         _glKosThrowError(GL_INVALID_ENUM, __func__);
@@ -257,7 +259,7 @@ void APIENTRY glMaterialf(GLenum face, GLenum pname, const GLfloat param) {
         return;
     }
 
-    MATERIAL.exponent = _MIN(param, 128);  /* 128 is the max according to the GL spec */
+    _glActiveMaterial()->exponent = _MIN(param, 128);  /* 128 is the max according to the GL spec */
 }
 
 void APIENTRY glMateriali(GLenum face, GLenum pname, const GLint param) {
@@ -270,25 +272,49 @@ void APIENTRY glMaterialfv(GLenum face, GLenum pname, const GLfloat *params) {
         return;
     }
 
+    Material* material = _glActiveMaterial();
+
+    GLboolean rebuild = GL_FALSE;
+
     switch(pname) {
         case GL_SHININESS:
             glMaterialf(face, pname, *params);
+            rebuild = GL_TRUE;
         break;
-        case GL_AMBIENT:
-            vec4cpy(MATERIAL.ambient, params);
-        break;
+        case GL_AMBIENT: {
+            if(memcmp(material->ambient, params, sizeof(float) * 4) != 0) {
+                vec4cpy(material->ambient, params);
+                rebuild = GL_TRUE;
+            }
+        } break;
         case GL_DIFFUSE:
-            vec4cpy(MATERIAL.diffuse, params);
+            if(memcmp(material->diffuse, params, sizeof(float) * 4) != 0) {
+                vec4cpy(material->diffuse, params);
+                rebuild = GL_TRUE;
+            }
         break;
         case GL_SPECULAR:
-            vec4cpy(MATERIAL.specular, params);
+            if(memcmp(material->specular, params, sizeof(float) * 4) != 0) {
+                vec4cpy(material->specular, params);
+                rebuild = GL_TRUE;
+            }
         break;
         case GL_EMISSION:
-            vec4cpy(MATERIAL.emissive, params);
+            if(memcmp(material->emissive, params, sizeof(float) * 4) != 0) {
+                vec4cpy(material->emissive, params);
+                rebuild = GL_TRUE;
+            }
         break;
         case GL_AMBIENT_AND_DIFFUSE: {
-            vec4cpy(MATERIAL.ambient, params);
-            vec4cpy(MATERIAL.diffuse, params);
+            rebuild = (
+                memcmp(material->ambient, params, sizeof(float) * 4) != 0 ||
+                memcmp(material->diffuse, params, sizeof(float) * 4) != 0
+            );
+
+            if(rebuild) {
+                vec4cpy(material->ambient, params);
+                vec4cpy(material->diffuse, params);
+            }
         } break;
         case GL_COLOR_INDEXES:
         default: {
@@ -297,13 +323,15 @@ void APIENTRY glMaterialfv(GLenum face, GLenum pname, const GLfloat *params) {
         }
     }
 
-    GLuint updateMask = (pname == GL_AMBIENT) ? AMBIENT_MASK:
-                        (pname == GL_DIFFUSE) ? DIFFUSE_MASK:
-                        (pname == GL_SPECULAR) ? SPECULAR_MASK:
-                        (pname == GL_EMISSION) ? EMISSION_MASK:
-                        (pname == GL_AMBIENT_AND_DIFFUSE) ? AMBIENT_MASK | DIFFUSE_MASK : 0;
+    if(rebuild) {
+        GLuint updateMask = (pname == GL_AMBIENT) ? AMBIENT_MASK:
+                            (pname == GL_DIFFUSE) ? DIFFUSE_MASK:
+                            (pname == GL_SPECULAR) ? SPECULAR_MASK:
+                            (pname == GL_EMISSION) ? EMISSION_MASK:
+                            (pname == GL_AMBIENT_AND_DIFFUSE) ? AMBIENT_MASK | DIFFUSE_MASK : 0;
 
-    _glPrecalcLightingValues(updateMask);
+        _glPrecalcLightingValues(updateMask);
+    }
 }
 
 void APIENTRY glColorMaterial(GLenum face, GLenum mode) {
@@ -318,12 +346,13 @@ void APIENTRY glColorMaterial(GLenum face, GLenum mode) {
         return;
     }
 
-    COLOR_MATERIAL_MASK = (mode == GL_AMBIENT) ? AMBIENT_MASK:
+    GLenum mask = (mode == GL_AMBIENT) ? AMBIENT_MASK:
                           (mode == GL_DIFFUSE) ? DIFFUSE_MASK:
                           (mode == GL_AMBIENT_AND_DIFFUSE) ? AMBIENT_MASK | DIFFUSE_MASK:
                           (mode == GL_EMISSION) ? EMISSION_MASK : SPECULAR_MASK;
 
-    COLOR_MATERIAL_MODE = mode;
+    _glSetColorMaterialMask(mask);
+    _glSetColorMaterialMode(mode);
 }
 
 GL_FORCE_INLINE void bgra_to_float(const uint8_t* input, GLfloat* output) {
@@ -336,44 +365,68 @@ GL_FORCE_INLINE void bgra_to_float(const uint8_t* input, GLfloat* output) {
 }
 
 void _glUpdateColourMaterialA(const GLubyte* argb) {
+    Material* material = _glActiveMaterial();
+
     float colour[4];
     bgra_to_float(argb, colour);
-    vec4cpy(MATERIAL.ambient, colour);
-    _glPrecalcLightingValues(COLOR_MATERIAL_MASK);
+    vec4cpy(material->ambient, colour);
+    GLenum mask = _glColorMaterialMode();
+    _glPrecalcLightingValues(mask);
 }
 
 void _glUpdateColourMaterialD(const GLubyte* argb) {
+    Material* material = _glActiveMaterial();
+
     float colour[4];
     bgra_to_float(argb, colour);
-    vec4cpy(MATERIAL.diffuse, colour);
-    _glPrecalcLightingValues(COLOR_MATERIAL_MASK);
+    vec4cpy(material->diffuse, colour);
+
+    GLenum mask = _glColorMaterialMode();
+    _glPrecalcLightingValues(mask);
 }
 
 void _glUpdateColourMaterialE(const GLubyte* argb) {
+    Material* material = _glActiveMaterial();
+
     float colour[4];
     bgra_to_float(argb, colour);
-    vec4cpy(MATERIAL.emissive, colour);
-    _glPrecalcLightingValues(COLOR_MATERIAL_MASK);
+    vec4cpy(material->emissive, colour);
+
+    GLenum mask = _glColorMaterialMode();
+    _glPrecalcLightingValues(mask);
 }
 
 void _glUpdateColourMaterialAD(const GLubyte* argb) {
+    Material* material = _glActiveMaterial();
+
     float colour[4];
     bgra_to_float(argb, colour);
-    vec4cpy(MATERIAL.ambient, colour);
-    vec4cpy(MATERIAL.diffuse, colour);
-    _glPrecalcLightingValues(COLOR_MATERIAL_MASK);
+    vec4cpy(material->ambient, colour);
+    vec4cpy(material->diffuse, colour);
+
+    GLenum mask = _glColorMaterialMode();
+    _glPrecalcLightingValues(mask);
 }
 
 GL_FORCE_INLINE GLboolean isDiffuseColorMaterial() {
-    return (COLOR_MATERIAL_MODE == GL_DIFFUSE || COLOR_MATERIAL_MODE == GL_AMBIENT_AND_DIFFUSE);
+    GLenum mode = _glColorMaterialMode();
+    return (
+        mode == GL_DIFFUSE ||
+        mode == GL_AMBIENT_AND_DIFFUSE
+    );
 }
 
 GL_FORCE_INLINE GLboolean isAmbientColorMaterial() {
-    return (COLOR_MATERIAL_MODE == GL_AMBIENT || COLOR_MATERIAL_MODE == GL_AMBIENT_AND_DIFFUSE);
+    GLenum mode = _glColorMaterialMode();
+    return (
+        mode == GL_AMBIENT ||
+        mode == GL_AMBIENT_AND_DIFFUSE
+    );
 }
 
 GL_FORCE_INLINE GLboolean isSpecularColorMaterial() {
-    return (COLOR_MATERIAL_MODE == GL_SPECULAR);
+    GLenum mode = _glColorMaterialMode();
+    return (mode == GL_SPECULAR);
 }
 
 /*
@@ -408,12 +461,15 @@ GL_FORCE_INLINE void _glLightVertexDirectional(
     float* final, uint8_t lid,
     float LdotN, float NdotH) {
 
-    float FI = (MATERIAL.exponent) ?
-        faster_pow((LdotN != 0.0f) * NdotH, MATERIAL.exponent) : 1.0f;
+    Material* material = _glActiveMaterial();
+    LightSource* light = _glLightAt(lid);
+
+    float FI = (material->exponent) ?
+        faster_pow((LdotN != 0.0f) * NdotH, material->exponent) : 1.0f;
 
 #define _PROCESS_COMPONENT(X) \
-    final[X] += (LdotN * LIGHTS[lid].diffuseMaterial[X] + LIGHTS[lid].ambientMaterial[X]) \
-        + (FI * LIGHTS[lid].specularMaterial[X]); \
+    final[X] += (LdotN * light->diffuseMaterial[X] + light->ambientMaterial[X]) \
+        + (FI * light->specularMaterial[X]); \
 
     _PROCESS_COMPONENT(0);
     _PROCESS_COMPONENT(1);
@@ -426,12 +482,15 @@ GL_FORCE_INLINE void _glLightVertexPoint(
     float* final, uint8_t lid,
     float LdotN, float NdotH, float att) {
 
-    float FI = (MATERIAL.exponent) ?
-        faster_pow((LdotN != 0.0f) * NdotH, MATERIAL.exponent) : 1.0f;
+    Material* material = _glActiveMaterial();
+    LightSource* light = _glLightAt(lid);
+
+    float FI = (material->exponent) ?
+        faster_pow((LdotN != 0.0f) * NdotH, material->exponent) : 1.0f;
 
 #define _PROCESS_COMPONENT(X) \
-    final[X] += ((LdotN * LIGHTS[lid].diffuseMaterial[X] + LIGHTS[lid].ambientMaterial[X]) \
-        + (FI * LIGHTS[lid].specularMaterial[X])) * att; \
+    final[X] += ((LdotN * light->diffuseMaterial[X] + light->ambientMaterial[X]) \
+        + (FI * light->specularMaterial[X])) * att; \
 
     _PROCESS_COMPONENT(0);
     _PROCESS_COMPONENT(1);
@@ -444,6 +503,8 @@ void _glPerformLighting(Vertex* vertices, EyeSpaceData* es, const uint32_t count
     GLubyte i;
     GLuint j;
 
+    Material* material = _glActiveMaterial();
+
     Vertex* vertex = vertices;
     EyeSpaceData* data = es;
 
@@ -451,7 +512,8 @@ void _glPerformLighting(Vertex* vertices, EyeSpaceData* es, const uint32_t count
     void (*updateColourMaterial)(const GLubyte*) = NULL;
 
     if(_glIsColorMaterialEnabled()) {
-        switch(COLOR_MATERIAL_MODE) {
+        GLenum mode = _glColorMaterialMode();
+        switch(mode) {
             case GL_AMBIENT:
                 updateColourMaterial = _glUpdateColourMaterialA;
             break;
@@ -474,10 +536,10 @@ void _glPerformLighting(Vertex* vertices, EyeSpaceData* es, const uint32_t count
         }
 
         /* Copy the base colour across */
-        vec4cpy(data->finalColour, MATERIAL.baseColour);
+        vec4cpy(data->finalColour, material->baseColour);
     }
 
-    if(!ENABLED_LIGHT_COUNT) {
+    if(!_glEnabledLightCount()) {
         return;
     }
 
@@ -495,15 +557,17 @@ void _glPerformLighting(Vertex* vertices, EyeSpaceData* es, const uint32_t count
         const float Nz = data->n[2];
 
         for(i = 0; i < MAX_GLDC_LIGHTS; ++i) {
-            if(!LIGHTS[i].isEnabled) {
+            LightSource* light = _glLightAt(i);
+
+            if(!light->isEnabled) {
                 continue;
             }
 
-            float Lx = LIGHTS[i].position[0] - vertex->xyz[0];
-            float Ly = LIGHTS[i].position[1] - vertex->xyz[1];
-            float Lz = LIGHTS[i].position[2] - vertex->xyz[2];
+            float Lx = light->position[0] - vertex->xyz[0];
+            float Ly = light->position[1] - vertex->xyz[1];
+            float Lz = light->position[2] - vertex->xyz[2];
 
-            if(LIGHTS[i].isDirectional) {
+            if(light->isDirectional) {
                 float Hx = (Lx + 0);
                 float Hy = (Ly + 0);
                 float Hz = (Lz + 1);
@@ -532,9 +596,9 @@ void _glPerformLighting(Vertex* vertices, EyeSpaceData* es, const uint32_t count
                 VEC3_LENGTH(Lx, Ly, Lz, D);
 
                 float att = (
-                    LIGHTS[i].constant_attenuation + (
-                        LIGHTS[i].linear_attenuation * D
-                    ) + (LIGHTS[i].quadratic_attenuation * D * D)
+                    light->constant_attenuation + (
+                        light->linear_attenuation * D
+                    ) + (light->quadratic_attenuation * D * D)
                 );
 
                 /* Anything over the attenuation threshold will

@@ -607,6 +607,8 @@ void APIENTRY glBindTexture(GLenum  target, GLuint texture) {
     } else {
         TEXTURE_UNITS[ACTIVE_TEXTURE] = NULL;
     }
+
+    _glGPUStateMarkDirty();
 }
 
 void APIENTRY glTexEnvi(GLenum target, GLenum pname, GLint param) {
@@ -668,6 +670,8 @@ void APIENTRY glTexEnvi(GLenum target, GLenum pname, GLint param) {
         default:
            break;
     }
+
+    _glGPUStateMarkDirty();
 }
 
 void APIENTRY glTexEnvf(GLenum target, GLenum pname, GLfloat param) {
@@ -1215,12 +1219,15 @@ void _glAllocateSpaceForMipmaps(TextureObject* active) {
     GLuint size = active->baseDataSize;
 
     /* Copy the data out of the pvr and back to ram */
-    GLubyte* temp = (GLubyte*) malloc(size);
-    memcpy(temp, active->data, size);
+    GLubyte* temp = NULL;
+    if(active->data) {
+        temp = (GLubyte*) malloc(size);
+        memcpy(temp, active->data, size);
 
-    /* Free the PVR data */
-    yalloc_free(YALLOC_BASE, active->data);
-    active->data = NULL;
+        /* Free the PVR data */
+        yalloc_free(YALLOC_BASE, active->data);
+        active->data = NULL;
+    }
 
     /* Figure out how much room to allocate for mipmaps */
     GLuint bytes = _glGetMipmapDataSize(active);
@@ -1228,16 +1235,14 @@ void _glAllocateSpaceForMipmaps(TextureObject* active) {
     active->data = yalloc_alloc_and_defrag(bytes);
 
     gl_assert(active->data);
-    if(!active->data) {
+
+    if(temp) {
+        /* If there was existing data, then copy it where it should go */
+        memcpy(_glGetMipmapLocation(active, 0), temp, size);
+
+        /* We no longer need this */
         free(temp);
-        return;
     }
-
-    /* If there was existing data, then copy it where it should go */
-    memcpy(_glGetMipmapLocation(active, 0), temp, size);
-
-    /* We no longer need this */
-    free(temp);
 
     /* Set the data offset depending on whether or not this is a
      * paletted texure */
@@ -1593,6 +1598,7 @@ void APIENTRY glTexParameteri(GLenum target, GLenum pname, GLint param) {
             break;
             case GL_TEXTURE_WRAP_S:
                 switch(param) {
+                    case GL_CLAMP_TO_EDGE:
                     case GL_CLAMP:
                         active->uv_clamp |= CLAMP_U;
                         break;
@@ -1606,6 +1612,7 @@ void APIENTRY glTexParameteri(GLenum target, GLenum pname, GLint param) {
 
             case GL_TEXTURE_WRAP_T:
                 switch(param) {
+                    case GL_CLAMP_TO_EDGE:
                     case GL_CLAMP:
                         active->uv_clamp |= CLAMP_V;
                         break;
@@ -1623,6 +1630,8 @@ void APIENTRY glTexParameteri(GLenum target, GLenum pname, GLint param) {
                 break;
         }
     }
+
+    _glGPUStateMarkDirty();
 }
 
 void APIENTRY glTexParameterf(GLenum target, GLenum pname, GLfloat param) {
@@ -1780,6 +1789,8 @@ GLAPI void APIENTRY glColorTableEXT(GLenum target, GLenum internalFormat, GLsize
     }
 
     _glApplyColorTable(palette);
+
+    _glGPUStateMarkDirty();
 }
 
 GLAPI void APIENTRY glColorSubTableEXT(GLenum target, GLsizei start, GLsizei count, GLenum format, GLenum type, const GLvoid *data) {

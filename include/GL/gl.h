@@ -665,6 +665,7 @@ GLAPI void APIENTRY glFrustum(GLfloat left, GLfloat right,
 /* Fog Functions - client must enable GL_FOG for this to take effect */
 GLAPI void APIENTRY glFogi(GLenum pname, GLint param);
 GLAPI void APIENTRY glFogf(GLenum pname, GLfloat param);
+GLAPI void APIENTRY glFogiv(GLenum pname, const GLint* params);
 GLAPI void APIENTRY glFogfv(GLenum pname, const GLfloat *params);
 
 /* Lighting Functions - client must enable GL_LIGHTING for this to take effect */
