@@ -10,6 +10,7 @@
 #include "software/parameter_equation.h"
 
 #define CLIP_DEBUG 0
+#define ZNEAR_CLIPPING_ENABLED 1
 
 static size_t AVAILABLE_VRAM = 16 * 1024 * 1024;
 static Matrix4x4 MATRIX;
