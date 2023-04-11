@@ -200,28 +200,9 @@ void APIENTRY glRotatef(GLfloat angle, GLfloat x, GLfloat  y, GLfloat z) {
 
 /* Load an arbitrary matrix */
 void APIENTRY glLoadMatrixf(const GLfloat *m) {
-    static Matrix4x4 TEMP;
+    static Matrix4x4 __attribute__((aligned(32))) TEMP;
 
-    TEMP[M0] = m[0];
-    TEMP[M1] = m[1];
-    TEMP[M2] = m[2];
-    TEMP[M3] = m[3];
-
-    TEMP[M4] = m[4];
-    TEMP[M5] = m[5];
-    TEMP[M6] = m[6];
-    TEMP[M7] = m[7];
-
-    TEMP[M8] = m[8];
-    TEMP[M9] = m[9];
-    TEMP[M10] = m[10];
-    TEMP[M11] = m[11];
-
-    TEMP[M12] = m[12];
-    TEMP[M13] = m[13];
-    TEMP[M14] = m[14];
-    TEMP[M15] = m[15];
-
+    memcpy(TEMP, m, sizeof(float) * 16);
     stack_replace(MATRIX_STACKS + MATRIX_IDX, TEMP);
 
     if(MATRIX_MODE == GL_MODELVIEW) {
