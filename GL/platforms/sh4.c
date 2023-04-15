@@ -9,7 +9,9 @@
 #define likely(x)      __builtin_expect(!!(x), 1)
 #define unlikely(x)    __builtin_expect(!!(x), 0)
 
-#define SQ_BASE_ADDRESS 0xe0000000
+#define SQ_BASE_ADDRESS (uint32_t *)(void *) \
+    (0xe0000000 | (((uint32_t)0x10000000) & 0x03ffffe0))
+
 
 static volatile uint32_t* PVR_LMMODE0 = (uint32_t*) 0xA05F6884;
 
@@ -38,9 +40,6 @@ void InitGPU(_Bool autosort, _Bool fsaa) {
 void SceneBegin() {
     pvr_wait_ready();
     pvr_scene_begin();
-
-    QACR0 = 0x11;  /* Enable the direct texture path by setting the higher two bits */
-    QACR1 = 0x11;
 }
 
 void SceneListBegin(GPUList list) {
@@ -83,7 +82,6 @@ GL_FORCE_INLINE void _glSubmitHeaderOrVertex(uint32_t* d, const Vertex* v) {
 #endif
 
     uint32_t *s = (uint32_t*) v;
-    __asm__("pref @%0" : : "r"(s + 8));  /* prefetch 32 bytes for next loop */
     d[0] = *(s++);
     d[1] = *(s++);
     d[2] = *(s++);
@@ -104,7 +102,7 @@ static struct __attribute__((aligned(32))) {
 static int tri_count = 0;
 static int strip_count = 0;
 
-GL_FORCE_INLINE void interpolateColour(const uint32_t* a, const uint32_t* b, const float t, uint32_t* out) {
+static inline void interpolateColour(const uint32_t* a, const uint32_t* b, const float t, uint32_t* out) {
     const static uint32_t MASK1 = 0x00FF00FF;
     const static uint32_t MASK2 = 0xFF00FF00;
 
@@ -140,7 +138,7 @@ GL_FORCE_INLINE void ClearTriangle() {
     tri_count = 0;
 }
 
-GL_FORCE_INLINE void ShiftTriangle() {
+static inline void ShiftTriangle() {
     if(!tri_count) {
         return;
     }
@@ -156,7 +154,7 @@ GL_FORCE_INLINE void ShiftTriangle() {
 }
 
 
-GL_FORCE_INLINE void ShiftRotateTriangle() {
+static inline void ShiftRotateTriangle() {
     if(!tri_count) {
         return;
     }
@@ -177,8 +175,16 @@ void SceneListSubmit(void* src, int n) {
 
     PVR_SET(SPAN_SORT_CFG, 0x0);
 
-    uint32_t *d = (uint32_t*) SQ_BASE_ADDRESS;
-    *PVR_LMMODE0 = 0x0; /* Enable 64bit mode */
+    //Set PVR DMA registers
+    volatile int *pvrdmacfg = (int*)0xA05F6888;
+    pvrdmacfg[0] = 1;
+    pvrdmacfg[1] = 0;
+
+    //Set QACR registers
+    volatile int *qacr = (int*)0xFF000038;
+    qacr[1] = qacr[0] = 0x11;
+
+    uint32_t *d = SQ_BASE_ADDRESS;
 
     Vertex __attribute__((aligned(32))) tmp;
 
@@ -188,17 +194,14 @@ void SceneListSubmit(void* src, int n) {
     if(!_glNearZClippingEnabled()) {
         /* Prep store queues */
 
-        for(int i = 0; i < n; ++i, ++vertex) {
-            PREFETCH(vertex + 1);
+        while(n--) {
             if(glIsVertex(vertex->flags)) {
                 _glPerspectiveDivideVertex(vertex, h);
             }
-            _glSubmitHeaderOrVertex(d, vertex);
-        }
 
-        /* Wait for both store queues to complete */
-        d = (uint32_t *) SQ_BASE_ADDRESS;
-        d[0] = d[8] = 0;
+            _glSubmitHeaderOrVertex(d, vertex);
+            ++vertex;
+        }
 
         return;
     }
@@ -211,8 +214,8 @@ void SceneListSubmit(void* src, int n) {
 #endif
 
     for(int i = 0; i < n; ++i, ++vertex) {
-        PREFETCH(vertex + 12);
-
+        PREFETCH(vertex + 1);
+        PREFETCH(vertex + 2);
         /* Wait until we fill the triangle */
         if(tri_count < 3) {
             if(glIsVertex(vertex->flags)) {
@@ -422,10 +425,6 @@ void SceneListSubmit(void* src, int n) {
             strip_count = 2;
         }
     }
-
-    /* Wait for both store queues to complete */
-    d = (uint32_t *)0xe0000000;
-    d[0] = d[8] = 0;
 }
 
 void SceneListFinish() {
