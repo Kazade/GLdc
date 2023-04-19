@@ -172,6 +172,7 @@ gen_sample(scissor samples/scissor/main.c)
 gen_sample(polymark samples/polymark/main.c)
 gen_sample(cubes samples/cubes/main.cpp)
 
+gen_sample(zclip_test tests/zclip/main.cpp)
 
 if(PLATFORM_DREAMCAST)
     gen_sample(trimark samples/trimark/main.c)
