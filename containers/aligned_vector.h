@@ -12,6 +12,7 @@ extern "C" {
 #if defined(__APPLE__) || defined(__WIN32__)
 /* Linux + Kos define this, OSX does not, so just use malloc there */
 static inline void* memalign(size_t alignment, size_t size) {
+    (void) alignment;
     return malloc(size);
 }
 #else
