@@ -202,19 +202,6 @@ void SceneListSubmit(void* src, int n) {
                 _glPerspectiveDivideVertex(&queue[queue_head], h);
                 _glSubmitHeaderOrVertex(d, &queue[queue_head]);
                 queue_head = (queue_head + 1) % queue_capacity;
-                visible_mask >>= 1;
-
-                if(glIsLastVertex(current->flags)) {
-                    /* If this was the last vertex in the strip, we clear the
-                     * triangle out */
-                    while(queue_head != queue_tail) {
-                        _glPerspectiveDivideVertex(&queue[queue_head], h);
-                        _glSubmitHeaderOrVertex(d, &queue[queue_head]);
-                        queue_head = (queue_head + 1) % queue_capacity;
-                    }
-
-                    visible_mask = 0;
-                }
             break;
             case 4:
                 /* First vertex was visible */
@@ -340,9 +327,6 @@ void SceneListSubmit(void* src, int n) {
                         memcpy_vertex(QUEUE_OFFSET(2), &b); // replace
                         PUSH_VERTEX(&v1); /* Additional vertex */
                         PUSH_VERTEX(&v2); /* Additional vertex */
-
-                        fprintf(stderr, "%x\n", queue[((queue_tail - 1) % queue_capacity)].flags);
-
                         visible_mask = 31;  /* All 5 vertices visible */
                 }
             break;
@@ -360,9 +344,8 @@ void SceneListSubmit(void* src, int n) {
                 _glSubmitHeaderOrVertex(d, &queue[queue_head]);
                 queue_head = (queue_head + 1) % queue_capacity;
 
-                /* This bitmask is reversed to the direction it should be, but we're effectively counting
-                the bits here. Either everything is visible, or it was clipped and so everything is visible */
-                visible_mask >>= 1;
+                int mask = (0x80000000 >> __builtin_clz(visible_mask));
+                visible_mask &= ~mask;
             }
         } else {
             /* Here we need to submit vertices until the visible mask is < 4
