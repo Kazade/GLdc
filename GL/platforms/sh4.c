@@ -13,9 +13,6 @@
     (0xe0000000 | (((uint32_t)0x10000000) & 0x03ffffe0))
 
 
-static volatile uint32_t* PVR_LMMODE0 = (uint32_t*) 0xA05F6884;
-
-
 GL_FORCE_INLINE bool glIsVertex(const float flags) {
     return flags == GPU_CMD_VERTEX_EOL || flags == GPU_CMD_VERTEX;
 }
@@ -78,7 +75,7 @@ GL_FORCE_INLINE void _glSubmitHeaderOrVertex(volatile uint32_t* d, const Vertex*
 #endif
 
 #if CLIP_DEBUG
-    printf("Submitting: %x (%x)\n", v, v->flags);
+    fprintf(stderr, "Submitting: %x (%x)\n", v, v->flags);
 #endif
 
     uint32_t *s = (uint32_t*) v;
@@ -128,8 +125,9 @@ static inline void _glClipEdge(const Vertex* v1, const Vertex* v2, Vertex* vout)
 }
 
 #define SPAN_SORT_CFG 0x005F8030
-static volatile int *pvrdmacfg = (int*)0xA05F6888;
-static volatile int *qacr = (int*)0xFF000038;
+static volatile uint32_t* PVR_LMMODE0 = (uint32_t*) 0xA05F6884;
+static volatile uint32_t *PVR_LMMODE1 = (uint32_t*) 0xA05F6888;
+static volatile uint32_t *QACR = (uint32_t*) 0xFF000038;
 
 void SceneListSubmit(void* src, int n) {
     /* You need at least a header, and 3 vertices to render anything */
@@ -142,13 +140,13 @@ void SceneListSubmit(void* src, int n) {
     PVR_SET(SPAN_SORT_CFG, 0x0);
 
     //Set PVR DMA registers
-    pvrdmacfg[0] = 1;
-    pvrdmacfg[1] = 0;
+    *PVR_LMMODE0 = 0;
+    *PVR_LMMODE1 = 0;
 
     //Set QACR registers
-    qacr[1] = qacr[0] = 0x11;
+    QACR[1] = QACR[0] = 0x11;
 
-    volatile uint32_t *d = SQ_BASE_ADDRESS;
+     volatile uint32_t *d = SQ_BASE_ADDRESS;
 
     int8_t queue_head = 0;
     int8_t queue_tail = 0;
@@ -156,30 +154,23 @@ void SceneListSubmit(void* src, int n) {
     /* The most vertices ever in the queue is 5 (as some clipping operations
      * produce and additional couple of vertice, but we add one more so the ring buffer doesn't
      * trip over itself (e.g. if tail == head we can guarantee it's empty, not full) */
-    Vertex __attribute__((aligned(32))) queue[6];
+    Vertex __attribute__((aligned(32))) queue[4];
     const int queue_capacity = sizeof(queue) / sizeof(Vertex);
 
     Vertex* vertex = (Vertex*) src;
+
     uint32_t visible_mask = 0;
+    uint32_t counter = 0;
 
 #define QUEUE_OFFSET(n) (queue + ((queue_head + (n)) % queue_capacity))
 #define PUSH_VERTEX(v) \
     do { \
         memcpy_vertex(queue + queue_tail, (v)); \
-        visible_mask = (visible_mask << 1) | ((v)->xyz[2] >= -(v)->w); \
+        visible_mask = (visible_mask >> 1) | ((v)->xyz[2] >= -(v)->w) << 2; \
+        assert(visible_mask < 15); \
         queue_tail = (queue_tail + 1) % queue_capacity; \
+        counter++; \
     } while(0)
-
-    /* Assume first entry is a header */
-    _glSubmitHeaderOrVertex(d, vertex++);
-
-    /* Push first 2 vertices of the strip */
-    PUSH_VERTEX(vertex);
-    ++vertex;
-    PUSH_VERTEX(vertex);
-    ++vertex;
-
-    n -= 3;
 
     while(n--) {
         Vertex* current = vertex;
@@ -192,18 +183,38 @@ void SceneListSubmit(void* src, int n) {
             ++vertex;
         }
 
+        if(counter < 3) {
+            continue;
+        }
+
         switch(visible_mask) {
             case 0:
                 queue_head = (queue_head + 1) % queue_capacity;
+                --counter;
                 continue;
             break;
             case 7:
                 /* All visible, push the first vertex and move on */
                 _glPerspectiveDivideVertex(&queue[queue_head], h);
                 _glSubmitHeaderOrVertex(d, &queue[queue_head]);
-                queue_head = (queue_head + 1) % queue_capacity;
+
+                if(glIsLastVertex(current->flags)) {
+                    /* If this was the last vertex in the strip, we need to flush the queue and then
+                       restart it again */
+                    queue_head = (queue_head + 1) % queue_capacity;
+                    counter--;
+                    while(counter--) {
+                        // There are 3 vertices, so we push the first one
+                        _glPerspectiveDivideVertex(&queue[queue_head], h);
+                        _glSubmitHeaderOrVertex(d, &queue[queue_head]);
+                        queue_head = (queue_head + 1) % queue_capacity;
+                    }
+
+                    visible_mask = 0;
+                    continue;
+                }
             break;
-            case 4:
+            case 1:
                 /* First vertex was visible */
                 {
                         Vertex __attribute__((aligned(32))) a, b;  // Scratch vertices
@@ -221,11 +232,14 @@ void SceneListSubmit(void* src, int n) {
                         cross back*/
                         b.flags = v2->flags;
 
-                        // v0 is already at the head of the queue
-                        memcpy_vertex(QUEUE_OFFSET(1), &a); // replace
-                        memcpy_vertex(QUEUE_OFFSET(2), &b); // replace
-                        PUSH_VERTEX(&b); /* Additional vertex */
-                        visible_mask = 15;  /* All 4 vertices visible */
+                        _glPerspectiveDivideVertex(v0, h);
+                        _glPerspectiveDivideVertex(&a, h);
+                        _glPerspectiveDivideVertex(&b, h);
+
+                        _glSubmitHeaderOrVertex(d, v0);
+                        _glSubmitHeaderOrVertex(d, &a);
+                        _glSubmitHeaderOrVertex(d, &b);
+                        _glSubmitHeaderOrVertex(d, &b);
                 }
             break;
             case 2:
@@ -234,88 +248,104 @@ void SceneListSubmit(void* src, int n) {
                 {
                         Vertex __attribute__((aligned(32))) a, b;  // Scratch vertices
                         Vertex* v0 = &queue[queue_head];
-                        Vertex* v1 = &queue[(queue_head + 1) % queue_capacity];
-                        Vertex* v2 = &queue[(queue_head + 2) % queue_capacity];
+                        const Vertex* v1 = &queue[(queue_head + 1) % queue_capacity];
+                        const Vertex* v2 = &queue[(queue_head + 2) % queue_capacity];
 
                         _glClipEdge(v0, v1, &a);
                         _glClipEdge(v1, v2, &b);
                         a.flags = GPU_CMD_VERTEX;
                         b.flags = GPU_CMD_VERTEX_EOL;
 
-                        memcpy_vertex(QUEUE_OFFSET(0), &a); // replace
-                        memcpy_vertex(QUEUE_OFFSET(2), &b); // replace
-                        visible_mask = 7;  /* All 3 vertices visible */
+                        _glPerspectiveDivideVertex(v0, h);
+                        _glPerspectiveDivideVertex(&a, h);
+                        _glPerspectiveDivideVertex(&b, h);
+
+                        _glSubmitHeaderOrVertex(d, &a);
+                        _glSubmitHeaderOrVertex(d, v0);
+                        _glSubmitHeaderOrVertex(d, &b);
                 }
             break;
-            case 6:  /* First and second vertex were visible */
+            case 3:  /* First and second vertex were visible */
                     {
                         Vertex __attribute__((aligned(32))) a, b;  // Scratch vertices
                         Vertex* v0 = &queue[queue_head];
-                        Vertex* v1 = &queue[(queue_head + 1) % queue_capacity];
+                        Vertex __attribute__((aligned(32))) v1 = queue[(queue_head + 1) % queue_capacity];
                         Vertex* v2 = &queue[(queue_head + 2) % queue_capacity];
 
-                        _glClipEdge(v1, v2, &a);
+                        _glClipEdge(&v1, v2, &a);
                         _glClipEdge(v2, v0, &b);
 
                         a.flags = v2->flags;
                         b.flags = GPU_CMD_VERTEX;
 
-                        memcpy_vertex(QUEUE_OFFSET(2), &b); // replace
-                        PUSH_VERTEX(v1); /* Additional vertex */
-                        PUSH_VERTEX(&a); /* Additional vertex */
-                        visible_mask = 31;  /* All 5 vertices visible */
+                        _glPerspectiveDivideVertex(v0, h);
+                        _glPerspectiveDivideVertex(&v1, h);
+                        _glPerspectiveDivideVertex(&a, h);
+                        _glPerspectiveDivideVertex(&b, h);
+
+                        _glSubmitHeaderOrVertex(d, v0);
+                        _glSubmitHeaderOrVertex(d, &v1);
+                        _glSubmitHeaderOrVertex(d, &b);
+                        _glSubmitHeaderOrVertex(d, &v1);
+                        _glSubmitHeaderOrVertex(d, &a);
                 }
             break;
-            case 1:
+            case 4:
                 /* Third vertex was visible. */
                 {
                         Vertex __attribute__((aligned(32))) a, b;  // Scratch vertices
                         Vertex* v0 = &queue[queue_head];
                         Vertex* v1 = &queue[(queue_head + 1) % queue_capacity];
-                        Vertex v2 = queue[(queue_head + 2) % queue_capacity];
+                        Vertex __attribute__((aligned(32))) v2 = queue[(queue_head + 2) % queue_capacity];
 
                         _glClipEdge(&v2, v0, &a);
                         _glClipEdge(v1, &v2, &b);
                         a.flags = GPU_CMD_VERTEX;
                         b.flags = GPU_CMD_VERTEX;
 
-                        memcpy_vertex(QUEUE_OFFSET(0), &a); // replace
-                        memcpy_vertex(QUEUE_OFFSET(1), &a); // replace
-                        memcpy_vertex(QUEUE_OFFSET(2), &b); // replace
-                        PUSH_VERTEX(&v2); /* Additional vertex */
-                        visible_mask = 15;  /* All 4 vertices visible */
+                        _glPerspectiveDivideVertex(&v2, h);
+                        _glPerspectiveDivideVertex(&a, h);
+                        _glPerspectiveDivideVertex(&b, h);
+
+                        _glSubmitHeaderOrVertex(d, &a);
+                        _glSubmitHeaderOrVertex(d, &a);
+                        _glSubmitHeaderOrVertex(d, &b);
+                        _glSubmitHeaderOrVertex(d, &v2);
                 }
             break;
             case 5:  /* First and third vertex were visible */
                 {
                         Vertex __attribute__((aligned(32))) a, b;  // Scratch vertices
                         Vertex* v0 = &queue[queue_head];
-                        Vertex v1 = queue[(queue_head + 1) % queue_capacity];
-                        Vertex v2 = queue[(queue_head + 2) % queue_capacity];
+                        Vertex* v1 = &queue[(queue_head + 1) % queue_capacity];
+                        Vertex __attribute__((aligned(32))) v2 = queue[(queue_head + 2) % queue_capacity];
 
-                        _glClipEdge(v0, &v1, &a);
-                        _glClipEdge(&v1, &v2, &b);
+                        _glClipEdge(v0, v1, &a);
+                        _glClipEdge(v1, &v2, &b);
                         a.flags = GPU_CMD_VERTEX;
                         b.flags = GPU_CMD_VERTEX;
 
-                        memcpy_vertex(QUEUE_OFFSET(1), &a); // replace
+                        _glPerspectiveDivideVertex(v0, h);
+                        _glPerspectiveDivideVertex(&v2, h);
+                        _glPerspectiveDivideVertex(&a, h);
+                        _glPerspectiveDivideVertex(&b, h);
 
+                        _glSubmitHeaderOrVertex(d, v0);
+                        _glSubmitHeaderOrVertex(d, &a);
                         uint32_t v2_flags = v2.flags;
                         v2.flags = GPU_CMD_VERTEX;
-                        memcpy_vertex(QUEUE_OFFSET(2), &v2); // replace
+                        _glSubmitHeaderOrVertex(d, &v2);
                         v2.flags = v2_flags;
-
-                        PUSH_VERTEX(&b); /* Additional vertex */
-                        PUSH_VERTEX(&v2); /* Additional vertex */
-                        visible_mask = 31;  /* All 5 vertices visible */
+                        _glSubmitHeaderOrVertex(d, &b);
+                        _glSubmitHeaderOrVertex(d, &v2);
                 }
             break;
-            case 3:  /* Second and third vertex were visible */
+            case 6:  /* Second and third vertex were visible */
                 {
                         Vertex __attribute__((aligned(32))) a, b;  // Scratch vertices
                         Vertex* v0 = &queue[queue_head];
-                        Vertex v1 = queue[(queue_head + 1) % queue_capacity];
-                        Vertex v2 = queue[(queue_head + 2) % queue_capacity];
+                        Vertex __attribute__((aligned(32))) v1 = queue[(queue_head + 1) % queue_capacity];
+                        Vertex __attribute__((aligned(32))) v2 = queue[(queue_head + 2) % queue_capacity];
 
                         _glClipEdge(v0, &v1, &a);
                         _glClipEdge(&v2, v0, &b);
@@ -323,42 +353,24 @@ void SceneListSubmit(void* src, int n) {
                         a.flags = GPU_CMD_VERTEX;
                         b.flags = GPU_CMD_VERTEX;
 
-                        memcpy_vertex(QUEUE_OFFSET(0), &a); // replace
-                        memcpy_vertex(QUEUE_OFFSET(2), &b); // replace
-                        PUSH_VERTEX(&v1); /* Additional vertex */
-                        PUSH_VERTEX(&v2); /* Additional vertex */
-                        visible_mask = 31;  /* All 5 vertices visible */
+                        _glPerspectiveDivideVertex(&v1, h);
+                        _glPerspectiveDivideVertex(&v2, h);
+                        _glPerspectiveDivideVertex(&a, h);
+                        _glPerspectiveDivideVertex(&b, h);
+
+                        _glSubmitHeaderOrVertex(d, &a);
+                        _glSubmitHeaderOrVertex(d, &v1);
+                        _glSubmitHeaderOrVertex(d, &b);
+                        _glSubmitHeaderOrVertex(d, &v1);
+                        _glSubmitHeaderOrVertex(d, &v2);
                 }
             break;
             default:
                 break;
         }
 
-        if(glIsLastVertex(current->flags)) {
-            /* If this was the last vertex in the strip, we need to flush the queue and then
-               restart it again */
-
-            while(visible_mask) {
-                // There are 3 vertices, so we push the first one
-                _glPerspectiveDivideVertex(&queue[queue_head], h);
-                _glSubmitHeaderOrVertex(d, &queue[queue_head]);
-                queue_head = (queue_head + 1) % queue_capacity;
-
-                int mask = (0x80000000 >> __builtin_clz(visible_mask));
-                visible_mask &= ~mask;
-            }
-        } else {
-            /* Here we need to submit vertices until the visible mask is < 4
-            * which would mean there are only 2 vertices queued */
-            while(visible_mask > 3) {
-                // There are 3 vertices, so we push the first one
-                _glPerspectiveDivideVertex(&queue[queue_head], h);
-                _glSubmitHeaderOrVertex(d, &queue[queue_head]);
-                queue_head = (queue_head + 1) % queue_capacity;
-                int mask = (0x80000000 >> __builtin_clz(visible_mask));
-                visible_mask &= ~mask;
-            }
-        }
+        queue_head = (queue_head + 1) % queue_capacity;
+        counter--;
     }
 }
 
