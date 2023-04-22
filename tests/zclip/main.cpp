@@ -203,8 +203,7 @@ void SceneListSubmit(void* src, int n) {
                     /* If this was the last vertex in the strip, we need to flush the queue and then
                        restart it again */
                     queue_head = (queue_head + 1) % queue_capacity;
-                    counter--;
-                    while(counter--) {
+                    while(--counter) {
                         // There are 3 vertices, so we push the first one
                         _glPerspectiveDivideVertex(&queue[queue_head], h);
                         _glSubmitHeaderOrVertex(d, &queue[queue_head]);
