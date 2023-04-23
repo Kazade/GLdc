@@ -221,15 +221,13 @@ typedef struct {
 } _glvec4;
 
 #define vec2cpy(dst, src) \
-    *((uint64_t*) dst) = *((uint64_t*) src);
+    *((_glvec2*) dst) = *((_glvec2*) src)
 
 #define vec3cpy(dst, src) \
-    *((uint64_t*) dst) = *((uint64_t*) src); \
-    dst[2] = src[2];
+    *((_glvec3*) dst) = *((_glvec3*) src)
 
 #define vec4cpy(dst, src) \
-    *((uint64_t*) dst) = *((uint64_t*) src); \
-    *((uint64_t*) dst + 2) = *((uint64_t*) src + 2);
+    *((_glvec4*) dst) = *((_glvec4*) src)
 
 GL_FORCE_INLINE float clamp(float d, float min, float max) {
     return (d < min) ? min : (d > max) ? max : d;
