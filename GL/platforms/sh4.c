@@ -146,7 +146,7 @@ void SceneListSubmit(void* src, int n) {
     //Set QACR registers
     QACR[1] = QACR[0] = 0x11;
 
-     volatile uint32_t *d = SQ_BASE_ADDRESS;
+    volatile uint32_t *d = SQ_BASE_ADDRESS;
 
     int8_t queue_head = 0;
     int8_t queue_tail = 0;
@@ -159,17 +159,6 @@ void SceneListSubmit(void* src, int n) {
 
     Vertex* vertex = (Vertex*) src;
 
-    uint32_t visible_mask = 0;
-
-#define QUEUE_OFFSET(n) (queue + ((queue_head + (n)) % queue_capacity))
-#define PUSH_VERTEX(v) \
-    do { \
-        memcpy_vertex(queue + queue_tail, (v)); \
-        visible_mask = (visible_mask >> 1) | ((v)->xyz[2] >= -(v)->w) << 2; \
-        assert(visible_mask < 15); \
-        queue_tail = (queue_tail + 1) % queue_capacity; \
-    } while(0)
-
 #if CLIP_DEBUG
     for(int i = 0; i < n; ++i) {
         fprintf(stderr, "{%f, %f, %f, %f}, // %x (%x)\n", vertex[i].xyz[0], vertex[i].xyz[1], vertex[i].xyz[2], vertex[i].w, vertex[i].flags, &vertex[i]);
@@ -177,26 +166,35 @@ void SceneListSubmit(void* src, int n) {
 
     fprintf(stderr, "----\n");
 #endif
-    while(n--) {
-        Vertex* current = vertex;
-        if(!glIsVertex(vertex->flags)) {
-            _glSubmitHeaderOrVertex(d, vertex++);
-            continue;
-        } else {
-            PUSH_VERTEX(vertex);
-            ++vertex;
+    uint8_t visible_mask = 0;
+    bool last_vertex = false;
 
-            int counter = (queue_tail - queue_head + queue_capacity) % queue_capacity;
-            if(counter < 3) {
-                continue;
-            }
+    while(n--) {
+        uint8_t counter = 0;
+        last_vertex = false;
+        memcpy_vertex(queue + queue_tail, vertex++);
+        switch(queue[queue_tail].flags) {
+            case GPU_CMD_VERTEX_EOL:
+                last_vertex = true;
+            case GPU_CMD_VERTEX:
+                visible_mask = (visible_mask >> 1) | (queue[queue_tail].xyz[2] >= -queue[queue_tail].w) << 2;
+                assert(visible_mask < 15);
+                queue_tail = (queue_tail + 1) % queue_capacity;
+                counter = (queue_tail - queue_head + queue_capacity) % queue_capacity;
+            break;
+            default:
+                _glSubmitHeaderOrVertex(d, &queue[queue_tail]);
+            break;
+        }
+
+        if(counter < 3) {
+            continue;
         }
 
 #if CLIP_DEBUG
         fprintf(stderr, "%d\n", visible_mask);
 #endif
         Vertex __attribute__((aligned(32))) a, b;  // Scratch vertices
-        bool last_vertex = glIsLastVertex(current->flags);
         switch(visible_mask) {
             case 0:
             break;

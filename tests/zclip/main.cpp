@@ -159,65 +159,67 @@ void SceneListSubmit(void* src, int n) {
     const int queue_capacity = sizeof(queue) / sizeof(Vertex);
 
     Vertex* vertex = (Vertex*) src;
-
     uint32_t visible_mask = 0;
-    uint32_t counter = 0;
 
-#define QUEUE_OFFSET(n) (queue + ((queue_head + (n)) % queue_capacity))
-#define PUSH_VERTEX(v) \
-    do { \
-        memcpy_vertex(queue + queue_tail, (v)); \
-        visible_mask = (visible_mask >> 1) | ((v)->xyz[2] >= -(v)->w) << 2; \
-        assert(visible_mask < 15); \
-        queue_tail = (queue_tail + 1) % queue_capacity; \
-        counter++; \
-    } while(0)
+#if CLIP_DEBUG
+    for(int i = 0; i < n; ++i) {
+        fprintf(stderr, "{%f, %f, %f, %f}, // %x (%x)\n", vertex[i].xyz[0], vertex[i].xyz[1], vertex[i].xyz[2], vertex[i].w, vertex[i].flags, &vertex[i]);
+    }
 
+    fprintf(stderr, "----\n");
+#endif
     while(n--) {
-        Vertex* current = vertex;
-        if(!glIsVertex(vertex->flags)) {
-            _glSubmitHeaderOrVertex(d, vertex);
-            ++vertex;
-            continue;
-        } else {
-            PUSH_VERTEX(vertex);
-            ++vertex;
+        bool last_vertex = false;
+        memcpy_vertex(queue + queue_tail, vertex);
+        ++vertex;
+        switch(queue[queue_tail].flags) {
+            case GPU_CMD_POLYHDR:
+                _glSubmitHeaderOrVertex(d, &queue[queue_tail]);
+            break;
+            case GPU_CMD_VERTEX_EOL:
+                last_vertex = true;
+            case GPU_CMD_VERTEX:
+                visible_mask = (visible_mask >> 1) | (queue[queue_tail].xyz[2] >= -queue[queue_tail].w) << 2;
+                assert(visible_mask < 15);
+                queue_tail = (queue_tail + 1) % queue_capacity;
+            default:
+            break;
         }
 
+        int counter = (queue_tail - queue_head + queue_capacity) % queue_capacity;
         if(counter < 3) {
             continue;
         }
 
+#if CLIP_DEBUG
+        fprintf(stderr, "%d\n", visible_mask);
+#endif
+        Vertex __attribute__((aligned(32))) a, b;  // Scratch vertices
         switch(visible_mask) {
             case 0:
-                queue_head = (queue_head + 1) % queue_capacity;
-                --counter;
-                continue;
             break;
             case 7:
                 /* All visible, push the first vertex and move on */
                 _glPerspectiveDivideVertex(&queue[queue_head], h);
                 _glSubmitHeaderOrVertex(d, &queue[queue_head]);
 
-                if(glIsLastVertex(current->flags)) {
+                if(last_vertex) {
                     /* If this was the last vertex in the strip, we need to flush the queue and then
                        restart it again */
-                    queue_head = (queue_head + 1) % queue_capacity;
-                    while(--counter) {
-                        // There are 3 vertices, so we push the first one
-                        _glPerspectiveDivideVertex(&queue[queue_head], h);
-                        _glSubmitHeaderOrVertex(d, &queue[queue_head]);
-                        queue_head = (queue_head + 1) % queue_capacity;
-                    }
 
-                    visible_mask = 0;
-                    continue;
+                    int v1 = (queue_head + 1) % queue_capacity;
+                    int v2 = (queue_head + 2) % queue_capacity;
+
+                    _glPerspectiveDivideVertex(&queue[v1], h);
+                    _glSubmitHeaderOrVertex(d, &queue[v1]);
+
+                    _glPerspectiveDivideVertex(&queue[v2], h);
+                    _glSubmitHeaderOrVertex(d, &queue[v2]);
                 }
             break;
             case 1:
                 /* First vertex was visible */
                 {
-                        Vertex __attribute__((aligned(32))) a, b;  // Scratch vertices
                         Vertex* v0 = &queue[queue_head];
                         Vertex* v1 = &queue[(queue_head + 1) % queue_capacity];
                         Vertex* v2 = &queue[(queue_head + 2) % queue_capacity];
@@ -246,7 +248,6 @@ void SceneListSubmit(void* src, int n) {
                 /* Second vertex was visible. In self case we need to create a triangle and produce
                 two new vertices: 1-2, and 2-3. */
                 {
-                        Vertex __attribute__((aligned(32))) a, b;  // Scratch vertices
                         Vertex* v0 = &queue[queue_head];
                         const Vertex* v1 = &queue[(queue_head + 1) % queue_capacity];
                         const Vertex* v2 = &queue[(queue_head + 2) % queue_capacity];
@@ -254,7 +255,7 @@ void SceneListSubmit(void* src, int n) {
                         _glClipEdge(v0, v1, &a);
                         _glClipEdge(v1, v2, &b);
                         a.flags = GPU_CMD_VERTEX;
-                        b.flags = GPU_CMD_VERTEX_EOL;
+                        b.flags = v2->flags;
 
                         _glPerspectiveDivideVertex(v0, h);
                         _glPerspectiveDivideVertex(&a, h);
@@ -267,7 +268,6 @@ void SceneListSubmit(void* src, int n) {
             break;
             case 3:  /* First and second vertex were visible */
                     {
-                        Vertex __attribute__((aligned(32))) a, b;  // Scratch vertices
                         Vertex* v0 = &queue[queue_head];
                         Vertex __attribute__((aligned(32))) v1 = queue[(queue_head + 1) % queue_capacity];
                         Vertex* v2 = &queue[(queue_head + 2) % queue_capacity];
@@ -293,7 +293,6 @@ void SceneListSubmit(void* src, int n) {
             case 4:
                 /* Third vertex was visible. */
                 {
-                        Vertex __attribute__((aligned(32))) a, b;  // Scratch vertices
                         Vertex* v0 = &queue[queue_head];
                         Vertex* v1 = &queue[(queue_head + 1) % queue_capacity];
                         Vertex __attribute__((aligned(32))) v2 = queue[(queue_head + 2) % queue_capacity];
@@ -315,7 +314,6 @@ void SceneListSubmit(void* src, int n) {
             break;
             case 5:  /* First and third vertex were visible */
                 {
-                        Vertex __attribute__((aligned(32))) a, b;  // Scratch vertices
                         Vertex* v0 = &queue[queue_head];
                         Vertex* v1 = &queue[(queue_head + 1) % queue_capacity];
                         Vertex __attribute__((aligned(32))) v2 = queue[(queue_head + 2) % queue_capacity];
@@ -342,7 +340,6 @@ void SceneListSubmit(void* src, int n) {
             break;
             case 6:  /* Second and third vertex were visible */
                 {
-                        Vertex __attribute__((aligned(32))) a, b;  // Scratch vertices
                         Vertex* v0 = &queue[queue_head];
                         Vertex __attribute__((aligned(32))) v1 = queue[(queue_head + 1) % queue_capacity];
                         Vertex __attribute__((aligned(32))) v2 = queue[(queue_head + 2) % queue_capacity];
@@ -369,10 +366,14 @@ void SceneListSubmit(void* src, int n) {
                 break;
         }
 
-        queue_head = (queue_head + 1) % queue_capacity;
-        counter--;
+        if(last_vertex) {
+            visible_mask = queue_head = queue_tail = 0;
+        } else {
+            queue_head = (queue_head + 1) % queue_capacity;
+        }
     }
 }
+
 
 struct VertexTmpl {
     VertexTmpl(float x, float y, float z, float w):
