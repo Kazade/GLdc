@@ -241,8 +241,8 @@ GL_FORCE_INLINE void memcpy_vertex(Vertex *dest, const Vertex *src) {
 
     asm volatile (
         "fschg\n\t"
-        "clrs\n"
-        ".align 2\n"
+        "clrs\n\t"
+        ".align 2\n\t"
         "fmov.d @%[in]+, %[scratch]\n\t"
         "fmov.d %[scratch], @%[out]\n\t"
         "fmov.d @%[in]+, %[scratch]\n\t"
