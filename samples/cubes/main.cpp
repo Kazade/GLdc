@@ -28,26 +28,24 @@ bool isDrawingArrays = false;
 bool isBlendingEnabled = true;
 bool isRunning = true;
 
-
 typedef struct
 {
-	float r;
-	float g;
-	float b;
-	float a;
+	GLubyte r;
+	GLubyte g;
+	GLubyte b;
+	GLubyte a;
 } Color;
 
 Color colors[] =
 {
-	{1.0f, 0.0f, 0.0f, 0.5f}, // red
-	{0.0f, 1.0f, 0.0f, 0.5f}, // green
-	{0.0f, 0.0f, 1.0f, 0.5f}, // blue
-	{1.0f, 1.0f, 0.0f, 0.5f}, // yellow
-	{1.0f, 0.0f, 1.0f, 0.5f}, // magenta
-	{0.0f, 1.0f, 1.0f, 0.5f}  // cyan
+	{255, 0, 0, 128},
+	{0, 255, 0, 128},
+	{0, 0, 255, 128},
+	{255, 255, 0, 128},
+	{255, 0, 255, 128},
+	{0, 255, 255, 128}
 };
 Color faceColors[24];
-
 
 float cubeVertices[] =
 {
@@ -210,7 +208,7 @@ void renderUnitCube()
 	glEnableClientState(GL_COLOR_ARRAY);
 
 	glVertexPointer(3, GL_FLOAT, 0, cubeVertices);
-	glColorPointer(4, GL_FLOAT, 0, faceColors);
+	glColorPointer(4, GL_UNSIGNED_BYTE, 0, faceColors);
 
 	if (isDrawingArrays) {
 		glDrawArrays(GL_QUADS, 0, 24);

@@ -32,13 +32,18 @@ GLdc uses CMake for its build system, it currently ships with two "backends":
  - kospvr - This is the hardware-accelerated Dreamcast backend
  - software - This is a stub software rasterizer used for testing testing and debugging
  
-To compile for Dreamcast, you'll want to do something like the following:
+To compile a Dreamcast debug build, you'll want to do something like the following:
 
 ```
 mkdir dcbuild
 cd dcbuild
 cmake -DCMAKE_TOOLCHAIN_FILE=../toolchains/Dreamcast.cmake -G "Unix Makefiles" ..
 make
+```
+
+For a release build, replace the cmake line with with the following:
+```
+cmake -DCMAKE_TOOLCHAIN_FILE=../toolchains/Dreamcast.cmake -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=Release ..
 ```
 
 You will need KallistiOS compiled and configured (e.g. the KOS_BASE environment
