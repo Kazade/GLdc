@@ -17,6 +17,7 @@ string(TOUPPER ${BACKEND} BACKEND_UPPER)
 add_definitions(-DBACKEND_${BACKEND_UPPER})
 
 set(CMAKE_C_STANDARD 99)
+set(CMAKE_CXX_STANDARD 11)
 
 include_directories(include)
 
@@ -178,6 +179,7 @@ gen_sample(scissor samples/scissor/main.c)
 gen_sample(polymark samples/polymark/main.c)
 gen_sample(cubes samples/cubes/main.cpp)
 
+gen_sample(zclip_test tests/zclip/main.cpp)
 
 if(PLATFORM_DREAMCAST)
     gen_sample(trimark samples/trimark/main.c)

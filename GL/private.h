@@ -233,11 +233,41 @@ GL_FORCE_INLINE float clamp(float d, float min, float max) {
     return (d < min) ? min : (d > max) ? max : d;
 }
 
+GL_FORCE_INLINE void memcpy_vertex(Vertex *dest, const Vertex *src) {
+#ifdef __DREAMCAST__
+    _Complex float double_scratch;
+
+    asm volatile (
+        "fschg\n\t"
+        "clrs\n\t"
+        ".align 2\n\t"
+        "fmov.d @%[in]+, %[scratch]\n\t"
+        "fmov.d %[scratch], @%[out]\n\t"
+        "fmov.d @%[in]+, %[scratch]\n\t"
+        "add #8, %[out]\n\t"
+        "fmov.d %[scratch], @%[out]\n\t"
+        "fmov.d @%[in]+, %[scratch]\n\t"
+        "add #8, %[out]\n\t"
+        "fmov.d %[scratch], @%[out]\n\t"
+        "fmov.d @%[in], %[scratch]\n\t"
+        "add #8, %[out]\n\t"
+        "fmov.d %[scratch], @%[out]\n\t"
+        "fschg\n"
+        : [in] "+&r" ((uint32_t) src), [scratch] "=&d" (double_scratch), [out] "+&r" ((uint32_t) dest)
+        :
+        : "t", "memory" // clobbers
+    );
+#else
+    *dest = *src;
+#endif
+}
+
 #define swapVertex(a, b)   \
 do {                 \
-    Vertex c = *a;   \
-    *a = *b;         \
-    *b = c;          \
+    Vertex __attribute__((aligned(32))) c;   \
+    memcpy_vertex(&c, a); \
+    memcpy_vertex(a, b); \
+    memcpy_vertex(b, &c); \
 } while(0)
 
 /* ClipVertex doesn't have room for these, so we need to parse them

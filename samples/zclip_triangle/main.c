@@ -86,12 +86,13 @@ void DrawGLScene()
     rotation = (rotation > 360.0f) ? rotation - 360.0f : rotation;
 
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);		// Clear The Screen And The Depth Buffer
+    glClearColor(0.5f, 0.5f, 0.5f, 0.5f);
     glLoadIdentity();				// Reset The View
 
     glDisable(GL_CULL_FACE);
 
     glPushMatrix();
-        glTranslatef(0.0f, -1.0f, movement);
+        glTranslatef(0.0f, -1.0f, -movement);
         glRotatef(rotation, 0.0f, 1.0f, 0.0f);
 
         glBegin(GL_TRIANGLES);
