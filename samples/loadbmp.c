@@ -23,7 +23,11 @@ int ImageLoad(char *filename, Image *image) {
     }
 
     // seek through the bmp header, up to the width/height:
-    fseek(file, 18, SEEK_CUR);
+    fseek(file, 10, SEEK_CUR);
+
+    uint32_t offset;
+    fread(&offset, 4, 1, file);
+    fseek(file, 4, SEEK_CUR);
 
     // read the width
     if ((i = fread(&sizeX, 4, 1, file)) != 1) {
@@ -65,7 +69,7 @@ int ImageLoad(char *filename, Image *image) {
     }
 
     // seek past the rest of the bitmap header.
-    fseek(file, 24, SEEK_CUR);
+    fseek(file, offset, SEEK_SET);
 
     // read the data.
     image->data = (char *) malloc(size);
