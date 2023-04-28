@@ -403,8 +403,8 @@ GLAPI void APIENTRY glEnable(GLenum cap) {
             }
         break;
         case GL_CULL_FACE: {
-            if(GPUState.cull_face != GL_TRUE) {
-                GPUState.cull_face = GL_TRUE;
+            if(GPUState.culling_enabled != GL_TRUE) {
+                GPUState.culling_enabled = GL_TRUE;
                 GPUState.is_dirty = GL_TRUE;
             }
 
@@ -507,8 +507,8 @@ GLAPI void APIENTRY glDisable(GLenum cap) {
             }
         break;
         case GL_CULL_FACE: {
-            if(GPUState.cull_face != GL_FALSE) {
-                GPUState.cull_face = GL_FALSE;
+            if(GPUState.culling_enabled != GL_FALSE) {
+                GPUState.culling_enabled = GL_FALSE;
                 GPUState.is_dirty = GL_TRUE;
             }
 
