@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdint.h>
+#include <stdio.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -128,6 +129,7 @@ AV_FORCE_INLINE void* aligned_vector_resize(AlignedVector* vector, const unsigne
         ret = aligned_vector_at(vector, previousCount);
     } else {
         vector->size = element_count;
+        ret = aligned_vector_at(vector, previousCount);
     }
 
     return ret;
