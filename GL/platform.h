@@ -5,6 +5,7 @@
 #include <stdbool.h>
 
 #include "gl_assert.h"
+#include "types.h"
 
 #define MEMSET(dst, v, size) memset((dst), (v), (size))
 
@@ -260,7 +261,7 @@ typedef float Matrix4x4[16];
 void SceneBegin();
 
 void SceneListBegin(GPUList list);
-void SceneListSubmit(void* src, int n);
+void SceneListSubmit(Vertex* v2, int n);
 void SceneListFinish();
 
 void SceneFinish();
