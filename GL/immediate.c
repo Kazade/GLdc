@@ -50,7 +50,7 @@ void _glInitImmediateMode(GLuint initial_size) {
     aligned_vector_init(&VERTICES, sizeof(IMVertex));
     aligned_vector_reserve(&VERTICES, initial_size);
 
-    IM_ATTRIBS.vertex.ptr = VERTICES.data;
+    IM_ATTRIBS.vertex.ptr = aligned_vector_front(&VERTICES);
     IM_ATTRIBS.vertex.size = 3;
     IM_ATTRIBS.vertex.type = GL_FLOAT;
     IM_ATTRIBS.vertex.stride = sizeof(IMVertex);
@@ -161,12 +161,11 @@ void APIENTRY glColor3fv(const GLfloat* v) {
 void APIENTRY glVertex3f(GLfloat x, GLfloat y, GLfloat z) {
     IM_ENABLED_VERTEX_ATTRIBUTES |= VERTEX_ENABLED_FLAG;
 
-    unsigned int cap = VERTICES.capacity;
+    uint32_t cap = aligned_vector_capacity(&VERTICES);
     IMVertex* vert = aligned_vector_extend(&VERTICES, 1);
-
-    if(cap != VERTICES.capacity) {
+    if(cap != aligned_vector_capacity(&VERTICES)) {
         /* Resizing could've invalidated the pointers */
-        IM_ATTRIBS.vertex.ptr = VERTICES.data;
+        IM_ATTRIBS.vertex.ptr = aligned_vector_front(&VERTICES);
         IM_ATTRIBS.uv.ptr = IM_ATTRIBS.vertex.ptr + (sizeof(GLfloat) * 3);
         IM_ATTRIBS.st.ptr = IM_ATTRIBS.vertex.ptr + (sizeof(GLfloat) * 5);
         IM_ATTRIBS.colour.ptr = IM_ATTRIBS.vertex.ptr + (sizeof(GLfloat) * 7);
@@ -281,7 +280,7 @@ void APIENTRY glEnd() {
     FAST_PATH_ENABLED = GL_TRUE;
 #endif
 
-    glDrawArrays(ACTIVE_POLYGON_MODE, 0, VERTICES.size);
+    glDrawArrays(ACTIVE_POLYGON_MODE, 0, aligned_vector_header(&VERTICES)->size);
 
     ATTRIB_POINTERS = stashed_attrib_pointers;
 

@@ -24,7 +24,7 @@ MAKE_FUNC(POLYMODE)
     VertexExtra* ve;
 
 
-    for(int min = 0; min < count; min += BATCH_SIZE) {
+    for(min = 0; min < count; min += BATCH_SIZE) {
         const Vertex* start = ((Vertex*) _glSubmissionTargetStart(target)) + min;
         const int_fast32_t loop = ((min + BATCH_SIZE) > count) ? count - min : BATCH_SIZE;
         const int offset = (first + min);

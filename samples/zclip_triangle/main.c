@@ -28,6 +28,8 @@ void InitGL(int Width, int Height)	        // We call this right after our OpenG
 
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
+
+    glEnable(GL_CULL_FACE);
 }
 
 /* The function called when our window is resized (which shouldn't happen, because we're fullscreen) */

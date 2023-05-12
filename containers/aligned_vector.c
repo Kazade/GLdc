@@ -12,36 +12,44 @@
 
 #include "aligned_vector.h"
 
-extern inline void* aligned_vector_resize(AlignedVector* vector, const unsigned int element_count);
-extern inline void* aligned_vector_extend(AlignedVector* vector, const unsigned int additional_count);
-extern inline void* aligned_vector_reserve(AlignedVector* vector, unsigned int element_count);
-extern inline void* aligned_vector_push_back(AlignedVector* vector, const void* objs, unsigned int count);
+extern inline void* aligned_vector_resize(AlignedVector* vector, const uint32_t element_count);
+extern inline void* aligned_vector_extend(AlignedVector* vector, const uint32_t additional_count);
+extern inline void* aligned_vector_reserve(AlignedVector* vector, uint32_t element_count);
+extern inline void* aligned_vector_push_back(AlignedVector* vector, const void* objs, uint32_t count);
 
-void aligned_vector_init(AlignedVector* vector, unsigned int element_size) {
-    vector->size = vector->capacity = 0;
-    vector->element_size = element_size;
-    vector->data = NULL;
+void aligned_vector_init(AlignedVector* vector, uint32_t element_size) {
+    /* Now initialize the header*/
+    AlignedVectorHeader* const hdr = &vector->hdr;
+    hdr->size = 0;
+    hdr->capacity = ALIGNED_VECTOR_CHUNK_SIZE;
+    hdr->element_size = element_size;
 
-    /* Reserve some initial capacity */
-    aligned_vector_reserve(vector, ALIGNED_VECTOR_CHUNK_SIZE);
+    /* Reserve some initial capacity. This will do the allocation but not set up the header */
+    void* ptr = aligned_vector_reserve(vector, ALIGNED_VECTOR_CHUNK_SIZE);
+    assert(ptr);
+    (void) ptr;
 }
 
 void aligned_vector_shrink_to_fit(AlignedVector* vector) {
-    if(vector->size == 0) {
+    AlignedVectorHeader* const hdr = &vector->hdr;
+    if(hdr->size == 0) {
+        uint32_t element_size = hdr->element_size;
         free(vector->data);
-        vector->data = NULL;
-        vector->capacity = 0;
+
+        /* Reallocate the header */
+        vector->data = memalign(0x20, sizeof(AlignedVectorHeader));
+        hdr->size = hdr->capacity = 0;
+        hdr->element_size = element_size;
     } else {
-        unsigned int new_byte_size = vector->size * vector->element_size;
-        unsigned char* original_data = vector->data;
+        uint32_t new_byte_size = (hdr->size * hdr->element_size);
+        uint8_t* original_data = vector->data;
         vector->data = (unsigned char*) memalign(0x20, new_byte_size);
 
         if(original_data) {
             FASTCPY(vector->data, original_data, new_byte_size);
             free(original_data);
         }
-
-        vector->capacity = vector->size;
+        hdr->capacity = hdr->size;
     }
 }
 

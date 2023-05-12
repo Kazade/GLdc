@@ -50,9 +50,8 @@ GL_FORCE_INLINE void _glPerspectiveDivideVertex(Vertex* vertex, const float h) {
     const float f = _glFastInvert(vertex->w);
 
     /* Convert to NDC and apply viewport */
-    vertex->xyz[0] = ((vertex->xyz[0] * f) * 320) + 320;
-    vertex->xyz[1] = ((vertex->xyz[1] * f) * -240) + 240;
-    vertex->xyz[2] = f;
+    vertex->xyz[0] = (vertex->xyz[0] * f * 320) + 320;
+    vertex->xyz[1] = (vertex->xyz[1] * f * -240) + 240;
 
     /* Orthographic projections need to use invZ otherwise we lose
     the depth information. As w == 1, and clip-space range is -w to +w
@@ -61,6 +60,8 @@ GL_FORCE_INLINE void _glPerspectiveDivideVertex(Vertex* vertex, const float h) {
     */
     if(vertex->w == 1.0f) {
         vertex->xyz[2] = _glFastInvert(1.0001f + vertex->xyz[2]);
+    } else {
+        vertex->xyz[2] = f;
     }
 }
 
@@ -137,12 +138,13 @@ void SceneListSubmit(Vertex* v2, int n) {
 
     fprintf(stderr, "----\n");
 #endif
-    uint8_t __attribute__((aligned(32))) visible_mask = 0;
-    uint8_t __attribute__((aligned(32))) counter = 0;
+    uint8_t visible_mask = 0;
+    uint8_t counter = 0;
 
     sq = SQ_BASE_ADDRESS;
 
     for(int i = 0; i < n; ++i, ++v2) {
+        PREFETCH(v2 + 1);
         switch(v2->flags) {
             case GPU_CMD_VERTEX_EOL:
                 if(counter < 2) {
