@@ -9,11 +9,7 @@
 #define likely(x)      __builtin_expect(!!(x), 1)
 #define unlikely(x)    __builtin_expect(!!(x), 0)
 
-#define SQ_BASE_ADDRESS (uint32_t *)(void *) \
-    (0xe0000000 | (((uint32_t)0x10000000) & 0x03ffffe0))
-
-
-static volatile uint32_t* PVR_LMMODE0 = (uint32_t*) 0xA05F6884;
+#define SQ_BASE_ADDRESS (void*) 0xe0000000
 
 
 GL_FORCE_INLINE bool glIsVertex(const float flags) {
@@ -54,377 +50,382 @@ GL_FORCE_INLINE void _glPerspectiveDivideVertex(Vertex* vertex, const float h) {
     const float f = _glFastInvert(vertex->w);
 
     /* Convert to NDC and apply viewport */
-    vertex->xyz[0] = __builtin_fmaf(
-        VIEWPORT.hwidth, vertex->xyz[0] * f, VIEWPORT.x_plus_hwidth
-    );
-
-    vertex->xyz[1] = h - __builtin_fmaf(
-        VIEWPORT.hheight, vertex->xyz[1] * f, VIEWPORT.y_plus_hheight
-    );
+    vertex->xyz[0] = (vertex->xyz[0] * f * 320) + 320;
+    vertex->xyz[1] = (vertex->xyz[1] * f * -240) + 240;
 
     /* Orthographic projections need to use invZ otherwise we lose
     the depth information. As w == 1, and clip-space range is -w to +w
     we add 1.0 to the Z to bring it into range. We add a little extra to
     avoid a divide by zero.
     */
-
-    vertex->xyz[2] = (vertex->w == 1.0f) ? _glFastInvert(1.0001f + vertex->xyz[2]) : f;
+    if(vertex->w == 1.0f) {
+        vertex->xyz[2] = _glFastInvert(1.0001f + vertex->xyz[2]);
+    } else {
+        vertex->xyz[2] = f;
+    }
 }
 
-GL_FORCE_INLINE void _glSubmitHeaderOrVertex(uint32_t* d, const Vertex* v) {
-#ifndef NDEBUG
-    gl_assert(!isnan(v->xyz[2]));
-    gl_assert(!isnan(v->w));
-#endif
 
-#if CLIP_DEBUG
-    printf("Submitting: %x (%x)\n", v, v->flags);
-#endif
+volatile uint32_t *sq = SQ_BASE_ADDRESS;
 
-    uint32_t *s = (uint32_t*) v;
-    d[0] = *(s++);
-    d[1] = *(s++);
-    d[2] = *(s++);
-    d[3] = *(s++);
-    d[4] = *(s++);
-    d[5] = *(s++);
-    d[6] = *(s++);
-    d[7] = *(s++);
-    __asm__("pref @%0" : : "r"(d));
-    d += 8;
+static inline void _glFlushBuffer() {}
+static inline void _glPushHeaderOrVertex(Vertex* v)  {
+    uint32_t* s = (uint32_t*) v;
+    sq[0] = *(s++);
+    sq[1] = *(s++);
+    sq[2] = *(s++);
+    sq[3] = *(s++);
+    sq[4] = *(s++);
+    sq[5] = *(s++);
+    sq[6] = *(s++);
+    sq[7] = *(s++);
+    __asm__("pref @%0" : : "r"(sq));
+    sq += 8;
 }
 
-static struct __attribute__((aligned(32))) {
-    Vertex* v;
-    int visible;
-} triangle[3];
-
-static int tri_count = 0;
-static int strip_count = 0;
-
-static inline void interpolateColour(const uint32_t* a, const uint32_t* b, const float t, uint32_t* out) {
-    const static uint32_t MASK1 = 0x00FF00FF;
-    const static uint32_t MASK2 = 0xFF00FF00;
-
-    const uint32_t f2 = 256 * t;
-    const uint32_t f1 = 256 - f2;
-
-    *out = (((((*a & MASK1) * f1) + ((*b & MASK1) * f2)) >> 8) & MASK1) |
-            (((((*a & MASK2) * f1) + ((*b & MASK2) * f2)) >> 8) & MASK2);
-}
-
-static inline void _glClipEdge(const Vertex* v1, const Vertex* v2, Vertex* vout) {
-    /* Clipping time! */
+static inline void _glClipEdge(const Vertex* const v1, const Vertex* const v2, Vertex* vout) {
+    const static float o = 0.003921569f;  // 1 / 255
     const float d0 = v1->w + v1->xyz[2];
     const float d1 = v2->w + v2->xyz[2];
-    const float sign = ((2.0f * (d1 < d0)) - 1.0f);
-    const float epsilon = -0.00001f * sign;
-    const float n = (d0 - d1);
-    const float r = (1.f / sqrtf(n * n)) * sign;
-    float t = fmaf(r, d0, epsilon);
+    const float t = (fabs(d0) * (1.0f / sqrtf((d1 - d0) * (d1 - d0)))) + 0.000001f;
+    const float invt = 1.0f - t;
 
-    vout->xyz[0] = fmaf(v2->xyz[0] - v1->xyz[0], t, v1->xyz[0]);
-    vout->xyz[1] = fmaf(v2->xyz[1] - v1->xyz[1], t, v1->xyz[1]);
-    vout->xyz[2] = fmaf(v2->xyz[2] - v1->xyz[2], t, v1->xyz[2]);
-    vout->w = fmaf(v2->w - v1->w, t, v1->w);
+    vout->xyz[0] = invt * v1->xyz[0] + t * v2->xyz[0];
+    vout->xyz[1] = invt * v1->xyz[1] + t * v2->xyz[1];
+    vout->xyz[2] = invt * v1->xyz[2] + t * v2->xyz[2];
 
-    vout->uv[0] = fmaf(v2->uv[0] - v1->uv[0], t, v1->uv[0]);
-    vout->uv[1] = fmaf(v2->uv[1] - v1->uv[1], t, v1->uv[1]);
+    vout->uv[0] = invt * v1->uv[0] + t * v2->uv[0];
+    vout->uv[1] = invt * v1->uv[1] + t * v2->uv[1];
 
-    interpolateColour((uint32_t*) v1->bgra, (uint32_t*) v2->bgra, t, (uint32_t*) vout->bgra);
-}
+    vout->w = invt * v1->w + t * v2->w;
 
-GL_FORCE_INLINE void ClearTriangle() {
-    tri_count = 0;
-}
+    const float m = 255 * t;
+    const float n = 255 - m;
 
-static inline void ShiftTriangle() {
-    if(!tri_count) {
-        return;
-    }
-
-    tri_count--;
-    triangle[0] = triangle[1];
-    triangle[1] = triangle[2];
-
-#ifndef NDEBUG
-    triangle[2].v = NULL;
-    triangle[2].visible = false;
-#endif
-}
-
-
-static inline void ShiftRotateTriangle() {
-    if(!tri_count) {
-        return;
-    }
-
-    if(triangle[0].v < triangle[1].v) {
-        triangle[0] = triangle[2];
-    } else {
-        triangle[1] = triangle[2];
-    }
-
-    tri_count--;
+    vout->bgra[0] = (v1->bgra[0] * n + v2->bgra[0] * m) * o;
+    vout->bgra[1] = (v1->bgra[1] * n + v2->bgra[1] * m) * o;
+    vout->bgra[2] = (v1->bgra[2] * n + v2->bgra[2] * m) * o;
+    vout->bgra[3] = (v1->bgra[3] * n + v2->bgra[3] * m) * o;
 }
 
 #define SPAN_SORT_CFG 0x005F8030
+static volatile uint32_t* PVR_LMMODE0 = (uint32_t*) 0xA05F6884;
+static volatile uint32_t *PVR_LMMODE1 = (uint32_t*) 0xA05F6888;
+static volatile uint32_t *QACR = (uint32_t*) 0xFF000038;
 
-void SceneListSubmit(void* src, int n) {
+void SceneListSubmit(Vertex* v2, int n) {
+    /* You need at least a header, and 3 vertices to render anything */
+    if(n < 4) {
+        return;
+    }
+
     const float h = GetVideoMode()->height;
 
     PVR_SET(SPAN_SORT_CFG, 0x0);
 
     //Set PVR DMA registers
-    volatile int *pvrdmacfg = (int*)0xA05F6888;
-    pvrdmacfg[0] = 1;
-    pvrdmacfg[1] = 0;
+    *PVR_LMMODE0 = 0;
+    *PVR_LMMODE1 = 0;
 
     //Set QACR registers
-    volatile int *qacr = (int*)0xFF000038;
-    qacr[1] = qacr[0] = 0x11;
-
-    uint32_t *d = SQ_BASE_ADDRESS;
-
-    Vertex __attribute__((aligned(32))) tmp;
-
-    /* Perform perspective divide on each vertex */
-    Vertex* vertex = (Vertex*) src;
-
-    if(!_glNearZClippingEnabled()) {
-        /* Prep store queues */
-
-        while(n--) {
-            if(glIsVertex(vertex->flags)) {
-                _glPerspectiveDivideVertex(vertex, h);
-            }
-
-            _glSubmitHeaderOrVertex(d, vertex);
-            ++vertex;
-        }
-
-        return;
-    }
-
-    tri_count = 0;
-    strip_count = 0;
+    QACR[1] = QACR[0] = 0x11;
 
 #if CLIP_DEBUG
-    printf("----\n");
-#endif
+    Vertex* vertex = (Vertex*) src;
+    for(int i = 0; i < n; ++i) {
+        fprintf(stderr, "{%f, %f, %f, %f}, // %x (%x)\n", vertex[i].xyz[0], vertex[i].xyz[1], vertex[i].xyz[2], vertex[i].w, vertex[i].flags, &vertex[i]);
+    }
 
-    for(int i = 0; i < n; ++i, ++vertex) {
-        PREFETCH(vertex + 1);
-        PREFETCH(vertex + 2);
-        /* Wait until we fill the triangle */
-        if(tri_count < 3) {
-            if(glIsVertex(vertex->flags)) {
-                ++strip_count;
-                triangle[tri_count].v = vertex;
-                triangle[tri_count].visible = vertex->xyz[2] >= -vertex->w;
-                if(++tri_count < 3) {
+    fprintf(stderr, "----\n");
+#endif
+    uint8_t visible_mask = 0;
+    uint8_t counter = 0;
+
+    sq = SQ_BASE_ADDRESS;
+
+    for(int i = 0; i < n; ++i, ++v2) {
+        PREFETCH(v2 + 1);
+        switch(v2->flags) {
+            case GPU_CMD_VERTEX_EOL:
+                if(counter < 2) {
                     continue;
                 }
-            } else {
-                /* We hit a header */
-                tri_count = 0;
-                strip_count = 0;
-                _glSubmitHeaderOrVertex(d, vertex);
+
+                counter = 0;
+            break;
+            case GPU_CMD_VERTEX:
+                ++counter;
+                if(counter < 3) {
+                    continue;
+                }
+            break;
+            default:
+                _glPushHeaderOrVertex(v2);
+                counter = 0;
                 continue;
-            }
-        }
+        };
 
-#if CLIP_DEBUG
-        printf("SC: %d\n", strip_count);
-#endif
+        Vertex* const v0 = v2 - 2;
+        Vertex* const v1 = v2 - 1;
 
-        /* If we got here, then triangle contains 3 vertices */
-        int visible_mask = triangle[0].visible | (triangle[1].visible << 1) | (triangle[2].visible << 2);
-
-        /* Clipping time!
-
-            There are 6 distinct possibilities when clipping a triangle. 3 of them result
-            in another triangle, 3 of them result in a quadrilateral.
-
-            Assuming you iterate the edges of the triangle in order, and create a new *visible*
-            vertex when you cross the plane, and discard vertices behind the plane, then the only
-            difference between the two cases is that the final two vertices that need submitting have
-            to be reversed.
-
-            Unfortunately we have to copy vertices here, because if we persp-divide a vertex it may
-            be used in a subsequent triangle in the strip and would end up being double divided.
-        */
-
-#define SUBMIT_QUEUED() \
-    if(strip_count > 3) { \
-        tmp = *(vertex - 2); \
-        /* If we had triangles ahead of this one, submit and finalize */ \
-        _glPerspectiveDivideVertex(&tmp, h); \
-        _glSubmitHeaderOrVertex(d, &tmp); \
-        tmp = *(vertex - 1); \
-        tmp.flags = GPU_CMD_VERTEX_EOL; \
-        _glPerspectiveDivideVertex(&tmp, h); \
-        _glSubmitHeaderOrVertex(d, &tmp); \
-    }
-
-        bool is_last_in_strip = glIsLastVertex(vertex->flags);
+        visible_mask = (
+            (v0->xyz[2] > -v0->w) << 0 |
+            (v1->xyz[2] > -v1->w) << 1 |
+            (v2->xyz[2] > -v2->w) << 2 |
+            (counter == 0) << 3
+        );
 
         switch(visible_mask) {
-            case 1: {
-                SUBMIT_QUEUED();
-                /* 0, 0a, 2a */
-                tmp = *triangle[0].v;
-                tmp.flags = GPU_CMD_VERTEX;
-                _glPerspectiveDivideVertex(&tmp, h);
-                _glSubmitHeaderOrVertex(d, &tmp);
+            case 15: /* All visible, but final vertex in strip */
+            {
+                _glPerspectiveDivideVertex(v0, h);
+                _glPushHeaderOrVertex(v0);
 
-                _glClipEdge(triangle[0].v, triangle[1].v, &tmp);
-                tmp.flags = GPU_CMD_VERTEX;
-                _glPerspectiveDivideVertex(&tmp, h);
-                _glSubmitHeaderOrVertex(d, &tmp);
+                _glPerspectiveDivideVertex(v1, h);
+                _glPushHeaderOrVertex(v1);
 
-                _glClipEdge(triangle[2].v, triangle[0].v, &tmp);
-                tmp.flags = GPU_CMD_VERTEX_EOL;
-                _glPerspectiveDivideVertex(&tmp, h);
-                _glSubmitHeaderOrVertex(d, &tmp);
-            } break;
-            case 2: {
-                SUBMIT_QUEUED();
-                /* 0a, 1, 1a */
-                _glClipEdge(triangle[0].v, triangle[1].v, &tmp);
-                tmp.flags = GPU_CMD_VERTEX;
-                _glPerspectiveDivideVertex(&tmp, h);
-                _glSubmitHeaderOrVertex(d, &tmp);
-
-                tmp = *triangle[1].v;
-                tmp.flags = GPU_CMD_VERTEX;
-                _glPerspectiveDivideVertex(&tmp, h);
-                _glSubmitHeaderOrVertex(d, &tmp);
-
-                _glClipEdge(triangle[1].v, triangle[2].v, &tmp);
-                tmp.flags = GPU_CMD_VERTEX_EOL;
-                _glPerspectiveDivideVertex(&tmp, h);
-                _glSubmitHeaderOrVertex(d, &tmp);
-            } break;
-            case 3: {
-                SUBMIT_QUEUED();
-                /* 0, 1, 2a, 1a */
-                tmp = *triangle[0].v;
-                tmp.flags = GPU_CMD_VERTEX;
-                _glPerspectiveDivideVertex(&tmp, h);
-                _glSubmitHeaderOrVertex(d, &tmp);
-
-                tmp = *triangle[1].v;
-                tmp.flags = GPU_CMD_VERTEX;
-                _glPerspectiveDivideVertex(&tmp, h);
-                _glSubmitHeaderOrVertex(d, &tmp);
-
-                _glClipEdge(triangle[2].v, triangle[0].v, &tmp);
-                tmp.flags = GPU_CMD_VERTEX;
-                _glPerspectiveDivideVertex(&tmp, h);
-                _glSubmitHeaderOrVertex(d, &tmp);
-
-                _glClipEdge(triangle[1].v, triangle[2].v, &tmp);
-                tmp.flags = GPU_CMD_VERTEX_EOL;
-                _glPerspectiveDivideVertex(&tmp, h);
-                _glSubmitHeaderOrVertex(d, &tmp);
-            } break;
-            case 4: {
-                SUBMIT_QUEUED();
-                /* 1a, 2, 2a */
-                _glClipEdge(triangle[1].v, triangle[2].v, &tmp);
-                tmp.flags = GPU_CMD_VERTEX;
-                _glPerspectiveDivideVertex(&tmp, h);
-                _glSubmitHeaderOrVertex(d, &tmp);
-
-                tmp = *triangle[2].v;
-                tmp.flags = GPU_CMD_VERTEX;
-                _glPerspectiveDivideVertex(&tmp, h);
-                _glSubmitHeaderOrVertex(d, &tmp);
-
-                _glClipEdge(triangle[2].v, triangle[0].v, &tmp);
-                tmp.flags = GPU_CMD_VERTEX_EOL;
-                _glPerspectiveDivideVertex(&tmp, h);
-                _glSubmitHeaderOrVertex(d, &tmp);
-            } break;
-            case 5: {
-                SUBMIT_QUEUED();
-                /* 0, 0a, 2, 1a */
-                tmp = *triangle[0].v;
-                tmp.flags = GPU_CMD_VERTEX;
-                _glPerspectiveDivideVertex(&tmp, h);
-                _glSubmitHeaderOrVertex(d, &tmp);
-
-                _glClipEdge(triangle[0].v, triangle[1].v, &tmp);
-                tmp.flags = GPU_CMD_VERTEX;
-                _glPerspectiveDivideVertex(&tmp, h);
-                _glSubmitHeaderOrVertex(d, &tmp);
-
-                tmp = *triangle[2].v;
-                tmp.flags = GPU_CMD_VERTEX;
-                _glPerspectiveDivideVertex(&tmp, h);
-                _glSubmitHeaderOrVertex(d, &tmp);
-
-                _glClipEdge(triangle[1].v, triangle[2].v, &tmp);
-                tmp.flags = GPU_CMD_VERTEX_EOL;
-                _glPerspectiveDivideVertex(&tmp, h);
-                _glSubmitHeaderOrVertex(d, &tmp);
-            } break;
-            case 6: {
-                SUBMIT_QUEUED();
-                /* 0a, 1, 2a, 2 */
-                _glClipEdge(triangle[0].v, triangle[1].v, &tmp);
-                tmp.flags = GPU_CMD_VERTEX;
-                _glPerspectiveDivideVertex(&tmp, h);
-                _glSubmitHeaderOrVertex(d, &tmp);
-
-                tmp = *triangle[1].v;
-                tmp.flags = GPU_CMD_VERTEX;
-                _glPerspectiveDivideVertex(&tmp, h);
-                _glSubmitHeaderOrVertex(d, &tmp);
-
-                _glClipEdge(triangle[2].v, triangle[0].v, &tmp);
-                tmp.flags = GPU_CMD_VERTEX;
-                _glPerspectiveDivideVertex(&tmp, h);
-                _glSubmitHeaderOrVertex(d, &tmp);
-
-                tmp = *triangle[2].v;
-                tmp.flags = GPU_CMD_VERTEX_EOL;
-                _glPerspectiveDivideVertex(&tmp, h);
-                _glSubmitHeaderOrVertex(d, &tmp);
-            } break;
-            case 7: {
-                /* All the vertices are visible! We divide and submit v0, then shift */
-                _glPerspectiveDivideVertex(vertex - 2, h);
-                _glSubmitHeaderOrVertex(d, vertex - 2);
-
-                if(is_last_in_strip) {
-                    _glPerspectiveDivideVertex(vertex - 1, h);
-                    _glSubmitHeaderOrVertex(d, vertex - 1);
-                    _glPerspectiveDivideVertex(vertex, h);
-                    _glSubmitHeaderOrVertex(d, vertex);
-                    tri_count = 0;
-                    strip_count = 0;
-                }
-
-                ShiftRotateTriangle();
-                continue;
-            } break;
-            case 0:
-            default:
+                _glPerspectiveDivideVertex(v2, h);
+                _glPushHeaderOrVertex(v2);
+            }
             break;
-        }
+            case 7:
+                /* All visible, push the first vertex and move on */
+                _glPerspectiveDivideVertex(v0, h);
+                _glPushHeaderOrVertex(v0);
+            break;
+            case 9:
+                /* First vertex was visible, last in strip */
+                {
+                    Vertex __attribute__((aligned(32))) scratch[2];
+                    Vertex* a = &scratch[0];
+                    Vertex* b = &scratch[1];
 
-        /* If this was the last in the strip, we don't need to
-        submit anything else, we just wipe the tri_count */
-        if(is_last_in_strip) {
-            tri_count = 0;
-            strip_count = 0;
-        } else {
-            ShiftRotateTriangle();
-            strip_count = 2;
+                    _glClipEdge(v0, v1, a);
+                    a->flags = GPU_CMD_VERTEX;
+
+                    _glClipEdge(v2, v0, b);
+                    b->flags = GPU_CMD_VERTEX_EOL;
+
+                    _glPerspectiveDivideVertex(v0, h);
+                    _glPushHeaderOrVertex(v0);
+
+                    _glPerspectiveDivideVertex(a, h);
+                    _glPushHeaderOrVertex(a);
+
+                    _glPerspectiveDivideVertex(b, h);
+                    _glPushHeaderOrVertex(b);
+                }
+            break;
+            case 1:
+                /* First vertex was visible, but not last in strip */
+                {
+                    Vertex __attribute__((aligned(32))) scratch[2];
+                    Vertex* a = &scratch[0];
+                    Vertex* b = &scratch[1];
+
+                    _glClipEdge(v0, v1, a);
+                    a->flags = GPU_CMD_VERTEX;
+
+                    _glClipEdge(v2, v0, b);
+                    b->flags = GPU_CMD_VERTEX;
+
+                    _glPerspectiveDivideVertex(v0, h);
+                    _glPushHeaderOrVertex(v0);
+
+                    _glPerspectiveDivideVertex(a, h);
+                    _glPushHeaderOrVertex(a);
+
+                    _glPerspectiveDivideVertex(b, h);
+                    _glPushHeaderOrVertex(b);
+                    _glPushHeaderOrVertex(b);
+                }
+            break;
+            case 10:
+            case 2:
+                /* Second vertex was visible. In self case we need to create a triangle and produce
+                two new vertices: 1-2, and 2-3. */
+                {
+                    Vertex __attribute__((aligned(32))) scratch[2];
+                    Vertex* a = &scratch[0];
+                    Vertex* c = &scratch[1];
+
+                    memcpy_vertex(c, v1);
+
+                    _glClipEdge(v0, c, a);
+                    a->flags = GPU_CMD_VERTEX;
+
+                    _glPerspectiveDivideVertex(a, h);
+                    _glPushHeaderOrVertex(a);
+
+                    _glClipEdge(c, v2, a);
+                    a->flags = v2->flags;
+
+                    _glPerspectiveDivideVertex(c, h);
+                    _glPushHeaderOrVertex(c);
+
+                    _glPerspectiveDivideVertex(a, h);
+                    _glPushHeaderOrVertex(a);
+                }
+            break;
+            case 11:
+            case 3:  /* First and second vertex were visible */
+                {
+                    Vertex __attribute__((aligned(32))) scratch[3];
+                    Vertex* a = &scratch[0];
+                    Vertex* b = &scratch[1];
+                    Vertex* c = &scratch[2];
+
+                    memcpy_vertex(c, v1);
+
+                    _glClipEdge(v2, v0, b);
+                    b->flags = GPU_CMD_VERTEX;
+
+                    _glPerspectiveDivideVertex(v0, h);
+                    _glPushHeaderOrVertex(v0);
+
+                    _glClipEdge(v1, v2, a);
+                    a->flags = v2->flags;
+
+                    _glPerspectiveDivideVertex(c, h);
+                    _glPushHeaderOrVertex(c);
+
+                    _glPerspectiveDivideVertex(b, h);
+                    _glPushHeaderOrVertex(b);
+
+                    _glPerspectiveDivideVertex(a, h);
+                    _glPushHeaderOrVertex(c);
+                    _glPushHeaderOrVertex(a);
+                }
+            break;
+            case 12:
+            case 4:
+                /* Third vertex was visible. */
+                {
+                    Vertex __attribute__((aligned(32))) scratch[3];
+                    Vertex* a = &scratch[0];
+                    Vertex* b = &scratch[1];
+                    Vertex* c = &scratch[2];
+
+                    memcpy_vertex(c, v2);
+
+                    _glClipEdge(v2, v0, a);
+                    a->flags = GPU_CMD_VERTEX;
+
+                    _glClipEdge(v1, v2, b);
+                    b->flags = GPU_CMD_VERTEX;
+
+                    _glPerspectiveDivideVertex(a, h);
+                    _glPushHeaderOrVertex(a);
+
+                    if(counter % 2 == 1) {
+                        _glPushHeaderOrVertex(a);
+                    }
+
+                    _glPerspectiveDivideVertex(b, h);
+                    _glPushHeaderOrVertex(b);
+
+                    _glPerspectiveDivideVertex(c, h);
+                    _glPushHeaderOrVertex(c);
+                }
+            break;
+            case 13:
+                {
+                    Vertex __attribute__((aligned(32))) scratch[3];
+                    Vertex* a = &scratch[0];
+                    Vertex* b = &scratch[1];
+                    Vertex* c = &scratch[2];
+
+                    memcpy_vertex(c, v2);
+                    c->flags = GPU_CMD_VERTEX;
+
+                    _glClipEdge(v0, v1, a);
+                    a->flags = GPU_CMD_VERTEX;
+
+                    _glClipEdge(v1, v2, b);
+                    b->flags = GPU_CMD_VERTEX;
+
+                    _glPerspectiveDivideVertex(v0, h);
+                    _glPushHeaderOrVertex(v0);
+
+                    _glPerspectiveDivideVertex(a, h);
+                    _glPushHeaderOrVertex(a);
+
+                    _glPerspectiveDivideVertex(c, h);
+                    _glPushHeaderOrVertex(c);
+                    _glPerspectiveDivideVertex(b, h);
+                    _glPushHeaderOrVertex(b);
+
+                    c->flags = GPU_CMD_VERTEX_EOL;
+                    _glPushHeaderOrVertex(c);
+                }
+            break;
+            case 5:  /* First and third vertex were visible */
+                {
+                    Vertex __attribute__((aligned(32))) scratch[3];
+                    Vertex* a = &scratch[0];
+                    Vertex* b = &scratch[1];
+                    Vertex* c = &scratch[2];
+
+                    memcpy_vertex(c, v2);
+                    c->flags = GPU_CMD_VERTEX;
+
+                    _glClipEdge(v0, v1, a);
+                    a->flags = GPU_CMD_VERTEX;
+
+                    _glClipEdge(v1, v2, b);
+                    b->flags = GPU_CMD_VERTEX;
+
+                    _glPerspectiveDivideVertex(v0, h);
+                    _glPushHeaderOrVertex(v0);
+
+                    _glPerspectiveDivideVertex(a, h);
+                    _glPushHeaderOrVertex(a);
+
+                    _glPerspectiveDivideVertex(c, h);
+                    _glPushHeaderOrVertex(c);
+                    _glPerspectiveDivideVertex(b, h);
+                    _glPushHeaderOrVertex(b);
+                    _glPushHeaderOrVertex(c);
+                }
+            break;
+            case 14:
+            case 6:  /* Second and third vertex were visible */
+                {
+                    Vertex __attribute__((aligned(32))) scratch[4];
+                    Vertex* a = &scratch[0];
+                    Vertex* b = &scratch[1];
+                    Vertex* c = &scratch[2];
+                    Vertex* d = &scratch[3];
+
+                    memcpy_vertex(c, v1);
+                    memcpy_vertex(d, v2);
+
+                    _glClipEdge(v0, v1, a);
+                    a->flags = GPU_CMD_VERTEX;
+
+                    _glClipEdge(v2, v0, b);
+                    b->flags = GPU_CMD_VERTEX;
+
+                    _glPerspectiveDivideVertex(a, h);
+                    _glPushHeaderOrVertex(a);
+
+                    _glPerspectiveDivideVertex(c, h);
+                    _glPushHeaderOrVertex(c);
+
+                    _glPerspectiveDivideVertex(b, h);
+                    _glPushHeaderOrVertex(b);
+                    _glPushHeaderOrVertex(c);
+
+                    _glPerspectiveDivideVertex(d, h);
+                    _glPushHeaderOrVertex(d);
+                }
+            break;
+            default:
+                break;
         }
     }
+
+    _glFlushBuffer();
 }
 
 void SceneListFinish() {

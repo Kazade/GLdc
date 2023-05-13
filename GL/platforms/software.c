@@ -255,7 +255,7 @@ GL_FORCE_INLINE void ShiftRotateTriangle() {
     tri_count--;
 }
 
-void SceneListSubmit(void* src, int n) {
+void SceneListSubmit(Vertex* src, int n) {
         /* Perform perspective divide on each vertex */
     Vertex* vertex = (Vertex*) src;
 

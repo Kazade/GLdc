@@ -68,21 +68,16 @@ int check_start() {
 }
 
 void setup() {
-    //PVR needs to warm up for a frame, or results will be low
-    glKosInit();
+    GLdcConfig cfg;
+    glKosInitConfig(&cfg);
+    cfg.initial_immediate_capacity = 14000;
+    glKosInitEx(&cfg);
+
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
     glOrtho(0, 640, 0, 480, -100, 100);
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
-
-    glDisable(GL_NEARZ_CLIPPING_KOS);
-
-#ifdef __DREAMCAST__
-    pvr_wait_ready();
-    pvr_scene_begin();
-    pvr_scene_finish();
-#endif
 }
 
 void do_frame() {
@@ -116,6 +111,8 @@ time_t begin;
 void switch_tests(int ppf) {
     printf("Beginning new test: %d polys per frame (%d per second at 60fps)\n",
            ppf * 2, ppf * 2 * 60);
+    fflush(stdout);
+
     avgfps = -1;
     polycnt = ppf;
 }
@@ -128,7 +125,6 @@ void check_switch() {
     if(now >= (begin + 5)) {
         begin = time(NULL);
         printf("  Average Frame Rate: ~%f fps (%d pps)\n", avgfps, (int)(polycnt * avgfps * 2));
-
         switch(phase) {
             case PHASE_HALVE:
 
@@ -169,18 +165,23 @@ void check_switch() {
             case PHASE_FINAL:
                 break;
         }
+
+        fflush(stdout);
     }
 }
 
+#define PROFILE 0
+
 int main(int argc, char **argv) {
-#ifndef NDEBUG
-#ifdef __DREAMCAST__
+#if PROFILE
     profiler_init("/pc/gmon.out");
-    profiler_start();
-#endif
 #endif
 
     setup();
+
+#if PROFILE
+    profiler_start();
+#endif
 
     /* Start off with something obscene */
     switch_tests(200000 / 60);
@@ -200,11 +201,9 @@ int main(int argc, char **argv) {
 
     stats();
 
-#ifdef __DREAMCAST__
-#ifndef NDEBUG
+#if PROFILE
     profiler_stop();
     profiler_clean_up();
-#endif
 #endif
 
     return 0;

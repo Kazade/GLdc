@@ -93,21 +93,21 @@ void APIENTRY glKosSwapBuffers() {
     TRACE();
 
     SceneBegin();
-        if(OP_LIST.vector.size > 2) {
+        if(aligned_vector_header(&OP_LIST.vector)->size > 2) {
             SceneListBegin(GPU_LIST_OP_POLY);
-            SceneListSubmit(OP_LIST.vector.data, OP_LIST.vector.size);
+            SceneListSubmit((Vertex*) aligned_vector_front(&OP_LIST.vector), aligned_vector_size(&OP_LIST.vector));
             SceneListFinish();
         }
 
-        if(PT_LIST.vector.size > 2) {
+        if(aligned_vector_header(&PT_LIST.vector)->size > 2) {
             SceneListBegin(GPU_LIST_PT_POLY);
-            SceneListSubmit(PT_LIST.vector.data, PT_LIST.vector.size);
+            SceneListSubmit((Vertex*) aligned_vector_front(&PT_LIST.vector), aligned_vector_size(&PT_LIST.vector));
             SceneListFinish();
         }
 
-        if(TR_LIST.vector.size > 2) {
+        if(aligned_vector_header(&TR_LIST.vector)->size > 2) {
             SceneListBegin(GPU_LIST_TR_POLY);
-            SceneListSubmit(TR_LIST.vector.data, TR_LIST.vector.size);
+            SceneListSubmit((Vertex*) aligned_vector_front(&TR_LIST.vector), aligned_vector_size(&TR_LIST.vector));
             SceneListFinish();
         }
     SceneFinish();

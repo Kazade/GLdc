@@ -1,17 +1,18 @@
+
 #include <cstdio>
 #include <stdbool.h>
 #include <stdlib.h>
 #include <time.h>
-#include "GL/gl.h"
-#include "GL/glu.h"
 
 #ifdef __DREAMCAST__
 #include <kos.h>
-#include "GL/glext.h"
-#include "GL/glkos.h"
-
 float avgfps = -1;
 #endif
+
+#include "GL/gl.h"
+#include "GL/glkos.h"
+#include "GL/glu.h"
+#include "GL/glext.h"
 
 #define PI 3.14159265358979323846264338327950288f
 #define RAD_TO_DEG 57.295779513082320876798154814105f
@@ -251,9 +252,7 @@ float rnd(float Min, float Max)
 void initialize()
 {
 	debugLog("Initialize video output");
-#ifdef __DREAMCAST__
 	glKosInit();
-#endif
 
 	glClearDepth(1.0);
 	glDepthFunc(GL_LEQUAL);
@@ -280,7 +279,7 @@ void initialize()
 	glLoadIdentity();
 
 	// Set up colors (each face has a different color)
-	for (int i = 0; i < 6; i++) 
+	for (int i = 0; i < 6; i++)
 	{
 		faceColors[i * 4] = colors[i];
 		faceColors[i * 4 + 1] = colors[i];

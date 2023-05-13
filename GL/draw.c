@@ -239,7 +239,7 @@ static void _fillWithNegZVE(const GLubyte* __restrict__ input, GLubyte* __restri
         float x, y, z;
     } V;
 
-    const static V NegZ = {0.0f, 0.0f, -1.0f};
+    static const V NegZ = {0.0f, 0.0f, -1.0f};
 
     *((V*) out) = NegZ;
 }
@@ -391,12 +391,12 @@ GL_FORCE_INLINE void transformNormalToEyeSpace(GLfloat* normal) {
 }
 
 GL_FORCE_INLINE PolyHeader *_glSubmissionTargetHeader(SubmissionTarget* target) {
-    gl_assert(target->header_offset < target->output->vector.size);
+    gl_assert(target->header_offset < aligned_vector_size(&target->output->vector));
     return aligned_vector_at(&target->output->vector, target->header_offset);
 }
 
 GL_INLINE_DEBUG Vertex* _glSubmissionTargetStart(SubmissionTarget* target) {
-    gl_assert(target->start_offset < target->output->vector.size);
+    gl_assert(target->start_offset < aligned_vector_size(&target->output->vector));
     return aligned_vector_at(&target->output->vector, target->start_offset);
 }
 
@@ -1210,15 +1210,14 @@ GL_FORCE_INLINE void submitVertices(GLenum mode, GLsizei first, GLuint count, GL
         return;
     }
 
-    GLboolean header_required = (target->output->vector.size == 0) || _glGPUStateIsDirty();
-
-
     // We don't handle this any further, so just make sure we never pass it down */
     gl_assert(mode != GL_POLYGON);
 
     target->output = _glActivePolyList();
+    GLboolean header_required = (aligned_vector_header(&target->output->vector)->size == 0) || _glGPUStateIsDirty();
+
     target->count = (mode == GL_TRIANGLE_FAN) ? ((count - 2) * 3) : count;
-    target->header_offset = target->output->vector.size;
+    target->header_offset = aligned_vector_header(&target->output->vector)->size;
     target->start_offset = target->header_offset + (header_required);
 
     gl_assert(target->count);

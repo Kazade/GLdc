@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdint.h>
+#include <stdio.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -12,6 +13,7 @@ extern "C" {
 #if defined(__APPLE__) || defined(__WIN32__)
 /* Linux + Kos define this, OSX does not, so just use malloc there */
 static inline void* memalign(size_t alignment, size_t size) {
+    (void) alignment;
     return malloc(size);
 }
 #else
@@ -65,10 +67,14 @@ AV_FORCE_INLINE void *AV_MEMCPY4(void *dest, const void *src, size_t len)
 #endif
 
 typedef struct {
-    uint8_t* __attribute__((aligned(32))) data;
     uint32_t size;
     uint32_t capacity;
     uint32_t element_size;
+} __attribute__((aligned(32))) AlignedVectorHeader;
+
+typedef struct {
+    AlignedVectorHeader hdr;
+    uint8_t* data;
 } AlignedVector;
 
 #define ALIGNED_VECTOR_CHUNK_SIZE 256u
@@ -78,90 +84,129 @@ typedef struct {
     ((((v) + ALIGNED_VECTOR_CHUNK_SIZE - 1) / ALIGNED_VECTOR_CHUNK_SIZE) * ALIGNED_VECTOR_CHUNK_SIZE)
 
 
-void aligned_vector_init(AlignedVector* vector, unsigned int element_size);
+void aligned_vector_init(AlignedVector* vector, uint32_t element_size);
 
-AV_FORCE_INLINE void* aligned_vector_reserve(AlignedVector* vector, unsigned int element_count) {
-    if(element_count <= vector->capacity) {
-        return NULL;
+AV_FORCE_INLINE void* aligned_vector_at(const AlignedVector* vector, const uint32_t index) {
+    const AlignedVectorHeader* hdr = &vector->hdr;
+    assert(index < hdr->size);
+    return vector->data + (index * hdr->element_size);
+}
+
+AV_FORCE_INLINE void* aligned_vector_reserve(AlignedVector* vector, uint32_t element_count) {
+    AlignedVectorHeader* hdr = &vector->hdr;
+
+    if(element_count < hdr->capacity) {
+        return aligned_vector_at(vector, element_count);
     }
 
-    unsigned int original_byte_size = vector->size * vector->element_size;
+    uint32_t original_byte_size = (hdr->size * hdr->element_size);
 
     /* We overallocate so that we don't make small allocations during push backs */
     element_count = ROUND_TO_CHUNK_SIZE(element_count);
 
-    unsigned int new_byte_size = element_count * vector->element_size;
-    unsigned char* original_data = vector->data;
+    uint32_t new_byte_size = (element_count * hdr->element_size);
+    uint8_t* original_data = vector->data;
 
-    vector->data = (unsigned char*) memalign(0x20, new_byte_size);
+    vector->data = (uint8_t*) memalign(0x20, new_byte_size);
     assert(vector->data);
 
-    if(original_data) {
-        AV_MEMCPY4(vector->data, original_data, original_byte_size);
-        free(original_data);
-    }
+    AV_MEMCPY4(vector->data, original_data, original_byte_size);
+    free(original_data);
 
-    vector->capacity = element_count;
-
+    hdr->capacity = element_count;
     return vector->data + original_byte_size;
 }
 
-AV_FORCE_INLINE void* aligned_vector_at(const AlignedVector* vector, const unsigned int index) {
-    assert(index < vector->size);
-    return &vector->data[index * vector->element_size];
+AV_FORCE_INLINE AlignedVectorHeader* aligned_vector_header(const AlignedVector* vector) {
+    return (AlignedVectorHeader*) &vector->hdr;
 }
 
-AV_FORCE_INLINE void* aligned_vector_resize(AlignedVector* vector, const unsigned int element_count) {
+AV_FORCE_INLINE uint32_t aligned_vector_size(const AlignedVector* vector) {
+    const AlignedVectorHeader* hdr = &vector->hdr;
+    return hdr->size;
+}
+
+AV_FORCE_INLINE uint32_t aligned_vector_capacity(const AlignedVector* vector) {
+    const AlignedVectorHeader* hdr = &vector->hdr;
+    return hdr->capacity;
+}
+
+AV_FORCE_INLINE void* aligned_vector_front(const AlignedVector* vector) {
+    return vector->data;
+}
+
+/* Resizes the array and returns a pointer to the first new element (if upsizing) or NULL (if downsizing) */
+AV_FORCE_INLINE void* aligned_vector_resize(AlignedVector* vector, const uint32_t element_count) {
     void* ret = NULL;
 
-    unsigned int previousCount = vector->size;
-
-    if(vector->capacity < element_count) {
+    AlignedVectorHeader* hdr = &vector->hdr;
+    uint32_t previous_count = hdr->size;
+    if(hdr->capacity <= element_count) {
         /* If we didn't have capacity, increase capacity (slow) */
-        vector->size = element_count;
-        ret = aligned_vector_reserve(vector, element_count);
-    } else if(previousCount < element_count) {
+
+        aligned_vector_reserve(vector, element_count);
+        hdr->size = element_count;
+
+        ret = aligned_vector_at(vector, previous_count);
+
+        assert(hdr->size == element_count);
+        assert(hdr->size <= hdr->capacity);
+    } else if(previous_count < element_count) {
         /* So we grew, but had the capacity, just get a pointer to
          * where we were */
-        vector->size = element_count;
-        ret = aligned_vector_at(vector, previousCount);
-    } else {
-        vector->size = element_count;
+        hdr->size = element_count;
+        assert(hdr->size < hdr->capacity);
+        ret = aligned_vector_at(vector, previous_count);
+    } else if(hdr->size != element_count) {
+        hdr->size = element_count;
+        assert(hdr->size < hdr->capacity);
     }
 
     return ret;
 }
 
-AV_FORCE_INLINE void* aligned_vector_push_back(AlignedVector* vector, const void* objs, unsigned int count) {
+AV_FORCE_INLINE void* aligned_vector_push_back(AlignedVector* vector, const void* objs, uint32_t count) {
     /* Resize enough room */
+    AlignedVectorHeader* hdr = &vector->hdr;
+
     assert(count);
-    assert(vector->element_size);
+    assert(hdr->element_size);
 
-    unsigned int initial_size = vector->size;
-    aligned_vector_resize(vector, vector->size + count);
+#ifndef NDEBUG
+    uint32_t element_size = hdr->element_size;
+    uint32_t initial_size = hdr->size;
+#endif
 
-    assert(vector->size == initial_size + count);
-
-    unsigned char* dest = vector->data + (vector->element_size * initial_size);
+    uint8_t* dest = (uint8_t*) aligned_vector_resize(vector, hdr->size + count);
+    assert(dest);
 
     /* Copy the objects in */
-    AV_MEMCPY4(dest, objs, vector->element_size * count);
+    AV_MEMCPY4(dest, objs, hdr->element_size * count);
 
+    assert(hdr->element_size == element_size);
+    assert(hdr->size == initial_size + count);
     return dest;
 }
 
 
-AV_FORCE_INLINE void* aligned_vector_extend(AlignedVector* vector, const unsigned int additional_count) {
-    return aligned_vector_resize(vector, vector->size + additional_count);
+AV_FORCE_INLINE void* aligned_vector_extend(AlignedVector* vector, const uint32_t additional_count) {
+    AlignedVectorHeader* hdr = &vector->hdr;
+    void* ret = aligned_vector_resize(vector, hdr->size + additional_count);
+    assert(ret);  // Should always return something
+    return ret;
 }
 
 AV_FORCE_INLINE void aligned_vector_clear(AlignedVector* vector){
-    vector->size = 0;
+    AlignedVectorHeader* hdr = &vector->hdr;
+    hdr->size = 0;
 }
+
 void aligned_vector_shrink_to_fit(AlignedVector* vector);
 void aligned_vector_cleanup(AlignedVector* vector);
-static inline void* aligned_vector_back(AlignedVector* vector){
-    return aligned_vector_at(vector, vector->size - 1);
+
+AV_FORCE_INLINE void* aligned_vector_back(AlignedVector* vector){
+    AlignedVectorHeader* hdr = &vector->hdr;
+    return aligned_vector_at(vector, hdr->size - 1);
 }
 
 #ifdef __cplusplus
