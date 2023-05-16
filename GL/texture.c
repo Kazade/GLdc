@@ -39,6 +39,7 @@ static void* yalloc_alloc_and_defrag(size_t size) {
     if(!ret) {
         /* Tried to allocate, but out of room, let's try defragging
          * and repeating the alloc */
+        fprintf(stderr, "Ran out of memory, defragmenting\n");
         glDefragmentTextureMemory_KOS();
         ret = yalloc_alloc(YALLOC_BASE, size);
     }
@@ -537,6 +538,7 @@ void APIENTRY glGenTextures(GLsizei n, GLuint *textures) {
         GLuint id = 0;
         TextureObject* txr = (TextureObject*) named_array_alloc(&TEXTURE_OBJECTS, &id);
 
+        gl_assert(txr);
         gl_assert(id);  // Generated IDs must never be zero
 
         _glInitializeTextureObject(txr, id);
@@ -553,31 +555,32 @@ void APIENTRY glDeleteTextures(GLsizei n, GLuint *textures) {
     while(n--) {
         TextureObject* txr = (TextureObject*) named_array_get(&TEXTURE_OBJECTS, *textures);
 
-        /* Make sure we update framebuffer objects that have this texture attached */
-        _glWipeTextureOnFramebuffers(*textures);
+        if(txr) {
+            /* Make sure we update framebuffer objects that have this texture attached */
+            _glWipeTextureOnFramebuffers(*textures);
 
-        if(txr == TEXTURE_UNITS[ACTIVE_TEXTURE]) {
-            TEXTURE_UNITS[ACTIVE_TEXTURE] = NULL;
-        }
-
-        if(txr->data) {
-            yalloc_free(YALLOC_BASE, txr->data);
-            txr->data = NULL;
-        }
-
-        if(txr->palette && txr->palette->data) {
-
-            if (txr->palette->bank > -1) {
-                _glReleasePaletteSlot(txr->palette->bank, txr->palette->size);
-                txr->palette->bank = -1;
+            if(txr == TEXTURE_UNITS[ACTIVE_TEXTURE]) {
+                TEXTURE_UNITS[ACTIVE_TEXTURE] = NULL;
             }
-            free(txr->palette->data);
-            txr->palette->data = NULL;
-        }
 
-        if(txr->palette) {
-            free(txr->palette);
-            txr->palette = NULL;
+            if(txr->data) {
+                yalloc_free(YALLOC_BASE, txr->data);
+                txr->data = NULL;
+            }
+
+            if(txr->palette && txr->palette->data) {
+                if (txr->palette->bank > -1) {
+                    _glReleasePaletteSlot(txr->palette->bank, txr->palette->size);
+                    txr->palette->bank = -1;
+                }
+                free(txr->palette->data);
+                txr->palette->data = NULL;
+            }
+
+            if(txr->palette) {
+                free(txr->palette);
+                txr->palette = NULL;
+            }
         }
 
         named_array_release(&TEXTURE_OBJECTS, *textures);
@@ -820,6 +823,8 @@ void APIENTRY glCompressedTexImage2DARB(GLenum target,
     if(data) {
         FASTCPY(active->data, data, imageSize);
     }
+
+    _glGPUStateMarkDirty();
 }
 
 static GLint _cleanInternalFormat(GLint internalFormat) {
@@ -1555,6 +1560,8 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
         free(conversionBuffer);
         conversionBuffer = NULL;
     }
+
+    _glGPUStateMarkDirty();
 }
 
 void APIENTRY glTexParameteri(GLenum target, GLenum pname, GLint param) {

@@ -177,7 +177,7 @@ void SceneListSubmit(void* src, int n) {
                 _glSubmitHeaderOrVertex(d, &queue[queue_tail]);
             break;
             case GPU_CMD_VERTEX_EOL:
-                last_vertex = true;
+                last_vertex = true;  // fallthru
             case GPU_CMD_VERTEX:
                 visible_mask = (visible_mask >> 1) | (queue[queue_tail].xyz[2] >= -queue[queue_tail].w) << 2;
                 assert(visible_mask < 15);

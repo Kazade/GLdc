@@ -1,5 +1,7 @@
-cmake_minimum_required(VERSION 3.0)
+cmake_minimum_required(VERSION 3.9)
 project(GLdc)
+
+set(CMAKE_VERBOSE_MAKEFILE ON)
 
 # set the default backend
 if(PLATFORM_DREAMCAST)
@@ -7,6 +9,9 @@ if(PLATFORM_DREAMCAST)
 else()
     set(BACKEND "software" CACHE STRING "Backend to use")
 endif()
+
+include(CheckIPOSupported)
+check_ipo_supported(RESULT FLTO_SUPPORTED OUTPUT FLTO_ERROR)
 
 # List of possible backends
 set_property(CACHE BACKEND PROPERTY STRINGS kospvr software)
@@ -49,10 +54,10 @@ else()
     set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO} -ffast-math")
 endif()
 
-set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -O3 -fexpensive-optimizations -fomit-frame-pointer -finline-functions")
+set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -O3 -mpretend-cmove -fexpensive-optimizations -fomit-frame-pointer -finline-functions")
 set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -std=c++14 -O3 -g0 -s -fomit-frame-pointer -fstrict-aliasing")
 
-set(CMAKE_C_FLAGS_RELWITHDEBINFO "${CMAKE_C_FLAGS_RELWITHDEBINFO} -O3 -fexpensive-optimizations -fomit-frame-pointer -finline-functions")
+set(CMAKE_C_FLAGS_RELWITHDEBINFO "${CMAKE_C_FLAGS_RELWITHDEBINFO} -O3 -mpretend-cmove -fexpensive-optimizations -fomit-frame-pointer -finline-functions")
 set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO} -std=c++14 -O3 -fomit-frame-pointer -fstrict-aliasing")
 
 set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -O0 -g -Wall -Wextra")
@@ -106,6 +111,10 @@ endif()
 
 add_library(GLdc STATIC ${SOURCES})
 
+if(FLTO_SUPPORTED)
+    set_property(TARGET GLdc PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
+endif()
+
 if(NOT PLATFORM_DREAMCAST)
 set_target_properties(GLdc PROPERTIES
     COMPILE_OPTIONS "-m32"
@@ -128,6 +137,13 @@ function(gen_sample sample)
     set(ROMDISK_DIR "${CMAKE_SOURCE_DIR}/samples/${sample}/romdisk")
 
     add_executable(${sample} ${SAMPLE_SRCS})
+
+    if(FLTO_SUPPORTED)
+        # FIXME: Cubes + LTO causes an ICE
+        if(NOT ${sample} MATCHES "cubes")
+            set_property(TARGET ${sample} PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
+        endif()
+    endif()
 
     if(PLATFORM_DREAMCAST)
         if(EXISTS "${CMAKE_SOURCE_DIR}/samples/${sample}/romdisk")
