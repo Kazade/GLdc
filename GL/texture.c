@@ -523,12 +523,15 @@ TextureObject* _glGetBoundTexture() {
 void APIENTRY glActiveTextureARB(GLenum texture) {
     TRACE();
 
-    if(texture < GL_TEXTURE0_ARB || texture > GL_TEXTURE0_ARB + MAX_GLDC_TEXTURE_UNITS) {
+    if(texture < GL_TEXTURE0_ARB || texture >= GL_TEXTURE0_ARB + MAX_GLDC_TEXTURE_UNITS) {
         _glKosThrowError(GL_INVALID_ENUM, "glActiveTextureARB");
         return;
     }
 
     ACTIVE_TEXTURE = texture & 0xF;
+    gl_assert(ACTIVE_TEXTURE < MAX_GLDC_TEXTURE_UNITS);
+
+    gl_assert(TEXTURE_OBJECTS.element_size > 0);
 }
 
 GLboolean APIENTRY glIsTexture(GLuint texture) {
