@@ -1929,8 +1929,9 @@ GLAPI GLvoid APIENTRY glDefragmentTextureMemory_KOS(void) {
 
     /* Replace all texture pointers */
     for(id = 0; id < MAX_TEXTURE_COUNT; id++){
-        if(glIsTexture(id)){
-            TextureObject* txr = (TextureObject*) named_array_get(&TEXTURE_OBJECTS, id);
+        TextureObject* txr = (TextureObject*) named_array_get(&TEXTURE_OBJECTS, id);
+        if(txr){
+            gl_assert(txr->index == id);
             txr->data = yalloc_defrag_address(YALLOC_BASE, txr->data);
         }
     }
