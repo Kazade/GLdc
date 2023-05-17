@@ -505,6 +505,8 @@ GLubyte _glInitTextures() {
 #endif
 
     yalloc_init(YALLOC_BASE, YALLOC_SIZE);
+
+    gl_assert(TEXTURE_OBJECTS.element_size > 0);
     return 1;
 }
 
@@ -513,10 +515,12 @@ TextureObject* _glGetTexture0() {
 }
 
 TextureObject* _glGetTexture1() {
+    gl_assert(1 < MAX_GLDC_TEXTURE_UNITS);
     return TEXTURE_UNITS[1];
 }
 
 TextureObject* _glGetBoundTexture() {
+    gl_assert(ACTIVE_TEXTURE < MAX_GLDC_TEXTURE_UNITS);
     return TEXTURE_UNITS[ACTIVE_TEXTURE];
 }
 
@@ -541,6 +545,8 @@ GLboolean APIENTRY glIsTexture(GLuint texture) {
 void APIENTRY glGenTextures(GLsizei n, GLuint *textures) {
     TRACE();
 
+    gl_assert(TEXTURE_OBJECTS.element_size > 0);
+
     while(n--) {
         GLuint id = 0;
         TextureObject* txr = (TextureObject*) named_array_alloc(&TEXTURE_OBJECTS, &id);
@@ -550,10 +556,14 @@ void APIENTRY glGenTextures(GLsizei n, GLuint *textures) {
 
         _glInitializeTextureObject(txr, id);
 
-        *textures = id;
 
+        gl_assert(txr->index == id);
+
+        *textures = id;
         textures++;
     }
+
+    gl_assert(TEXTURE_OBJECTS.element_size > 0);
 }
 
 void APIENTRY glDeleteTextures(GLsizei n, GLuint *textures) {
@@ -619,18 +629,20 @@ void APIENTRY glBindTexture(GLenum  target, GLuint texture) {
         return;
     }
 
-    if(texture) {
-        /* If this didn't come from glGenTextures, then we should initialize the
-         * texture the first time it's bound */
-        if(!named_array_used(&TEXTURE_OBJECTS, texture)) {
-            TextureObject* txr = named_array_reserve(&TEXTURE_OBJECTS, texture);
-            _glInitializeTextureObject(txr, texture);
-        }
+    TextureObject* txr = (TextureObject*) named_array_get(&TEXTURE_OBJECTS, texture);
 
-        TEXTURE_UNITS[ACTIVE_TEXTURE] = (TextureObject*) named_array_get(&TEXTURE_OBJECTS, texture);
-    } else {
-        TEXTURE_UNITS[ACTIVE_TEXTURE] = NULL;
+    /* If this didn't come from glGenTextures, then we should initialize the
+        * texture the first time it's bound */
+    if(!txr) {
+        TextureObject* txr = named_array_reserve(&TEXTURE_OBJECTS, texture);
+        _glInitializeTextureObject(txr, texture);
     }
+
+    gl_assert(ACTIVE_TEXTURE < MAX_GLDC_TEXTURE_UNITS);
+    TEXTURE_UNITS[ACTIVE_TEXTURE] = txr;
+    gl_assert(TEXTURE_UNITS[ACTIVE_TEXTURE]->index == texture);
+
+    gl_assert(TEXTURE_OBJECTS.element_size > 0);
 
     _glGPUStateMarkDirty();
 }
@@ -643,9 +655,11 @@ void APIENTRY glTexEnvi(GLenum target, GLenum pname, GLint param) {
     GLint target_values [] = {GL_TEXTURE_ENV, GL_TEXTURE_FILTER_CONTROL_EXT, 0};
     failures += _glCheckValidEnum(target, target_values, __func__);
 
+    gl_assert(ACTIVE_TEXTURE < MAX_GLDC_TEXTURE_UNITS);
     TextureObject* active = TEXTURE_UNITS[ACTIVE_TEXTURE];
 
     if(!active) {
+        _glKosThrowError(GL_INVALID_OPERATION, __func__);
         return;
     }
 
@@ -809,12 +823,14 @@ void APIENTRY glCompressedTexImage2DARB(GLenum target,
         }
     }
 
-    if(TEXTURE_UNITS[ACTIVE_TEXTURE] == NULL) {
+    gl_assert(ACTIVE_TEXTURE < MAX_GLDC_TEXTURE_UNITS);
+    TextureObject* active = TEXTURE_UNITS[ACTIVE_TEXTURE];
+    GLuint original_id = active->index;
+
+    if(!active) {
         _glKosThrowError(GL_INVALID_OPERATION, __func__);
         return;
     }
-
-    TextureObject* active = TEXTURE_UNITS[ACTIVE_TEXTURE];
 
     /* Set the required mipmap count */
     active->width   = width;
@@ -844,6 +860,8 @@ void APIENTRY glCompressedTexImage2DARB(GLenum target,
     if(data) {
         FASTCPY(active->data, data, imageSize);
     }
+
+    gl_assert(original_id == active->index);
 
     _glGPUStateMarkDirty();
 }
@@ -1345,6 +1363,7 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
     } else {
         /* Mipmap Errors, kos crashes if 1x1 */
         if((h < 2) || (w < 2)){
+            gl_assert(ACTIVE_TEXTURE < MAX_GLDC_TEXTURE_UNITS);
             gl_assert(TEXTURE_UNITS[ACTIVE_TEXTURE]);
             TEXTURE_UNITS[ACTIVE_TEXTURE]->mipmap |= (1 << level);
             return;
@@ -1370,20 +1389,22 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
         return;
     }
 
-    if(!TEXTURE_UNITS[ACTIVE_TEXTURE]) {
+    gl_assert(ACTIVE_TEXTURE < MAX_GLDC_TEXTURE_UNITS);
+    TextureObject* active = TEXTURE_UNITS[ACTIVE_TEXTURE];
+
+    if(!active) {
         INFO_MSG("Called glTexImage2D on unbound texture");
         _glKosThrowError(GL_INVALID_OPERATION, __func__);
         return;
     }
 
+    gl_assert(active);
+    GLuint original_id = active->index;
+
     GLboolean isPaletted = (internalFormat == GL_COLOR_INDEX8_EXT || internalFormat == GL_COLOR_INDEX4_EXT) ? GL_TRUE : GL_FALSE;
 
     /* Calculate the format that we need to convert the data to */
     GLuint pvr_format = _determinePVRFormat(internalFormat, type);
-
-    TextureObject* active = TEXTURE_UNITS[ACTIVE_TEXTURE];
-
-    gl_assert(active);
 
     if(active->data && (level == 0)) {
         /* pre-existing texture - check if changed */
@@ -1453,6 +1474,7 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
     /* If we run out of PVR memory just return */
     if(!active->data) {
         _glKosThrowError(GL_OUT_OF_MEMORY, __func__);
+        gl_assert(active->index == original_id);
         return;
     }
 
@@ -1500,6 +1522,7 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
 
     if(!data) {
         /* No data? Do nothing! */
+        gl_assert(active->index == original_id);
         return;
     } else if(!needsConversion && !needsTwiddling) {
         gl_assert(targetData);
@@ -1508,6 +1531,7 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
 
         /* No conversion? Just copy the data, and the pvr_format is correct */
         FASTCPY(targetData, data, bytes);
+        gl_assert(active->index == original_id);
         return;
     } else if(needsConversion) {
         TextureConversionFunc convert = _determineConversion(
@@ -1582,6 +1606,7 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
         conversionBuffer = NULL;
     }
 
+    gl_assert(active->index == original_id);
     _glGPUStateMarkDirty();
 }
 
