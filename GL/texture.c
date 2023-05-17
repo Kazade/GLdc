@@ -451,6 +451,29 @@ void _glResetSharedPalettes()
     memset((void*) SUBBANKS_USED, 0x0, sizeof(SUBBANKS_USED));
 
 }
+
+static void _glInitializeTextureObject(TextureObject* txr, unsigned int id) {
+    txr->index = id;
+    txr->width = txr->height = 0;
+    txr->mipmap = 0;
+    txr->uv_clamp = 0;
+    txr->env = GPU_TXRENV_MODULATEALPHA;
+    txr->data = NULL;
+    txr->mipmapCount = 0;
+    txr->minFilter = GL_NEAREST;
+    txr->magFilter = GL_NEAREST;
+    txr->palette = NULL;
+    txr->isCompressed = GL_FALSE;
+    txr->isPaletted = GL_FALSE;
+    txr->mipmap_bias = GL_KOS_INTERNAL_DEFAULT_MIPMAP_LOD_BIAS;
+
+    /* Not mipmapped by default */
+    txr->baseDataOffset = 0;
+
+    /* Always default to the first shared bank */
+    txr->shared_bank = 0;
+}
+
 GLubyte _glInitTextures() {
 
     uint32_t i;
@@ -459,6 +482,9 @@ GLubyte _glInitTextures() {
 
     // Reserve zero so that it is never given to anyone as an ID!
     named_array_reserve(&TEXTURE_OBJECTS, 0);
+
+    // Initialize zero as an actual texture object though because apparently it is!
+    _glInitializeTextureObject((TextureObject*) named_array_get(&TEXTURE_OBJECTS, 0), 0);
 
     for (i=0; i < MAX_GLDC_SHARED_PALETTES;i++){
         SHARED_PALETTES[i] = _initTexturePalette();
@@ -507,28 +533,6 @@ void APIENTRY glActiveTextureARB(GLenum texture) {
 
 GLboolean APIENTRY glIsTexture(GLuint texture) {
     return (named_array_used(&TEXTURE_OBJECTS, texture)) ? GL_TRUE : GL_FALSE;
-}
-
-static void _glInitializeTextureObject(TextureObject* txr, unsigned int id) {
-    txr->index = id;
-    txr->width = txr->height = 0;
-    txr->mipmap = 0;
-    txr->uv_clamp = 0;
-    txr->env = GPU_TXRENV_MODULATEALPHA;
-    txr->data = NULL;
-    txr->mipmapCount = 0;
-    txr->minFilter = GL_NEAREST;
-    txr->magFilter = GL_NEAREST;
-    txr->palette = NULL;
-    txr->isCompressed = GL_FALSE;
-    txr->isPaletted = GL_FALSE;
-    txr->mipmap_bias = GL_KOS_INTERNAL_DEFAULT_MIPMAP_LOD_BIAS;
-
-    /* Not mipmapped by default */
-    txr->baseDataOffset = 0;
-
-    /* Always default to the first shared bank */
-    txr->shared_bank = 0;
 }
 
 void APIENTRY glGenTextures(GLsizei n, GLuint *textures) {
