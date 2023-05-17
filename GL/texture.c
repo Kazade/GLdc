@@ -559,15 +559,27 @@ void APIENTRY glGenTextures(GLsizei n, GLuint *textures) {
 void APIENTRY glDeleteTextures(GLsizei n, GLuint *textures) {
     TRACE();
 
-    while(n--) {
-        TextureObject* txr = (TextureObject*) named_array_get(&TEXTURE_OBJECTS, *textures);
+    gl_assert(TEXTURE_OBJECTS.element_size > 0);
+
+    for(GLsizei i = 0; i < n; ++i) {
+        GLuint id = textures[i];
+        if(id == 0) {
+            /* Zero is the "default texture" and we never allow deletion of it */
+            continue;
+        }
+
+        TextureObject* txr = (TextureObject*) named_array_get(&TEXTURE_OBJECTS, id);
 
         if(txr) {
-            /* Make sure we update framebuffer objects that have this texture attached */
-            _glWipeTextureOnFramebuffers(*textures);
+            gl_assert(txr->index == id);
 
-            if(txr == TEXTURE_UNITS[ACTIVE_TEXTURE]) {
-                TEXTURE_UNITS[ACTIVE_TEXTURE] = NULL;
+            /* Make sure we update framebuffer objects that have this texture attached */
+            _glWipeTextureOnFramebuffers(id);
+
+            for(GLuint j = 0; j < MAX_GLDC_TEXTURE_UNITS; ++j) {
+                if(txr == TEXTURE_UNITS[j]) {
+                    TEXTURE_UNITS[j] = NULL;
+                }
             }
 
             if(txr->data) {
@@ -588,12 +600,14 @@ void APIENTRY glDeleteTextures(GLsizei n, GLuint *textures) {
                 free(txr->palette);
                 txr->palette = NULL;
             }
-        }
 
-        named_array_release(&TEXTURE_OBJECTS, *textures);
-        *textures = 0;
-        textures++;
+            named_array_release(&TEXTURE_OBJECTS, id);
+            textures[i] = 0;
+            txr->index = 0;
+        }
     }
+
+    gl_assert(TEXTURE_OBJECTS.element_size > 0);
 }
 
 void APIENTRY glBindTexture(GLenum  target, GLuint texture) {
