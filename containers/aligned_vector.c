@@ -23,6 +23,7 @@ void aligned_vector_init(AlignedVector* vector, uint32_t element_size) {
     hdr->size = 0;
     hdr->capacity = ALIGNED_VECTOR_CHUNK_SIZE;
     hdr->element_size = element_size;
+    vector->data = NULL;
 
     /* Reserve some initial capacity. This will do the allocation but not set up the header */
     void* ptr = aligned_vector_reserve(vector, ALIGNED_VECTOR_CHUNK_SIZE);
@@ -37,7 +38,7 @@ void aligned_vector_shrink_to_fit(AlignedVector* vector) {
         free(vector->data);
 
         /* Reallocate the header */
-        vector->data = memalign(0x20, sizeof(AlignedVectorHeader));
+        vector->data = NULL;
         hdr->size = hdr->capacity = 0;
         hdr->element_size = element_size;
     } else {
