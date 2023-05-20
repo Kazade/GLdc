@@ -164,7 +164,8 @@ typedef struct {
     GLboolean isCompressed;
     GLboolean isPaletted;
     //50
-} TextureObject;
+    GLubyte padding[14];  // Pad to 64-bytes
+} __attribute__((aligned(32))) TextureObject;
 
 typedef struct {
     GLfloat emissive[4];

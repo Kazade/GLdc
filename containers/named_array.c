@@ -68,7 +68,6 @@ void* named_array_reserve(NamedArray* array, unsigned int id) {
 void named_array_release(NamedArray* array, unsigned int new_id) {
     unsigned int i = new_id / 8;
     unsigned int j = new_id % 8;
-
     array->used_markers[i] &= (unsigned char) ~(1 << j);
 }
 

@@ -328,7 +328,7 @@ void updateLogic()
 	glTranslatef(0.0f, 0.0f, -cameraDistance + zoomVal);
 
 	// Apply cube transformation (identity matrix)
-	glMultMatrixf(cubeTransformationMatrix);
+	glLoadIdentity();
 
 	updateCubes(dt);
 

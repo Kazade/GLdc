@@ -1170,6 +1170,7 @@ void _glInitSubmissionTarget() {
 
 
 GL_FORCE_INLINE void submitVertices(GLenum mode, GLsizei first, GLuint count, GLenum type, const GLvoid* indices) {
+
     SubmissionTarget* const target = &SUBMISSION_TARGET;
     AlignedVector* const extras = target->extras;
 
@@ -1214,12 +1215,19 @@ GL_FORCE_INLINE void submitVertices(GLenum mode, GLsizei first, GLuint count, GL
     gl_assert(mode != GL_POLYGON);
 
     target->output = _glActivePolyList();
-    GLboolean header_required = (aligned_vector_header(&target->output->vector)->size == 0) || _glGPUStateIsDirty();
+    gl_assert(target->output);
+    gl_assert(extras);
+
+    uint32_t vector_size = aligned_vector_size(&target->output->vector);
+
+    GLboolean header_required = (vector_size == 0) || _glGPUStateIsDirty();
 
     target->count = (mode == GL_TRIANGLE_FAN) ? ((count - 2) * 3) : count;
-    target->header_offset = aligned_vector_header(&target->output->vector)->size;
-    target->start_offset = target->header_offset + (header_required);
+    target->header_offset = vector_size;
+    target->start_offset = target->header_offset + (header_required ? 1 : 0);
 
+    gl_assert(target->header_offset >= 0);
+    gl_assert(target->start_offset >= target->header_offset);
     gl_assert(target->count);
 
     /* Make sure we have enough room for all the "extra" data */

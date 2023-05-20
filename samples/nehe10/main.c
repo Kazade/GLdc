@@ -10,6 +10,8 @@
 
 #ifdef __DREAMCAST__
 #include <kos.h>
+#else
+#include <SDL.h>
 #endif
 
 #include <stdio.h>
@@ -17,7 +19,9 @@
 #include <GL/glu.h>
 #include <GL/glkos.h>
 
+#include <stdlib.h>
 #include <stdbool.h>
+#include <stdint.h>
 
 #include "../loadbmp.h"
 
@@ -84,7 +88,16 @@ void SetupWorld()
 	int numtriangles;
 	FILE *filein;
 	char oneline[255];
+#ifdef __DREAMCAST__
 	filein = fopen("/rd/world.txt", "rt");				// File To Load World Data From
+#else
+    filein = fopen("../samples/nehe10/romdisk/world.txt", "rt");
+#endif
+
+    if(!filein) {
+        fprintf(stderr, "Failed to load world file\n");
+        exit(1);
+    }
 
 	readstr(filein,oneline);
 	sscanf(oneline, "NUMPOLLIES %d\n", &numtriangles);
@@ -228,6 +241,13 @@ void DrawGLScene(void) {
 }
 
 int ReadController(void) {
+    bool start = false;
+    bool up = false;
+    bool down = false;
+    bool left = false;
+    bool right = false;
+
+
 #ifdef __DREAMCAST__
     maple_device_t *cont;
     cont_state_t *state;
@@ -241,10 +261,27 @@ int ReadController(void) {
         return 0;
     }
 
-    if(state->buttons & CONT_START)
-        return 0;
+    start = (state->buttons & CONT_START);
+    up = (state->buttons & CONT_DPAD_UP);
+    down = (state->buttons & CONT_DPAD_DOWN);
+    left = (state->buttons & CONT_DPAD_LEFT);
+    right = (state->buttons & CONT_DPAD_RIGHT);
 
-    if(state->buttons & CONT_DPAD_UP) {
+#else
+    int num_keys = 0;
+    uint8_t* state = SDL_GetKeyboardState(&num_keys);
+    start = state[SDL_SCANCODE_RETURN];
+    up = state[SDL_SCANCODE_UP];
+    down = state[SDL_SCANCODE_DOWN];
+    left = state[SDL_SCANCODE_LEFT];
+    right = state[SDL_SCANCODE_RIGHT];
+#endif
+
+    if(start) {
+        return 0;
+    }
+
+    if(up) {
         xpos -= (float)sin(heading*piover180) * 0.05f;
         zpos -= (float)cos(heading*piover180) * 0.05f;
         if (walkbiasangle >= 359.0f)
@@ -258,8 +295,7 @@ int ReadController(void) {
         walkbias = (float)sin(walkbiasangle * piover180)/20.0f;
     }
 
-
-    if(state->buttons & CONT_DPAD_DOWN) {
+    if(down) {
         xpos += (float)sin(heading*piover180) * 0.05f;
         zpos += (float)cos(heading*piover180) * 0.05f;
         if (walkbiasangle <= 1.0f)
@@ -273,18 +309,17 @@ int ReadController(void) {
         walkbias = (float)sin(walkbiasangle * piover180)/20.0f;
     }
 
-
-    if(state->buttons & CONT_DPAD_LEFT) {
+    if(left) {
         heading += 1.0f;
         yrot = heading;
     }
 
-    if(state->buttons & CONT_DPAD_RIGHT) {
+    if(right) {
         heading -= 1.0f;
         yrot = heading;
     }
 
-#endif
+
 
     /* Switch to the blended polygon list if needed */
     if(blend) {

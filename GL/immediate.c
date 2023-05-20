@@ -17,10 +17,10 @@ extern inline GLuint _glRecalcFastPath();
 GLboolean IMMEDIATE_MODE_ACTIVE = GL_FALSE;
 static GLenum ACTIVE_POLYGON_MODE = GL_TRIANGLES;
 
-static GLfloat NORMAL[3] = {0.0f, 0.0f, 1.0f};
-static GLubyte COLOR[4] = {255, 255, 255, 255}; /* ARGB order for speed */
-static GLfloat UV_COORD[2] = {0.0f, 0.0f};
-static GLfloat ST_COORD[2] = {0.0f, 0.0f};
+static GLfloat __attribute__((aligned(32))) NORMAL[3] = {0.0f, 0.0f, 1.0f};
+static GLubyte __attribute__((aligned(32))) COLOR[4] = {255, 255, 255, 255}; /* ARGB order for speed */
+static GLfloat __attribute__((aligned(32))) UV_COORD[2] = {0.0f, 0.0f};
+static GLfloat __attribute__((aligned(32))) ST_COORD[2] = {0.0f, 0.0f};
 
 static AlignedVector VERTICES;
 static AttribPointerList IM_ATTRIBS;
@@ -30,7 +30,7 @@ static AttribPointerList IM_ATTRIBS;
   can be applied faster */
 static GLuint IM_ENABLED_VERTEX_ATTRIBUTES = 0;
 
-typedef struct {
+typedef struct __attribute__((aligned(32))) {
     GLfloat x;
     GLfloat y;
     GLfloat z;
@@ -161,30 +161,27 @@ void APIENTRY glColor3fv(const GLfloat* v) {
 void APIENTRY glVertex3f(GLfloat x, GLfloat y, GLfloat z) {
     IM_ENABLED_VERTEX_ATTRIBUTES |= VERTEX_ENABLED_FLAG;
 
-    uint32_t cap = aligned_vector_capacity(&VERTICES);
     IMVertex* vert = aligned_vector_extend(&VERTICES, 1);
-    if(cap != aligned_vector_capacity(&VERTICES)) {
-        /* Resizing could've invalidated the pointers */
-        IM_ATTRIBS.vertex.ptr = aligned_vector_front(&VERTICES);
-        IM_ATTRIBS.uv.ptr = IM_ATTRIBS.vertex.ptr + (sizeof(GLfloat) * 3);
-        IM_ATTRIBS.st.ptr = IM_ATTRIBS.vertex.ptr + (sizeof(GLfloat) * 5);
-        IM_ATTRIBS.colour.ptr = IM_ATTRIBS.vertex.ptr + (sizeof(GLfloat) * 7);
-        IM_ATTRIBS.normal.ptr = IM_ATTRIBS.vertex.ptr + (sizeof(GLfloat) * 7) + sizeof(uint32_t);
-    }
 
-    vert->x = x;
-    vert->y = y;
-    vert->z = z;
-    vert->u = UV_COORD[0];
-    vert->v = UV_COORD[1];
-    vert->s = ST_COORD[0];
-    vert->t = ST_COORD[1];
+    /* Resizing could've invalidated the pointers */
+    IM_ATTRIBS.vertex.ptr = VERTICES.data;
+    IM_ATTRIBS.uv.ptr = IM_ATTRIBS.vertex.ptr + 12;
+    IM_ATTRIBS.st.ptr = IM_ATTRIBS.uv.ptr + 8;
+    IM_ATTRIBS.colour.ptr = IM_ATTRIBS.st.ptr + 8;
+    IM_ATTRIBS.normal.ptr = IM_ATTRIBS.colour.ptr + 4;
 
-    *((uint32_t*) vert->bgra) = *((uint32_t*) COLOR);
-
-    vert->nx = NORMAL[0];
-    vert->ny = NORMAL[1];
-    vert->nz = NORMAL[2];
+    uint32_t* dest = (uint32_t*) &vert->x;
+    *(dest++) = *((uint32_t*) &x);
+    *(dest++) = *((uint32_t*) &y);
+    *(dest++) = *((uint32_t*) &z);
+    *(dest++) = *((uint32_t*) &UV_COORD[0]);
+    *(dest++) = *((uint32_t*) &UV_COORD[1]);
+    *(dest++) = *((uint32_t*) &ST_COORD[0]);
+    *(dest++) = *((uint32_t*) &ST_COORD[1]);
+    *(dest++) = *((uint32_t*) COLOR);
+    *(dest++) = *((uint32_t*) &NORMAL[0]);
+    *(dest++) = *((uint32_t*) &NORMAL[1]);
+    *(dest++) = *((uint32_t*) &NORMAL[2]);
 }
 
 void APIENTRY glVertex3fv(const GLfloat* v) {

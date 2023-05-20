@@ -135,6 +135,14 @@ AV_FORCE_INLINE void* aligned_vector_front(const AlignedVector* vector) {
     return vector->data;
 }
 
+#define av_assert(x) \
+    do {\
+        if(!(x)) {\
+            fprintf(stderr, "Assertion failed at %s:%d\n", __FILE__, __LINE__);\
+            exit(1);\
+        }\
+    } while(0); \
+
 /* Resizes the array and returns a pointer to the first new element (if upsizing) or NULL (if downsizing) */
 AV_FORCE_INLINE void* aligned_vector_resize(AlignedVector* vector, const uint32_t element_count) {
     void* ret = NULL;
@@ -149,17 +157,17 @@ AV_FORCE_INLINE void* aligned_vector_resize(AlignedVector* vector, const uint32_
 
         ret = aligned_vector_at(vector, previous_count);
 
-        assert(hdr->size == element_count);
-        assert(hdr->size <= hdr->capacity);
+        av_assert(hdr->size == element_count);
+        av_assert(hdr->size <= hdr->capacity);
     } else if(previous_count < element_count) {
         /* So we grew, but had the capacity, just get a pointer to
          * where we were */
         hdr->size = element_count;
-        assert(hdr->size < hdr->capacity);
+        av_assert(hdr->size < hdr->capacity);
         ret = aligned_vector_at(vector, previous_count);
     } else if(hdr->size != element_count) {
         hdr->size = element_count;
-        assert(hdr->size < hdr->capacity);
+        av_assert(hdr->size < hdr->capacity);
     }
 
     return ret;
@@ -206,7 +214,7 @@ void aligned_vector_cleanup(AlignedVector* vector);
 
 AV_FORCE_INLINE void* aligned_vector_back(AlignedVector* vector){
     AlignedVectorHeader* hdr = &vector->hdr;
-    return aligned_vector_at(vector, hdr->size - 1);
+    return aligned_vector_at(vector, hdr->size ? hdr->size - 1 : 0);
 }
 
 #ifdef __cplusplus

@@ -255,7 +255,8 @@ void _glUpdatePVRTextureContext(PolyContext *context, GLshort textureUnit) {
     context->txr2.enable = GPU_TEXTURE_DISABLE;
     context->txr2.alpha = GPU_TXRALPHA_DISABLE;
 
-    if(!TEXTURES_ENABLED[textureUnit] || !tx1) {
+    if(!TEXTURES_ENABLED[textureUnit] || !tx1 || !tx1->data) {
+        context->txr.base = NULL;
         return;
     }
 

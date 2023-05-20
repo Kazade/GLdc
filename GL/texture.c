@@ -21,7 +21,7 @@ static TextureObject* TEXTURE_UNITS[MAX_GLDC_TEXTURE_UNITS] = {NULL, NULL};
 static NamedArray TEXTURE_OBJECTS;
 GLubyte ACTIVE_TEXTURE = 0;
 
-static TexturePalette* SHARED_PALETTES[MAX_GLDC_SHARED_PALETTES];
+static TexturePalette* SHARED_PALETTES[MAX_GLDC_SHARED_PALETTES] = {NULL, NULL, NULL, NULL};
 
 static GLuint _determinePVRFormat(GLint internalFormat, GLenum type);
 
@@ -39,6 +39,7 @@ static void* yalloc_alloc_and_defrag(size_t size) {
     if(!ret) {
         /* Tried to allocate, but out of room, let's try defragging
          * and repeating the alloc */
+        fprintf(stderr, "Ran out of memory, defragmenting\n");
         glDefragmentTextureMemory_KOS();
         ret = yalloc_alloc(YALLOC_BASE, size);
     }
@@ -121,8 +122,11 @@ static void _glReleasePaletteSlot(GLshort slot, GLushort size)
     gl_assert(size == 16 || size == 256);
 
     if (size == 16) {
-        GLushort bank = slot / MAX_GLDC_PALETTE_SLOTS;
-        GLushort subbank = slot % MAX_GLDC_PALETTE_SLOTS;
+        GLushort bank = slot / MAX_GLDC_4BPP_PALETTE_SLOTS;
+        GLushort subbank = slot % MAX_GLDC_4BPP_PALETTE_SLOTS;
+
+        gl_assert(bank < MAX_GLDC_PALETTE_SLOTS);
+        gl_assert(subbank < MAX_GLDC_4BPP_PALETTE_SLOTS);
 
         SUBBANKS_USED[bank][subbank] = GL_FALSE;
 
@@ -134,6 +138,7 @@ static void _glReleasePaletteSlot(GLshort slot, GLushort size)
         BANKS_USED[bank] = GL_FALSE;
     }
     else {
+        gl_assert(slot < MAX_GLDC_PALETTE_SLOTS);
         BANKS_USED[slot] = GL_FALSE;
         for (i = 0; i < MAX_GLDC_4BPP_PALETTE_SLOTS; ++i) {
             SUBBANKS_USED[slot][i] = GL_FALSE;
@@ -450,63 +455,6 @@ void _glResetSharedPalettes()
     memset((void*) SUBBANKS_USED, 0x0, sizeof(SUBBANKS_USED));
 
 }
-GLubyte _glInitTextures() {
-
-    uint32_t i;
-
-    named_array_init(&TEXTURE_OBJECTS, sizeof(TextureObject), MAX_TEXTURE_COUNT);
-
-    // Reserve zero so that it is never given to anyone as an ID!
-    named_array_reserve(&TEXTURE_OBJECTS, 0);
-
-    for (i=0; i < MAX_GLDC_SHARED_PALETTES;i++){
-        SHARED_PALETTES[i] = _initTexturePalette();
-    }
-
-    _glResetSharedPalettes();
-
-    //memset((void*) BANKS_USED, 0x0, sizeof(BANKS_USED));
-    //memset((void*) SUBBANKS_USED, 0x0, sizeof(SUBBANKS_USED));
-
-    size_t vram_free = GPUMemoryAvailable();
-    YALLOC_SIZE = vram_free - PVR_MEM_BUFFER_SIZE; /* Take all but 64kb VRAM */
-    YALLOC_BASE = GPUMemoryAlloc(YALLOC_SIZE);
-
-#ifdef __DREAMCAST__
-    /* Ensure memory is aligned */
-    gl_assert((uintptr_t) YALLOC_BASE % 32 == 0);
-#endif
-
-    yalloc_init(YALLOC_BASE, YALLOC_SIZE);
-    return 1;
-}
-
-TextureObject* _glGetTexture0() {
-    return TEXTURE_UNITS[0];
-}
-
-TextureObject* _glGetTexture1() {
-    return TEXTURE_UNITS[1];
-}
-
-TextureObject* _glGetBoundTexture() {
-    return TEXTURE_UNITS[ACTIVE_TEXTURE];
-}
-
-void APIENTRY glActiveTextureARB(GLenum texture) {
-    TRACE();
-
-    if(texture < GL_TEXTURE0_ARB || texture > GL_TEXTURE0_ARB + MAX_GLDC_TEXTURE_UNITS) {
-        _glKosThrowError(GL_INVALID_ENUM, "glActiveTextureARB");
-        return;
-    }
-
-    ACTIVE_TEXTURE = texture & 0xF;
-}
-
-GLboolean APIENTRY glIsTexture(GLuint texture) {
-    return (named_array_used(&TEXTURE_OBJECTS, texture)) ? GL_TRUE : GL_FALSE;
-}
 
 static void _glInitializeTextureObject(TextureObject* txr, unsigned int id) {
     txr->index = id;
@@ -530,60 +478,148 @@ static void _glInitializeTextureObject(TextureObject* txr, unsigned int id) {
     txr->shared_bank = 0;
 }
 
+GLubyte _glInitTextures() {
+    named_array_init(&TEXTURE_OBJECTS, sizeof(TextureObject), MAX_TEXTURE_COUNT);
+
+    // Reserve zero so that it is never given to anyone as an ID!
+    named_array_reserve(&TEXTURE_OBJECTS, 0);
+
+    // Initialize zero as an actual texture object though because apparently it is!
+    TextureObject* default_tex = (TextureObject*) named_array_get(&TEXTURE_OBJECTS, 0);
+    _glInitializeTextureObject(default_tex, 0);
+    TEXTURE_UNITS[0] = default_tex;
+    TEXTURE_UNITS[1] = default_tex;
+
+    for(int i = 0; i < MAX_GLDC_SHARED_PALETTES; i++){
+        SHARED_PALETTES[i] = _initTexturePalette();
+    }
+
+    _glResetSharedPalettes();
+
+    //memset((void*) BANKS_USED, 0x0, sizeof(BANKS_USED));
+    //memset((void*) SUBBANKS_USED, 0x0, sizeof(SUBBANKS_USED));
+
+    size_t vram_free = GPUMemoryAvailable();
+    YALLOC_SIZE = vram_free - PVR_MEM_BUFFER_SIZE; /* Take all but 64kb VRAM */
+    YALLOC_BASE = GPUMemoryAlloc(YALLOC_SIZE);
+
+#ifdef __DREAMCAST__
+    /* Ensure memory is aligned */
+    gl_assert((uintptr_t) YALLOC_BASE % 32 == 0);
+#endif
+
+    yalloc_init(YALLOC_BASE, YALLOC_SIZE);
+
+    gl_assert(TEXTURE_OBJECTS.element_size > 0);
+    return 1;
+}
+
+TextureObject* _glGetTexture0() {
+    return TEXTURE_UNITS[0];
+}
+
+TextureObject* _glGetTexture1() {
+    gl_assert(1 < MAX_GLDC_TEXTURE_UNITS);
+    return TEXTURE_UNITS[1];
+}
+
+TextureObject* _glGetBoundTexture() {
+    gl_assert(ACTIVE_TEXTURE < MAX_GLDC_TEXTURE_UNITS);
+    return TEXTURE_UNITS[ACTIVE_TEXTURE];
+}
+
+void APIENTRY glActiveTextureARB(GLenum texture) {
+    TRACE();
+
+    if(texture < GL_TEXTURE0_ARB || texture >= GL_TEXTURE0_ARB + MAX_GLDC_TEXTURE_UNITS) {
+        _glKosThrowError(GL_INVALID_ENUM, "glActiveTextureARB");
+        return;
+    }
+
+    ACTIVE_TEXTURE = texture & 0xF;
+    gl_assert(ACTIVE_TEXTURE < MAX_GLDC_TEXTURE_UNITS);
+    gl_assert(ACTIVE_TEXTURE >= 0);
+
+    gl_assert(TEXTURE_OBJECTS.element_size > 0);
+}
+
+GLboolean APIENTRY glIsTexture(GLuint texture) {
+    return (named_array_used(&TEXTURE_OBJECTS, texture)) ? GL_TRUE : GL_FALSE;
+}
+
 void APIENTRY glGenTextures(GLsizei n, GLuint *textures) {
     TRACE();
 
-    while(n--) {
+    gl_assert(TEXTURE_OBJECTS.element_size > 0);
+
+    for(GLsizei i = 0; i < n; ++i) {
         GLuint id = 0;
         TextureObject* txr = (TextureObject*) named_array_alloc(&TEXTURE_OBJECTS, &id);
-
+        gl_assert(txr);
         gl_assert(id);  // Generated IDs must never be zero
 
         _glInitializeTextureObject(txr, id);
 
-        *textures = id;
 
-        textures++;
+        gl_assert(txr->index == id);
+
+        textures[i] = id;
     }
+
+    gl_assert(TEXTURE_OBJECTS.element_size > 0);
 }
 
 void APIENTRY glDeleteTextures(GLsizei n, GLuint *textures) {
     TRACE();
 
-    while(n--) {
-        TextureObject* txr = (TextureObject*) named_array_get(&TEXTURE_OBJECTS, *textures);
+    gl_assert(TEXTURE_OBJECTS.element_size > 0);
 
-        /* Make sure we update framebuffer objects that have this texture attached */
-        _glWipeTextureOnFramebuffers(*textures);
-
-        if(txr == TEXTURE_UNITS[ACTIVE_TEXTURE]) {
-            TEXTURE_UNITS[ACTIVE_TEXTURE] = NULL;
+    for(GLsizei i = 0; i < n; ++i) {
+        GLuint id = textures[i];
+        if(id == 0) {
+            /* Zero is the "default texture" and we never allow deletion of it */
+            continue;
         }
 
-        if(txr->data) {
-            yalloc_free(YALLOC_BASE, txr->data);
-            txr->data = NULL;
-        }
+        TextureObject* txr = (TextureObject*) named_array_get(&TEXTURE_OBJECTS, id);
 
-        if(txr->palette && txr->palette->data) {
+        if(txr) {
+            gl_assert(txr->index == id);
 
-            if (txr->palette->bank > -1) {
-                _glReleasePaletteSlot(txr->palette->bank, txr->palette->size);
-                txr->palette->bank = -1;
+            /* Make sure we update framebuffer objects that have this texture attached */
+            _glWipeTextureOnFramebuffers(id);
+
+            for(GLuint j = 0; j < MAX_GLDC_TEXTURE_UNITS; ++j) {
+                if(txr == TEXTURE_UNITS[j]) {
+                    // Reset to the default texture
+                    TEXTURE_UNITS[j] = (TextureObject*) named_array_get(&TEXTURE_OBJECTS, 0);
+                }
             }
-            free(txr->palette->data);
-            txr->palette->data = NULL;
-        }
 
-        if(txr->palette) {
-            free(txr->palette);
-            txr->palette = NULL;
-        }
+            if(txr->data) {
+                yalloc_free(YALLOC_BASE, txr->data);
+                txr->data = NULL;
+            }
 
-        named_array_release(&TEXTURE_OBJECTS, *textures);
-        *textures = 0;
-        textures++;
+            if(txr->palette && txr->palette->data) {
+                if (txr->palette->bank > -1) {
+                    _glReleasePaletteSlot(txr->palette->bank, txr->palette->size);
+                    txr->palette->bank = -1;
+                }
+                free(txr->palette->data);
+                txr->palette->data = NULL;
+            }
+
+            if(txr->palette) {
+                free(txr->palette);
+                txr->palette = NULL;
+            }
+
+            named_array_release(&TEXTURE_OBJECTS, id);
+        }
     }
+
+    gl_assert(TEXTURE_OBJECTS.element_size > 0);
 }
 
 void APIENTRY glBindTexture(GLenum  target, GLuint texture) {
@@ -595,18 +631,20 @@ void APIENTRY glBindTexture(GLenum  target, GLuint texture) {
         return;
     }
 
-    if(texture) {
-        /* If this didn't come from glGenTextures, then we should initialize the
-         * texture the first time it's bound */
-        if(!named_array_used(&TEXTURE_OBJECTS, texture)) {
-            TextureObject* txr = named_array_reserve(&TEXTURE_OBJECTS, texture);
-            _glInitializeTextureObject(txr, texture);
-        }
+    TextureObject* txr = (TextureObject*) named_array_get(&TEXTURE_OBJECTS, texture);
 
-        TEXTURE_UNITS[ACTIVE_TEXTURE] = (TextureObject*) named_array_get(&TEXTURE_OBJECTS, texture);
-    } else {
-        TEXTURE_UNITS[ACTIVE_TEXTURE] = NULL;
+    /* If this didn't come from glGenTextures, then we should initialize the
+        * texture the first time it's bound */
+    if(!txr) {
+        TextureObject* txr = named_array_reserve(&TEXTURE_OBJECTS, texture);
+        _glInitializeTextureObject(txr, texture);
     }
+
+    gl_assert(ACTIVE_TEXTURE < MAX_GLDC_TEXTURE_UNITS);
+    TEXTURE_UNITS[ACTIVE_TEXTURE] = txr;
+    gl_assert(TEXTURE_UNITS[ACTIVE_TEXTURE]->index == texture);
+
+    gl_assert(TEXTURE_OBJECTS.element_size > 0);
 
     _glGPUStateMarkDirty();
 }
@@ -619,9 +657,11 @@ void APIENTRY glTexEnvi(GLenum target, GLenum pname, GLint param) {
     GLint target_values [] = {GL_TEXTURE_ENV, GL_TEXTURE_FILTER_CONTROL_EXT, 0};
     failures += _glCheckValidEnum(target, target_values, __func__);
 
+    gl_assert(ACTIVE_TEXTURE < MAX_GLDC_TEXTURE_UNITS);
     TextureObject* active = TEXTURE_UNITS[ACTIVE_TEXTURE];
 
     if(!active) {
+        _glKosThrowError(GL_INVALID_OPERATION, __func__);
         return;
     }
 
@@ -785,12 +825,14 @@ void APIENTRY glCompressedTexImage2DARB(GLenum target,
         }
     }
 
-    if(TEXTURE_UNITS[ACTIVE_TEXTURE] == NULL) {
+    gl_assert(ACTIVE_TEXTURE < MAX_GLDC_TEXTURE_UNITS);
+    TextureObject* active = TEXTURE_UNITS[ACTIVE_TEXTURE];
+    GLuint original_id = active->index;
+
+    if(!active) {
         _glKosThrowError(GL_INVALID_OPERATION, __func__);
         return;
     }
-
-    TextureObject* active = TEXTURE_UNITS[ACTIVE_TEXTURE];
 
     /* Set the required mipmap count */
     active->width   = width;
@@ -820,6 +862,10 @@ void APIENTRY glCompressedTexImage2DARB(GLenum target,
     if(data) {
         FASTCPY(active->data, data, imageSize);
     }
+
+    gl_assert(original_id == active->index);
+
+    _glGPUStateMarkDirty();
 }
 
 static GLint _cleanInternalFormat(GLint internalFormat) {
@@ -1319,6 +1365,7 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
     } else {
         /* Mipmap Errors, kos crashes if 1x1 */
         if((h < 2) || (w < 2)){
+            gl_assert(ACTIVE_TEXTURE < MAX_GLDC_TEXTURE_UNITS);
             gl_assert(TEXTURE_UNITS[ACTIVE_TEXTURE]);
             TEXTURE_UNITS[ACTIVE_TEXTURE]->mipmap |= (1 << level);
             return;
@@ -1344,20 +1391,22 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
         return;
     }
 
-    if(!TEXTURE_UNITS[ACTIVE_TEXTURE]) {
+    gl_assert(ACTIVE_TEXTURE < MAX_GLDC_TEXTURE_UNITS);
+    TextureObject* active = TEXTURE_UNITS[ACTIVE_TEXTURE];
+
+    if(!active) {
         INFO_MSG("Called glTexImage2D on unbound texture");
         _glKosThrowError(GL_INVALID_OPERATION, __func__);
         return;
     }
 
+    gl_assert(active);
+    GLuint original_id = active->index;
+
     GLboolean isPaletted = (internalFormat == GL_COLOR_INDEX8_EXT || internalFormat == GL_COLOR_INDEX4_EXT) ? GL_TRUE : GL_FALSE;
 
     /* Calculate the format that we need to convert the data to */
     GLuint pvr_format = _determinePVRFormat(internalFormat, type);
-
-    TextureObject* active = TEXTURE_UNITS[ACTIVE_TEXTURE];
-
-    gl_assert(active);
 
     if(active->data && (level == 0)) {
         /* pre-existing texture - check if changed */
@@ -1427,6 +1476,7 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
     /* If we run out of PVR memory just return */
     if(!active->data) {
         _glKosThrowError(GL_OUT_OF_MEMORY, __func__);
+        gl_assert(active->index == original_id);
         return;
     }
 
@@ -1474,6 +1524,7 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
 
     if(!data) {
         /* No data? Do nothing! */
+        gl_assert(active->index == original_id);
         return;
     } else if(!needsConversion && !needsTwiddling) {
         gl_assert(targetData);
@@ -1482,6 +1533,7 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
 
         /* No conversion? Just copy the data, and the pvr_format is correct */
         FASTCPY(targetData, data, bytes);
+        gl_assert(active->index == original_id);
         return;
     } else if(needsConversion) {
         TextureConversionFunc convert = _determineConversion(
@@ -1555,6 +1607,9 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
         free(conversionBuffer);
         conversionBuffer = NULL;
     }
+
+    gl_assert(active->index == original_id);
+    _glGPUStateMarkDirty();
 }
 
 void APIENTRY glTexParameteri(GLenum target, GLenum pname, GLint param) {
@@ -1918,8 +1973,9 @@ GLAPI GLvoid APIENTRY glDefragmentTextureMemory_KOS(void) {
 
     /* Replace all texture pointers */
     for(id = 0; id < MAX_TEXTURE_COUNT; id++){
-        if(glIsTexture(id)){
-            TextureObject* txr = (TextureObject*) named_array_get(&TEXTURE_OBJECTS, id);
+        TextureObject* txr = (TextureObject*) named_array_get(&TEXTURE_OBJECTS, id);
+        if(txr){
+            gl_assert(txr->index == id);
             txr->data = yalloc_defrag_address(YALLOC_BASE, txr->data);
         }
     }

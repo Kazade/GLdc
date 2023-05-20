@@ -13,8 +13,8 @@
 GLfloat DEPTH_RANGE_MULTIPLIER_L = (1 - 0) / 2;
 GLfloat DEPTH_RANGE_MULTIPLIER_H = (0 + 1) / 2;
 
-static Stack MATRIX_STACKS[3]; // modelview, projection, texture
-static Matrix4x4 NORMAL_MATRIX __attribute__((aligned(32)));
+static Stack __attribute__((aligned(32))) MATRIX_STACKS[4]; // modelview, projection, texture
+static Matrix4x4 __attribute__((aligned(32))) NORMAL_MATRIX;
 
 Viewport VIEWPORT = {
     0, 0, 640, 480, 320.0f, 240.0f, 320.0f, 240.0f
@@ -23,7 +23,7 @@ Viewport VIEWPORT = {
 static GLenum MATRIX_MODE = GL_MODELVIEW;
 static GLubyte MATRIX_IDX = 0;
 
-static const Matrix4x4 IDENTITY = {
+static const Matrix4x4 __attribute__((aligned(32))) IDENTITY = {
     1.0f, 0.0f, 0.0f, 0.0f,
     0.0f, 1.0f, 0.0f, 0.0f,
     0.0f, 0.0f, 1.0f, 0.0f,
@@ -106,7 +106,11 @@ void APIENTRY glMatrixMode(GLenum mode) {
 }
 
 void APIENTRY glPushMatrix() {
-    stack_push(MATRIX_STACKS + MATRIX_IDX, stack_top(MATRIX_STACKS + MATRIX_IDX));
+    void* top = stack_top(MATRIX_STACKS + MATRIX_IDX);
+    assert(top);
+    void* ret = stack_push(MATRIX_STACKS + MATRIX_IDX, top);
+    (void) ret;
+    assert(ret);
 }
 
 void APIENTRY glPopMatrix() {
@@ -127,10 +131,16 @@ void APIENTRY glTranslatef(GLfloat x, GLfloat y, GLfloat z) {
         0.0f, 0.0f, 1.0f, 0.0f,
         x, y, z, 1.0f
     };
+    void* top = stack_top(MATRIX_STACKS + MATRIX_IDX);
+    assert(top);
 
-    UploadMatrix4x4(stack_top(MATRIX_STACKS + MATRIX_IDX));
+    UploadMatrix4x4(top);
     MultiplyMatrix4x4(&trn);
-    DownloadMatrix4x4(stack_top(MATRIX_STACKS + MATRIX_IDX));
+
+    top = stack_top(MATRIX_STACKS + MATRIX_IDX);
+    assert(top);
+
+    DownloadMatrix4x4(top);
 
     if(MATRIX_MODE == GL_MODELVIEW) {
         recalculateNormalMatrix();
@@ -270,18 +280,10 @@ void APIENTRY glFrustum(GLfloat left, GLfloat right,
 /* Multiply the current matrix by an arbitrary matrix */
 void glMultMatrixf(const GLfloat *m) {
     Matrix4x4 TEMP __attribute__((aligned(32)));
-    const Matrix4x4 *pMatrix;
-
-    if (((GLint)m)&0xf){ /* Unaligned matrix */
-        pMatrix = &TEMP;
-        MEMCPY4(TEMP, m, sizeof(Matrix4x4));
-    }
-    else{
-        pMatrix = (const Matrix4x4*) m;
-    }
+    MEMCPY4(TEMP, m, sizeof(Matrix4x4));
 
     UploadMatrix4x4(stack_top(MATRIX_STACKS + MATRIX_IDX));
-    MultiplyMatrix4x4(pMatrix);
+    MultiplyMatrix4x4(&TEMP);
     DownloadMatrix4x4(stack_top(MATRIX_STACKS + MATRIX_IDX));
 
     if(MATRIX_MODE == GL_MODELVIEW) {
