@@ -47,6 +47,8 @@ GL_FORCE_INLINE float _glFastInvert(float x) {
 }
 
 GL_FORCE_INLINE void _glPerspectiveDivideVertex(Vertex* vertex, const float h) {
+    TRACE();
+
     const float f = _glFastInvert(vertex->w);
 
     /* Convert to NDC and apply viewport */
@@ -68,8 +70,17 @@ GL_FORCE_INLINE void _glPerspectiveDivideVertex(Vertex* vertex, const float h) {
 
 volatile uint32_t *sq = SQ_BASE_ADDRESS;
 
-static inline void _glFlushBuffer() {}
+static inline void _glFlushBuffer() {
+    TRACE();
+
+    /* Wait for both store queues to complete */
+    sq = (uint32_t*) 0xe0000000;
+    sq[0] = sq[8] = 0;
+}
+
 static inline void _glPushHeaderOrVertex(Vertex* v)  {
+    TRACE();
+
     uint32_t* s = (uint32_t*) v;
     sq[0] = *(s++);
     sq[1] = *(s++);
@@ -114,6 +125,8 @@ static volatile uint32_t *PVR_LMMODE1 = (uint32_t*) 0xA05F6888;
 static volatile uint32_t *QACR = (uint32_t*) 0xFF000038;
 
 void SceneListSubmit(Vertex* v2, int n) {
+    TRACE();
+
     /* You need at least a header, and 3 vertices to render anything */
     if(n < 4) {
         return;
