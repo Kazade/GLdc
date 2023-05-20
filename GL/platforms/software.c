@@ -30,81 +30,7 @@ static VideoMode vid_mode = {
 #define MIN(x, y) ((x) < (y) ? (x) : (y))
 #define MAX(x, y) ((x) > (y) ? (x) : (y))
 
-static void DrawTriangle(Vertex* v0, Vertex* v1, Vertex* v2) {
-    // Compute triangle bounding box.
-
-    int minX = MIN(MIN(v0->xyz[0], v1->xyz[0]), v2->xyz[0]);
-    int maxX = MAX(MAX(v0->xyz[0], v1->xyz[0]), v2->xyz[0]);
-    int minY = MIN(MIN(v0->xyz[1], v1->xyz[1]), v2->xyz[1]);
-    int maxY = MAX(MAX(v0->xyz[1], v1->xyz[1]), v2->xyz[1]);
-
-    // Clip to scissor rect.
-
-    minX = MAX(minX, 0);
-    maxX = MIN(maxX, vid_mode.width);
-    minY = MAX(minY, 0);
-    maxY = MIN(maxY, vid_mode.height);
-
-    // Compute edge equations.
-
-    EdgeEquation e0, e1, e2;
-    EdgeEquationInit(&e0, &v0->xyz[0], &v1->xyz[0]);
-    EdgeEquationInit(&e1, &v1->xyz[0], &v2->xyz[0]);
-    EdgeEquationInit(&e2, &v2->xyz[0], &v0->xyz[0]);
-
-    float area = 0.5 * (e0.c + e1.c + e2.c);
-
-    /* This is very ugly. I don't understand the math properly
-     * so I just swap the vertex order if something is back-facing
-     * and we want to render it. Patches welcome! */
-#define REVERSE_WINDING() \
-    Vertex* tv = v0; \
-    v0 = v1; \
-    v1 = tv; \
-    EdgeEquationInit(&e0, &v0->xyz[0], &v1->xyz[0]); \
-    EdgeEquationInit(&e1, &v1->xyz[0], &v2->xyz[0]); \
-    EdgeEquationInit(&e2, &v2->xyz[0], &v0->xyz[0]); \
-    area = 0.5f * (e0.c + e1.c + e2.c) \
-
-    // Check if triangle is backfacing.
-    if(CULL_MODE == GPU_CULLING_CCW) {
-        if(area < 0) {
-            return;
-        }
-    } else if(CULL_MODE == GPU_CULLING_CW) {
-        if(area < 0) {
-            // We only draw front-facing polygons, so swap
-            // the back to front and draw
-            REVERSE_WINDING();
-        } else {
-            // Front facing, so bail
-            return;
-        }
-    } else if(area < 0) {
-        /* We're not culling, but this is backfacing, so swap vertices and edges */
-        REVERSE_WINDING();
-    }
-
-    ParameterEquation r, g, b;
-
-    ParameterEquationInit(&r, v0->bgra[2], v1->bgra[2], v2->bgra[2], &e0, &e1, &e2, area);
-    ParameterEquationInit(&g, v0->bgra[1], v1->bgra[1], v2->bgra[1], &e0, &e1, &e2, area);
-    ParameterEquationInit(&b, v0->bgra[0], v1->bgra[0], v2->bgra[0], &e0, &e1, &e2, area);
-
-    // Add 0.5 to sample at pixel centers.
-    for (float x = minX + 0.5f, xm = maxX + 0.5f; x <= xm; x += 1.0f)
-    for (float y = minY + 0.5f, ym = maxY + 0.5f; y <= ym; y += 1.0f)
-    {
-      if (EdgeEquationTestPoint(&e0, x, y) && EdgeEquationTestPoint(&e1, x, y) && EdgeEquationTestPoint(&e2, x, y)) {
-        int rint = ParameterEquationEvaluate(&r, x, y);
-        int gint = ParameterEquationEvaluate(&g, x, y);
-        int bint = ParameterEquationEvaluate(&b, x, y);
-        SDL_SetRenderDrawColor(RENDERER, rint, gint, bint, 255);
-        SDL_RenderDrawPoint(RENDERER, x, y);
-      }
-    }
-}
-
+AlignedVector vbuffer;
 
 void InitGPU(_Bool autosort, _Bool fsaa) {
     SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS);
@@ -120,6 +46,8 @@ void InitGPU(_Bool autosort, _Bool fsaa) {
     RENDERER = SDL_CreateRenderer(
         WINDOW, -1, SDL_RENDERER_ACCELERATED
     );
+
+    aligned_vector_init(&vbuffer, sizeof(SDL_Vertex));
 }
 
 void SceneBegin() {
@@ -531,13 +459,37 @@ void SceneListFinish() {
             Vertex* v0 = (Vertex*) (flags - step - step);
             Vertex* v1 = (Vertex*) (flags - step);
             Vertex* v2 = (Vertex*) (flags);
-            (vidx % 2 == 0) ? DrawTriangle(v0, v1, v2) : DrawTriangle(v1, v0, v2);
+
+            SDL_Vertex sv0 = {
+                {v0->xyz[0], v0->xyz[1]},
+                {v0->bgra[2], v0->bgra[1], v0->bgra[0], v0->bgra[3]},
+                {v0->uv[0], v0->uv[1]}
+            };
+
+            SDL_Vertex sv1 = {
+                {v1->xyz[0], v1->xyz[1]},
+                {v1->bgra[2], v1->bgra[1], v1->bgra[0], v1->bgra[3]},
+                {v1->uv[0], v1->uv[1]}
+            };
+
+            SDL_Vertex sv2 = {
+                {v2->xyz[0], v2->xyz[1]},
+                {v2->bgra[2], v2->bgra[1], v2->bgra[0], v2->bgra[3]},
+                {v2->uv[0], v2->uv[1]}
+            };
+
+            aligned_vector_push_back(&vbuffer, &sv0, 1);
+            aligned_vector_push_back(&vbuffer, &sv1, 1);
+            aligned_vector_push_back(&vbuffer, &sv2, 1);
         }
 
         if((*flags) == GPU_CMD_VERTEX_EOL) {
             vidx = 0;
         }
     }
+
+    SDL_SetRenderDrawColor(RENDERER, 255, 255, 255, 255);
+    SDL_RenderGeometry(RENDERER, NULL, aligned_vector_front(&vbuffer), aligned_vector_size(&vbuffer), NULL, 0);
 }
 
 void SceneFinish() {
