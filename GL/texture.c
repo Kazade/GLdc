@@ -21,7 +21,7 @@ static TextureObject* TEXTURE_UNITS[MAX_GLDC_TEXTURE_UNITS] = {NULL, NULL};
 static NamedArray TEXTURE_OBJECTS;
 GLubyte ACTIVE_TEXTURE = 0;
 
-static TexturePalette* SHARED_PALETTES[MAX_GLDC_SHARED_PALETTES];
+static TexturePalette* SHARED_PALETTES[MAX_GLDC_SHARED_PALETTES] = {NULL, NULL, NULL, NULL};
 
 static GLuint _determinePVRFormat(GLint internalFormat, GLenum type);
 
@@ -122,8 +122,11 @@ static void _glReleasePaletteSlot(GLshort slot, GLushort size)
     gl_assert(size == 16 || size == 256);
 
     if (size == 16) {
-        GLushort bank = slot / MAX_GLDC_PALETTE_SLOTS;
-        GLushort subbank = slot % MAX_GLDC_PALETTE_SLOTS;
+        GLushort bank = slot / MAX_GLDC_4BPP_PALETTE_SLOTS;
+        GLushort subbank = slot % MAX_GLDC_4BPP_PALETTE_SLOTS;
+
+        gl_assert(bank < MAX_GLDC_PALETTE_SLOTS);
+        gl_assert(subbank < MAX_GLDC_4BPP_PALETTE_SLOTS);
 
         SUBBANKS_USED[bank][subbank] = GL_FALSE;
 
@@ -135,6 +138,7 @@ static void _glReleasePaletteSlot(GLshort slot, GLushort size)
         BANKS_USED[bank] = GL_FALSE;
     }
     else {
+        gl_assert(slot < MAX_GLDC_PALETTE_SLOTS);
         BANKS_USED[slot] = GL_FALSE;
         for (i = 0; i < MAX_GLDC_4BPP_PALETTE_SLOTS; ++i) {
             SUBBANKS_USED[slot][i] = GL_FALSE;
@@ -475,18 +479,18 @@ static void _glInitializeTextureObject(TextureObject* txr, unsigned int id) {
 }
 
 GLubyte _glInitTextures() {
-
-    uint32_t i;
-
     named_array_init(&TEXTURE_OBJECTS, sizeof(TextureObject), MAX_TEXTURE_COUNT);
 
     // Reserve zero so that it is never given to anyone as an ID!
     named_array_reserve(&TEXTURE_OBJECTS, 0);
 
     // Initialize zero as an actual texture object though because apparently it is!
-    _glInitializeTextureObject((TextureObject*) named_array_get(&TEXTURE_OBJECTS, 0), 0);
+    TextureObject* default_tex = (TextureObject*) named_array_get(&TEXTURE_OBJECTS, 0);
+    _glInitializeTextureObject(default_tex, 0);
+    TEXTURE_UNITS[0] = default_tex;
+    TEXTURE_UNITS[1] = default_tex;
 
-    for (i=0; i < MAX_GLDC_SHARED_PALETTES;i++){
+    for(int i = 0; i < MAX_GLDC_SHARED_PALETTES; i++){
         SHARED_PALETTES[i] = _initTexturePalette();
     }
 
@@ -534,6 +538,7 @@ void APIENTRY glActiveTextureARB(GLenum texture) {
 
     ACTIVE_TEXTURE = texture & 0xF;
     gl_assert(ACTIVE_TEXTURE < MAX_GLDC_TEXTURE_UNITS);
+    gl_assert(ACTIVE_TEXTURE >= 0);
 
     gl_assert(TEXTURE_OBJECTS.element_size > 0);
 }
@@ -547,10 +552,9 @@ void APIENTRY glGenTextures(GLsizei n, GLuint *textures) {
 
     gl_assert(TEXTURE_OBJECTS.element_size > 0);
 
-    while(n--) {
+    for(GLsizei i = 0; i < n; ++i) {
         GLuint id = 0;
         TextureObject* txr = (TextureObject*) named_array_alloc(&TEXTURE_OBJECTS, &id);
-
         gl_assert(txr);
         gl_assert(id);  // Generated IDs must never be zero
 
@@ -559,8 +563,7 @@ void APIENTRY glGenTextures(GLsizei n, GLuint *textures) {
 
         gl_assert(txr->index == id);
 
-        *textures = id;
-        textures++;
+        textures[i] = id;
     }
 
     gl_assert(TEXTURE_OBJECTS.element_size > 0);
@@ -588,7 +591,8 @@ void APIENTRY glDeleteTextures(GLsizei n, GLuint *textures) {
 
             for(GLuint j = 0; j < MAX_GLDC_TEXTURE_UNITS; ++j) {
                 if(txr == TEXTURE_UNITS[j]) {
-                    TEXTURE_UNITS[j] = NULL;
+                    // Reset to the default texture
+                    TEXTURE_UNITS[j] = (TextureObject*) named_array_get(&TEXTURE_OBJECTS, 0);
                 }
             }
 
@@ -612,8 +616,6 @@ void APIENTRY glDeleteTextures(GLsizei n, GLuint *textures) {
             }
 
             named_array_release(&TEXTURE_OBJECTS, id);
-            textures[i] = 0;
-            txr->index = 0;
         }
     }
 
