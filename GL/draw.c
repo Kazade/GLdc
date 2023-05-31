@@ -815,17 +815,15 @@ static void generateElementsFastPath(
 
 #define POLYMODE QUADS
 #define PROCESS_VERTEX_FLAGS(it, i) { \
-    if((i + 1) % 4 == 0) { \
-        Vertex* prev = ((it) - 1); \
-        Vertex t = (*prev); \
-        *(prev) = *((it)); \
-        *((it)) = t; \
-        prev->flags = GPU_CMD_VERTEX; \
+    it->flags = GPU_CMD_VERTEX; \
+    if(((i + 1) % 4) == 0) { \
+        Vertex t = *it; \
+        *it = *(it - 1); \
+        *(it - 1) = t; \
         it->flags = GPU_CMD_VERTEX_EOL; \
-    } else { \
-        it->flags = GPU_CMD_VERTEX; \
     } \
 }
+
 #include "draw_fastpath.inc"
 #undef PROCESS_VERTEX_FLAGS
 #undef POLYMODE
