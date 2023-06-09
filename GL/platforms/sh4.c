@@ -40,6 +40,7 @@ void InitGPU(_Bool autosort, _Bool fsaa) {
     int region = flashrom_get_region();
 
     if(region == FLASHROM_REGION_EUROPE && cable != CT_VGA) {
+        printf("PAL region without VGA - enabling 50hz");
         vid_set_mode(DM_640x480_PAL_IL, PM_RGB565);
     }
 }
