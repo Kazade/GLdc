@@ -31,6 +31,18 @@ void InitGPU(_Bool autosort, _Bool fsaa) {
     };
 
     pvr_init(&params);
+
+    /* If we're PAL and we're NOT VGA, then use 50hz by default. This is the safest
+    thing to do. If someone wants to force 60hz then they can call vid_set_mode later and hopefully
+    that'll work... */
+
+    int cable = vid_check_cable();
+    int region = flashrom_get_region();
+
+    if(region == FLASHROM_REGION_EUROPE && cable != CT_VGA) {
+        printf("PAL region without VGA - enabling 50hz");
+        vid_set_mode(DM_640x480_PAL_IL, PM_RGB565);
+    }
 }
 
 void SceneBegin() {

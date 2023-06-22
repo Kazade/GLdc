@@ -29,18 +29,6 @@ MAKE_FUNC(POLYMODE)
         const int_fast32_t loop = ((min + BATCH_SIZE) > count) ? count - min : BATCH_SIZE;
         const int offset = (first + min);
 
-        stride = ATTRIB_POINTERS.vertex.stride;
-        ptr = ATTRIB_POINTERS.vertex.ptr + (offset * stride);
-        it = (Vertex*) start;
-
-        PREFETCH(ptr);
-        for(int_fast32_t i = 0; i < loop; ++i, ++it) {
-            PREFETCH(ptr + stride);
-            TransformVertex((const float*) ptr, &w, it->xyz, &it->w);
-            PROCESS_VERTEX_FLAGS(it, min + i);
-            ptr += stride;
-        }
-
         stride = ATTRIB_POINTERS.uv.stride;
         ptr = (ENABLED_VERTEX_ATTRIBUTES & UV_ENABLED_FLAG) ? ATTRIB_POINTERS.uv.ptr + ((first + min) * stride) : NULL;
         it = (Vertex*) start;
@@ -78,6 +66,18 @@ MAKE_FUNC(POLYMODE)
             for(int_fast32_t i = 0; i < loop; ++i, ++it) {
                 *((uint32_t*) it->bgra) = ~0;
             }
+        }
+
+        stride = ATTRIB_POINTERS.vertex.stride;
+        ptr = ATTRIB_POINTERS.vertex.ptr + (offset * stride);
+        it = (Vertex*) start;
+
+        PREFETCH(ptr);
+        for(int_fast32_t i = 0; i < loop; ++i, ++it) {
+            PREFETCH(ptr + stride);
+            TransformVertex((const float*) ptr, &w, it->xyz, &it->w);
+            PROCESS_VERTEX_FLAGS(it, min + i);
+            ptr += stride;
         }
 
         start = aligned_vector_at(target->extras, min);
