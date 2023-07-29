@@ -254,7 +254,7 @@ GLboolean _glGenerateMipmapTwiddled(const GLuint pvrFormat, const GLubyte* prevD
     return GL_TRUE;
 }
 
-void APIENTRY glGenerateMipmapEXT(GLenum target) {
+void APIENTRY glGenerateMipmap(GLenum target) {
     if(target != GL_TEXTURE_2D) {
         _glKosThrowError(GL_INVALID_OPERATION, __func__);
         return;
@@ -334,7 +334,7 @@ GLAPI GLvoid APIENTRY gluBuild2DMipmaps(GLenum target, GLint internalFormat,
 	 unsigned byte data, and finally the data itself. */
     glTexImage2D(GL_TEXTURE_2D, 0, 3, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
 
-    glGenerateMipmapEXT(GL_TEXTURE_2D);
+    glGenerateMipmap(GL_TEXTURE_2D);
 }
 
 GLenum APIENTRY glCheckFramebufferStatusEXT(GLenum target) {

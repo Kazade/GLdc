@@ -130,7 +130,7 @@ GLAPI void APIENTRY glGenFramebuffersEXT(GLsizei n, GLuint* framebuffers);
 GLAPI void APIENTRY glDeleteFramebuffersEXT(GLsizei n, const GLuint* framebuffers);
 GLAPI void APIENTRY glBindFramebufferEXT(GLenum target, GLuint framebuffer);
 GLAPI void APIENTRY glFramebufferTexture2DEXT(GLenum target, GLenum attachment, GLenum textarget, GLuint texture, GLint level);
-GLAPI void APIENTRY glGenerateMipmapEXT(GLenum target);
+GLAPI void APIENTRY glGenerateMipmap(GLenum target);
 GLAPI GLenum APIENTRY glCheckFramebufferStatusEXT(GLenum target);
 GLAPI GLboolean APIENTRY glIsFramebufferEXT(GLuint framebuffer);
 
@@ -203,7 +203,7 @@ GLAPI void APIENTRY glCompressedTexImage2DARB(GLenum target,
 #define glClientActiveTexture glClientActiveTextureARB
 #define glMultiTexCoord2f glMultiTexCoord2fARB
 
-#define glGenerateMipmap glGenerateMipmapEXT
+#define glGenerateMipmapEXT glGenerateMipmap
 #define glCompressedTexImage2D glCompressedTexImage2DARB
 
 #ifndef GL_VERSION_1_4
