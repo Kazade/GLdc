@@ -87,7 +87,7 @@ GLAPI void APIENTRY glKosInitConfig(GLdcConfig* config);
  */
 GLAPI void APIENTRY glKosInitEx(GLdcConfig* config);
 GLAPI void APIENTRY glKosSwapBuffers();
-
+GLAPI void APIENTRY glKosShutdown();
 
 /*
  * CUSTOM EXTENSION multiple_shared_palette_KOS
@@ -186,12 +186,28 @@ GLAPI void APIENTRY glKosSwapBuffers();
 /* Memory allocation extension (GL_KOS_texture_memory_management) */
 GLAPI GLvoid APIENTRY glDefragmentTextureMemory_KOS(void);
 
+/* glGet extensions */
 #define GL_FREE_TEXTURE_MEMORY_KOS                  0xEF3D
 #define GL_USED_TEXTURE_MEMORY_KOS                  0xEF3E
 #define GL_FREE_CONTIGUOUS_TEXTURE_MEMORY_KOS       0xEF3F
 
 //for palette internal format (glfcConfig)
 #define GL_RGB565_KOS                               0xEF40
+#define GL_ARGB4444_KOS                             0xEF41
+#define GL_ARGB1555_KOS                             0xEF42
+#define GL_RGB565_TWID_KOS                          0xEF43
+#define GL_ARGB4444_TWID_KOS                        0xEF44
+#define GL_ARGB1555_TWID_KOS                        0xEF45
+#define GL_COLOR_INDEX8_TWID_KOS                    0xEF46
+#define GL_COLOR_INDEX4_TWID_KOS                    0xEF47
+#define GL_RGB_TWID_KOS                             0xEF48
+#define GL_RGBA_TWID_KOS                            0xEF49
+
+/* glGet extensions */
+#define GL_TEXTURE_INTERNAL_FORMAT_KOS              0xEF50
+
+/* If enabled, will twiddle texture uploads where possible */
+#define GL_TEXTURE_TWIDDLE_KOS                      0xEF51
 
 __END_DECLS
 

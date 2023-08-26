@@ -49,7 +49,15 @@ void APIENTRY glKosInitConfig(GLdcConfig* config) {
     config->internal_palette_format = GL_RGBA8;
 }
 
+static bool _initialized = false;
+
 void APIENTRY glKosInitEx(GLdcConfig* config) {
+    if(_initialized) {
+        return;
+    }
+
+    _initialized = true;
+
     TRACE();
 
     printf("\nWelcome to GLdc! Git revision: %s\n\n", GLDC_VERSION);
@@ -81,6 +89,12 @@ void APIENTRY glKosInitEx(GLdcConfig* config) {
     aligned_vector_reserve(&OP_LIST.vector, config->initial_op_capacity);
     aligned_vector_reserve(&PT_LIST.vector, config->initial_pt_capacity);
     aligned_vector_reserve(&TR_LIST.vector, config->initial_tr_capacity);
+}
+
+void APIENTRY glKosShutdown() {
+    aligned_vector_clear(&OP_LIST.vector);
+    aligned_vector_clear(&PT_LIST.vector);
+    aligned_vector_clear(&TR_LIST.vector);
 }
 
 void APIENTRY glKosInit() {

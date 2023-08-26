@@ -23,15 +23,66 @@ GLubyte ACTIVE_TEXTURE = 0;
 
 static TexturePalette* SHARED_PALETTES[MAX_GLDC_SHARED_PALETTES] = {NULL, NULL, NULL, NULL};
 
-static GLuint _determinePVRFormat(GLint internalFormat, GLenum type);
+static GLuint _determinePVRFormat(GLint internalFormat);
 
 static GLboolean BANKS_USED[MAX_GLDC_PALETTE_SLOTS];  // Each time a 256 colour bank is used, this is set to true
 static GLboolean SUBBANKS_USED[MAX_GLDC_PALETTE_SLOTS][MAX_GLDC_4BPP_PALETTE_SLOTS]; // 4 counts of the used 16 colour banks within the 256 ones
 
 static GLenum INTERNAL_PALETTE_FORMAT = GL_RGBA8;
+static GLboolean TEXTURE_TWIDDLE_ENABLED = GL_FALSE;
 
 static void* YALLOC_BASE = NULL;
 static size_t YALLOC_SIZE = 0;
+
+static const unsigned short MortonTable256[256] =
+    {
+        0x0000, 0x0001, 0x0004, 0x0005, 0x0010, 0x0011, 0x0014, 0x0015,
+        0x0040, 0x0041, 0x0044, 0x0045, 0x0050, 0x0051, 0x0054, 0x0055,
+        0x0100, 0x0101, 0x0104, 0x0105, 0x0110, 0x0111, 0x0114, 0x0115,
+        0x0140, 0x0141, 0x0144, 0x0145, 0x0150, 0x0151, 0x0154, 0x0155,
+        0x0400, 0x0401, 0x0404, 0x0405, 0x0410, 0x0411, 0x0414, 0x0415,
+        0x0440, 0x0441, 0x0444, 0x0445, 0x0450, 0x0451, 0x0454, 0x0455,
+        0x0500, 0x0501, 0x0504, 0x0505, 0x0510, 0x0511, 0x0514, 0x0515,
+        0x0540, 0x0541, 0x0544, 0x0545, 0x0550, 0x0551, 0x0554, 0x0555,
+        0x1000, 0x1001, 0x1004, 0x1005, 0x1010, 0x1011, 0x1014, 0x1015,
+        0x1040, 0x1041, 0x1044, 0x1045, 0x1050, 0x1051, 0x1054, 0x1055,
+        0x1100, 0x1101, 0x1104, 0x1105, 0x1110, 0x1111, 0x1114, 0x1115,
+        0x1140, 0x1141, 0x1144, 0x1145, 0x1150, 0x1151, 0x1154, 0x1155,
+        0x1400, 0x1401, 0x1404, 0x1405, 0x1410, 0x1411, 0x1414, 0x1415,
+        0x1440, 0x1441, 0x1444, 0x1445, 0x1450, 0x1451, 0x1454, 0x1455,
+        0x1500, 0x1501, 0x1504, 0x1505, 0x1510, 0x1511, 0x1514, 0x1515,
+        0x1540, 0x1541, 0x1544, 0x1545, 0x1550, 0x1551, 0x1554, 0x1555,
+        0x4000, 0x4001, 0x4004, 0x4005, 0x4010, 0x4011, 0x4014, 0x4015,
+        0x4040, 0x4041, 0x4044, 0x4045, 0x4050, 0x4051, 0x4054, 0x4055,
+        0x4100, 0x4101, 0x4104, 0x4105, 0x4110, 0x4111, 0x4114, 0x4115,
+        0x4140, 0x4141, 0x4144, 0x4145, 0x4150, 0x4151, 0x4154, 0x4155,
+        0x4400, 0x4401, 0x4404, 0x4405, 0x4410, 0x4411, 0x4414, 0x4415,
+        0x4440, 0x4441, 0x4444, 0x4445, 0x4450, 0x4451, 0x4454, 0x4455,
+        0x4500, 0x4501, 0x4504, 0x4505, 0x4510, 0x4511, 0x4514, 0x4515,
+        0x4540, 0x4541, 0x4544, 0x4545, 0x4550, 0x4551, 0x4554, 0x4555,
+        0x5000, 0x5001, 0x5004, 0x5005, 0x5010, 0x5011, 0x5014, 0x5015,
+        0x5040, 0x5041, 0x5044, 0x5045, 0x5050, 0x5051, 0x5054, 0x5055,
+        0x5100, 0x5101, 0x5104, 0x5105, 0x5110, 0x5111, 0x5114, 0x5115,
+        0x5140, 0x5141, 0x5144, 0x5145, 0x5150, 0x5151, 0x5154, 0x5155,
+        0x5400, 0x5401, 0x5404, 0x5405, 0x5410, 0x5411, 0x5414, 0x5415,
+        0x5440, 0x5441, 0x5444, 0x5445, 0x5450, 0x5451, 0x5454, 0x5455,
+        0x5500, 0x5501, 0x5504, 0x5505, 0x5510, 0x5511, 0x5514, 0x5515,
+        0x5540, 0x5541, 0x5544, 0x5545, 0x5550, 0x5551, 0x5554, 0x5555
+};
+
+
+/* Given a 0-based texel location, and an image width/height. Return the
+ * new 0-based texel location */
+GL_FORCE_INLINE uint32_t twid_location(uint32_t i, uint32_t w, uint32_t h) {
+    uint16_t y = i % w;
+    uint16_t x = i / w;
+
+    return MortonTable256[y >> 8]   << 17 |
+           MortonTable256[x >> 8]   << 16 |
+           MortonTable256[y & 0xFF] <<  1 |
+           MortonTable256[x & 0xFF];
+}
+
 
 static void* yalloc_alloc_and_defrag(size_t size) {
     void* ret = yalloc_alloc(YALLOC_BASE, size);
@@ -146,78 +197,12 @@ static void _glReleasePaletteSlot(GLshort slot, GLushort size)
     }
 }
 
-/* Linear/iterative twiddling algorithm from Marcus' tatest */
-#define TWIDTAB(x) ( (x&1)|((x&2)<<1)|((x&4)<<2)|((x&8)<<3)|((x&16)<<4)| \
-                     ((x&32)<<5)|((x&64)<<6)|((x&128)<<7)|((x&256)<<8)|((x&512)<<9) )
-#define TWIDOUT(x, y) ( TWIDTAB((y)) | (TWIDTAB((x)) << 1) )
-
-
-static void GPUTextureTwiddle8PPP(void* src, void* dst, uint32_t w, uint32_t h) {
-    uint32_t x, y, yout, min, mask;
-
-    min = MIN(w, h);
-    mask = min - 1;
-
-    uint8_t* pixels;
-    uint16_t* vtex;
-    pixels = (uint8_t*) src;
-    vtex = (uint16_t*) dst;
-
-    for(y = 0; y < h; y += 2) {
-        yout = y;
-        for(x = 0; x < w; x++) {
-            int32_t idx = TWIDOUT((yout & mask) / 2, x & mask) +
-                 (x / min + yout / min)*min * min / 2;
-
-            gl_assert(idx < (w * h));
-            vtex[idx] = pixels[y * w + x] | (pixels[(y + 1) * w + x] << 8);
-        }
-    }
+GLboolean _glGetTextureTwiddle() {
+    return TEXTURE_TWIDDLE_ENABLED;
 }
 
-static void GPUTextureTwiddle4PPP(void* src, void* dst, uint32_t w, uint32_t h) {
-    uint32_t x, y, yout, min, mask;
-
-    min = MIN(w, h);
-    mask = min - 1;
-
-	uint8_t* pixels;
-    uint16_t* vtex;
-    pixels = (uint8_t*) src;
-    vtex = (uint16_t*) dst;
-
-    for(y = 0; y < h; y += 2) {
-        yout = y;
-        for (x = 0; x < w; x += 2) {
-            vtex[TWIDOUT((x & mask) / 2, (yout & mask) / 2) +
-                (x / min + yout / min) * min * min / 4] =
-            vtex[TWIDOUT((x & mask) / 2, (yout & mask) / 2) +
-                (x / min + yout / min) * min * min / 4] =
-                ((pixels[(x + y * w) >> 1] & 15) << 8) | ((pixels[(x + (y + 1) * w) >> 1] & 15) << 12) |
-                ((pixels[(x + y * w) >> 1] >> 4) << 0) | ((pixels[(x + (y + 1) * w) >> 1] >> 4) << 4);
-        }
-    }
-}
-
-static void GPUTextureTwiddle16BPP(void * src, void* dst, uint32_t w, uint32_t h) {
-    uint32_t x, y, yout, min, mask;
-
-    min = MIN(w, h);
-    mask = min - 1;
-
-    uint16_t* pixels;
-    uint16_t* vtex;
-    pixels = (uint16_t*) src;
-    vtex = (uint16_t*) dst;
-
-    for(y = 0; y < h; y++) {
-        yout = y;
-
-        for(x = 0; x < w; x++) {
-            vtex[TWIDOUT(x & mask, yout & mask) +
-                 (x / min + yout / min)*min * min] = pixels[y * w + x];
-        }
-    }
+void _glSetTextureTwiddle(GLboolean v) {
+    TEXTURE_TWIDDLE_ENABLED = v;
 }
 
 TexturePalette* _glGetSharedPalette(GLshort bank) {
@@ -278,7 +263,27 @@ GLubyte _glGetActiveTexture() {
     return ACTIVE_TEXTURE;
 }
 
- static GLint _determineStride(GLenum format, GLenum type) {
+static GLint _determineStrideInternal(GLenum internalFormat) {
+    switch(internalFormat) {
+        case GL_RGB565_KOS:
+        case GL_ARGB4444_KOS:
+        case GL_ARGB1555_KOS:
+        case GL_RGB565_TWID_KOS:
+        case GL_ARGB4444_TWID_KOS:
+        case GL_ARGB1555_TWID_KOS:
+            return 2;
+        case GL_COLOR_INDEX8_TWID_KOS:
+        case GL_COLOR_INDEX4_TWID_KOS:
+        case GL_COLOR_INDEX4_EXT:
+        case GL_COLOR_INDEX8_EXT:
+            return 1;
+    }
+
+    return -1;
+}
+
+
+static GLint _determineStride(GLenum format, GLenum type) {
     switch(type) {
     case GL_BYTE:
     case GL_UNSIGNED_BYTE:
@@ -528,6 +533,16 @@ TextureObject* _glGetBoundTexture() {
     return TEXTURE_UNITS[ACTIVE_TEXTURE];
 }
 
+GLint _glGetTextureInternalFormat() {
+    TextureObject* obj = _glGetBoundTexture();
+    if(!obj) {
+        return -1;
+    }
+
+    return obj->internalFormat;
+}
+
+
 void APIENTRY glActiveTextureARB(GLenum texture) {
     TRACE();
 
@@ -538,8 +553,6 @@ void APIENTRY glActiveTextureARB(GLenum texture) {
 
     ACTIVE_TEXTURE = texture & 0xF;
     gl_assert(ACTIVE_TEXTURE < MAX_GLDC_TEXTURE_UNITS);
-    gl_assert(ACTIVE_TEXTURE >= 0);
-
     gl_assert(TEXTURE_OBJECTS.element_size > 0);
 }
 
@@ -837,10 +850,8 @@ void APIENTRY glCompressedTexImage2DARB(GLenum target,
     /* Set the required mipmap count */
     active->width   = width;
     active->height  = height;
-    active->color   = _determinePVRFormat(
-        internalFormat,
-        internalFormat  /* Doesn't matter (see determinePVRFormat) */
-    );
+    active->internalFormat = internalFormat;
+    active->color   = _determinePVRFormat(internalFormat);
     active->mipmapCount = _glGetMipmapLevelCount(active);
     active->mipmap = (mipmapped) ? ~0 : (1 << level);  /* Set only a single bit if this wasn't mipmapped otherwise set all */
     active->isCompressed = GL_TRUE;
@@ -868,53 +879,95 @@ void APIENTRY glCompressedTexImage2DARB(GLenum target,
     _glGPUStateMarkDirty();
 }
 
+static GLboolean isTwiddledInternalFormat(GLint internalFormat) {
+    switch(internalFormat) {
+    case GL_RGB565_TWID_KOS:
+    case GL_ARGB4444_TWID_KOS:
+    case GL_ARGB1555_TWID_KOS:
+    case GL_COLOR_INDEX8_TWID_KOS:
+    case GL_COLOR_INDEX4_TWID_KOS:
+    case GL_RGB_TWID_KOS:
+    case GL_RGBA_TWID_KOS:
+        return true;
+    default:
+        return false;
+    }
+}
+
+/**
+ * Takes an internal format, and returns a GL format matching how we'd store
+ * it internally, so it'll return one of the following:
+ *
+ * - GL_RGB565_KOS,
+ * - GL_ARGB4444_KOS
+ * - GL_ARGB1555_KOS
+ * - GL_RGB565_TWID_KOS
+ * - GL_ARGB4444_TWID_KOS
+ * - GL_ARGB1555_TWID_KOS
+ * - GL_COLOR_INDEX8_EXT
+ * - GL_COLOR_INDEX4_EXT
+ * - GL_COLOR_INDEX8_TWID_KOS
+ * - GL_COLOR_INDEX4_TWID_KOS
+ */
 static GLint _cleanInternalFormat(GLint internalFormat) {
     switch (internalFormat) {
+    case GL_RGB565_KOS:
+    case GL_ARGB4444_KOS:
+    case GL_ARGB1555_KOS:
+    case GL_RGB565_TWID_KOS:
+    case GL_ARGB4444_TWID_KOS:
+    case GL_ARGB1555_TWID_KOS:
+    case GL_COLOR_INDEX8_TWID_KOS:
+    case GL_COLOR_INDEX4_TWID_KOS:
     case GL_COLOR_INDEX4_EXT:
-        return GL_COLOR_INDEX4_EXT;
     case GL_COLOR_INDEX8_EXT:
-        return GL_COLOR_INDEX8_EXT;
+        /* All of these formats are fine as they are, no conversion needed */
+        return internalFormat;
+    case GL_RGB_TWID_KOS:
+        return GL_RGB565_TWID_KOS;
+    case GL_RGBA_TWID_KOS:
+        return GL_ARGB4444_TWID_KOS;
     case GL_ALPHA:
-/*    case GL_ALPHA4:
+    case GL_ALPHA4:
     case GL_ALPHA8:
     case GL_ALPHA12:
-    case GL_ALPHA16:*/
-       return GL_ALPHA;
+    case GL_ALPHA16:
+       return (TEXTURE_TWIDDLE_ENABLED) ? GL_ARGB4444_TWID_KOS : GL_ARGB4444_KOS;
     case 1:
     case GL_LUMINANCE:
-/*    case GL_LUMINANCE4:
+    case GL_LUMINANCE4:
     case GL_LUMINANCE8:
     case GL_LUMINANCE12:
-    case GL_LUMINANCE16:*/
-       return GL_LUMINANCE;
+    case GL_LUMINANCE16:
+       return (TEXTURE_TWIDDLE_ENABLED) ? GL_ARGB1555_TWID_KOS : GL_ARGB1555_KOS;
     case 2:
     case GL_LUMINANCE_ALPHA:
-/*    case GL_LUMINANCE4_ALPHA4:
+    case GL_LUMINANCE4_ALPHA4:
     case GL_LUMINANCE6_ALPHA2:
     case GL_LUMINANCE8_ALPHA8:
     case GL_LUMINANCE12_ALPHA4:
     case GL_LUMINANCE12_ALPHA12:
-    case GL_LUMINANCE16_ALPHA16: */
-       return GL_LUMINANCE_ALPHA;
-/*    case GL_INTENSITY:
+    case GL_LUMINANCE16_ALPHA16:
+       return (TEXTURE_TWIDDLE_ENABLED) ? GL_ARGB4444_TWID_KOS : GL_ARGB4444_KOS;
+    case GL_INTENSITY:
     case GL_INTENSITY4:
     case GL_INTENSITY8:
     case GL_INTENSITY12:
     case GL_INTENSITY16:
-       return GL_INTENSITY; */
+       return (TEXTURE_TWIDDLE_ENABLED) ? GL_ARGB4444_TWID_KOS : GL_ARGB4444_KOS;
     case 3:
-       return GL_RGB;
+       return (TEXTURE_TWIDDLE_ENABLED) ? GL_RGB565_TWID_KOS : GL_RGB565_KOS;
     case GL_RGB:
-    /* case GL_R3_G3_B2: */
+    case GL_R3_G3_B2:
     case GL_RGB4:
     case GL_RGB5:
     case GL_RGB8:
     case GL_RGB10:
     case GL_RGB12:
     case GL_RGB16:
-       return GL_RGB;
+       return (TEXTURE_TWIDDLE_ENABLED) ? GL_RGB565_TWID_KOS : GL_RGB565_KOS;
     case 4:
-       return GL_RGBA;
+       return (TEXTURE_TWIDDLE_ENABLED) ? GL_ARGB4444_TWID_KOS : GL_ARGB4444_KOS;
     case GL_RGBA:
     case GL_RGBA2:
     case GL_RGBA4:
@@ -923,92 +976,51 @@ static GLint _cleanInternalFormat(GLint internalFormat) {
     case GL_RGB10_A2:
     case GL_RGBA12:
     case GL_RGBA16:
-        return GL_RGBA;
-
+        return (TEXTURE_TWIDDLE_ENABLED) ? GL_ARGB4444_TWID_KOS : GL_ARGB4444_KOS;
     /* Support ARB_texture_rg */
     case GL_RED:
-/*    case GL_R8:
+    case GL_R8:
     case GL_R16:
-    case GL_RED:
-    case GL_COMPRESSED_RED: */
-        return GL_RED;
-/*    case GL_RG:
+    case GL_COMPRESSED_RED:
+        return (TEXTURE_TWIDDLE_ENABLED) ? GL_RGB565_TWID_KOS : GL_RGB565_KOS;
+    case GL_RG:
     case GL_RG8:
     case GL_RG16:
     case GL_COMPRESSED_RG:
-        return GL_RG;*/
+        return (TEXTURE_TWIDDLE_ENABLED) ? GL_RGB565_TWID_KOS : GL_RGB565_KOS;
     default:
         return -1;
     }
 }
 
- static GLuint _determinePVRFormat(GLint internalFormat, GLenum type) {
+static GLuint _determinePVRFormat(GLint internalFormat) {
     /* Given a cleaned internalFormat, return the Dreamcast format
      * that can hold it
      */
     switch(internalFormat) {
-        case GL_ALPHA:
-        case GL_LUMINANCE:
-        case GL_LUMINANCE_ALPHA:
-        case GL_RGBA:
-        /* OK so if we have something that requires alpha, we return 4444 unless
-         * the type was already 1555 (1-bit alpha) in which case we return that
-         */
-            if(type == GL_UNSIGNED_SHORT_1_5_5_5_REV) {
-                return GPU_TXRFMT_ARGB1555 | GPU_TXRFMT_NONTWIDDLED;
-            } else if(type == GL_UNSIGNED_SHORT_1_5_5_5_REV_TWID_KOS) {
-                return GPU_TXRFMT_ARGB1555 | GPU_TXRFMT_TWIDDLED;
-            } else if(type == GL_UNSIGNED_SHORT_4_4_4_4_REV_TWID_KOS) {
-                return GPU_TXRFMT_ARGB4444 | GPU_TXRFMT_TWIDDLED;
-            } else {
-                return GPU_TXRFMT_ARGB4444 | GPU_TXRFMT_NONTWIDDLED;
-            }
-        case GL_RED:
-        case GL_RGB:
-            switch(type) {
-                case GL_UNSIGNED_SHORT_5_6_5_TWID_KOS:
-                    return GPU_TXRFMT_RGB565 | GPU_TXRFMT_TWIDDLED;
-                case GL_COMPRESSED_RGB_565_VQ_KOS:
-                case GL_COMPRESSED_RGB_565_VQ_MIPMAP_KOS:
-                    return GPU_TXRFMT_RGB565 | GPU_TXRFMT_NONTWIDDLED | GPU_TXRFMT_VQ_ENABLE;
-                case GL_COMPRESSED_RGB_565_VQ_TWID_KOS:
-                case GL_COMPRESSED_RGB_565_VQ_MIPMAP_TWID_KOS:
-                    return GPU_TXRFMT_RGB565 | GPU_TXRFMT_TWIDDLED | GPU_TXRFMT_VQ_ENABLE;
-                default:
-                    return GPU_TXRFMT_RGB565 | GPU_TXRFMT_NONTWIDDLED;
-            }
-        break;
-        /* Compressed and twiddled versions */
-        case GL_UNSIGNED_SHORT_5_6_5_TWID_KOS:
-            return GPU_TXRFMT_RGB565 | GPU_TXRFMT_TWIDDLED;
-        case GL_UNSIGNED_SHORT_4_4_4_4_REV_TWID_KOS:
-            return GPU_TXRFMT_ARGB4444 | GPU_TXRFMT_TWIDDLED;
-        case GL_UNSIGNED_SHORT_1_5_5_5_REV_TWID_KOS:
-            return GPU_TXRFMT_ARGB1555 | GPU_TXRFMT_TWIDDLED;
-        case GL_COMPRESSED_RGB_565_VQ_KOS:
-        case GL_COMPRESSED_RGB_565_VQ_MIPMAP_KOS:
-            return GPU_TXRFMT_RGB565 | GPU_TXRFMT_NONTWIDDLED | GPU_TXRFMT_VQ_ENABLE;
-        case GL_COMPRESSED_RGB_565_VQ_TWID_KOS:
-        case GL_COMPRESSED_RGB_565_VQ_MIPMAP_TWID_KOS:
-            return GPU_TXRFMT_RGB565 | GPU_TXRFMT_TWIDDLED | GPU_TXRFMT_VQ_ENABLE;
-        case GL_COMPRESSED_ARGB_4444_VQ_TWID_KOS:
-        case GL_COMPRESSED_ARGB_4444_VQ_MIPMAP_TWID_KOS:
-            return GPU_TXRFMT_ARGB4444 | GPU_TXRFMT_TWIDDLED | GPU_TXRFMT_VQ_ENABLE;
-        case GL_COMPRESSED_ARGB_4444_VQ_KOS:
-        case GL_COMPRESSED_ARGB_4444_VQ_MIPMAP_KOS:
-            return GPU_TXRFMT_ARGB4444 | GPU_TXRFMT_NONTWIDDLED | GPU_TXRFMT_VQ_ENABLE;
-        case GL_COMPRESSED_ARGB_1555_VQ_KOS:
-        case GL_COMPRESSED_ARGB_1555_VQ_MIPMAP_KOS:
-            return GPU_TXRFMT_ARGB1555 | GPU_TXRFMT_NONTWIDDLED | GPU_TXRFMT_VQ_ENABLE;
-        case GL_COMPRESSED_ARGB_1555_VQ_TWID_KOS:
-        case GL_COMPRESSED_ARGB_1555_VQ_MIPMAP_TWID_KOS:
-            return GPU_TXRFMT_ARGB1555 | GPU_TXRFMT_TWIDDLED | GPU_TXRFMT_VQ_ENABLE;
-        case GL_COLOR_INDEX8_EXT:
-            return GPU_TXRFMT_PAL8BPP | GPU_TXRFMT_TWIDDLED;
-        case GL_COLOR_INDEX4_EXT:
-            return GPU_TXRFMT_PAL4BPP | GPU_TXRFMT_TWIDDLED;
-        default:
-            return 0;
+    case GL_RGB565_KOS:
+        return GPU_TXRFMT_RGB565 | GPU_TXRFMT_NONTWIDDLED;
+    case GL_ARGB4444_KOS:
+        return GPU_TXRFMT_ARGB4444 | GPU_TXRFMT_NONTWIDDLED;
+    case GL_ARGB1555_KOS:
+        return GPU_TXRFMT_ARGB1555 | GPU_TXRFMT_NONTWIDDLED;
+    case GL_RGB565_TWID_KOS:
+        return GPU_TXRFMT_RGB565 | GPU_TXRFMT_TWIDDLED;
+    case GL_ARGB4444_TWID_KOS:
+        return GPU_TXRFMT_ARGB4444 | GPU_TXRFMT_TWIDDLED;
+    case GL_ARGB1555_TWID_KOS:
+        return GPU_TXRFMT_ARGB1555 | GPU_TXRFMT_TWIDDLED;
+    case GL_COLOR_INDEX8_EXT:
+        return GPU_TXRFMT_PAL8BPP | GPU_TXRFMT_NONTWIDDLED;
+    case GL_COLOR_INDEX4_EXT:
+        return GPU_TXRFMT_PAL4BPP | GPU_TXRFMT_NONTWIDDLED;
+    case GL_COLOR_INDEX8_TWID_KOS:
+        return GPU_TXRFMT_PAL8BPP | GPU_TXRFMT_TWIDDLED;
+    case GL_COLOR_INDEX4_TWID_KOS:
+        return GPU_TXRFMT_PAL4BPP | GPU_TXRFMT_TWIDDLED;
+    default:
+        _glKosThrowError(GL_INVALID_ENUM, __func__);
+        return 0;
     }
 }
 
@@ -1121,109 +1133,68 @@ static inline void _a8_to_argb4444(const GLubyte* source, GLubyte* dest) {
     *((GLushort*) dest) = (color << 8) | color;
 }
 
-static TextureConversionFunc _determineConversion(GLint internalFormat, GLenum format, GLenum type) {
-    switch(internalFormat) {
-    case GL_ALPHA: {
-        if(format == GL_ALPHA) {
-            /* Dreamcast doesn't really support GL_ALPHA internally, so store as argb with each rgb value as white */
-            /* Applying alpha values to all channels seems a better option*/
-            return _a8_to_argb4444;
-        } else if(type == GL_UNSIGNED_BYTE && format == GL_RGBA) {
-            return _rgba8888_to_a000;
-        } else if(type == GL_BYTE && format == GL_RGBA) {
-            return _rgba8888_to_a000;
-        }
-    } break;
-    case GL_RED: {
-        if(type == GL_UNSIGNED_BYTE && format == GL_RED) {
-            /* Dreamcast doesn't really support GL_RED internally, so store as rgb */
-            return _r8_to_rgb565;
-        }
-    } break;
-    case GL_RGB: {
-        if(type == GL_UNSIGNED_BYTE && format == GL_RGB) {
-            return _rgb888_to_rgb565;
-        } else if(type == GL_UNSIGNED_BYTE && format == GL_RGBA) {
-            return _rgba8888_to_rgb565;
-        } else if(type == GL_BYTE && format == GL_RGB) {
-            return _rgb888_to_rgb565;
-        } else if(type == GL_UNSIGNED_BYTE && format == GL_RED) {
-            return _r8_to_rgb565;
-        }
-    } break;
-    case GL_RGBA: {
-        if(type == GL_UNSIGNED_BYTE && format == GL_RGBA) {
-            return _rgba8888_to_argb4444;
-        } else if (type == GL_BYTE && format == GL_RGBA) {
-            return _rgba8888_to_argb4444;
-        } else if(type == GL_UNSIGNED_SHORT_4_4_4_4 && format == GL_RGBA) {
-            return _rgba4444_to_argb4444;
-        }
-    } break;
-    case GL_RGBA8:
-    case GL_RGBA4:
-    case GL_RGB5_A1:
-    case GL_RGB565_KOS:
+/* Given an cleaned internal format, and the passed format and type, this returns:
+ *
+ * 0 if not conversion is necessary
+ * 1 if a conversion is necessary (func will be set)
+ * 2 if twiddling is necessary
+ * 3 if twiddling and conversion is necessary (func will be set)
+ * -1 if a conversion is unsupported
+ *
+ */
+static int _determineConversion(GLint internalFormat, GLenum format, GLenum type, TextureConversionFunc* func) {
+    static struct Entry {
+        GLint internalFormat;
+        GLenum format;
+        GLenum type;
+        TextureConversionFunc func;
+        bool twiddle;
+    } conversions [] = {
+        {GL_ARGB4444_KOS, GL_ALPHA, GL_UNSIGNED_BYTE, _a8_to_argb4444, false},
+        {GL_ARGB4444_KOS, GL_RGBA, GL_UNSIGNED_BYTE, _rgba8888_to_argb4444, false},        
+        {GL_ARGB4444_KOS, GL_RGBA, GL_UNSIGNED_SHORT_4_4_4_4, _rgba4444_to_argb4444, false},
+        {GL_ARGB4444_KOS, GL_BGRA, GL_UNSIGNED_SHORT_4_4_4_4_REV, NULL, false},
+        {GL_ARGB4444_TWID_KOS, GL_BGRA, GL_UNSIGNED_SHORT_4_4_4_4_REV_TWID_KOS, NULL, false},
+        {GL_ARGB4444_TWID_KOS, GL_RGBA, GL_UNSIGNED_BYTE, _rgba8888_to_argb4444, true},
+        {GL_ARGB1555_KOS, GL_BGRA, GL_UNSIGNED_SHORT_1_5_5_5_REV, NULL, false},
+        {GL_ARGB1555_TWID_KOS, GL_BGRA, GL_UNSIGNED_SHORT_1_5_5_5_REV_TWID_KOS, NULL, false},
+        {GL_RGB565_KOS, GL_RGBA, GL_UNSIGNED_BYTE, _rgba8888_to_rgb565, false},
+        {GL_RGB565_KOS, GL_RED, GL_UNSIGNED_BYTE, _r8_to_rgb565, false},
+        {GL_RGB565_KOS, GL_RGB, GL_UNSIGNED_BYTE, _rgb888_to_rgb565, false},
+        {GL_RGB565_KOS, GL_RGBA, GL_UNSIGNED_BYTE, _rgba8888_to_rgb565, false},
+        {GL_RGB565_KOS, GL_RED, GL_UNSIGNED_BYTE, _r8_to_rgb565, false},
+        {GL_RGB565_KOS, GL_RGB, GL_UNSIGNED_SHORT_5_6_5, NULL, false},
+        {GL_RGB565_TWID_KOS, GL_RGB, GL_UNSIGNED_SHORT_5_6_5_TWID_KOS, NULL, false},
+        {GL_RGB565_TWID_KOS, GL_RGB, GL_UNSIGNED_BYTE, _rgb888_to_rgb565, true},
+        {GL_COLOR_INDEX8_EXT, GL_COLOR_INDEX, GL_UNSIGNED_BYTE, NULL, false},
+        {GL_COLOR_INDEX8_EXT, GL_COLOR_INDEX, GL_BYTE, NULL, false},
+        {GL_COLOR_INDEX8_TWID_KOS, GL_COLOR_INDEX, GL_UNSIGNED_BYTE_TWID_KOS, NULL, false},
+    };
 
-        if(type == GL_UNSIGNED_BYTE && format == GL_RGBA) {
-            return _rgba8888_to_rgba8888;
+    for(size_t i = 0; i < sizeof(conversions) / sizeof(struct Entry); ++i) {
+        struct Entry* e = conversions + i;
+        if(e->format == format && e->internalFormat == internalFormat && e->type == type) {
+            *func = e->func;
+            int ret = (e->func) ? 1 : 0;
+            ret += (e->twiddle) ? 2 : 0;
+            return ret;
         }
-        else
-        if (type == GL_BYTE && format == GL_RGBA) {
-            return _rgba8888_to_rgba8888;
-        }
-        else
-        if(type == GL_UNSIGNED_BYTE && format == GL_RGB) {
-            return _rgb888_to_rgba8888;
-        }
-        else
-        if (type == GL_BYTE && format == GL_RGB) {
-            return _rgb888_to_rgba8888;
-        }
-        else
-        if(type == GL_UNSIGNED_SHORT_4_4_4_4 && format == GL_RGBA) {
-            return _rgba4444_to_rgba8888;
-        }
-       else
-        if(type == GL_UNSIGNED_BYTE && format == GL_RGBA4) {
-            return _rgba4444_to_rgba8888;
-        }
-        else
-        if(type == GL_UNSIGNED_BYTE && format == GL_RGB5_A1) {
-            return _rgba5551_to_rgba8888;
-        }
-        else
-        if(type == GL_UNSIGNED_BYTE && format == GL_RGB565_KOS) {
-            return _rgb565_to_rgb8888;
-        }
-     break;
-    case GL_COLOR_INDEX8_EXT:
-        if(format == GL_COLOR_INDEX) {
-            switch(type) {
-                case GL_BYTE:
-                case GL_UNSIGNED_BYTE:
-                    return _i8_to_i8;
-                default:
-                    break;
-            }
-        }
-    break;
-    default:
-        fprintf(stderr, "Unsupported conversion: %x -> %x, %x\n", internalFormat, format, type);
-        break;
     }
-    return 0;
+
+    return -1;
 }
 
 static GLboolean _isSupportedFormat(GLenum format) {
     switch(format) {
     case GL_ALPHA:
+    case GL_LUMINANCE:
+    case GL_INTENSITY:
+    case GL_LUMINANCE_ALPHA:
     case GL_RED:
     case GL_RGB:
     case GL_RGBA:
     case GL_BGRA:
     case GL_COLOR_INDEX:
-    case GL_UNSIGNED_SHORT_4_4_4_4_REV_TWID_KOS:
         return GL_TRUE;
     default:
         return GL_FALSE;
@@ -1299,49 +1270,44 @@ void _glAllocateSpaceForMipmaps(TextureObject* active) {
 #define TOSTRING(x) STRINGIFY(x)
 #define INFO_MSG(x) fprintf(stderr, "%s:%s > %s\n", __FILE__, TOSTRING(__LINE__), x)
 
-void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
-                           GLsizei width, GLsizei height, GLint border,
-                           GLenum format, GLenum type, const GLvoid *data) {
-
-    TRACE();
-
+static bool _glTexImage2DValidate(GLenum target, GLint level, GLint internalFormat, GLsizei width, GLsizei height, GLint border, GLenum format, GLenum type) {
     if(target != GL_TEXTURE_2D) {
         INFO_MSG("");
         _glKosThrowError(GL_INVALID_ENUM, __func__);
-        return;
+        return false;
     }
 
     if (width > 1024 || height > 1024){
         INFO_MSG("Invalid texture size");
         _glKosThrowError(GL_INVALID_VALUE, __func__);
-        return;
+        return false;
     }
 
     if(format != GL_COLOR_INDEX) {
         if(!_isSupportedFormat(format)) {
             INFO_MSG("Unsupported format");
             _glKosThrowError(GL_INVALID_ENUM, __func__);
-            return;
+            return false;
         }
 
         /* Abuse determineStride to see if type is valid */
         if(_determineStride(GL_RGBA, type) == -1) {
             INFO_MSG("");
             _glKosThrowError(GL_INVALID_ENUM, __func__);
-            return;
+            return false;
         }
 
         internalFormat = _cleanInternalFormat(internalFormat);
         if(internalFormat == -1) {
             INFO_MSG("");
             _glKosThrowError(GL_INVALID_VALUE, __func__);
-            return;
+            return false;
         }
     } else {
         if(internalFormat != GL_COLOR_INDEX8_EXT && internalFormat != GL_COLOR_INDEX4_EXT) {
             INFO_MSG("");
             _glKosThrowError(GL_INVALID_ENUM, __func__);
-            return;
+            return false;
         }
     }
 
@@ -1352,7 +1318,7 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
             /* Width is not a power of two. Must be!*/
             INFO_MSG("");
             _glKosThrowError(GL_INVALID_VALUE, __func__);
-            return;
+            return false;
         }
 
 
@@ -1360,7 +1326,7 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
             /* height is not a power of two. Must be!*/
             INFO_MSG("");
             _glKosThrowError(GL_INVALID_VALUE, __func__);
-            return;
+            return false;
         }
     } else {
         /* Mipmap Errors, kos crashes if 1x1 */
@@ -1368,26 +1334,38 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
             gl_assert(ACTIVE_TEXTURE < MAX_GLDC_TEXTURE_UNITS);
             gl_assert(TEXTURE_UNITS[ACTIVE_TEXTURE]);
             TEXTURE_UNITS[ACTIVE_TEXTURE]->mipmap |= (1 << level);
-            return;
+            return false;
         }
     }
 
     if(level < 0) {
         INFO_MSG("");
         _glKosThrowError(GL_INVALID_VALUE, __func__);
-        return;
+        return false;
     }
 
     if(level > 0 && width != height) {
         INFO_MSG("Tried to set non-square texture as a mipmap level");
         printf("[GL ERROR] Mipmaps cannot be supported on non-square textures\n");
         _glKosThrowError(GL_INVALID_OPERATION, __func__);
-        return;
+        return false;
     }
 
     if(border) {
         INFO_MSG("");
         _glKosThrowError(GL_INVALID_VALUE, __func__);
+        return false;
+    }
+
+    return true;
+}
+
+void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
+                           GLsizei width, GLsizei height, GLint border,
+                           GLenum format, GLenum type, const GLvoid *data) {
+
+    TRACE();
+    if(!_glTexImage2DValidate(target, level, internalFormat, width, height, border, format, type)) {
         return;
     }
 
@@ -1400,19 +1378,16 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
         return;
     }
 
-    gl_assert(active);
-    GLuint original_id = active->index;
-
     GLboolean isPaletted = (internalFormat == GL_COLOR_INDEX8_EXT || internalFormat == GL_COLOR_INDEX4_EXT) ? GL_TRUE : GL_FALSE;
-
-    /* Calculate the format that we need to convert the data to */
-    GLuint pvr_format = _determinePVRFormat(internalFormat, type);
+    GLenum cleanInternalFormat = _cleanInternalFormat(internalFormat);
+    GLuint pvrFormat = _determinePVRFormat(cleanInternalFormat);
+    GLuint originalId = active->index;
 
     if(active->data && (level == 0)) {
         /* pre-existing texture - check if changed */
         if(active->width != width ||
            active->height != height ||
-           active->color != pvr_format) {
+           active->internalFormat != cleanInternalFormat) {
             /* changed - free old texture memory */
             yalloc_free(YALLOC_BASE, active->data);
             active->data = NULL;
@@ -1445,7 +1420,8 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
         /* need texture memory */
         active->width   = width;
         active->height  = height;
-        active->color   = pvr_format;
+        active->color   = pvrFormat;
+        active->internalFormat = cleanInternalFormat;
         /* Set the required mipmap count */
         active->mipmapCount = _glGetMipmapLevelCount(active);
         active->mipmap_bias = GL_KOS_INTERNAL_DEFAULT_MIPMAP_LOD_BIAS;
@@ -1476,139 +1452,66 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
     /* If we run out of PVR memory just return */
     if(!active->data) {
         _glKosThrowError(GL_OUT_OF_MEMORY, __func__);
-        gl_assert(active->index == original_id);
+        gl_assert(active->index == originalId);
         return;
     }
 
     /* Mark this level as set in the mipmap bitmask */
     active->mipmap |= (1 << level);
 
-    /* Let's assume we need to convert */
-    GLboolean needsConversion = GL_TRUE;
-
-    /* Let's assume we need twiddling - we always store things twiddled! */
-    GLboolean needsTwiddling = GL_TRUE;
-
-    /*
-     * These are the only formats where the source format passed in matches the pvr format.
-     * Note the REV formats + GL_BGRA will reverse to ARGB which is what the PVR supports
-     */
-    if(format == GL_COLOR_INDEX) {
-        /* Don't convert color indexes */
-        needsConversion = GL_FALSE;
-
-        if(type == GL_UNSIGNED_BYTE_TWID_KOS) {
-            needsTwiddling = GL_FALSE;
-        }
-    } else if(format == GL_BGRA && type == GL_UNSIGNED_SHORT_4_4_4_4_REV && internalFormat == GL_RGBA) {
-        needsConversion = GL_FALSE;
-    } else if(format == GL_BGRA && type == GL_UNSIGNED_SHORT_1_5_5_5_REV && internalFormat == GL_RGBA) {
-        needsConversion = GL_FALSE;
-    } else if(format == GL_RGB && type == GL_UNSIGNED_SHORT_5_6_5 && internalFormat == GL_RGB) {
-        needsConversion = GL_FALSE;
-    } else if(format == GL_RGB && type == GL_UNSIGNED_SHORT_5_6_5_TWID_KOS && internalFormat == GL_RGB) {
-        needsConversion = GL_FALSE;
-        needsTwiddling = GL_FALSE;
-    } else if(format == GL_BGRA && type == GL_UNSIGNED_SHORT_1_5_5_5_REV_TWID_KOS && internalFormat == GL_RGBA) {
-        needsConversion = GL_FALSE;
-        needsTwiddling = GL_FALSE;
-    } else if(format == GL_BGRA && type == GL_UNSIGNED_SHORT_4_4_4_4_REV_TWID_KOS && internalFormat == GL_RGBA) {
-        needsConversion = GL_FALSE;
-        needsTwiddling = GL_FALSE;
-    }
-
     GLubyte* targetData = (active->baseDataOffset == 0) ? active->data : _glGetMipmapLocation(active, level);
     gl_assert(targetData);
 
-    GLubyte* conversionBuffer = NULL;
-
-    if(!data) {
-        /* No data? Do nothing! */
-        gl_assert(active->index == original_id);
+    TextureConversionFunc conversion;
+    int needs_conversion = _determineConversion(cleanInternalFormat, format, type, &conversion);
+    if(needs_conversion < 0) {
+        _glKosThrowError(GL_INVALID_VALUE, __func__);
+        INFO_MSG("Couldn't find necessary texture conversion\n");
         return;
-    } else if(!needsConversion && !needsTwiddling) {
+    } else if(needs_conversion > 0) {
+        /* Convert the data */
+        GLint sourceStride = _determineStride(format, type);
+        GLint destStride = _determineStrideInternal(cleanInternalFormat);
+
+        if(sourceStride == -1) {
+            INFO_MSG("Stride was not detected\n");
+            _glKosThrowError(GL_INVALID_OPERATION, __func__);
+            return;
+        }
+
+        GLubyte* conversionBuffer = (GLubyte*) malloc(bytes);
+        const GLubyte* src = data;
+        GLubyte* dst = conversionBuffer;
+        for(uint32_t i = 0; i < (width * height); ++i) {
+            if(needs_conversion > 1) {
+                // Needs twiddling. Set dst to the twiddle location
+                // for this texel
+                uint32_t newLocation = twid_location(i, width, height);
+                dst = conversionBuffer + (destStride * newLocation);
+            }
+
+            if(conversion) {
+                conversion(src, dst);
+            }
+
+            dst += destStride;
+            src += sourceStride;
+        }
+
+        FASTCPY(targetData, conversionBuffer, bytes);
+        free(conversionBuffer);
+    } else {
+        /* No conversion necessary, we can just upload data directly */
         gl_assert(targetData);
         gl_assert(data);
         gl_assert(bytes);
 
         /* No conversion? Just copy the data, and the pvr_format is correct */
         FASTCPY(targetData, data, bytes);
-        gl_assert(active->index == original_id);
-        return;
-    } else if(needsConversion) {
-        TextureConversionFunc convert = _determineConversion(
-            internalFormat,
-            format,
-            type
-        );
-
-        if(!convert) {
-            INFO_MSG("Couldn't find conversion\n");
-            _glKosThrowError(GL_INVALID_OPERATION, __func__);
-            return;
-        }
-
-        GLint stride = _determineStride(format, type);
-        gl_assert(stride > -1);
-
-        if(stride == -1) {
-            INFO_MSG("Stride was not detected\n");
-            _glKosThrowError(GL_INVALID_OPERATION, __func__);
-            return;
-        }
-
-        conversionBuffer = malloc(bytes);
-
-        GLubyte* dest = conversionBuffer;
-        const GLubyte* source = data;
-
-        gl_assert(conversionBuffer);
-        gl_assert(source);
-
-        /* Perform the conversion */
-        GLuint i;
-        for(i = 0; i < bytes; i += destStride) {
-            convert(source, dest);
-
-            dest += destStride;
-            source += stride;
-        }
+        gl_assert(active->index == originalId);
     }
 
-    if(needsTwiddling) {
-        const GLubyte *pixels = (GLubyte*) (conversionBuffer) ? conversionBuffer : data;
-
-        if(internalFormat == GL_COLOR_INDEX8_EXT) {
-            GPUTextureTwiddle8PPP((void*) pixels, targetData, width, height);
-        }
-        else{
-            if(internalFormat == GL_COLOR_INDEX4_EXT) {
-                GPUTextureTwiddle4PPP((void*) pixels, targetData, width, height);
-            }
-            else {
-                GPUTextureTwiddle16BPP((void*) pixels, targetData, width, height);
-            }
-        }
-
-        /* We make sure we remove nontwiddled and add twiddled. We could always
-         * make it twiddled when determining the format but I worry that would make the
-         * code less flexible to change in the future */
-        active->color &= ~(1 << 26);
-    } else {
-        /* We should only get here if we converted twiddled data... which is never currently */
-        gl_assert(conversionBuffer);
-
-        // We've already converted the data and we
-        // don't need to twiddle it!
-        FASTCPY(targetData, conversionBuffer, bytes);
-    }
-
-    if(conversionBuffer) {
-        free(conversionBuffer);
-        conversionBuffer = NULL;
-    }
-
-    gl_assert(active->index == original_id);
+    gl_assert(active->index == originalId);
     _glGPUStateMarkDirty();
 }
 
@@ -1764,13 +1667,15 @@ GLAPI void APIENTRY glColorTableEXT(GLenum target, GLenum internalFormat, GLsize
 
     gl_assert(sourceStride > -1);
 
-    TextureConversionFunc convert = _determineConversion(
+    TextureConversionFunc convert;
+    int ret = _determineConversion(
         INTERNAL_PALETTE_FORMAT,
         format,
-        type
+        type,
+        &convert
     );
 
-    if(!convert) {
+    if(ret < 0) {
         _glKosThrowError(GL_INVALID_OPERATION, __func__);
         return;
     }

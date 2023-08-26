@@ -33,6 +33,10 @@ static VideoMode vid_mode = {
 AlignedVector vbuffer;
 
 void InitGPU(_Bool autosort, _Bool fsaa) {
+
+    // 32-bit SDL has trouble with the wayland driver for some reason
+    setenv("SDL_VIDEODRIVER", "x11", 1);
+
     SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS);
 
     WINDOW = SDL_CreateWindow(

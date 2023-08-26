@@ -56,11 +56,12 @@ void LoadGLTextures() {
     glTexImage2D(GL_TEXTURE_2D, 0, 3, image1->sizeX, image1->sizeY, 0, GL_RGB, GL_UNSIGNED_BYTE, image1->data);
 
     free(image1);
-};
+}
 
 /* A general OpenGL initialization function.  Sets all of the initial parameters. */
 void InitGL(int Width, int Height)	        // We call this right after our OpenGL window is created.
 {
+    glEnable(GL_TEXTURE_TWIDDLE_KOS);
     LoadGLTextures();
     glEnable(GL_TEXTURE_2D);
     glClearColor(0.0f, 0.0f, 0.0f, 0.0f);		// This Will Clear The Background Color To Black
@@ -74,7 +75,7 @@ void InitGL(int Width, int Height)	        // We call this right after our OpenG
 
     gluPerspective(45.0f,(GLfloat)Width/(GLfloat)Height,0.1f,100.0f);	// Calculate The Aspect Ratio Of The Window
 
-    glMatrixMode(GL_MODELVIEW);
+    glMatrixMode(GL_MODELVIEW);    
 }
 
 /* The function called when our window is resized (which shouldn't happen, because we're fullscreen) */

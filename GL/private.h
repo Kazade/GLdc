@@ -164,7 +164,9 @@ typedef struct {
     GLboolean isCompressed;
     GLboolean isPaletted;
     //50
-    GLubyte padding[14];  // Pad to 64-bytes
+    GLenum internalFormat;
+    //54
+    GLubyte padding[10];  // Pad to 64-bytes
 } __attribute__((aligned(32))) TextureObject;
 
 typedef struct {
@@ -376,6 +378,9 @@ extern GLubyte ACTIVE_TEXTURE;
 extern GLboolean TEXTURES_ENABLED[];
 
 GLubyte _glGetActiveTexture();
+GLint _glGetTextureInternalFormat();
+GLboolean _glGetTextureTwiddle();
+void _glSetTextureTwiddle(GLboolean v);
 
 GLuint _glGetActiveClientTexture();
 TexturePalette* _glGetSharedPalette(GLshort bank);
