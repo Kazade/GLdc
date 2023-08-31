@@ -81,6 +81,7 @@ set(
     GL/texture.c
     GL/util.c
     GL/yalloc/yalloc.c
+    GL/alloc/alloc.c
     ${CMAKE_CURRENT_BINARY_DIR}/version.c
 )
 
