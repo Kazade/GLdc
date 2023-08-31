@@ -1,4 +1,6 @@
 #include <stdint.h>
+#include <string.h>
+#include <stdlib.h>
 
 #include "alloc.h"
 
@@ -35,6 +37,10 @@
  *
  * We could go down to 128 bytes if wastage is an issue, but then we have
  * to store double the number of usage markers.
+ *
+ * FIXME:
+ *
+ *  - Allocations < 2048 can still cross boundaries
  */
 
 #include <assert.h>
@@ -69,7 +75,12 @@ typedef struct {
     size_t block_count;  // Number of 2k blocks in the pool
 
     /* It's frustrating that we need to do this dynamically
-     * but we need to know the size allocated when we free() */
+     * but we need to know the size allocated when we free()...
+     * we could store it statically but it would take 64k if we had
+     * an array of block_index -> block size where there would be 2 ** 32
+     * entries of 16 bit block sizes. The drawback (aside the memory usage)
+     * would be that we won't be able to order by size, so defragging will
+     * take much more time.*/
     struct AllocEntry* allocations;
 } PoolHeader;
 
@@ -79,10 +90,12 @@ static PoolHeader pool_header = {
 };
 
 void* alloc_base_address(void* pool) {
+    (void) pool;
     return pool_header.base_address;
 }
 
 size_t alloc_block_count(void* pool) {
+    (void) pool;
     return pool_header.block_count;
 }
 
@@ -91,7 +104,9 @@ void* alloc_next_available(void* pool, size_t required_size) {
     uint32_t required_subblocks = (required_size / 256);
     if(required_size % 256) required_subblocks += 1;
 
-    while(true) {
+    uint8_t* end = pool_header.block_usage + pool_header.block_count;
+
+    while(it < end) {
         // Skip full blocks
         while((*it) == 255) {
             ++it;
@@ -102,6 +117,8 @@ void* alloc_next_available(void* pool, size_t required_size) {
         }
 
         uint32_t found_subblocks = 0;
+
+        /* Anything gte to 2048 must be aligned to a 2048 boundary */
         bool requires_alignment = required_size >= 2048;
 
         /* We just need to find enough consecutive blocks */
@@ -112,6 +129,11 @@ void* alloc_next_available(void* pool, size_t required_size) {
             if(t == 255) {
                 ++it;
                 found_subblocks = 0;
+
+                if(it >= end) {
+                    return NULL;
+                }
+
                 continue;
             }
 
@@ -140,20 +162,19 @@ void* alloc_next_available(void* pool, size_t required_size) {
             }
 
             ++it;
-            if(it >= pool_header.block_usage + sizeof(pool_header.block_usage)) {
+            if(it >= end) {
                 return NULL;
             }
         }
 
     }
 
-}
-
-uint32_t alloc_block_from_address(void* p) {
-
+    return NULL;
 }
 
 int alloc_init(void* pool, size_t size) {
+    (void) pool;
+
     if(pool_header.pool) {
         return -1;
     }
@@ -167,48 +188,169 @@ int alloc_init(void* pool, size_t size) {
     memset(pool_header.block_usage, 0, sizeof(pool_header.block_usage));
     pool_header.pool = pool;
     pool_header.pool_size = size;
-    pool_header.base_address = round_up(pool_header.pool, 2048);
+    pool_header.base_address = (uint8_t*) round_up((uintptr_t) pool_header.pool, 2048);
     pool_header.block_count = ((p + size) - pool_header.base_address) / 2048;
+    pool_header.allocations = NULL;
+
+    assert(((uintptr_t) pool_header.base_address) % 2048 == 0);
 
     return 0;
 }
 
 void alloc_shutdown(void* pool) {
-    pool_header.pool = NULL;
+    (void) pool;
+
+    struct AllocEntry* it = pool_header.allocations;
+    while(it) {
+        struct AllocEntry* next = it->next;
+        free(it);
+        it = next;
+    }
+
+    memset(&pool_header, 0, sizeof(pool_header));
+}
+
+static inline uint32_t size_to_subblock_count(size_t size) {
+    uint32_t required_subblocks = (size / 256);
+    if(size % 256) required_subblocks += 1;
+    return required_subblocks;
+}
+
+static inline uint32_t subblock_from_pointer(void* p) {
+    uint8_t* ptr = (uint8_t*) p;
+    return (ptr - pool_header.base_address) / 256;
 }
 
 void* alloc_malloc(void* pool, size_t size) {
     void* ret = alloc_next_available(pool, size);
+    if(size >= 2048) {
+        assert(((uintptr_t) ret) % 2048 == 0);
+    }
+
     if(ret) {
-        uintptr_t start_subblock = (uint8_t*) ret - pool_header.base_address;
-
-        uint32_t required_subblocks = (size / 256);
-        if(size % 256) required_subblocks += 1;
-
-        uintptr_t start_block = start_subblock / 8;
-        uintptr_t filled_blocks = required_subblocks / 8;
-        uintptr_t trailing_subblocks = required_subblocks % 8;
-
-        for(size_t i = start_block; i < start_block + filled_blocks; ++i) {
-            pool_header.block_usage[i] = 255;
-        }
-
-        uint8_t* trailing = &pool_header.block_usage[start_block + filled_blocks];
+        uintptr_t start_subblock = subblock_from_pointer(ret);
+        uint32_t required_subblocks = size_to_subblock_count(size);
+        size_t offset = start_subblock % 8;
+        size_t block = start_subblock / 8;
         uint8_t mask = 0;
-        for(size_t i = 0; i < trailing_subblocks; ++i) {
-            mask |= 1;
-            mask <<= 1;
+
+        /* Toggle any bits for the first block */
+        for(int i = offset - 1; i >= 0; --i) {
+            mask |= (1 << i);
+            required_subblocks--;
         }
 
-        mask <<= 8 - trailing_subblocks - 1;
-        *trailing |= mask;
+        if(mask) {
+            pool_header.block_usage[block++] |= mask;
+        }
+
+        /* Fill any full blocks in the middle of the allocation */
+        while(required_subblocks > 8) {
+            pool_header.block_usage[block++] = 255;
+            required_subblocks -= 8;
+        }
+
+        /* Fill out any trailing subblocks */
+        mask = 0;
+        for(size_t i = 0; i < required_subblocks; ++i) {
+            mask |= (1 << (7 - i));
+        }
+
+        if(mask) {
+            pool_header.block_usage[block++] |= mask;
+        }
+
+
+        /* Insert allocations in the list by size descending so that when we
+         * defrag we can move the larger blocks before the smaller ones without
+         * much effort */
+        struct AllocEntry* new_entry = (struct AllocEntry*) malloc(sizeof(struct AllocEntry));
+        new_entry->pointer = ret;
+        new_entry->size = size;
+        new_entry->next = NULL;
+
+        struct AllocEntry* it = pool_header.allocations;
+        struct AllocEntry* last = NULL;
+
+        if(!it) {
+            pool_header.allocations = new_entry;
+        } else {
+            while(it) {
+                if(it->size < size) {
+                    if(last) {
+                        last->next = new_entry;
+                    } else {
+                        pool_header.allocations = new_entry;
+                    }
+
+                    new_entry->next = it;
+                    break;
+                } else if(!it->next) {
+                    it->next = new_entry;
+                    new_entry->next = NULL;
+                    break;
+                }
+
+                last = it;
+                it = it->next;
+            }
+        }
     }
 
     return ret;
 }
 
 void alloc_free(void* pool, void* p) {
+    struct AllocEntry* it = pool_header.allocations;
+    struct AllocEntry* last = NULL;
+    while(it) {
+        if(it->pointer == p) {
+            size_t used_subblocks = size_to_subblock_count(it->size);
+            size_t subblock = subblock_from_pointer(p);
+            size_t block = subblock / 8;
+            size_t offset = subblock % 8;
+            uint8_t mask = 0;
 
+            /* Wipe out any leading subblocks */
+            for(int i = offset; i > 0; --i) {
+                mask |= (1 << i);
+                used_subblocks--;
+            }
+
+            if(mask) {
+                pool_header.block_usage[block++] &= ~mask;
+            }
+
+            /* Clear any full blocks in the middle of the allocation */
+            while(used_subblocks > 8) {
+                pool_header.block_usage[block++] = 0;
+                used_subblocks -= 8;
+            }
+
+            /* Wipe out any trailing subblocks */
+            mask = 0;
+            for(size_t i = 0; i < used_subblocks; ++i) {
+                mask |= (1 << (7 - i));
+            }
+
+            if(mask) {
+                pool_header.block_usage[block++] &= ~mask;
+            }
+
+            if(last) {
+                last->next = it->next;
+            } else {
+                assert(it == pool_header.allocations);
+                pool_header.allocations = it->next;
+            }
+
+            free(it);
+            break;
+        }
+
+        last = it;
+        it = it->next;
+    }
 }
 
 void alloc_defrag_start(void* pool) {
