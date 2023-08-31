@@ -16,7 +16,7 @@ static inline int round_up(int n, int multiple)
 
 class AllocatorTests : public test::TestCase {
 public:
-    uint8_t pool[16 * 2048];
+    uint8_t __attribute__((aligned(2048))) pool[16 * 2048];
 
     void set_up() {
     }
@@ -32,7 +32,7 @@ public:
         assert_equal(alloc_next_available(pool, 16), expected_base_address);
         assert_equal(alloc_base_address(pool), expected_base_address);
 
-        int expected_blocks = (
+        size_t expected_blocks = (
             uintptr_t(pool + sizeof(pool)) -
             uintptr_t(expected_base_address)
         ) / 2048;
@@ -43,7 +43,7 @@ public:
     void test_alloc_malloc() {
         alloc_init(pool, sizeof(pool));
 
-        void* base_address = alloc_base_address(pool);
+        uint8_t* base_address = (uint8_t*) alloc_base_address(pool);
         void* a1 = alloc_malloc(pool, 1024);
 
         /* First alloc should always be the base address */

@@ -8,7 +8,7 @@
 #include "config.h"
 #include "platform.h"
 
-#include "yalloc/yalloc.h"
+#include "alloc/alloc.h"
 
 /* We always leave this amount of vram unallocated to prevent
  * issues with the allocator */
@@ -31,8 +31,8 @@ static GLboolean SUBBANKS_USED[MAX_GLDC_PALETTE_SLOTS][MAX_GLDC_4BPP_PALETTE_SLO
 static GLenum INTERNAL_PALETTE_FORMAT = GL_RGBA8;
 static GLboolean TEXTURE_TWIDDLE_ENABLED = GL_FALSE;
 
-static void* YALLOC_BASE = NULL;
-static size_t YALLOC_SIZE = 0;
+static void* ALLOC_BASE = NULL;
+static size_t ALLOC_SIZE = 0;
 
 static const unsigned short MortonTable256[256] =
     {
@@ -84,15 +84,15 @@ GL_FORCE_INLINE uint32_t twid_location(uint32_t i, uint32_t w, uint32_t h) {
 }
 
 
-static void* yalloc_alloc_and_defrag(size_t size) {
-    void* ret = yalloc_alloc(YALLOC_BASE, size);
+static void* alloc_malloc_and_defrag(size_t size) {
+    void* ret = alloc_malloc(ALLOC_BASE, size);
 
     if(!ret) {
         /* Tried to allocate, but out of room, let's try defragging
          * and repeating the alloc */
         fprintf(stderr, "Ran out of memory, defragmenting\n");
         glDefragmentTextureMemory_KOS();
-        ret = yalloc_alloc(YALLOC_BASE, size);
+        ret = alloc_malloc(ALLOC_BASE, size);
     }
 
     gl_assert(ret && "Out of PVR memory!");
@@ -505,15 +505,15 @@ GLubyte _glInitTextures() {
     //memset((void*) SUBBANKS_USED, 0x0, sizeof(SUBBANKS_USED));
 
     size_t vram_free = GPUMemoryAvailable();
-    YALLOC_SIZE = vram_free - PVR_MEM_BUFFER_SIZE; /* Take all but 64kb VRAM */
-    YALLOC_BASE = GPUMemoryAlloc(YALLOC_SIZE);
+    ALLOC_SIZE = vram_free - PVR_MEM_BUFFER_SIZE; /* Take all but 64kb VRAM */
+    ALLOC_BASE = GPUMemoryAlloc(ALLOC_SIZE);
 
 #ifdef __DREAMCAST__
     /* Ensure memory is aligned */
     gl_assert((uintptr_t) YALLOC_BASE % 32 == 0);
 #endif
 
-    yalloc_init(YALLOC_BASE, YALLOC_SIZE);
+    alloc_init(ALLOC_BASE, ALLOC_SIZE);
 
     gl_assert(TEXTURE_OBJECTS.element_size > 0);
     return 1;
@@ -610,7 +610,7 @@ void APIENTRY glDeleteTextures(GLsizei n, GLuint *textures) {
             }
 
             if(txr->data) {
-                yalloc_free(YALLOC_BASE, txr->data);
+                alloc_free(ALLOC_BASE, txr->data);
                 txr->data = NULL;
             }
 
@@ -858,10 +858,10 @@ void APIENTRY glCompressedTexImage2DARB(GLenum target,
 
     /* Odds are slim new data is same size as old, so free always */
     if(active->data) {
-        yalloc_free(YALLOC_BASE, active->data);
+        alloc_free(ALLOC_BASE, active->data);
     }
 
-    active->data = yalloc_alloc_and_defrag(imageSize);
+    active->data = alloc_malloc_and_defrag(imageSize);
 
     gl_assert(active->data);  // Debug assert
 
@@ -1242,14 +1242,14 @@ void _glAllocateSpaceForMipmaps(TextureObject* active) {
         memcpy(temp, active->data, size);
 
         /* Free the PVR data */
-        yalloc_free(YALLOC_BASE, active->data);
+        alloc_free(ALLOC_BASE, active->data);
         active->data = NULL;
     }
 
     /* Figure out how much room to allocate for mipmaps */
     GLuint bytes = _glGetMipmapDataSize(active);
 
-    active->data = yalloc_alloc_and_defrag(bytes);
+    active->data = alloc_malloc_and_defrag(bytes);
 
     gl_assert(active->data);
 
@@ -1389,7 +1389,7 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
            active->height != height ||
            active->internalFormat != cleanInternalFormat) {
             /* changed - free old texture memory */
-            yalloc_free(YALLOC_BASE, active->data);
+            alloc_free(ALLOC_BASE, active->data);
             active->data = NULL;
             active->mipmap = 0;
             active->mipmapCount = 0;
@@ -1434,7 +1434,7 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
             /* If we're uploading a mipmap level, we need to allocate the full amount of space */
             _glAllocateSpaceForMipmaps(active);
         } else {
-            active->data = yalloc_alloc_and_defrag(active->baseDataSize);
+            active->data = alloc_malloc_and_defrag(active->baseDataSize);
         }
 
         active->isCompressed = GL_FALSE;
@@ -1856,23 +1856,23 @@ GLAPI void APIENTRY glReadPixels(GLint x, GLint y, GLsizei width, GLsizei height
     gl_assert(0 && "Not Implemented");
 }
 GLuint _glMaxTextureMemory() {
-    return YALLOC_SIZE;
+    return ALLOC_SIZE;
 }
 
 GLuint _glFreeTextureMemory() {
-    return yalloc_count_free(YALLOC_BASE);
+    return alloc_count_free(ALLOC_BASE);
 }
 
 GLuint _glUsedTextureMemory() {
-    return YALLOC_SIZE - _glFreeTextureMemory();
+    return ALLOC_SIZE - _glFreeTextureMemory();
 }
 
 GLuint _glFreeContiguousTextureMemory() {
-    return yalloc_count_continuous(YALLOC_BASE);
+    return alloc_count_continuous(ALLOC_BASE);
 }
 
 GLAPI GLvoid APIENTRY glDefragmentTextureMemory_KOS(void) {
-    yalloc_defrag_start(YALLOC_BASE);
+    alloc_defrag_start(ALLOC_BASE);
 
     GLuint id;
 
@@ -1881,11 +1881,11 @@ GLAPI GLvoid APIENTRY glDefragmentTextureMemory_KOS(void) {
         TextureObject* txr = (TextureObject*) named_array_get(&TEXTURE_OBJECTS, id);
         if(txr){
             gl_assert(txr->index == id);
-            txr->data = yalloc_defrag_address(YALLOC_BASE, txr->data);
+            txr->data = alloc_defrag_address(ALLOC_BASE, txr->data);
         }
     }
 
-    yalloc_defrag_commit(YALLOC_BASE);
+    alloc_defrag_commit(ALLOC_BASE);
 }
 
 GLAPI void APIENTRY glGetTexImage(GLenum tex, GLint lod, GLenum format, GLenum type, GLvoid* img) {

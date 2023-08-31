@@ -41,6 +41,7 @@
  * FIXME:
  *
  *  - Allocations < 2048 can still cross boundaries
+ *  - Only operates on one pool (ignores what you pass)
  */
 
 #include <assert.h>
@@ -73,6 +74,7 @@ typedef struct {
     size_t pool_size; // Size of the memory pool
     uint8_t* base_address; // First 2k aligned address in the pool
     size_t block_count;  // Number of 2k blocks in the pool
+    bool defrag_in_progress;
 
     /* It's frustrating that we need to do this dynamically
      * but we need to know the size allocated when we free()...
@@ -86,7 +88,7 @@ typedef struct {
 
 
 static PoolHeader pool_header = {
-    {0}, NULL, 0, NULL, 0, NULL
+    {0}, NULL, 0, NULL, 0, false, NULL
 };
 
 void* alloc_base_address(void* pool) {
@@ -100,6 +102,8 @@ size_t alloc_block_count(void* pool) {
 }
 
 void* alloc_next_available(void* pool, size_t required_size) {
+    (void) pool;
+
     uint8_t* it = pool_header.block_usage;
     uint32_t required_subblocks = (required_size / 256);
     if(required_size % 256) required_subblocks += 1;
@@ -301,6 +305,8 @@ void* alloc_malloc(void* pool, size_t size) {
 }
 
 void alloc_free(void* pool, void* p) {
+    (void) pool;
+
     struct AllocEntry* it = pool_header.allocations;
     struct AllocEntry* last = NULL;
     while(it) {
@@ -354,17 +360,73 @@ void alloc_free(void* pool, void* p) {
 }
 
 void alloc_defrag_start(void* pool) {
-
+    (void) pool;
+    pool_header.defrag_in_progress = true;
 }
 
 void* alloc_defrag_address(void* pool, void* p) {
-
+    (void) pool;
+    return p;
 }
 
 void alloc_defrag_commit(void* pool) {
-
+    (void) pool;
+    pool_header.defrag_in_progress = false;
 }
 
 bool alloc_defrag_in_progress(void* pool) {
+    (void) pool;
+    return pool_header.defrag_in_progress;
+}
 
+static inline uint8_t count_ones(uint8_t byte) {
+    static const uint8_t NIBBLE_LOOKUP [16] = {
+        0, 1, 1, 2, 1, 2, 2, 3,
+        1, 2, 2, 3, 2, 3, 3, 4
+    };
+    return NIBBLE_LOOKUP[byte & 0x0F] + NIBBLE_LOOKUP[byte >> 4];
+}
+
+size_t alloc_count_free(void* pool) {
+    uint8_t* it = pool_header.block_usage;
+    uint8_t* end = it + pool_header.block_count;
+
+    size_t total_free = 0;
+
+    while(it < end) {
+        total_free += count_ones(*it) * 256;
+        ++it;
+    }
+
+    return total_free;
+}
+
+size_t alloc_count_continuous(void* pool) {
+    (void) pool;
+
+    size_t largest_block = 0;
+
+    uint8_t* it = pool_header.block_usage;
+    uint8_t* end = it + pool_header.block_count;
+
+    size_t current_block = 0;
+    while(it < end) {
+        uint8_t t = *it++;
+        if(!t) {
+            current_block += 2048;
+        } else {
+            for(int i = 7; i >= 0; --i) {
+                bool bitset = (t & (1 << i));
+                if(bitset) {
+                    current_block += (7 - i) * 256;
+                    if(largest_block < current_block) {
+                        largest_block = current_block;
+                        current_block = 0;
+                    }
+                }
+            }
+        }
+    }
+
+    return largest_block;
 }
