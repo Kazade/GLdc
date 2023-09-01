@@ -116,24 +116,14 @@ void* alloc_next_available_ex(void* pool, size_t required_size, size_t* start_su
 
     uint8_t* end = pool_header.block_usage + pool_header.block_count;
 
+    /* Anything gte to 2048 must be aligned to a 2048 boundary */
+    bool requires_alignment = required_size >= 2048;
+
     if(required_subblocks_out) {
         *required_subblocks_out = required_subblocks;
     }
-
     while(it < end) {
-        // Skip full blocks
-        while((*it) == 255) {
-            ++it;
-            if(it >= pool_header.block_usage + sizeof(pool_header.block_usage)) {
-                return NULL;
-            }
-            continue;
-        }
-
         uint32_t found_subblocks = 0;
-
-        /* Anything gte to 2048 must be aligned to a 2048 boundary */
-        bool requires_alignment = required_size >= 2048;
 
         /* We just need to find enough consecutive blocks */
         while(found_subblocks < required_subblocks) {
@@ -141,22 +131,26 @@ void* alloc_next_available_ex(void* pool, size_t required_size, size_t* start_su
 
             /* Optimisation only. Skip over full blocks */
             if(t == 255) {
-                ++it;
                 found_subblocks = 0;
-
-                if(it >= end) {
-                    return NULL;
-                }
-
-                continue;
-            }
-
-            /* Now let's see how many consecutive blocks we can find */
-            for(int i = 0; i < 8; ++i) {
-                if((t & 0x80) == 0) {
-                    if(requires_alignment && found_subblocks == 0 && i != 0) {
-                        // Ignore this subblock, because we want the first subblock to be aligned
-                        // at a 2048 boundary and this one isn't (i != 0)
+            } else {
+                /* Now let's see how many consecutive blocks we can find */
+                for(int i = 0; i < 8; ++i) {
+                    if((t & 0x80) == 0) {
+                        if(requires_alignment && found_subblocks == 0 && i != 0) {
+                            // Ignore this subblock, because we want the first subblock to be aligned
+                            // at a 2048 boundary and this one isn't (i != 0)
+                            found_subblocks = 0;
+                        } else {
+                            found_subblocks++;
+                            if(found_subblocks >= required_subblocks) {
+                                /* We found space! Now calculate the address */
+                                uintptr_t offset = (it - pool_header.block_usage) * 8;
+                                offset += (i + 1);
+                                offset -= required_subblocks;
+                                return pool_header.base_address + (offset * 256);
+                            }
+                        }
+                    } else {
                         found_subblocks = 0;
                     } else {
                         found_subblocks++;
@@ -173,11 +167,9 @@ void* alloc_next_available_ex(void* pool, size_t required_size, size_t* start_su
                             return pool_header.base_address + (offset * 256);
                         }
                     }
-                } else {
-                    found_subblocks = 0;
-                }
 
-                t <<= 1;
+                    t <<= 1;
+                }
             }
 
             ++it;
@@ -185,7 +177,6 @@ void* alloc_next_available_ex(void* pool, size_t required_size, size_t* start_su
                 return NULL;
             }
         }
-
     }
 
     return NULL;
@@ -278,7 +269,6 @@ void* alloc_malloc(void* pool, size_t size) {
         if(mask) {
             pool_header.block_usage[block++] |= mask;
         }
-
 
         /* Insert allocations in the list by size descending so that when we
          * defrag we can move the larger blocks before the smaller ones without
