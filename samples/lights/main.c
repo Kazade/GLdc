@@ -145,7 +145,7 @@ int check_start() {
 
 void DrawCube(float x, float z) {
     static float pos = 0.0f;
-    const static float radius = 30.0f;
+    static const float radius = 30.0f;
 
     pos += 0.001f;
 
