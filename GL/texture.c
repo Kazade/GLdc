@@ -31,6 +31,10 @@ static GLboolean SUBBANKS_USED[MAX_GLDC_PALETTE_SLOTS][MAX_GLDC_4BPP_PALETTE_SLO
 static GLenum INTERNAL_PALETTE_FORMAT = GL_RGBA8;
 static GLboolean TEXTURE_TWIDDLE_ENABLED = GL_FALSE;
 
+#define STRINGIFY(x) #x
+#define TOSTRING(x) STRINGIFY(x)
+#define INFO_MSG(x) fprintf(stderr, "%s:%s > %s\n", __FILE__, TOSTRING(__LINE__), x)
+
 static void* ALLOC_BASE = NULL;
 static size_t ALLOC_SIZE = 0;
 
@@ -1018,6 +1022,30 @@ static GLuint _determinePVRFormat(GLint internalFormat) {
         return GPU_TXRFMT_PAL8BPP | GPU_TXRFMT_TWIDDLED;
     case GL_COLOR_INDEX4_TWID_KOS:
         return GPU_TXRFMT_PAL4BPP | GPU_TXRFMT_TWIDDLED;
+    case GL_COMPRESSED_ARGB_1555_VQ_KOS:
+        return GPU_TXRFMT_ARGB1555 | GPU_TXRFMT_VQ_ENABLE;
+    case GL_COMPRESSED_ARGB_1555_VQ_TWID_KOS:
+        return GPU_TXRFMT_ARGB1555 | GPU_TXRFMT_VQ_ENABLE | GPU_TXRFMT_TWIDDLED;
+    case GL_COMPRESSED_ARGB_4444_VQ_KOS:
+        return GPU_TXRFMT_ARGB4444 | GPU_TXRFMT_VQ_ENABLE;
+    case GL_COMPRESSED_ARGB_4444_VQ_TWID_KOS:
+        return GPU_TXRFMT_ARGB4444 | GPU_TXRFMT_VQ_ENABLE | GPU_TXRFMT_TWIDDLED;
+    case GL_COMPRESSED_RGB_565_VQ_KOS:
+        return GPU_TXRFMT_RGB565 | GPU_TXRFMT_VQ_ENABLE;
+    case GL_COMPRESSED_RGB_565_VQ_TWID_KOS:
+        return GPU_TXRFMT_RGB565 | GPU_TXRFMT_VQ_ENABLE | GPU_TXRFMT_TWIDDLED;
+    case GL_COMPRESSED_ARGB_1555_VQ_MIPMAP_KOS:
+        return GPU_TXRFMT_ARGB1555 | GPU_TXRFMT_VQ_ENABLE;
+    case GL_COMPRESSED_ARGB_1555_VQ_MIPMAP_TWID_KOS:
+        return GPU_TXRFMT_ARGB1555 | GPU_TXRFMT_VQ_ENABLE | GPU_TXRFMT_TWIDDLED;
+    case GL_COMPRESSED_ARGB_4444_VQ_MIPMAP_KOS:
+        return GPU_TXRFMT_ARGB4444 | GPU_TXRFMT_VQ_ENABLE;
+    case GL_COMPRESSED_ARGB_4444_VQ_MIPMAP_TWID_KOS:
+        return GPU_TXRFMT_ARGB4444 | GPU_TXRFMT_VQ_ENABLE | GPU_TXRFMT_TWIDDLED;
+    case GL_COMPRESSED_RGB_565_VQ_MIPMAP_KOS:
+        return GPU_TXRFMT_RGB565 | GPU_TXRFMT_VQ_ENABLE;
+    case GL_COMPRESSED_RGB_565_VQ_MIPMAP_TWID_KOS:
+        return GPU_TXRFMT_RGB565 | GPU_TXRFMT_VQ_ENABLE | GPU_TXRFMT_TWIDDLED;
     default:
         _glKosThrowError(GL_INVALID_ENUM, __func__);
         return 0;
@@ -1076,7 +1104,13 @@ GL_FORCE_INLINE void _rgb888_to_rgba4444(const GLubyte* source, GLubyte* dest) {
 }
 
 GL_FORCE_INLINE void _rgb888_to_rgb565(const GLubyte* source, GLubyte* dest) {
-    *((GLushort*) dest) = ((source[0] & 0b11111000) << 8) | ((source[1] & 0b11111100) << 3) | (source[2] >> 3);
+    GLushort* d = (GLushort*) dest;
+
+    uint16_t b = (source[2] >> 3) & 0x1f;
+    uint16_t g = ((source[1] >> 2) & 0x3f) << 5;
+    uint16_t r = ((source[0] >> 3) & 0x1f) << 11;
+
+    *d = r | g | b;
 }
 
 GL_FORCE_INLINE void _rgb565_to_rgb8888(const GLubyte* source, GLubyte* dest) {
@@ -1144,31 +1178,31 @@ static inline void _a8_to_argb4444(const GLubyte* source, GLubyte* dest) {
  */
 static int _determineConversion(GLint internalFormat, GLenum format, GLenum type, TextureConversionFunc* func) {
     static struct Entry {
+        TextureConversionFunc func;
         GLint internalFormat;
         GLenum format;
         GLenum type;
-        TextureConversionFunc func;
         bool twiddle;
     } conversions [] = {
-        {GL_ARGB4444_KOS, GL_ALPHA, GL_UNSIGNED_BYTE, _a8_to_argb4444, false},
-        {GL_ARGB4444_KOS, GL_RGBA, GL_UNSIGNED_BYTE, _rgba8888_to_argb4444, false},        
-        {GL_ARGB4444_KOS, GL_RGBA, GL_UNSIGNED_SHORT_4_4_4_4, _rgba4444_to_argb4444, false},
-        {GL_ARGB4444_KOS, GL_BGRA, GL_UNSIGNED_SHORT_4_4_4_4_REV, NULL, false},
-        {GL_ARGB4444_TWID_KOS, GL_BGRA, GL_UNSIGNED_SHORT_4_4_4_4_REV_TWID_KOS, NULL, false},
-        {GL_ARGB4444_TWID_KOS, GL_RGBA, GL_UNSIGNED_BYTE, _rgba8888_to_argb4444, true},
-        {GL_ARGB1555_KOS, GL_BGRA, GL_UNSIGNED_SHORT_1_5_5_5_REV, NULL, false},
-        {GL_ARGB1555_TWID_KOS, GL_BGRA, GL_UNSIGNED_SHORT_1_5_5_5_REV_TWID_KOS, NULL, false},
-        {GL_RGB565_KOS, GL_RGBA, GL_UNSIGNED_BYTE, _rgba8888_to_rgb565, false},
-        {GL_RGB565_KOS, GL_RED, GL_UNSIGNED_BYTE, _r8_to_rgb565, false},
-        {GL_RGB565_KOS, GL_RGB, GL_UNSIGNED_BYTE, _rgb888_to_rgb565, false},
-        {GL_RGB565_KOS, GL_RGBA, GL_UNSIGNED_BYTE, _rgba8888_to_rgb565, false},
-        {GL_RGB565_KOS, GL_RED, GL_UNSIGNED_BYTE, _r8_to_rgb565, false},
-        {GL_RGB565_KOS, GL_RGB, GL_UNSIGNED_SHORT_5_6_5, NULL, false},
-        {GL_RGB565_TWID_KOS, GL_RGB, GL_UNSIGNED_SHORT_5_6_5_TWID_KOS, NULL, false},
-        {GL_RGB565_TWID_KOS, GL_RGB, GL_UNSIGNED_BYTE, _rgb888_to_rgb565, true},
-        {GL_COLOR_INDEX8_EXT, GL_COLOR_INDEX, GL_UNSIGNED_BYTE, NULL, false},
-        {GL_COLOR_INDEX8_EXT, GL_COLOR_INDEX, GL_BYTE, NULL, false},
-        {GL_COLOR_INDEX8_TWID_KOS, GL_COLOR_INDEX, GL_UNSIGNED_BYTE_TWID_KOS, NULL, false},
+        {_a8_to_argb4444, GL_ARGB4444_KOS, GL_ALPHA, GL_UNSIGNED_BYTE, false},
+        {_rgba8888_to_argb4444, GL_ARGB4444_KOS, GL_RGBA, GL_UNSIGNED_BYTE, false},
+        {_rgba4444_to_argb4444, GL_ARGB4444_KOS, GL_RGBA, GL_UNSIGNED_SHORT_4_4_4_4, false},
+        {NULL, GL_ARGB4444_KOS, GL_BGRA, GL_UNSIGNED_SHORT_4_4_4_4_REV, false},
+        {NULL, GL_ARGB4444_TWID_KOS, GL_BGRA, GL_UNSIGNED_SHORT_4_4_4_4_REV_TWID_KOS, false},
+        {_rgba8888_to_argb4444, GL_ARGB4444_TWID_KOS, GL_RGBA, GL_UNSIGNED_BYTE, true},
+        {NULL, GL_ARGB1555_KOS, GL_BGRA, GL_UNSIGNED_SHORT_1_5_5_5_REV, false},
+        {NULL, GL_ARGB1555_TWID_KOS, GL_BGRA, GL_UNSIGNED_SHORT_1_5_5_5_REV_TWID_KOS, false},
+        {_rgba8888_to_rgb565, GL_RGB565_KOS, GL_RGBA, GL_UNSIGNED_BYTE, false},
+        {_r8_to_rgb565, GL_RGB565_KOS, GL_RED, GL_UNSIGNED_BYTE, false},
+        {_rgb888_to_rgb565, GL_RGB565_KOS, GL_RGB, GL_UNSIGNED_BYTE, false},
+        {_rgba8888_to_rgb565, GL_RGB565_KOS, GL_RGBA, GL_UNSIGNED_BYTE, false},
+        {_r8_to_rgb565, GL_RGB565_KOS, GL_RED, GL_UNSIGNED_BYTE, false},
+        {NULL, GL_RGB565_KOS, GL_RGB, GL_UNSIGNED_SHORT_5_6_5, false},
+        {NULL, GL_RGB565_TWID_KOS, GL_RGB, GL_UNSIGNED_SHORT_5_6_5_TWID_KOS, false},
+        {_rgb888_to_rgb565, GL_RGB565_TWID_KOS, GL_RGB, GL_UNSIGNED_BYTE, true},
+        {NULL, GL_COLOR_INDEX8_EXT, GL_COLOR_INDEX, GL_UNSIGNED_BYTE, false},
+        {NULL, GL_COLOR_INDEX8_EXT, GL_COLOR_INDEX, GL_BYTE, false},
+        {NULL, GL_COLOR_INDEX8_TWID_KOS, GL_COLOR_INDEX, GL_UNSIGNED_BYTE_TWID_KOS, false},
     };
 
     for(size_t i = 0; i < sizeof(conversions) / sizeof(struct Entry); ++i) {
@@ -1265,10 +1299,6 @@ void _glAllocateSpaceForMipmaps(TextureObject* active) {
      * paletted texure */
     active->baseDataOffset = _glGetMipmapDataOffset(active, 0);
 }
-
-#define STRINGIFY(x) #x
-#define TOSTRING(x) STRINGIFY(x)
-#define INFO_MSG(x) fprintf(stderr, "%s:%s > %s\n", __FILE__, TOSTRING(__LINE__), x)
 
 static bool _glTexImage2DValidate(GLenum target, GLint level, GLint internalFormat, GLsizei width, GLsizei height, GLint border, GLenum format, GLenum type) {
     if(target != GL_TEXTURE_2D) {
@@ -1479,23 +1509,36 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
             return;
         }
 
-        GLubyte* conversionBuffer = (GLubyte*) malloc(bytes);
+        GLubyte* conversionBuffer = (GLubyte*) memalign(32, bytes);
         const GLubyte* src = data;
         GLubyte* dst = conversionBuffer;
-        for(uint32_t i = 0; i < (width * height); ++i) {
-            if(needs_conversion > 1) {
-                // Needs twiddling. Set dst to the twiddle location
-                // for this texel
+
+        if(needs_conversion == 1) {
+            // Convert
+            for(uint32_t i = 0; i < (width * height); ++i) {
+                conversion(src, dst);
+                dst += destStride;
+                src += sourceStride;
+            }
+        } else if(needs_conversion == 2) {
+            // Twiddle
+            for(uint32_t i = 0; i < (width * height); ++i) {
                 uint32_t newLocation = twid_location(i, width, height);
                 dst = conversionBuffer + (destStride * newLocation);
-            }
 
-            if(conversion) {
+                for(int j = 0; j < destStride; ++j)
+                    *dst++ = *src++;
+
+                src += sourceStride;
+            }
+        } else if(needs_conversion == 3) {
+            // Convert + twiddle
+            for(uint32_t i = 0; i < (width * height); ++i) {
+                uint32_t newLocation = twid_location(i, width, height);
+                dst = conversionBuffer + (destStride * newLocation);
                 conversion(src, dst);
+                src += sourceStride;
             }
-
-            dst += destStride;
-            src += sourceStride;
         }
 
         FASTCPY(targetData, conversionBuffer, bytes);
