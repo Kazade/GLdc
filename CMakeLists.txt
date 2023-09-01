@@ -210,11 +210,11 @@ gen_sample(polymark samples/polymark/main.c)
 gen_sample(cubes samples/cubes/main.cpp)
 gen_sample(zclip_test tests/zclip/main.cpp)
 
-gen_sample(prof_texture_upload samples/prof_texture_upload/main.c)
-
 if(PLATFORM_DREAMCAST)
     gen_sample(trimark samples/trimark/main.c)
     gen_sample(quadmark samples/quadmark/main.c samples/profiler.c)
+    gen_sample(prof_texture_upload samples/prof_texture_upload/main.c samples/profiler.c)
 else()
     gen_sample(quadmark samples/quadmark/main.c)
+    gen_sample(prof_texture_upload samples/prof_texture_upload/main.c)
 endif()
