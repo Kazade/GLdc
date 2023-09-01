@@ -10,7 +10,10 @@ public:
     uint8_t image_data[8 * 8 * 4] = {0};
 
     void set_up() {
-        glKosInit();
+        GLdcConfig config;
+        glKosInitConfig(&config);
+        config.texture_twiddle = false;
+        glKosInitEx(&config);
 
         /* Init image data so each texel RGBA value matches the
          * position in the array */

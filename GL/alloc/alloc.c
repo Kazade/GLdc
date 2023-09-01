@@ -147,25 +147,16 @@ void* alloc_next_available_ex(void* pool, size_t required_size, size_t* start_su
                                 uintptr_t offset = (it - pool_header.block_usage) * 8;
                                 offset += (i + 1);
                                 offset -= required_subblocks;
+
+                                if(start_subblock_out) {
+                                    *start_subblock_out = offset;
+                                }
+
                                 return pool_header.base_address + (offset * 256);
                             }
                         }
                     } else {
                         found_subblocks = 0;
-                    } else {
-                        found_subblocks++;
-                        if(found_subblocks >= required_subblocks) {
-                            /* We found space! Now calculate the address */
-                            uintptr_t offset = (it - pool_header.block_usage) * 8;
-                            offset += (i + 1);
-                            offset -= required_subblocks;
-
-                            if(start_subblock_out) {
-                                *start_subblock_out = offset;
-                            }
-
-                            return pool_header.base_address + (offset * 256);
-                        }
                     }
 
                     t <<= 1;
