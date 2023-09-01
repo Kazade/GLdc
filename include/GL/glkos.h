@@ -57,6 +57,13 @@ typedef struct {
     GLuint initial_pt_capacity;
     GLuint initial_immediate_capacity;
 
+    /* Default: True
+     *
+     * Whether glTexImage should automatically twiddle textures
+     * if the internal format is a generic format (e.g. GL_RGB).
+     * this is the same as calling glEnable(GL_TEXTURE_TWIDDLE_KOS)
+     * on boot */
+    GLboolean texture_twiddle;
 } GLdcConfig;
 
 

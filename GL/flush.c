@@ -47,6 +47,8 @@ void APIENTRY glKosInitConfig(GLdcConfig* config) {
     config->initial_tr_capacity = 1024 * 3;
     config->initial_immediate_capacity = 1024 * 3;
     config->internal_palette_format = GL_RGBA8;
+
+    config->texture_twiddle = GL_TRUE;
 }
 
 static bool _initialized = false;
@@ -77,6 +79,10 @@ void APIENTRY glKosInitEx(GLdcConfig* config) {
     _glSetInternalPaletteFormat(config->internal_palette_format);
 
     _glInitTextures();
+
+    if(config->texture_twiddle) {
+        glEnable(GL_TEXTURE_TWIDDLE_KOS);
+    }
 
     OP_LIST.list_type = GPU_LIST_OP_POLY;
     PT_LIST.list_type = GPU_LIST_PT_POLY;
