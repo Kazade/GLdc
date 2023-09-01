@@ -101,7 +101,13 @@ size_t alloc_block_count(void* pool) {
     return pool_header.block_count;
 }
 
+void* alloc_next_available_ex(void* pool, size_t required_size, size_t* start_subblock, size_t* required_subblocks);
+
 void* alloc_next_available(void* pool, size_t required_size) {
+    return alloc_next_available_ex(pool, required_size, NULL, NULL);
+}
+
+void* alloc_next_available_ex(void* pool, size_t required_size, size_t* start_subblock_out, size_t* required_subblocks_out) {
     (void) pool;
 
     uint8_t* it = pool_header.block_usage;
@@ -109,6 +115,10 @@ void* alloc_next_available(void* pool, size_t required_size) {
     if(required_size % 256) required_subblocks += 1;
 
     uint8_t* end = pool_header.block_usage + pool_header.block_count;
+
+    if(required_subblocks_out) {
+        *required_subblocks_out = required_subblocks;
+    }
 
     while(it < end) {
         // Skip full blocks
@@ -155,6 +165,11 @@ void* alloc_next_available(void* pool, size_t required_size) {
                             uintptr_t offset = (it - pool_header.block_usage) * 8;
                             offset += (i + 1);
                             offset -= required_subblocks;
+
+                            if(start_subblock_out) {
+                                *start_subblock_out = offset;
+                            }
+
                             return pool_header.base_address + (offset * 256);
                         }
                     }
@@ -226,14 +241,14 @@ static inline uint32_t subblock_from_pointer(void* p) {
 }
 
 void* alloc_malloc(void* pool, size_t size) {
-    void* ret = alloc_next_available(pool, size);
+    size_t start_subblock, required_subblocks;
+    void* ret = alloc_next_available_ex(pool, size, &start_subblock, &required_subblocks);
+
     if(size >= 2048) {
         assert(((uintptr_t) ret) % 2048 == 0);
     }
 
     if(ret) {
-        uintptr_t start_subblock = subblock_from_pointer(ret);
-        uint32_t required_subblocks = size_to_subblock_count(size);
         size_t offset = start_subblock % 8;
         size_t block = start_subblock / 8;
         uint8_t mask = 0;
