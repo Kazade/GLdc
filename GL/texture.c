@@ -510,7 +510,7 @@ GLubyte _glInitTextures() {
 
 #ifdef __DREAMCAST__
     /* Ensure memory is aligned */
-    gl_assert((uintptr_t) YALLOC_BASE % 32 == 0);
+    gl_assert((uintptr_t) ALLOC_BASE % 32 == 0);
 #endif
 
     alloc_init(ALLOC_BASE, ALLOC_SIZE);
