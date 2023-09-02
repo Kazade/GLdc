@@ -281,6 +281,12 @@ static GLint _determineStrideInternal(GLenum internalFormat) {
         case GL_COLOR_INDEX4_EXT:
         case GL_COLOR_INDEX8_EXT:
             return 1;
+        case GL_RGBA8:
+            return 4;
+        case GL_RGB8:
+            return 3;
+        case GL_RGBA4:
+            return 2;
     }
 
     return -1;
@@ -1047,6 +1053,7 @@ static GLuint _determinePVRFormat(GLint internalFormat) {
     case GL_COMPRESSED_RGB_565_VQ_MIPMAP_TWID_KOS:
         return GPU_TXRFMT_RGB565 | GPU_TXRFMT_VQ_ENABLE | GPU_TXRFMT_TWIDDLED;
     default:
+        fprintf(stderr, "Unexpected format: %d\n", internalFormat);
         _glKosThrowError(GL_INVALID_ENUM, __func__);
         return 0;
     }
@@ -1203,6 +1210,8 @@ static int _determineConversion(GLint internalFormat, GLenum format, GLenum type
         {NULL, GL_COLOR_INDEX8_EXT, GL_COLOR_INDEX, GL_UNSIGNED_BYTE, false},
         {NULL, GL_COLOR_INDEX8_EXT, GL_COLOR_INDEX, GL_BYTE, false},
         {NULL, GL_COLOR_INDEX8_TWID_KOS, GL_COLOR_INDEX, GL_UNSIGNED_BYTE_TWID_KOS, false},
+        {NULL, GL_RGBA8, GL_RGBA, GL_UNSIGNED_BYTE, false},
+        {NULL, GL_RGBA8, GL_RGBA, GL_BYTE, false},
     };
 
     for(size_t i = 0; i < sizeof(conversions) / sizeof(struct Entry); ++i) {
@@ -1215,6 +1224,7 @@ static int _determineConversion(GLint internalFormat, GLenum format, GLenum type
         }
     }
 
+    fprintf(stderr, "No conversion found for format: %d, internalFormat: %d, type: %d\n", format, internalFormat, type);
     return -1;
 }
 
@@ -1707,6 +1717,7 @@ GLAPI void APIENTRY glColorTableEXT(GLenum target, GLenum internalFormat, GLsize
     }
 
     GLint sourceStride = _determineStride(format, type);
+    GLint destStride = _determineStrideInternal(internalFormat);
 
     gl_assert(sourceStride > -1);
 
@@ -1785,10 +1796,15 @@ GLAPI void APIENTRY glColorTableEXT(GLenum target, GLenum internalFormat, GLsize
     /* Transform and copy the source palette to the texture */
     GLushort i = 0;
     for(; i < width; ++i) {
-        convert(src, dst);
-
-        src += sourceStride;
-        dst += 4;
+        if(convert) {
+            convert(src, dst);
+            src += sourceStride;
+            dst += destStride;
+        } else {
+            for(int j = 0; j < sourceStride; ++j) {
+                *dst++ = *src++;
+            }
+        }
     }
 
     _glApplyColorTable(palette);
