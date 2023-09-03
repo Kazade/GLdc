@@ -297,7 +297,19 @@ static GLint _determineStride(GLenum format, GLenum type) {
     switch(type) {
     case GL_BYTE:
     case GL_UNSIGNED_BYTE:
-        return (format == GL_RED || format == GL_ALPHA) ? 1 : (format == GL_RGB) ? 3 : 4;
+        switch(format) {
+        case GL_RED:
+        case GL_ALPHA:
+        case GL_COLOR_INDEX:
+            return 1;
+        case GL_RGB:
+            return 3;
+        case GL_RGBA:
+            return 4;
+        default:
+            _glKosThrowError(GL_INVALID_VALUE, __func__);
+            return 1;
+        }
     case GL_UNSIGNED_SHORT:
         return (format == GL_RED || format == GL_ALPHA) ? 2 : (format == GL_RGB) ? 6 : 8;
     case GL_UNSIGNED_SHORT_5_6_5:
@@ -921,6 +933,7 @@ static GLboolean isTwiddledInternalFormat(GLint internalFormat) {
  */
 static GLint _cleanInternalFormat(GLint internalFormat) {
     switch (internalFormat) {
+    /* All of these formats are fine as they are, no conversion needed */
     case GL_RGB565_KOS:
     case GL_ARGB4444_KOS:
     case GL_ARGB1555_KOS:
@@ -929,10 +942,11 @@ static GLint _cleanInternalFormat(GLint internalFormat) {
     case GL_ARGB1555_TWID_KOS:
     case GL_COLOR_INDEX8_TWID_KOS:
     case GL_COLOR_INDEX4_TWID_KOS:
-    case GL_COLOR_INDEX4_EXT:
-    case GL_COLOR_INDEX8_EXT:
-        /* All of these formats are fine as they are, no conversion needed */
         return internalFormat;
+    case GL_COLOR_INDEX4_EXT:
+        return (TEXTURE_TWIDDLE_ENABLED) ? GL_COLOR_INDEX4_TWID_KOS : internalFormat;
+    case GL_COLOR_INDEX8_EXT:        
+        return (TEXTURE_TWIDDLE_ENABLED) ? GL_COLOR_INDEX8_TWID_KOS : internalFormat;
     case GL_RGB_TWID_KOS:
         return GL_RGB565_TWID_KOS;
     case GL_RGBA_TWID_KOS:
@@ -1174,6 +1188,16 @@ static inline void _a8_to_argb4444(const GLubyte* source, GLubyte* dest) {
     *((GLushort*) dest) = (color << 8) | color;
 }
 
+
+enum ConversionType {
+    CONVERSION_TYPE_NONE,
+    CONVERSION_TYPE_CONVERT = 1,
+    CONVERSION_TYPE_TWIDDLE = 2,
+    CONVERSION_TYPE_PACK = 4,
+    CONVERSION_TYPE_INVALID = -1
+};
+
+
 /* Given an cleaned internal format, and the passed format and type, this returns:
  *
  * 0 if not conversion is necessary
@@ -1190,42 +1214,61 @@ static int _determineConversion(GLint internalFormat, GLenum format, GLenum type
         GLenum format;
         GLenum type;
         bool twiddle;
+        bool pack; // If true, each value is packed after conversion into half-bytes
     } conversions [] = {
-        {_a8_to_argb4444, GL_ARGB4444_KOS, GL_ALPHA, GL_UNSIGNED_BYTE, false},
-        {_rgba8888_to_argb4444, GL_ARGB4444_KOS, GL_RGBA, GL_UNSIGNED_BYTE, false},
-        {_rgba4444_to_argb4444, GL_ARGB4444_KOS, GL_RGBA, GL_UNSIGNED_SHORT_4_4_4_4, false},
-        {NULL, GL_ARGB4444_KOS, GL_BGRA, GL_UNSIGNED_SHORT_4_4_4_4_REV, false},
-        {NULL, GL_ARGB4444_TWID_KOS, GL_BGRA, GL_UNSIGNED_SHORT_4_4_4_4_REV_TWID_KOS, false},
-        {_rgba8888_to_argb4444, GL_ARGB4444_TWID_KOS, GL_RGBA, GL_UNSIGNED_BYTE, true},
-        {NULL, GL_ARGB1555_KOS, GL_BGRA, GL_UNSIGNED_SHORT_1_5_5_5_REV, false},
-        {NULL, GL_ARGB1555_TWID_KOS, GL_BGRA, GL_UNSIGNED_SHORT_1_5_5_5_REV_TWID_KOS, false},
-        {_rgba8888_to_rgb565, GL_RGB565_KOS, GL_RGBA, GL_UNSIGNED_BYTE, false},
-        {_r8_to_rgb565, GL_RGB565_KOS, GL_RED, GL_UNSIGNED_BYTE, false},
-        {_rgb888_to_rgb565, GL_RGB565_KOS, GL_RGB, GL_UNSIGNED_BYTE, false},
-        {_rgba8888_to_rgb565, GL_RGB565_KOS, GL_RGBA, GL_UNSIGNED_BYTE, false},
-        {_r8_to_rgb565, GL_RGB565_KOS, GL_RED, GL_UNSIGNED_BYTE, false},
-        {NULL, GL_RGB565_KOS, GL_RGB, GL_UNSIGNED_SHORT_5_6_5, false},
-        {NULL, GL_RGB565_TWID_KOS, GL_RGB, GL_UNSIGNED_SHORT_5_6_5_TWID_KOS, false},
-        {_rgb888_to_rgb565, GL_RGB565_TWID_KOS, GL_RGB, GL_UNSIGNED_BYTE, true},
-        {NULL, GL_COLOR_INDEX8_EXT, GL_COLOR_INDEX, GL_UNSIGNED_BYTE, false},
-        {NULL, GL_COLOR_INDEX8_EXT, GL_COLOR_INDEX, GL_BYTE, false},
-        {NULL, GL_COLOR_INDEX8_TWID_KOS, GL_COLOR_INDEX, GL_UNSIGNED_BYTE_TWID_KOS, false},
-        {NULL, GL_RGBA8, GL_RGBA, GL_UNSIGNED_BYTE, false},
-        {NULL, GL_RGBA8, GL_RGBA, GL_BYTE, false},
+        {_a8_to_argb4444, GL_ARGB4444_KOS, GL_ALPHA, GL_UNSIGNED_BYTE, false, false},
+        {_rgba8888_to_argb4444, GL_ARGB4444_KOS, GL_RGBA, GL_UNSIGNED_BYTE, false, false},
+        {_rgba4444_to_argb4444, GL_ARGB4444_KOS, GL_RGBA, GL_UNSIGNED_SHORT_4_4_4_4, false, false},
+        {NULL, GL_ARGB4444_KOS, GL_BGRA, GL_UNSIGNED_SHORT_4_4_4_4_REV, false, false},
+        {NULL, GL_ARGB4444_TWID_KOS, GL_BGRA, GL_UNSIGNED_SHORT_4_4_4_4_REV_TWID_KOS, false, false},
+        {_rgba8888_to_argb4444, GL_ARGB4444_TWID_KOS, GL_RGBA, GL_UNSIGNED_BYTE, true, false},
+        {NULL, GL_ARGB1555_KOS, GL_BGRA, GL_UNSIGNED_SHORT_1_5_5_5_REV, false, false},
+        {NULL, GL_ARGB1555_TWID_KOS, GL_BGRA, GL_UNSIGNED_SHORT_1_5_5_5_REV_TWID_KOS, false, false},
+        {_rgba8888_to_rgb565, GL_RGB565_KOS, GL_RGBA, GL_UNSIGNED_BYTE, false, false},
+        {_r8_to_rgb565, GL_RGB565_KOS, GL_RED, GL_UNSIGNED_BYTE, false, false},
+        {_rgb888_to_rgb565, GL_RGB565_KOS, GL_RGB, GL_UNSIGNED_BYTE, false, false},
+        {_rgba8888_to_rgb565, GL_RGB565_KOS, GL_RGBA, GL_UNSIGNED_BYTE, false, false},
+        {_r8_to_rgb565, GL_RGB565_KOS, GL_RED, GL_UNSIGNED_BYTE, false, false},
+        {NULL, GL_RGB565_KOS, GL_RGB, GL_UNSIGNED_SHORT_5_6_5, false, false},
+        {NULL, GL_RGB565_TWID_KOS, GL_RGB, GL_UNSIGNED_SHORT_5_6_5_TWID_KOS, false, false},
+        {_rgb888_to_rgb565, GL_RGB565_TWID_KOS, GL_RGB, GL_UNSIGNED_BYTE, true, false},
+        {NULL, GL_COLOR_INDEX8_EXT, GL_COLOR_INDEX, GL_UNSIGNED_BYTE, false, false},
+        {NULL, GL_COLOR_INDEX8_EXT, GL_COLOR_INDEX, GL_BYTE, false, false},
+        {NULL, GL_COLOR_INDEX8_TWID_KOS, GL_COLOR_INDEX, GL_UNSIGNED_BYTE_TWID_KOS, false, false},
+        {NULL, GL_COLOR_INDEX8_TWID_KOS, GL_COLOR_INDEX, GL_UNSIGNED_BYTE, true, false},
+        {NULL, GL_COLOR_INDEX8_TWID_KOS, GL_COLOR_INDEX, GL_BYTE, true, false},
+        {NULL, GL_COLOR_INDEX4_EXT, GL_COLOR_INDEX, GL_UNSIGNED_BYTE, false, true},
+        {NULL, GL_COLOR_INDEX4_EXT, GL_COLOR_INDEX, GL_BYTE, false, true},
+        {NULL, GL_COLOR_INDEX4_TWID_KOS, GL_COLOR_INDEX, GL_UNSIGNED_BYTE_TWID_KOS, false, true},
+        {NULL, GL_COLOR_INDEX4_TWID_KOS, GL_COLOR_INDEX, GL_UNSIGNED_BYTE, true, true},
+        {NULL, GL_COLOR_INDEX4_TWID_KOS, GL_COLOR_INDEX, GL_BYTE, true, true},
+        {NULL, GL_RGBA8, GL_RGBA, GL_UNSIGNED_BYTE, false, false},
+        {NULL, GL_RGBA8, GL_RGBA, GL_BYTE, false, false},
+        {_rgb888_to_rgba8888, GL_RGBA8, GL_RGB, GL_UNSIGNED_BYTE, false, false},
+        {_rgb888_to_rgba8888, GL_RGBA8, GL_RGB, GL_BYTE, false, false},
     };
 
     for(size_t i = 0; i < sizeof(conversions) / sizeof(struct Entry); ++i) {
         struct Entry* e = conversions + i;
         if(e->format == format && e->internalFormat == internalFormat && e->type == type) {
             *func = e->func;
-            int ret = (e->func) ? 1 : 0;
-            ret += (e->twiddle) ? 2 : 0;
+
+            int ret = (e->func) ? CONVERSION_TYPE_CONVERT : CONVERSION_TYPE_NONE;
+
+            if(e->twiddle) {
+                ret |= CONVERSION_TYPE_TWIDDLE;
+            }
+
+            if(e->pack) {
+                ret |= CONVERSION_TYPE_PACK;
+            }
+
             return ret;
         }
     }
 
-    fprintf(stderr, "No conversion found for format: %d, internalFormat: %d, type: %d\n", format, internalFormat, type);
-    return -1;
+    fprintf(stderr, "No conversion found for format: 0x%x, internalFormat: 0x%x, type: 0x%x\n", format, internalFormat, type);
+    return CONVERSION_TYPE_INVALID;
 }
 
 static GLboolean _isSupportedFormat(GLenum format) {
@@ -1446,11 +1489,6 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
     GLint destStride = isPaletted ? 1 : 2;
     GLuint bytes = (width * height * destStride);
 
-    //special case 4bpp
-    if(internalFormat == GL_COLOR_INDEX4_EXT){
-        bytes >>= 1;
-    }
-
     if(!active->data) {
         gl_assert(active);
         gl_assert(width);
@@ -1523,7 +1561,10 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
         const GLubyte* src = data;
         GLubyte* dst = conversionBuffer;
 
-        if(needs_conversion == 1) {
+        bool pack = (needs_conversion & CONVERSION_TYPE_PACK) == CONVERSION_TYPE_PACK;
+        needs_conversion &= ~CONVERSION_TYPE_PACK;
+
+        if(needs_conversion == CONVERSION_TYPE_CONVERT) {
             // Convert
             for(uint32_t i = 0; i < (width * height); ++i) {
                 conversion(src, dst);
@@ -1549,6 +1590,28 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
                 conversion(src, dst);
                 src += sourceStride;
             }
+        }
+
+        if(pack) {
+            assert(isPaletted);
+
+            size_t dst_byte = 0;
+            for(size_t src_byte = 0; src_byte < bytes; ++src_byte) {
+                uint8_t v = conversionBuffer[src_byte];
+
+                if(src_byte % 1 == 0) {
+                    conversionBuffer[dst_byte] = (conversionBuffer[dst_byte] & 0xF) | ((v & 0xF0) << 4);
+                } else {
+                    conversionBuffer[dst_byte] = (conversionBuffer[dst_byte] & 0xF0) | (v & 0xF);
+                }
+
+                if(src_byte % 1 == 0) {
+                    dst_byte++;
+                }
+            }
+
+            // Halve the byte count to upload
+            bytes >>= 1;
         }
 
         FASTCPY(targetData, conversionBuffer, bytes);
