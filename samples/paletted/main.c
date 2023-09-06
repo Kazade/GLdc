@@ -132,7 +132,7 @@ void LoadGLTextures() {
 
     // 2d texture, level of detail 0 (normal), 3 components (red, green, blue), x size from image, y size from image,
     // border 0 (normal), rgb color data, unsigned byte data, and finally the data itself.
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_COLOR_INDEX8_EXT, image1->width, image1->height, 0, GL_COLOR_INDEX, GL_UNSIGNED_BYTE_TWID_KOS, image1->data);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_COLOR_INDEX8_EXT, image1->width, image1->height, 0, GL_COLOR_INDEX8_TWID_KOS, GL_UNSIGNED_BYTE, image1->data);
     glGenerateMipmapEXT(GL_TEXTURE_2D);
 
     free(image1);

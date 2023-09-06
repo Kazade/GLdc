@@ -40,6 +40,21 @@ public:
         assert_equal(alloc_block_count(pool), expected_blocks);
     }
 
+    void test_complex_case() {
+        uint8_t* large_pool = (uint8_t*) malloc(8 * 1024 * 1024);
+
+        alloc_init(large_pool, 8 * 1024 * 1024);
+        alloc_malloc(large_pool, 262144);
+        alloc_malloc(large_pool, 262144);
+        void* a1 = alloc_malloc(large_pool, 524288);
+        alloc_free(large_pool, a1);
+        alloc_malloc(large_pool, 699056);
+        alloc_malloc(large_pool, 128);
+        alloc_shutdown(large_pool);
+
+        free(large_pool);
+    }
+
     void test_alloc_malloc() {
         alloc_init(pool, sizeof(pool));
 

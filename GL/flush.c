@@ -46,7 +46,9 @@ void APIENTRY glKosInitConfig(GLdcConfig* config) {
     config->initial_pt_capacity = 512 * 3;
     config->initial_tr_capacity = 1024 * 3;
     config->initial_immediate_capacity = 1024 * 3;
-    config->internal_palette_format = GL_RGBA8;
+
+    // RGBA4444 is the fastest general format - 8888 will cause a perf issue
+    config->internal_palette_format = GL_RGBA4;
 
     config->texture_twiddle = GL_TRUE;
 }

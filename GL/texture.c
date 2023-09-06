@@ -28,7 +28,7 @@ static GLuint _determinePVRFormat(GLint internalFormat);
 static GLboolean BANKS_USED[MAX_GLDC_PALETTE_SLOTS];  // Each time a 256 colour bank is used, this is set to true
 static GLboolean SUBBANKS_USED[MAX_GLDC_PALETTE_SLOTS][MAX_GLDC_4BPP_PALETTE_SLOTS]; // 4 counts of the used 16 colour banks within the 256 ones
 
-static GLenum INTERNAL_PALETTE_FORMAT = GL_RGBA8;
+static GLenum INTERNAL_PALETTE_FORMAT = GL_RGBA4;
 static GLboolean TEXTURE_TWIDDLE_ENABLED = GL_FALSE;
 
 #define STRINGIFY(x) #x
@@ -224,8 +224,8 @@ void _glSetInternalPaletteFormat(GLenum val) {
             GPUSetPaletteFormat(GPU_PAL_ARGB4444);
             break;
          case GL_RGB5_A1:
-                GPUSetPaletteFormat(GPU_PAL_ARGB1555);
-                break;
+            GPUSetPaletteFormat(GPU_PAL_ARGB1555);
+            break;
          case  GL_RGB565_KOS:
              GPUSetPaletteFormat(GPU_PAL_RGB565);
             break;
@@ -301,15 +301,19 @@ static GLint _determineStride(GLenum format, GLenum type) {
         case GL_RED:
         case GL_ALPHA:
         case GL_COLOR_INDEX:
+        case GL_COLOR_INDEX8_TWID_KOS:
+        case GL_COLOR_INDEX4_TWID_KOS:  // We return 1 for 4bpp, but it gets sorted later
+        case GL_COLOR_INDEX4_EXT:
+        case GL_COLOR_INDEX8_EXT:
             return 1;
         case GL_RGB:
             return 3;
         case GL_RGBA:
             return 4;
         default:
-            _glKosThrowError(GL_INVALID_VALUE, __func__);
-            return 1;
+            break;
         }
+        break;
     case GL_UNSIGNED_SHORT:
         return (format == GL_RED || format == GL_ALPHA) ? 2 : (format == GL_RGB) ? 6 : 8;
     case GL_UNSIGNED_SHORT_5_6_5:
@@ -324,6 +328,8 @@ static GLint _determineStride(GLenum format, GLenum type) {
         return 2;
     }
 
+    fprintf(stderr, "Couldn't find stride for format: 0x%x type: 0x%x\n", format, type);
+    _glKosThrowError(GL_INVALID_VALUE, __func__);
     return -1;
 }
 
@@ -812,13 +818,13 @@ void APIENTRY glCompressedTexImage2DARB(GLenum target,
         case GL_PALETTE4_RGB8_OES:
             glColorTableEXT(GL_TEXTURE_2D, GL_RGBA8, 16, internalFormat, GL_UNSIGNED_BYTE, data);
             ptr += 16*3;
-            glTexImage2D(GL_TEXTURE_2D, level, GL_COLOR_INDEX4_EXT, width, height, border, GL_COLOR_INDEX, GL_UNSIGNED_BYTE, ptr);
+            glTexImage2D(GL_TEXTURE_2D, level, GL_COLOR_INDEX4_EXT, width, height, border, GL_COLOR_INDEX4_EXT, GL_UNSIGNED_BYTE, ptr);
             return;
 
         case GL_PALETTE4_RGBA8_OES:
             glColorTableEXT(GL_TEXTURE_2D, GL_RGBA8, 16, internalFormat, GL_UNSIGNED_BYTE, data);
             ptr += 16*4;
-            glTexImage2D(GL_TEXTURE_2D, level, GL_COLOR_INDEX4_EXT, width, height, border, GL_COLOR_INDEX, GL_UNSIGNED_BYTE, ptr);
+            glTexImage2D(GL_TEXTURE_2D, level, GL_COLOR_INDEX4_EXT, width, height, border, GL_COLOR_INDEX4_EXT, GL_UNSIGNED_BYTE, ptr);
             return;
 
         case GL_PALETTE4_R5_G6_B5_OES:
@@ -826,31 +832,28 @@ void APIENTRY glCompressedTexImage2DARB(GLenum target,
         case GL_PALETTE4_RGB5_A1_OES:
             glColorTableEXT(GL_TEXTURE_2D, GL_RGBA8, 16, internalFormat, GL_UNSIGNED_BYTE, data);
             ptr += 16*2;
-            glTexImage2D(GL_TEXTURE_2D, level, GL_COLOR_INDEX4_EXT, width, height, border, GL_COLOR_INDEX, GL_UNSIGNED_BYTE, ptr);
+            glTexImage2D(GL_TEXTURE_2D, level, GL_COLOR_INDEX4_EXT, width, height, border, GL_COLOR_INDEX4_EXT, GL_UNSIGNED_BYTE, ptr);
             return;
 
         case GL_PALETTE8_RGB8_OES:
             glColorTableEXT(GL_TEXTURE_2D, GL_RGBA8, 256, internalFormat, GL_UNSIGNED_BYTE, data);
             ptr += 256*3;
-            glTexImage2D(GL_TEXTURE_2D, level, GL_COLOR_INDEX8_EXT, width, height, border, GL_COLOR_INDEX, GL_UNSIGNED_BYTE, ptr);
+            glTexImage2D(GL_TEXTURE_2D, level, GL_COLOR_INDEX8_EXT, width, height, border, GL_COLOR_INDEX8_EXT, GL_UNSIGNED_BYTE, ptr);
             return;
 
 
         case GL_PALETTE8_RGBA8_OES:
-        //
             glColorTableEXT(GL_TEXTURE_2D, GL_RGBA8, 256, internalFormat, GL_UNSIGNED_BYTE, data);
             ptr += 256*4;
-            glTexImage2D(GL_TEXTURE_2D, level, GL_COLOR_INDEX8_EXT, width, height, border, GL_COLOR_INDEX, GL_UNSIGNED_BYTE, ptr);
+            glTexImage2D(GL_TEXTURE_2D, level, GL_COLOR_INDEX8_EXT, width, height, border, GL_COLOR_INDEX8_EXT, GL_UNSIGNED_BYTE, ptr);
             return;
-
-
         case GL_PALETTE8_RGBA4_OES:
         case GL_PALETTE8_RGB5_A1_OES:
         case GL_PALETTE8_R5_G6_B5_OES:
 
             glColorTableEXT(GL_TEXTURE_2D, GL_RGBA8, 256, internalFormat, GL_UNSIGNED_BYTE, data);
             ptr += 256*2;
-            glTexImage2D(GL_TEXTURE_2D, level, GL_COLOR_INDEX8_EXT, width, height, border, GL_COLOR_INDEX, GL_UNSIGNED_BYTE, ptr);
+            glTexImage2D(GL_TEXTURE_2D, level, GL_COLOR_INDEX8_EXT, width, height, border, GL_COLOR_INDEX8_EXT, GL_UNSIGNED_BYTE, ptr);
             return;
 
         default: {
@@ -944,7 +947,10 @@ static GLint _cleanInternalFormat(GLint internalFormat) {
     case GL_COLOR_INDEX4_TWID_KOS:
         return internalFormat;
     case GL_COLOR_INDEX4_EXT:
-        return (TEXTURE_TWIDDLE_ENABLED) ? GL_COLOR_INDEX4_TWID_KOS : internalFormat;
+        // FIXME: We can't auto twiddle GL_COLOR_INDEX4 -> GL_COLOR_INDEX4_TWID_KOS
+        // so until we can, we need to not twiddle 4bpp paletted textures automatically
+        // return (TEXTURE_TWIDDLE_ENABLED) ? GL_COLOR_INDEX4_TWID_KOS : internalFormat;
+        return internalFormat;
     case GL_COLOR_INDEX8_EXT:        
         return (TEXTURE_TWIDDLE_ENABLED) ? GL_COLOR_INDEX8_TWID_KOS : internalFormat;
     case GL_RGB_TWID_KOS:
@@ -1234,18 +1240,35 @@ static int _determineConversion(GLint internalFormat, GLenum format, GLenum type
         {_rgb888_to_rgb565, GL_RGB565_TWID_KOS, GL_RGB, GL_UNSIGNED_BYTE, true, false},
         {NULL, GL_COLOR_INDEX8_EXT, GL_COLOR_INDEX, GL_UNSIGNED_BYTE, false, false},
         {NULL, GL_COLOR_INDEX8_EXT, GL_COLOR_INDEX, GL_BYTE, false, false},
-        {NULL, GL_COLOR_INDEX8_TWID_KOS, GL_COLOR_INDEX, GL_UNSIGNED_BYTE_TWID_KOS, false, false},
         {NULL, GL_COLOR_INDEX8_TWID_KOS, GL_COLOR_INDEX, GL_UNSIGNED_BYTE, true, false},
         {NULL, GL_COLOR_INDEX8_TWID_KOS, GL_COLOR_INDEX, GL_BYTE, true, false},
         {NULL, GL_COLOR_INDEX4_EXT, GL_COLOR_INDEX, GL_UNSIGNED_BYTE, false, true},
         {NULL, GL_COLOR_INDEX4_EXT, GL_COLOR_INDEX, GL_BYTE, false, true},
-        {NULL, GL_COLOR_INDEX4_TWID_KOS, GL_COLOR_INDEX, GL_UNSIGNED_BYTE_TWID_KOS, false, true},
+
+        {NULL, GL_COLOR_INDEX4_EXT, GL_COLOR_INDEX4_EXT, GL_UNSIGNED_BYTE, false, false},
+        {NULL, GL_COLOR_INDEX4_EXT, GL_COLOR_INDEX4_EXT, GL_BYTE, false, false},
         {NULL, GL_COLOR_INDEX4_TWID_KOS, GL_COLOR_INDEX, GL_UNSIGNED_BYTE, true, true},
         {NULL, GL_COLOR_INDEX4_TWID_KOS, GL_COLOR_INDEX, GL_BYTE, true, true},
+
+        /* FIXME: Implement 4bpp -> 4bpp twiddling
+        {NULL, GL_COLOR_INDEX4_TWID_KOS, GL_COLOR_INDEX4_EXT, GL_UNSIGNED_BYTE, true, false},
+        {NULL, GL_COLOR_INDEX4_TWID_KOS, GL_COLOR_INDEX4_EXT, GL_BYTE, true, false}, */
+
+        {NULL, GL_COLOR_INDEX8_EXT, GL_COLOR_INDEX8_EXT, GL_UNSIGNED_BYTE, false, false},
+        {NULL, GL_COLOR_INDEX8_EXT, GL_COLOR_INDEX8_EXT, GL_BYTE, false, false},
+        {NULL, GL_COLOR_INDEX8_TWID_KOS, GL_COLOR_INDEX8_TWID_KOS, GL_UNSIGNED_BYTE, false, false},
+        {NULL, GL_COLOR_INDEX8_TWID_KOS, GL_COLOR_INDEX8_TWID_KOS, GL_BYTE, false, false},
+        {NULL, GL_COLOR_INDEX8_TWID_KOS, GL_COLOR_INDEX8_EXT, GL_UNSIGNED_BYTE, true, false},
+        {NULL, GL_COLOR_INDEX8_TWID_KOS, GL_COLOR_INDEX8_EXT, GL_BYTE, true, false},
+
         {NULL, GL_RGBA8, GL_RGBA, GL_UNSIGNED_BYTE, false, false},
         {NULL, GL_RGBA8, GL_RGBA, GL_BYTE, false, false},
         {_rgb888_to_rgba8888, GL_RGBA8, GL_RGB, GL_UNSIGNED_BYTE, false, false},
         {_rgb888_to_rgba8888, GL_RGBA8, GL_RGB, GL_BYTE, false, false},
+        {_rgb888_to_argb4444, GL_RGBA4, GL_RGB, GL_UNSIGNED_BYTE, false, false},
+        {_rgb888_to_argb4444, GL_RGBA4, GL_RGB, GL_BYTE, false, false},
+        {_rgba8888_to_argb4444, GL_RGBA4, GL_RGBA, GL_UNSIGNED_BYTE, false, false},
+        {_rgba8888_to_argb4444, GL_RGBA4, GL_RGBA, GL_BYTE, false, false},
     };
 
     for(size_t i = 0; i < sizeof(conversions) / sizeof(struct Entry); ++i) {
@@ -1269,23 +1292,6 @@ static int _determineConversion(GLint internalFormat, GLenum format, GLenum type
 
     fprintf(stderr, "No conversion found for format: 0x%x, internalFormat: 0x%x, type: 0x%x\n", format, internalFormat, type);
     return CONVERSION_TYPE_INVALID;
-}
-
-static GLboolean _isSupportedFormat(GLenum format) {
-    switch(format) {
-    case GL_ALPHA:
-    case GL_LUMINANCE:
-    case GL_INTENSITY:
-    case GL_LUMINANCE_ALPHA:
-    case GL_RED:
-    case GL_RGB:
-    case GL_RGBA:
-    case GL_BGRA:
-    case GL_COLOR_INDEX:
-        return GL_TRUE;
-    default:
-        return GL_FALSE;
-    }
 }
 
 GLboolean _glIsMipmapComplete(const TextureObject* obj) {
@@ -1366,32 +1372,40 @@ static bool _glTexImage2DValidate(GLenum target, GLint level, GLint internalForm
         return false;
     }
 
-    if(format != GL_COLOR_INDEX) {
-        if(!_isSupportedFormat(format)) {
-            INFO_MSG("Unsupported format");
-            _glKosThrowError(GL_INVALID_ENUM, __func__);
-            return false;
-        }
+    GLint validFormats [] = {
+        GL_ALPHA,
+        GL_LUMINANCE,
+        GL_INTENSITY,
+        GL_LUMINANCE_ALPHA,
+        GL_RED,
+        GL_RGB,
+        GL_RGBA,
+        GL_BGRA,
+        GL_COLOR_INDEX,
+        GL_COLOR_INDEX4_EXT,  /* Extension, this is just so glCompressedTexImage can pass-thru */
+        GL_COLOR_INDEX8_EXT,  /* Extension, this is just so glCompressedTexImage can pass-thru */
+        GL_COLOR_INDEX4_TWID_KOS,  /* Extension, this is just so glCompressedTexImage can pass-thru */
+        GL_COLOR_INDEX8_TWID_KOS,  /* Extension, this is just so glCompressedTexImage can pass-thru */
+        0
+    };
 
+    if(_glCheckValidEnum(format, validFormats, __func__) != 0) {
+        return false;
+    }
+
+    if(format != GL_COLOR_INDEX4_EXT && format != GL_COLOR_INDEX4_TWID_KOS) {
         /* Abuse determineStride to see if type is valid */
         if(_determineStride(GL_RGBA, type) == -1) {
             INFO_MSG("");
             _glKosThrowError(GL_INVALID_ENUM, __func__);
             return false;
         }
+    }
 
-        internalFormat = _cleanInternalFormat(internalFormat);
-        if(internalFormat == -1) {
-            INFO_MSG("");
-            _glKosThrowError(GL_INVALID_VALUE, __func__);
-            return false;
-        }
-    } else {
-        if(internalFormat != GL_COLOR_INDEX8_EXT && internalFormat != GL_COLOR_INDEX4_EXT) {
-            INFO_MSG("");
-            _glKosThrowError(GL_INVALID_ENUM, __func__);
-            return false;
-        }
+    if(_cleanInternalFormat(internalFormat) == -1) {
+        INFO_MSG("");
+        _glKosThrowError(GL_INVALID_VALUE, __func__);
+        return false;
     }
 
     GLuint w = width;
@@ -1461,7 +1475,12 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
         return;
     }
 
-    GLboolean isPaletted = (internalFormat == GL_COLOR_INDEX8_EXT || internalFormat == GL_COLOR_INDEX4_EXT) ? GL_TRUE : GL_FALSE;
+    GLboolean isPaletted = (
+        internalFormat == GL_COLOR_INDEX8_EXT ||
+        internalFormat == GL_COLOR_INDEX4_EXT ||
+        internalFormat == GL_COLOR_INDEX4_TWID_KOS ||
+        internalFormat == GL_COLOR_INDEX8_TWID_KOS
+    ) ? GL_TRUE : GL_FALSE;
     GLenum cleanInternalFormat = _cleanInternalFormat(internalFormat);
     GLuint pvrFormat = _determinePVRFormat(cleanInternalFormat);
     GLuint originalId = active->index;
@@ -1486,8 +1505,26 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
     /* All colour formats are represented as shorts internally. Paletted textures
      * are represented by byte indexes (which look up into a color table)
      */
-    GLint destStride = isPaletted ? 1 : 2;
-    GLuint bytes = (width * height * destStride);
+    GLint destStride = _determineStrideInternal(cleanInternalFormat);
+    GLint sourceStride = _determineStride(format, type);
+    GLuint srcBytes = (width * height * sourceStride);
+    GLuint destBytes = (width * height * destStride);
+
+    TextureConversionFunc conversion;
+    int needs_conversion = _determineConversion(cleanInternalFormat, format, type, &conversion);
+
+    // Hack: If we're doing a 4bpp source (via glCompressedTexture...)
+    // halve the srcBytes
+    if(format == GL_COLOR_INDEX4_EXT || format == GL_COLOR_INDEX4_TWID_KOS) {
+        srcBytes /= 2;
+    }
+
+    /* If we're packing stuff, then the dest size is half what it would be */
+    if((needs_conversion & CONVERSION_TYPE_PACK) == CONVERSION_TYPE_PACK) {
+        destBytes /= 2;
+    } else if(internalFormat == GL_COLOR_INDEX4_EXT || internalFormat == GL_COLOR_INDEX4_TWID_KOS) {
+        destBytes /= 2;
+    }
 
     if(!active->data) {
         gl_assert(active);
@@ -1504,9 +1541,9 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
         active->mipmapCount = _glGetMipmapLevelCount(active);
         active->mipmap_bias = GL_KOS_INTERNAL_DEFAULT_MIPMAP_LOD_BIAS;
         active->dataStride = destStride;
-        active->baseDataSize = bytes;
+        active->baseDataSize = destBytes;
 
-        gl_assert(bytes);
+        gl_assert(destBytes);
 
         if(level > 0) {
             /* If we're uploading a mipmap level, we need to allocate the full amount of space */
@@ -1540,24 +1577,19 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
     GLubyte* targetData = (active->baseDataOffset == 0) ? active->data : _glGetMipmapLocation(active, level);
     gl_assert(targetData);
 
-    TextureConversionFunc conversion;
-    int needs_conversion = _determineConversion(cleanInternalFormat, format, type, &conversion);
     if(needs_conversion < 0) {
         _glKosThrowError(GL_INVALID_VALUE, __func__);
         INFO_MSG("Couldn't find necessary texture conversion\n");
         return;
     } else if(needs_conversion > 0) {
         /* Convert the data */
-        GLint sourceStride = _determineStride(format, type);
-        GLint destStride = _determineStrideInternal(cleanInternalFormat);
-
         if(sourceStride == -1) {
             INFO_MSG("Stride was not detected\n");
             _glKosThrowError(GL_INVALID_OPERATION, __func__);
             return;
         }
 
-        GLubyte* conversionBuffer = (GLubyte*) memalign(32, bytes);
+        GLubyte* conversionBuffer = (GLubyte*) memalign(32, srcBytes);
         const GLubyte* src = data;
         GLubyte* dst = conversionBuffer;
 
@@ -1590,13 +1622,17 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
                 conversion(src, dst);
                 src += sourceStride;
             }
+        } else if(pack) {
+            fprintf(stderr, "Just packing\n");
+            FASTCPY(conversionBuffer, data, srcBytes);
         }
 
         if(pack) {
             assert(isPaletted);
 
+            fprintf(stderr, "Packing data...\n");
             size_t dst_byte = 0;
-            for(size_t src_byte = 0; src_byte < bytes; ++src_byte) {
+            for(size_t src_byte = 0; src_byte < srcBytes; ++src_byte) {
                 uint8_t v = conversionBuffer[src_byte];
 
                 if(src_byte % 1 == 0) {
@@ -1610,25 +1646,28 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
                 }
             }
 
-            // Halve the byte count to upload
-            bytes >>= 1;
+            fprintf(stderr, "Packed\n");
         }
 
-        FASTCPY(targetData, conversionBuffer, bytes);
+        fprintf(stderr, "Uploading data (%d)...\n", destBytes);
+        FASTCPY(targetData, conversionBuffer, destBytes);
         free(conversionBuffer);
     } else {
         /* No conversion necessary, we can just upload data directly */
         gl_assert(targetData);
         gl_assert(data);
-        gl_assert(bytes);
+        gl_assert(destBytes);
 
         /* No conversion? Just copy the data, and the pvr_format is correct */
-        FASTCPY(targetData, data, bytes);
+        fprintf(stderr, "Uploading data (%d)...\n", destBytes);
+        FASTCPY(targetData, data, destBytes);
         gl_assert(active->index == originalId);
     }
 
     gl_assert(active->index == originalId);
     _glGPUStateMarkDirty();
+
+    fprintf(stderr, "Done\n");
 }
 
 void APIENTRY glTexParameteri(GLenum target, GLenum pname, GLint param) {
@@ -1780,13 +1819,16 @@ GLAPI void APIENTRY glColorTableEXT(GLenum target, GLenum internalFormat, GLsize
     }
 
     GLint sourceStride = _determineStride(format, type);
-    GLint destStride = _determineStrideInternal(internalFormat);
+
+    /* We always store the palette in RAM in RGBA8888. We pack when we set
+     * the individual colours in the PVR */
+    GLint destStride = 4;
 
     gl_assert(sourceStride > -1);
 
     TextureConversionFunc convert;
     int ret = _determineConversion(
-        INTERNAL_PALETTE_FORMAT,
+        GL_RGBA8,
         format,
         type,
         &convert
@@ -1833,8 +1875,8 @@ GLAPI void APIENTRY glColorTableEXT(GLenum target, GLenum internalFormat, GLsize
         palette->bank = -1;
     }
 
-    palette->data = (GLubyte*) malloc(width * 4);
-    palette->format = format;
+    palette->data = (GLubyte*) malloc(width * destStride);
+    palette->format = internalFormat;
     palette->width = width;
     palette->size = (width > 16) ? 256 : 16;
     gl_assert(palette->size == 16 || palette->size == 256);

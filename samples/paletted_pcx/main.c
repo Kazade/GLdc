@@ -429,7 +429,7 @@ void LoadGLTextures() {
 #ifndef USE_16C_PALETTE
     glTexImage2D(GL_TEXTURE_2D, 0, GL_COLOR_INDEX8_EXT, image1.width, image1.height, 0, GL_COLOR_INDEX, GL_UNSIGNED_BYTE, image1.data);
 #else
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_COLOR_INDEX4_EXT, image1.width, image1.height, 0, GL_COLOR_INDEX, GL_UNSIGNED_BYTE, image1.data);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_COLOR_INDEX4_EXT, image1.width, image1.height, 0, GL_COLOR_INDEX4_EXT, GL_UNSIGNED_BYTE, image1.data);
 #endif
 
     glBindTexture(GL_TEXTURE_2D, textures[1]);   // 2d texture (x and y size)
@@ -444,7 +444,7 @@ void LoadGLTextures() {
 #ifndef USE_16C_PALETTE
     glTexImage2D(GL_TEXTURE_2D, 0, GL_COLOR_INDEX8_EXT, image1.width, image1.height, 0, GL_COLOR_INDEX, GL_UNSIGNED_BYTE, image1.data);
 #else
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_COLOR_INDEX4_EXT, image1.width, image1.height, 0, GL_COLOR_INDEX, GL_UNSIGNED_BYTE, image1.data);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_COLOR_INDEX4_EXT, image1.width, image1.height, 0, GL_COLOR_INDEX4_EXT, GL_UNSIGNED_BYTE, image1.data);
 #endif
 
     glBindTexture(GL_TEXTURE_2D, textures[2]);
@@ -463,7 +463,7 @@ void LoadGLTextures() {
 #ifndef USE_16C_PALETTE
     glTexImage2D(GL_TEXTURE_2D, 0, GL_COLOR_INDEX8_EXT, image2.width, image2.height, 0, GL_COLOR_INDEX, GL_UNSIGNED_BYTE, image2.data);
 #else
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_COLOR_INDEX4_EXT, image2.width, image2.height, 0, GL_COLOR_INDEX, GL_UNSIGNED_BYTE, image2.data);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_COLOR_INDEX4_EXT, image2.width, image2.height, 0, GL_COLOR_INDEX4_EXT, GL_UNSIGNED_BYTE, image2.data);
 #endif
 }
 

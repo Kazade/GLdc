@@ -35,8 +35,6 @@ extern const char* GLDC_VERSION;
 
 #define GL_NEARZ_CLIPPING_KOS                       0xEEFA
 
-#define GL_UNSIGNED_BYTE_TWID_KOS                   0xEEFB
-
 
 /* Initialize the GL pipeline. GL will initialize the PVR. */
 GLAPI void APIENTRY glKosInit();
