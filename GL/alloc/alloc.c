@@ -1,6 +1,7 @@
 #include <stdint.h>
 #include <string.h>
 #include <stdlib.h>
+#include <stdio.h>
 
 #include "alloc.h"
 
@@ -42,6 +43,7 @@
  *
  *  - Allocations < 2048 can still cross boundaries
  *  - Only operates on one pool (ignores what you pass)
+ *  - If there are no 2048 aligned blocks, we should fall-back to unaligned
  */
 
 #include <assert.h>
@@ -222,6 +224,11 @@ static inline uint32_t subblock_from_pointer(void* p) {
     return (ptr - pool_header.base_address) / 256;
 }
 
+static inline void block_and_offset_from_subblock(size_t sb, size_t* b, uint8_t* off) {
+    *b = sb / 8;
+    *off = (sb % 8);
+}
+
 void* alloc_malloc(void* pool, size_t size) {
     size_t start_subblock, required_subblocks;
     void* ret = alloc_next_available_ex(pool, size, &start_subblock, &required_subblocks);
@@ -231,13 +238,17 @@ void* alloc_malloc(void* pool, size_t size) {
     }
 
     if(ret) {
-        size_t offset = start_subblock % 8;
-        size_t block = start_subblock / 8;
+        size_t block;
+        uint8_t offset;
+
+        block_and_offset_from_subblock(start_subblock, &block, &offset);
+
         uint8_t mask = 0;
 
         /* Toggle any bits for the first block */
-        for(int i = offset - 1; i >= 0; --i) {
-            mask |= (1 << i);
+        int c = (required_subblocks < 8) ? required_subblocks : 8;
+        for(int i = 0; i < c; ++i) {
+            mask |= (1 << (7 - (offset + i)));
             required_subblocks--;
         }
 
@@ -309,8 +320,10 @@ void alloc_free(void* pool, void* p) {
         if(it->pointer == p) {
             size_t used_subblocks = size_to_subblock_count(it->size);
             size_t subblock = subblock_from_pointer(p);
-            size_t block = subblock / 8;
-            size_t offset = subblock % 8;
+            size_t block;
+            uint8_t offset;
+            block_and_offset_from_subblock(subblock, &block, &offset);
+
             uint8_t mask = 0;
 
             /* Wipe out any leading subblocks */
