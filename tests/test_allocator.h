@@ -55,6 +55,26 @@ public:
         free(large_pool);
     }
 
+    void test_complex_case2() {
+        uint8_t* large_pool = (uint8_t*) malloc(8 * 1024 * 1024);
+        alloc_init(large_pool, 8 * 1024 * 1024);
+
+        void* a1 = alloc_malloc(large_pool, 131072);
+        alloc_free(large_pool, a1);
+
+        alloc_malloc(large_pool, 174768);
+        void* a2 = alloc_malloc(large_pool, 131072);
+        alloc_free(large_pool, a2);
+
+        alloc_malloc(large_pool, 174768);
+        void* a3 = alloc_malloc(large_pool, 128);
+
+        alloc_free(large_pool, a3);
+
+        alloc_shutdown(large_pool);
+        free(large_pool);
+    }
+
     void test_alloc_malloc() {
         alloc_init(pool, sizeof(pool));
 

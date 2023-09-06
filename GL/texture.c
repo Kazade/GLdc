@@ -947,10 +947,7 @@ static GLint _cleanInternalFormat(GLint internalFormat) {
     case GL_COLOR_INDEX4_TWID_KOS:
         return internalFormat;
     case GL_COLOR_INDEX4_EXT:
-        // FIXME: We can't auto twiddle GL_COLOR_INDEX4 -> GL_COLOR_INDEX4_TWID_KOS
-        // so until we can, we need to not twiddle 4bpp paletted textures automatically
-        // return (TEXTURE_TWIDDLE_ENABLED) ? GL_COLOR_INDEX4_TWID_KOS : internalFormat;
-        return internalFormat;
+        return (TEXTURE_TWIDDLE_ENABLED) ? GL_COLOR_INDEX4_TWID_KOS : internalFormat;
     case GL_COLOR_INDEX8_EXT:        
         return (TEXTURE_TWIDDLE_ENABLED) ? GL_COLOR_INDEX8_TWID_KOS : internalFormat;
     case GL_RGB_TWID_KOS:
@@ -1250,9 +1247,8 @@ static int _determineConversion(GLint internalFormat, GLenum format, GLenum type
         {NULL, GL_COLOR_INDEX4_TWID_KOS, GL_COLOR_INDEX, GL_UNSIGNED_BYTE, true, true},
         {NULL, GL_COLOR_INDEX4_TWID_KOS, GL_COLOR_INDEX, GL_BYTE, true, true},
 
-        /* FIXME: Implement 4bpp -> 4bpp twiddling
         {NULL, GL_COLOR_INDEX4_TWID_KOS, GL_COLOR_INDEX4_EXT, GL_UNSIGNED_BYTE, true, false},
-        {NULL, GL_COLOR_INDEX4_TWID_KOS, GL_COLOR_INDEX4_EXT, GL_BYTE, true, false}, */
+        {NULL, GL_COLOR_INDEX4_TWID_KOS, GL_COLOR_INDEX4_EXT, GL_BYTE, true, false},
 
         {NULL, GL_COLOR_INDEX8_EXT, GL_COLOR_INDEX8_EXT, GL_UNSIGNED_BYTE, false, false},
         {NULL, GL_COLOR_INDEX8_EXT, GL_COLOR_INDEX8_EXT, GL_BYTE, false, false},
@@ -1457,6 +1453,10 @@ static bool _glTexImage2DValidate(GLenum target, GLint level, GLint internalForm
     return true;
 }
 
+static inline GLboolean is4BPPFormat(GLenum format) {
+    return format == GL_COLOR_INDEX4_EXT || format == GL_COLOR_INDEX4_TWID_KOS;
+}
+
 void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
                            GLsizei width, GLsizei height, GLint border,
                            GLenum format, GLenum type, const GLvoid *data) {
@@ -1605,14 +1605,32 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
             }
         } else if(needs_conversion == 2) {
             // Twiddle
-            for(uint32_t i = 0; i < (width * height); ++i) {
-                uint32_t newLocation = twid_location(i, width, height);
-                dst = conversionBuffer + (destStride * newLocation);
+            if(is4BPPFormat(internalFormat) && is4BPPFormat(format)) {
+                // Special case twiddling. We have to unpack each src value
+                // and repack into the right place
+                for(uint32_t i = 0; i < (width * height); ++i) {
+                    uint32_t newLocation = twid_location(i, width, height);
 
-                for(int j = 0; j < destStride; ++j)
-                    *dst++ = *src++;
+                    // This is the src/dest byte, but we need to figure
+                    // out which half based on the odd/even of i
+                    src = &((uint8_t*) data)[i / 2];
+                    dst = &conversionBuffer[newLocation / 2];
+                    if(i % 2 == 0) {
+                        *dst = (*dst & 0xF) | (*src & 0xF0);
+                    } else {
+                        *dst = (*dst & 0xF0) | (*src & 0xF);
+                    }
+                }
+            } else {
+                for(uint32_t i = 0; i < (width * height); ++i) {
+                    uint32_t newLocation = twid_location(i, width, height);
+                    dst = conversionBuffer + (destStride * newLocation);
 
-                src += sourceStride;
+                    for(int j = 0; j < destStride; ++j)
+                        *dst++ = *src++;
+
+                    src += sourceStride;
+                }
             }
         } else if(needs_conversion == 3) {
             // Convert + twiddle
@@ -1623,14 +1641,11 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
                 src += sourceStride;
             }
         } else if(pack) {
-            fprintf(stderr, "Just packing\n");
             FASTCPY(conversionBuffer, data, srcBytes);
         }
 
         if(pack) {
             assert(isPaletted);
-
-            fprintf(stderr, "Packing data...\n");
             size_t dst_byte = 0;
             for(size_t src_byte = 0; src_byte < srcBytes; ++src_byte) {
                 uint8_t v = conversionBuffer[src_byte];
@@ -1645,11 +1660,8 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
                     dst_byte++;
                 }
             }
-
-            fprintf(stderr, "Packed\n");
         }
 
-        fprintf(stderr, "Uploading data (%d)...\n", destBytes);
         FASTCPY(targetData, conversionBuffer, destBytes);
         free(conversionBuffer);
     } else {
@@ -1659,15 +1671,12 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
         gl_assert(destBytes);
 
         /* No conversion? Just copy the data, and the pvr_format is correct */
-        fprintf(stderr, "Uploading data (%d)...\n", destBytes);
         FASTCPY(targetData, data, destBytes);
         gl_assert(active->index == originalId);
     }
 
     gl_assert(active->index == originalId);
     _glGPUStateMarkDirty();
-
-    fprintf(stderr, "Done\n");
 }
 
 void APIENTRY glTexParameteri(GLenum target, GLenum pname, GLint param) {

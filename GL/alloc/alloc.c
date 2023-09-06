@@ -47,10 +47,19 @@
  */
 
 #include <assert.h>
+#include <stdio.h>
 
 #define EIGHT_MEG (8 * 1024 * 1024)
 #define TWO_KILOBYTES (2 * 1024)
 #define BLOCK_COUNT (EIGHT_MEG / TWO_KILOBYTES)
+
+#define ALLOC_DEBUG 0
+#if ALLOC_DEBUG
+#define DBG_MSG(fmt, ...) fprintf(stderr, fmt, ##__VA_ARGS__)
+#else
+#define DBG_MSG(fmt, ...) do {} while (0)
+#endif
+
 
 static inline int round_up(int n, int multiple)
 {
@@ -230,6 +239,8 @@ static inline void block_and_offset_from_subblock(size_t sb, size_t* b, uint8_t*
 }
 
 void* alloc_malloc(void* pool, size_t size) {
+    DBG_MSG("Allocating: %d\n", size);
+
     size_t start_subblock, required_subblocks;
     void* ret = alloc_next_available_ex(pool, size, &start_subblock, &required_subblocks);
 
@@ -244,6 +255,8 @@ void* alloc_malloc(void* pool, size_t size) {
         block_and_offset_from_subblock(start_subblock, &block, &offset);
 
         uint8_t mask = 0;
+
+        DBG_MSG("Alloc: size: %d, rs: %d, sb: %d, b: %d, off: %d\n", size, required_subblocks, start_subblock, start_subblock / 8, start_subblock % 8);
 
         /* Toggle any bits for the first block */
         int c = (required_subblocks < 8) ? required_subblocks : 8;
@@ -308,6 +321,8 @@ void* alloc_malloc(void* pool, size_t size) {
         }
     }
 
+    DBG_MSG("Alloc done\n");
+
     return ret;
 }
 
@@ -326,9 +341,12 @@ void alloc_free(void* pool, void* p) {
 
             uint8_t mask = 0;
 
+            DBG_MSG("Free: size: %d, us: %d, sb: %d, off: %d\n", it->size, used_subblocks, block, offset);
+
             /* Wipe out any leading subblocks */
-            for(int i = offset; i > 0; --i) {
-                mask |= (1 << i);
+            int c = (used_subblocks < 8) ? used_subblocks : 8;
+            for(int i = 0; i < c; ++i) {
+                mask |= (1 << (7 - (offset + i)));
                 used_subblocks--;
             }
 
@@ -359,6 +377,7 @@ void alloc_free(void* pool, void* p) {
                 pool_header.allocations = it->next;
             }
 
+            DBG_MSG("Freed: size: %d, us: %d, sb: %d, off: %d\n", it->size, used_subblocks, block, offset);
             free(it);
             break;
         }
@@ -366,6 +385,8 @@ void alloc_free(void* pool, void* p) {
         last = it;
         it = it->next;
     }
+
+    DBG_MSG("Free done\n");
 }
 
 void alloc_defrag_start(void* pool) {
