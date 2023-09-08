@@ -78,8 +78,8 @@ static const unsigned short MortonTable256[256] =
 /* Given a 0-based texel location, and an image width/height. Return the
  * new 0-based texel location */
 GL_FORCE_INLINE uint32_t twid_location(uint32_t i, uint32_t w, uint32_t h) {
-    uint16_t y = i % w;
-    uint16_t x = i / w;
+    uint16_t y = i / w;
+    uint16_t x = i % w;
 
     return MortonTable256[y >> 8]   << 17 |
            MortonTable256[x >> 8]   << 16 |
@@ -1611,14 +1611,21 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
                 for(uint32_t i = 0; i < (width * height); ++i) {
                     uint32_t newLocation = twid_location(i, width, height);
 
+                    assert(newLocation < (width * height));
+                    assert((newLocation / 2) < destBytes);
+                    assert((i / 2) < srcBytes);
+
                     // This is the src/dest byte, but we need to figure
                     // out which half based on the odd/even of i
                     src = &((uint8_t*) data)[i / 2];
                     dst = &conversionBuffer[newLocation / 2];
-                    if(i % 2 == 0) {
-                        *dst = (*dst & 0xF) | (*src & 0xF0);
+
+                    uint8_t src_value = (i % 2) == 0 ? (*src >> 4) : (*src & 0xF);
+
+                    if(newLocation % 2 == 0) {
+                        *dst = (*dst & 0xF) | (src_value << 4);
                     } else {
-                        *dst = (*dst & 0xF0) | (*src & 0xF);
+                        *dst = (*dst & 0xF0) | (src_value & 0xF);
                     }
                 }
             } else {
@@ -2044,21 +2051,20 @@ GLuint _glFreeContiguousTextureMemory() {
     return alloc_count_continuous(ALLOC_BASE);
 }
 
-GLAPI GLvoid APIENTRY glDefragmentTextureMemory_KOS(void) {
-    alloc_defrag_start(ALLOC_BASE);
-
-    GLuint id;
-
-    /* Replace all texture pointers */
-    for(id = 0; id < MAX_TEXTURE_COUNT; id++){
+static void update_data_pointer(void* src, void* dst, void*) {
+    for(size_t id = 0; id < MAX_TEXTURE_COUNT; id++){
         TextureObject* txr = (TextureObject*) named_array_get(&TEXTURE_OBJECTS, id);
-        if(txr){
+        if(txr && txr->data == src) {
+            fprintf(stderr, "Defrag moved 0x%x -> 0x%x\n", src, dst);
             gl_assert(txr->index == id);
-            txr->data = alloc_defrag_address(ALLOC_BASE, txr->data);
+            txr->data = dst;
+            return;
         }
     }
+}
 
-    alloc_defrag_commit(ALLOC_BASE);
+GLAPI GLvoid APIENTRY glDefragmentTextureMemory_KOS(void) {
+    alloc_run_defrag(ALLOC_BASE, update_data_pointer, 5, NULL);
 }
 
 GLAPI void APIENTRY glGetTexImage(GLenum tex, GLint lod, GLenum format, GLenum type, GLvoid* img) {

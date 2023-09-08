@@ -14,10 +14,8 @@ void alloc_shutdown(void* pool);
 void *alloc_malloc(void* pool, size_t size);
 void alloc_free(void* pool, void* p);
 
-void alloc_defrag_start(void* pool);
-void* alloc_defrag_address(void* pool, void* p);
-void alloc_defrag_commit(void* pool);
-bool alloc_defrag_in_progress(void* pool);
+typedef void (defrag_address_move)(void*, void*, void*);
+void alloc_run_defrag(void* pool, defrag_address_move callback, int max_iterations, void* user_data);
 
 size_t alloc_count_free(void* pool);
 size_t alloc_count_continuous(void* pool);

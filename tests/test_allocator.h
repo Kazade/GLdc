@@ -1,7 +1,9 @@
 #include "tools/test.h"
 
-#include <stdint.h>
-#include <assert.h>
+#include <cstdint>
+#include <cassert>
+#include <malloc.h>
+#include <utility>
 
 #include <GL/gl.h>
 #include <GL/glkos.h>
@@ -14,22 +16,52 @@ static inline int round_up(int n, int multiple)
     return ((n + multiple - 1) / multiple) * multiple;
 }
 
+#define POOL_SIZE (16 * 2048)
+
 class AllocatorTests : public test::TestCase {
 public:
-    uint8_t __attribute__((aligned(2048))) pool[16 * 2048];
+    uint8_t* pool = NULL;
+
+    std::vector<std::pair<void*, void*>> defrag_moves;
 
     void set_up() {
+        pool = (uint8_t*) memalign(2048, POOL_SIZE);
         assert(((intptr_t) pool) % 2048 == 0);
     }
 
     void tear_down() {
         alloc_shutdown(pool);
+        free(pool);
+    }
+
+    static void on_defrag(void* src, void* dst, void* user_data) {
+        AllocatorTests* self = (AllocatorTests*) user_data;
+        self->defrag_moves.push_back(std::make_pair(src, dst));
+    }
+
+    void test_defrag() {
+        alloc_init(pool, POOL_SIZE);
+
+        alloc_malloc(pool, 256);
+        void* a2 = alloc_malloc(pool, 256);
+        void* a3 = alloc_malloc(pool, 256);
+
+        alloc_free(pool, a2);
+
+        alloc_run_defrag(pool, &AllocatorTests::on_defrag, 5, this);
+
+        assert_equal(defrag_moves.size(), 1u); // Moved a3 -> a2
+
+        assert_equal(defrag_moves[0].first, a3);
+        assert_equal(defrag_moves[0].second, a2);
+
+        assert_equal(alloc_malloc(pool, 256), a3);
     }
 
     void test_poor_alloc_aligned() {
         /* If we try to allocate and there are no suitable aligned
          * slots available, we fallback to any available unaligned slots */
-        alloc_init(pool, sizeof(pool));
+        alloc_init(pool, POOL_SIZE);
 
         // Leave only space for an unaligned block
         alloc_malloc(pool, (15 * 2048) - 256);
@@ -44,7 +76,7 @@ public:
         /*
          * If we try to allocate a small block, it should not
          * cross a 2048 boundary unless there is no other option */
-        alloc_init(pool, sizeof(pool));
+        alloc_init(pool, POOL_SIZE);
         alloc_malloc(pool, (15 * 2048) - 256);
         void* a1 = alloc_malloc(pool, 512);
         assert_true((uintptr_t(a1) % 2048) == 0); // Should've aligned to the last 2048 block
@@ -59,14 +91,14 @@ public:
     }
 
     void test_alloc_init() {
-        alloc_init(pool, sizeof(pool));
+        alloc_init(pool, POOL_SIZE);
 
         void* expected_base_address = (void*) round_up((uintptr_t) pool, 2048);
         assert_equal(alloc_next_available(pool, 16), expected_base_address);
         assert_equal(alloc_base_address(pool), expected_base_address);
 
         size_t expected_blocks = (
-            uintptr_t(pool + sizeof(pool)) -
+            uintptr_t(pool + POOL_SIZE) -
             uintptr_t(expected_base_address)
         ) / 2048;
 
@@ -109,7 +141,7 @@ public:
     }
 
     void test_alloc_malloc() {
-        alloc_init(pool, sizeof(pool));
+        alloc_init(pool, POOL_SIZE);
 
         uint8_t* base_address = (uint8_t*) alloc_base_address(pool);
         void* a1 = alloc_malloc(pool, 1024);

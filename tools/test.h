@@ -289,7 +289,13 @@ public:
             std::function<void()> func = std::bind(method, dynamic_cast<T*>(instance.get()));
             tests_.push_back([=]() {
                 instance->set_up();
-                func();
+                try {
+                    func();
+                } catch(...) {
+                    instance->tear_down();
+                    throw;
+                }
+
                 instance->tear_down();
             });
         }
