@@ -44,6 +44,7 @@
  *  - Allocations < 2048 can still cross boundaries
  *  - Only operates on one pool (ignores what you pass)
  *  - If there are no 2048 aligned blocks, we should fall-back to unaligned
+ *  - Defrag not implemented!
  */
 
 #include <assert.h>
@@ -61,8 +62,12 @@
 #endif
 
 
-static inline int round_up(int n, int multiple)
+static inline intptr_t round_up(intptr_t n, int multiple)
 {
+    if((n % multiple) == 0) {
+        return n;
+    }
+
     assert(multiple);
     return ((n + multiple - 1) / multiple) * multiple;
 }
@@ -112,6 +117,23 @@ size_t alloc_block_count(void* pool) {
     return pool_header.block_count;
 }
 
+static inline void* calc_address(
+    uint8_t* block_usage_iterator,
+    int bit_offset,
+    size_t required_subblocks,
+    size_t* start_subblock_out
+) {
+    uintptr_t offset = (block_usage_iterator - pool_header.block_usage) * 8;
+    offset += (bit_offset + 1);
+    offset -= required_subblocks;
+
+    if(start_subblock_out) {
+        *start_subblock_out = offset;
+    }
+
+    return pool_header.base_address + (offset * 256);
+}
+
 void* alloc_next_available_ex(void* pool, size_t required_size, size_t* start_subblock, size_t* required_subblocks);
 
 void* alloc_next_available(void* pool, size_t required_size) {
@@ -125,7 +147,7 @@ void* alloc_next_available_ex(void* pool, size_t required_size, size_t* start_su
     uint32_t required_subblocks = (required_size / 256);
     if(required_size % 256) required_subblocks += 1;
 
-    uint8_t* end = pool_header.block_usage + pool_header.block_count;
+    // uint8_t* end = pool_header.block_usage + pool_header.block_count;
 
     /* Anything gte to 2048 must be aligned to a 2048 boundary */
     bool requires_alignment = required_size >= 2048;
@@ -133,16 +155,27 @@ void* alloc_next_available_ex(void* pool, size_t required_size, size_t* start_su
     if(required_subblocks_out) {
         *required_subblocks_out = required_subblocks;
     }
-    while(it < end) {
-        uint32_t found_subblocks = 0;
 
+    /* This is a fallback option. If while we're searching we find a possible slot
+     * but it's not aligned, or it's straddling a 2k boundary, then we store
+     * it here and if we reach the end of the search and find nothing better
+     * we use this instead */
+
+    uint8_t* poor_option = NULL;
+    size_t poor_start_subblock = 0;
+
+    uint32_t found_subblocks = 0;
+    uint32_t found_poor_subblocks = 0;
+
+    for(size_t j = 0; j < pool_header.block_count; ++j, ++it) {
         /* We just need to find enough consecutive blocks */
-        while(found_subblocks < required_subblocks) {
+        if(found_subblocks < required_subblocks) {
             uint8_t t = *it;
 
             /* Optimisation only. Skip over full blocks */
             if(t == 255) {
                 found_subblocks = 0;
+                found_poor_subblocks = 0;
             } else {
                 /* Now let's see how many consecutive blocks we can find */
                 for(int i = 0; i < 8; ++i) {
@@ -153,35 +186,39 @@ void* alloc_next_available_ex(void* pool, size_t required_size, size_t* start_su
                             found_subblocks = 0;
                         } else {
                             found_subblocks++;
-                            if(found_subblocks >= required_subblocks) {
-                                /* We found space! Now calculate the address */
-                                uintptr_t offset = (it - pool_header.block_usage) * 8;
-                                offset += (i + 1);
-                                offset -= required_subblocks;
-
-                                if(start_subblock_out) {
-                                    *start_subblock_out = offset;
-                                }
-
-                                return pool_header.base_address + (offset * 256);
-                            }
                         }
+
+                        found_poor_subblocks++;
+
+                        if(found_subblocks >= required_subblocks) {
+                            /* We found space! Now calculate the address */
+                            return calc_address(it, i, required_subblocks, start_subblock_out);
+                        }
+
+                        if(!poor_option && (found_poor_subblocks >= required_subblocks)) {
+                            poor_option = calc_address(it, i, required_subblocks, &poor_start_subblock);
+                        }
+
                     } else {
                         found_subblocks = 0;
+                        found_poor_subblocks = 0;
                     }
 
                     t <<= 1;
                 }
             }
-
-            ++it;
-            if(it >= end) {
-                return NULL;
-            }
         }
     }
 
-    return NULL;
+    if(poor_option) {
+        if(start_subblock_out) {
+            *start_subblock_out = poor_start_subblock;
+        }
+
+        return poor_option;
+    } else {
+        return NULL;
+    }
 }
 
 int alloc_init(void* pool, size_t size) {
@@ -200,7 +237,11 @@ int alloc_init(void* pool, size_t size) {
     memset(pool_header.block_usage, 0, sizeof(pool_header.block_usage));
     pool_header.pool = pool;
     pool_header.pool_size = size;
-    pool_header.base_address = (uint8_t*) round_up((uintptr_t) pool_header.pool, 2048);
+
+    intptr_t base_address = (intptr_t) pool_header.pool;
+    base_address = round_up(base_address, 2048);
+
+    pool_header.base_address = (uint8_t*) base_address;
     pool_header.block_count = ((p + size) - pool_header.base_address) / 2048;
     pool_header.allocations = NULL;
 

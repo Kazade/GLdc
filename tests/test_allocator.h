@@ -19,12 +19,45 @@ public:
     uint8_t __attribute__((aligned(2048))) pool[16 * 2048];
 
     void set_up() {
+        assert(((intptr_t) pool) % 2048 == 0);
     }
 
     void tear_down() {
         alloc_shutdown(pool);
     }
-    
+
+    void test_poor_alloc_aligned() {
+        /* If we try to allocate and there are no suitable aligned
+         * slots available, we fallback to any available unaligned slots */
+        alloc_init(pool, sizeof(pool));
+
+        // Leave only space for an unaligned block
+        alloc_malloc(pool, (15 * 2048) - 256);
+
+        // Should work, we have space (just) but it's not aligned
+        void* a1 = alloc_malloc(pool, 2048 + 256);
+        assert_is_not_null(a1);
+        assert_equal(a1, pool + ((15 * 2048) - 256));
+    }
+
+    void test_poor_alloc_straddling() {
+        /*
+         * If we try to allocate a small block, it should not
+         * cross a 2048 boundary unless there is no other option */
+        alloc_init(pool, sizeof(pool));
+        alloc_malloc(pool, (15 * 2048) - 256);
+        void* a1 = alloc_malloc(pool, 512);
+        assert_true((uintptr_t(a1) % 2048) == 0); // Should've aligned to the last 2048 block
+
+        /* Allocate the rest of the last block, this leaves a 256 block in the
+         * penultimate block */
+        alloc_malloc(pool, 1536);
+        alloc_free(pool, a1);
+
+        /* No choice but to straddle the boundary */
+        a1 = alloc_malloc(pool, 768);
+    }
+
     void test_alloc_init() {
         alloc_init(pool, sizeof(pool));
 
