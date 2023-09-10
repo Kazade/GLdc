@@ -281,6 +281,8 @@ int BMP_GetPalette(FILE *pFile)
 		}
 		return 1;
 	}
+
+    fprintf(stderr, "BitCount: %d\n", BmpInfoHeader.BitCount);
 	return 0;
 }
 
@@ -346,7 +348,7 @@ int LoadPalettedBMP(const char* filename, Image* image)
 	}
 
 	if (!BMP_GetPalette(fp)) {
-		printf("Only 16c BMP are supported for this sample");
+        printf("Only 16c BMP are supported for this sample\n");
 		return 0;
 	}
 

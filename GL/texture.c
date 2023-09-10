@@ -75,16 +75,70 @@ static const unsigned short MortonTable256[256] =
 };
 
 
+static struct TwiddleTable {
+    int32_t width;
+    int32_t height;
+    int32_t* table;
+} TWIDDLE_TABLE = {0, 0, NULL};
+
+
+int32_t twiddle_recurse(int32_t* table, int32_t stride, int32_t x, int32_t y, int32_t block_size, int32_t idx) {
+    int32_t prev_idx = idx;
+    if(block_size == 1) {
+        table[idx++] = y * stride + x;
+    } else {
+        block_size = block_size >> 1;
+        idx += twiddle_recurse(table, stride, x, y, block_size, idx);
+        idx += twiddle_recurse(table, stride, x, y + block_size, block_size, idx);
+        idx += twiddle_recurse(table, stride, x + block_size, y, block_size, idx);
+        idx += twiddle_recurse(table, stride, x + block_size, y + block_size, block_size, idx);
+    }
+
+    return (idx - prev_idx);
+}
+
+void build_twiddle_table(int32_t* table, int32_t w, int32_t h) {
+    free(TWIDDLE_TABLE.table);
+    TWIDDLE_TABLE.table = (int32_t*) malloc(w * h * sizeof(int32_t));
+    TWIDDLE_TABLE.width = w;
+    TWIDDLE_TABLE.height = h;
+
+    int32_t idx = 0;
+
+    if(w < h) {
+        for(int32_t i = 0; i < h; i += w) {
+            idx += twiddle_recurse(table, w, 0, i, w, idx);
+        }
+    } else {
+        for(int32_t i = 0; i < w; i += h) {
+            idx += twiddle_recurse(table, w, i, 0, h, idx);
+        }
+    }
+}
+
 /* Given a 0-based texel location, and an image width/height. Return the
  * new 0-based texel location */
 GL_FORCE_INLINE uint32_t twid_location(uint32_t i, uint32_t w, uint32_t h) {
-    uint16_t y = i / w;
-    uint16_t x = i % w;
+    if(TWIDDLE_TABLE.width != w || TWIDDLE_TABLE.height != h || !TWIDDLE_TABLE.table) {
+        build_twiddle_table(TWIDDLE_TABLE.table, w, h);
+    }
 
-    return MortonTable256[y >> 8]   << 17 |
-           MortonTable256[x >> 8]   << 16 |
-           MortonTable256[y & 0xFF] <<  1 |
-           MortonTable256[x & 0xFF];
+    uint32_t ret = TWIDDLE_TABLE.table[i];
+    fprintf(stderr, "%d -> %d\n", i, ret);
+
+    return ret;
+
+//    uint32_t x = i % w;
+//    uint32_t y = i / w;
+
+//    uint32_t ret = MortonTable256[y >> 8]   << 17 |
+//           MortonTable256[x >> 8]   << 16 |
+//           MortonTable256[y & 0xFF] <<  1 |
+//           MortonTable256[x & 0xFF];
+
+//    uint32_t min = (w < h) ? w : h;
+//    uint32_t r = (x / min + y / min) * min * min / 2;
+//    return ret + r;
 }
 
 
@@ -1024,6 +1078,8 @@ static GLuint _determinePVRFormat(GLint internalFormat) {
     /* Given a cleaned internalFormat, return the Dreamcast format
      * that can hold it
      */
+
+    fprintf(stderr, "Internal format -> 0x%x\n", internalFormat);
     switch(internalFormat) {
     case GL_RGB565_KOS:
         return GPU_TXRFMT_RGB565 | GPU_TXRFMT_NONTWIDDLED;
