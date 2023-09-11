@@ -1,5 +1,6 @@
 stages:
   - build
+  - test
 
 build:sh4-gcc:
   stage: build
@@ -17,7 +18,7 @@ build:sh4-gcc:
     
 build:x86-gcc:
   stage: build
-  image: fedora:34
+  image: fedora:38
   before_script:
     - sudo dnf install -y cmake gcc gcc-c++ SDL2-devel glibc-devel pkgconf-pkg-config glibc-devel.i686 SDL2-devel.i686
   script:
@@ -25,3 +26,18 @@ build:x86-gcc:
     - cd builddir
     - cmake -DCMAKE_BUILD_TYPE=Release ..
     - make
+  artifacts:
+    paths:
+    - builddir/tests/gldc_tests
+    
+test:x86-gcc:
+  stage: build
+  image: fedora:38
+  before_script:
+    - sudo dnf install -y cmake gcc gcc-c++ SDL2-devel glibc-devel pkgconf-pkg-config glibc-devel.i686 SDL2-devel.i686
+  script:
+    - cd builddir/tests/
+    - SDL_VIDEODRIVER=dummy ./gldc_tests --junit-xml=report.xml
+  artifacts:
+   reports:
+    junit: builddir/tests/report.xml
