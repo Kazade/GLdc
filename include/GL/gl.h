@@ -310,7 +310,7 @@ __BEGIN_DECLS
 #define GL_4_BYTES                              0x1409
 
 /* ErrorCode */
-#define GL_NO_ERROR                       0
+#define GL_NO_ERROR                       ((GLenum) 0)
 #define GL_INVALID_ENUM                   0x0500
 #define GL_INVALID_VALUE                  0x0501
 #define GL_INVALID_OPERATION              0x0502
@@ -371,6 +371,31 @@ __BEGIN_DECLS
 #define GL_RGBA                           0x1908
 #define GL_LUMINANCE                      0x1909
 #define GL_LUMINANCE_ALPHA                0x190A
+
+#define GL_R3_G3_B2                    0x2A10
+
+#define GL_ALPHA4                    0x803B
+#define GL_ALPHA8                    0x803C
+#define GL_ALPHA12                    0x803D
+#define GL_ALPHA16                    0x803E
+
+#define GL_LUMINANCE4                  0x803F
+#define GL_LUMINANCE8                  0x8040
+#define GL_LUMINANCE12                  0x8041
+#define GL_LUMINANCE16                  0x8042
+
+#define GL_LUMINANCE4_ALPHA4              0x8043
+#define GL_LUMINANCE6_ALPHA2              0x8044
+#define GL_LUMINANCE8_ALPHA8              0x8045
+#define GL_LUMINANCE12_ALPHA4              0x8046
+#define GL_LUMINANCE12_ALPHA12              0x8047
+#define GL_LUMINANCE16_ALPHA16              0x8048
+
+#define GL_INTENSITY4                  0x804A
+#define GL_INTENSITY8                  0x804B
+#define GL_INTENSITY12                  0x804C
+#define GL_INTENSITY16                  0x804D
+
 #define GL_BGRA                           0x80E1
 #define GL_INTENSITY                      0x8049
 #define GL_RGB4                           0x804F
@@ -386,6 +411,14 @@ __BEGIN_DECLS
 #define GL_RGB10_A2                       0x8059
 #define GL_RGBA12                         0x805A
 #define GL_RGBA16                         0x805B
+
+#define GL_R8                      0x8229
+#define GL_RG8                      0x822B
+#define GL_RG                      0x8227
+#define GL_R16                      0x822A
+#define GL_RG16                      0x822C
+#define GL_COMPRESSED_RED                0x8225
+#define GL_COMPRESSED_RG                0x8226
 
 /* Polygons */
 #define GL_POINT				0x1B00

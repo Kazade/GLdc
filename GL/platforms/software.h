@@ -48,7 +48,8 @@ void TransformVec3NoMod(const float* v, float* ret);
 
 /* Transform a 3-element normal using the stored matrix (w == 0)*/
 static inline void TransformNormalNoMod(const float* xIn, float* xOut) {
-
+    (void) xIn;
+    (void) xOut;
 }
 
 void TransformVertices(Vertex* vertices, const int count);

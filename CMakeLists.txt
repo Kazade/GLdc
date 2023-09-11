@@ -54,10 +54,10 @@ else()
     set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO} -ffast-math")
 endif()
 
-set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -O3 -mpretend-cmove -fexpensive-optimizations -fomit-frame-pointer -finline-functions")
+set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -O3 -fexpensive-optimizations -fomit-frame-pointer -finline-functions")
 set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -std=c++14 -O3 -g0 -s -fomit-frame-pointer -fstrict-aliasing")
 
-set(CMAKE_C_FLAGS_RELWITHDEBINFO "${CMAKE_C_FLAGS_RELWITHDEBINFO} -O3 -mpretend-cmove -fexpensive-optimizations -fomit-frame-pointer -finline-functions")
+set(CMAKE_C_FLAGS_RELWITHDEBINFO "${CMAKE_C_FLAGS_RELWITHDEBINFO} -O3 -fexpensive-optimizations -fomit-frame-pointer -finline-functions")
 set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO} -std=c++14 -O3 -fomit-frame-pointer -fstrict-aliasing")
 
 set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -O0 -g -Wall -Wextra")
@@ -80,7 +80,7 @@ set(
     GL/state.c
     GL/texture.c
     GL/util.c
-    GL/yalloc/yalloc.c
+    GL/alloc/alloc.c
     ${CMAKE_CURRENT_BINARY_DIR}/version.c
 )
 
@@ -175,6 +175,8 @@ function(gen_sample sample)
     endif()
 endfunction()
 
+add_subdirectory(tests)
+
 gen_sample(blend_test samples/blend_test/main.c)
 gen_sample(depth_funcs samples/depth_funcs/main.c)
 gen_sample(depth_funcs_alpha_testing samples/depth_funcs_alpha_testing/main.c samples/depth_funcs_alpha_testing/gl_png.c)
@@ -206,12 +208,13 @@ gen_sample(zclip_trianglestrip samples/zclip_trianglestrip/main.c)
 gen_sample(scissor samples/scissor/main.c)
 gen_sample(polymark samples/polymark/main.c)
 gen_sample(cubes samples/cubes/main.cpp)
-
 gen_sample(zclip_test tests/zclip/main.cpp)
 
 if(PLATFORM_DREAMCAST)
     gen_sample(trimark samples/trimark/main.c)
     gen_sample(quadmark samples/quadmark/main.c samples/profiler.c)
+    gen_sample(prof_texture_upload samples/prof_texture_upload/main.c samples/profiler.c)
 else()
     gen_sample(quadmark samples/quadmark/main.c)
+    gen_sample(prof_texture_upload samples/prof_texture_upload/main.c)
 endif()

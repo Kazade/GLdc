@@ -46,10 +46,22 @@ void APIENTRY glKosInitConfig(GLdcConfig* config) {
     config->initial_pt_capacity = 512 * 3;
     config->initial_tr_capacity = 1024 * 3;
     config->initial_immediate_capacity = 1024 * 3;
-    config->internal_palette_format = GL_RGBA8;
+
+    // RGBA4444 is the fastest general format - 8888 will cause a perf issue
+    config->internal_palette_format = GL_RGBA4;
+
+    config->texture_twiddle = GL_TRUE;
 }
 
+static bool _initialized = false;
+
 void APIENTRY glKosInitEx(GLdcConfig* config) {
+    if(_initialized) {
+        return;
+    }
+
+    _initialized = true;
+
     TRACE();
 
     printf("\nWelcome to GLdc! Git revision: %s\n\n", GLDC_VERSION);
@@ -70,6 +82,10 @@ void APIENTRY glKosInitEx(GLdcConfig* config) {
 
     _glInitTextures();
 
+    if(config->texture_twiddle) {
+        glEnable(GL_TEXTURE_TWIDDLE_KOS);
+    }
+
     OP_LIST.list_type = GPU_LIST_OP_POLY;
     PT_LIST.list_type = GPU_LIST_PT_POLY;
     TR_LIST.list_type = GPU_LIST_TR_POLY;
@@ -81,6 +97,12 @@ void APIENTRY glKosInitEx(GLdcConfig* config) {
     aligned_vector_reserve(&OP_LIST.vector, config->initial_op_capacity);
     aligned_vector_reserve(&PT_LIST.vector, config->initial_pt_capacity);
     aligned_vector_reserve(&TR_LIST.vector, config->initial_tr_capacity);
+}
+
+void APIENTRY glKosShutdown() {
+    aligned_vector_clear(&OP_LIST.vector);
+    aligned_vector_clear(&PT_LIST.vector);
+    aligned_vector_clear(&TR_LIST.vector);
 }
 
 void APIENTRY glKosInit() {
