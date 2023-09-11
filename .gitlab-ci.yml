@@ -31,7 +31,7 @@ build:x86-gcc:
     - builddir/tests/gldc_tests
     
 test:x86-gcc:
-  stage: build
+  stage: test
   image: fedora:38
   before_script:
     - sudo dnf install -y cmake gcc gcc-c++ SDL2-devel glibc-devel pkgconf-pkg-config glibc-devel.i686 SDL2-devel.i686
