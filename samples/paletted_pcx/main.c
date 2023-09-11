@@ -254,6 +254,8 @@ int BMP_Infos(FILE *pFile, uint32_t *width, uint32_t *height)
 	*width = (uint32_t)BmpInfoHeader.Width;
 	*height = (uint32_t)BmpInfoHeader.Height;
 
+    fseek(pFile, BmpInfoHeader.Size + 14, SEEK_SET);
+
 	return 1;
 }
 
@@ -270,6 +272,7 @@ int BMP_GetPalette(FILE *pFile)
 		bitCount = BmpInfoHeader.ClrImportant * sizeof(RGB_QUAD);
 
 		if (fread(BmpRgbQuad, 1, bitCount, pFile) != bitCount){
+            fprintf(stderr, "Failed to read palette: %d\n", bitCount);
 			return 0;
 		}
 

@@ -61,7 +61,6 @@ void LoadGLTextures() {
 /* A general OpenGL initialization function.  Sets all of the initial parameters. */
 void InitGL(int Width, int Height)	        // We call this right after our OpenGL window is created.
 {
-    glEnable(GL_TEXTURE_TWIDDLE_KOS);
     LoadGLTextures();
     glEnable(GL_TEXTURE_2D);
     glClearColor(0.0f, 0.0f, 0.0f, 0.0f);		// This Will Clear The Background Color To Black
