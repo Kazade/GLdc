@@ -20,7 +20,7 @@ build:x86-gcc:
   stage: build
   image: fedora:38
   before_script:
-    - sudo dnf install -y cmake gcc gcc-c++ SDL2-devel glibc-devel pkgconf-pkg-config glibc-devel.i686 SDL2-devel.i686
+    - sudo dnf install -y cmake gcc gcc-c++ SDL2.i686 SDL2-devel glibc-devel pkgconf-pkg-config glibc-devel.i686 SDL2-devel.i686 pkgconf-pkg-config.i686
   script:
     - mkdir builddir
     - cd builddir
@@ -36,7 +36,7 @@ test:x86-gcc:
   dependencies:
     - build:x86-gcc
   before_script:
-    - sudo dnf install -y cmake gcc gcc-c++ SDL2-devel glibc-devel pkgconf-pkg-config glibc-devel.i686 SDL2-devel.i686
+    - sudo dnf install -y cmake gcc gcc-c++ SDL2.i686 SDL2-devel glibc-devel pkgconf-pkg-config glibc-devel.i686 SDL2-devel.i686 pkgconf-pkg-config.i686
   script:
     - cd builddir/tests/
     - SDL_VIDEODRIVER=dummy ./gldc_tests --junit-xml=report.xml
