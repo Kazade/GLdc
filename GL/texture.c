@@ -905,21 +905,6 @@ void APIENTRY glCompressedTexImage2DARB(GLenum target,
     _glGPUStateMarkDirty();
 }
 
-static GLboolean isTwiddledInternalFormat(GLint internalFormat) {
-    switch(internalFormat) {
-    case GL_RGB565_TWID_KOS:
-    case GL_ARGB4444_TWID_KOS:
-    case GL_ARGB1555_TWID_KOS:
-    case GL_COLOR_INDEX8_TWID_KOS:
-    case GL_COLOR_INDEX4_TWID_KOS:
-    case GL_RGB_TWID_KOS:
-    case GL_RGBA_TWID_KOS:
-        return true;
-    default:
-        return false;
-    }
-}
-
 /**
  * Takes an internal format, and returns a GL format matching how we'd store
  * it internally, so it'll return one of the following:
@@ -2059,7 +2044,6 @@ static void update_data_pointer(void* src, void* dst, void*) {
     for(size_t id = 0; id < MAX_TEXTURE_COUNT; id++){
         TextureObject* txr = (TextureObject*) named_array_get(&TEXTURE_OBJECTS, id);
         if(txr && txr->data == src) {
-            fprintf(stderr, "Defrag moved 0x%x -> 0x%x\n", src, dst);
             gl_assert(txr->index == id);
             txr->data = dst;
             return;
