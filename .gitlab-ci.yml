@@ -20,7 +20,7 @@ build:x86-gcc:
   stage: build
   image: fedora:38
   before_script:
-    - sudo dnf install -y cmake gcc gcc-c++ SDL2.i686 SDL2-devel glibc-devel pkgconf-pkg-config glibc-devel.i686 SDL2-devel.i686 pkgconf-pkg-config.i686
+    - sudo dnf install -y cmake gcc gcc-c++ SDL2.i686 SDL2-devel.x86_64 glibc-devel glibc-devel.i686 SDL2-devel.i686 pkgconf-pkg-config.i686 pkgconf-pkg-config.x86_64
   script:
     - mkdir builddir
     - cd builddir
