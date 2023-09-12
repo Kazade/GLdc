@@ -1611,7 +1611,7 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
 
                     uint8_t src_value = (i % 2) == 0 ? (*src >> 4) : (*src & 0xF);
 
-                    if(newLocation % 2 == 0) {
+                    if(newLocation % 2 == 1) {
                         *dst = (*dst & 0xF) | (src_value << 4);
                     } else {
                         *dst = (*dst & 0xF0) | (src_value & 0xF);
