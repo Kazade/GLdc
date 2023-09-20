@@ -409,7 +409,7 @@ GL_FORCE_INLINE void vec3f_normalize_sh4(float *v){
 void gluLookAt(GLfloat eyex, GLfloat eyey, GLfloat eyez, GLfloat centerx,
                GLfloat centery, GLfloat centerz, GLfloat upx, GLfloat upy,
                GLfloat upz) {
-    GLfloat m [16];
+    GLfloat m [16] __attribute__((aligned(32)));
     GLfloat f [3];
     GLfloat u [3];
     GLfloat s [3];
