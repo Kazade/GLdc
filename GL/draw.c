@@ -3,6 +3,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <math.h>
+#include <limits.h>
 
 #include "private.h"
 #include "platform.h"
@@ -159,8 +160,8 @@ static void _readVertexData2us2f(const GLubyte* in, GLubyte* out) {
     const GLushort* input = (const GLushort*) in;
     float* output = (float*) out;
 
-    output[0] = input[0];
-    output[1] = input[1];
+    output[0] = (float)input[0] / SHRT_MAX;
+    output[1] = (float)input[1] / SHRT_MAX;
 }
 
 static void _readVertexData2ui2f(const GLubyte* in, GLubyte* out) {
