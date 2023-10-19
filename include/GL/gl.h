@@ -359,7 +359,7 @@ __BEGIN_DECLS
 #define GL_UNSIGNED_SHORT_5_6_5_REV     0x8364
 #define GL_UNSIGNED_SHORT_4_4_4_4_REV   0x8365
 #define GL_UNSIGNED_SHORT_1_5_5_5_REV   0x8366
-
+#define GL_UNSIGNED_INT_8_8_8_8_REV     0x8367
 #define GL_UNSIGNED_INT_2_10_10_10_REV  0x8368
 
 #define GL_COLOR_INDEX                    0x1900
@@ -396,6 +396,7 @@ __BEGIN_DECLS
 #define GL_INTENSITY12                  0x804C
 #define GL_INTENSITY16                  0x804D
 
+#define GL_BGR                            0x80E0
 #define GL_BGRA                           0x80E1
 #define GL_INTENSITY                      0x8049
 #define GL_RGB4                           0x804F
