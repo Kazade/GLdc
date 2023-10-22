@@ -3,6 +3,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <math.h>
+#include <limits.h>
 
 #include "private.h"
 #include "platform.h"
@@ -78,7 +79,7 @@ static void _readVertexData3f3f(const GLubyte* __restrict__ in, GLubyte* __restr
 
 // 10:10:10:2REV format
 static void _readVertexData1i3f(const GLubyte* in, GLubyte* out) {
-    const static float MULTIPLIER = 1.0f / 1023.0f;
+    static const float MULTIPLIER = 1.0f / 1023.0f;
 
     GLfloat* output = (GLfloat*) out;
 
@@ -159,8 +160,8 @@ static void _readVertexData2us2f(const GLubyte* in, GLubyte* out) {
     const GLushort* input = (const GLushort*) in;
     float* output = (float*) out;
 
-    output[0] = input[0];
-    output[1] = input[1];
+    output[0] = (float)input[0] / SHRT_MAX;
+    output[1] = (float)input[1] / SHRT_MAX;
 }
 
 static void _readVertexData2ui2f(const GLubyte* in, GLubyte* out) {
@@ -585,7 +586,6 @@ static void _readPositionData(ReadDiffuseFunc func, const GLuint first, const GL
     const GLubyte* vptr = ((GLubyte*) ATTRIB_POINTERS.vertex.ptr + (first * vstride));
 
     float pos[3];
-    float w = 0.0f;
 
     ITERATE(count) {
         PREFETCH(vptr + vstride);
@@ -726,9 +726,7 @@ typedef struct {
 } Float2;
 
 static const Float3 F3Z = {0.0f, 0.0f, 1.0f};
-static const Float3 F3ZERO = {0.0f, 0.0f, 0.0f};
 static const Float2 F2ZERO = {0.0f, 0.0f};
-static const uint32_t U4ONE = ~0;
 
 static void generateElementsFastPath(
         SubmissionTarget* target, const GLsizei first, const GLuint count,
@@ -908,24 +906,6 @@ static void transform(SubmissionTarget* target) {
     Vertex* vertex = _glSubmissionTargetStart(target);
 
     TransformVertices(vertex, target->count);
-}
-
-static void mat_transform3(const float* xyz, const float* xyzOut, const uint32_t count, const uint32_t inStride, const uint32_t outStride) {
-    const uint8_t* dataIn = (const uint8_t*) xyz;
-    uint8_t* dataOut = (uint8_t*) xyzOut;
-
-    ITERATE(count) {
-        const float* in = (const float*) dataIn;
-        float* out = (float*) dataOut;
-
-        TransformVec3NoMod(
-            in,
-            out
-        );
-
-        dataIn += inStride;
-        dataOut += outStride;
-    }
 }
 
 static void mat_transform_normal3(const float* xyz, const float* xyzOut, const uint32_t count, const uint32_t inStride, const uint32_t outStride) {
@@ -1224,7 +1204,6 @@ GL_FORCE_INLINE void submitVertices(GLenum mode, GLsizei first, GLuint count, GL
     target->header_offset = vector_size;
     target->start_offset = target->header_offset + (header_required ? 1 : 0);
 
-    gl_assert(target->header_offset >= 0);
     gl_assert(target->start_offset >= target->header_offset);
     gl_assert(target->count);
 

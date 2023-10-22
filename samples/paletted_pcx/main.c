@@ -254,6 +254,8 @@ int BMP_Infos(FILE *pFile, uint32_t *width, uint32_t *height)
 	*width = (uint32_t)BmpInfoHeader.Width;
 	*height = (uint32_t)BmpInfoHeader.Height;
 
+    fseek(pFile, BmpInfoHeader.Size + 14, SEEK_SET);
+
 	return 1;
 }
 
@@ -270,6 +272,7 @@ int BMP_GetPalette(FILE *pFile)
 		bitCount = BmpInfoHeader.ClrImportant * sizeof(RGB_QUAD);
 
 		if (fread(BmpRgbQuad, 1, bitCount, pFile) != bitCount){
+            fprintf(stderr, "Failed to read palette: %d\n", bitCount);
 			return 0;
 		}
 
@@ -281,6 +284,8 @@ int BMP_GetPalette(FILE *pFile)
 		}
 		return 1;
 	}
+
+    fprintf(stderr, "BitCount: %d\n", BmpInfoHeader.BitCount);
 	return 0;
 }
 
@@ -346,7 +351,7 @@ int LoadPalettedBMP(const char* filename, Image* image)
 	}
 
 	if (!BMP_GetPalette(fp)) {
-		printf("Only 16c BMP are supported for this sample");
+        printf("Only 16c BMP are supported for this sample\n");
 		return 0;
 	}
 
@@ -429,7 +434,7 @@ void LoadGLTextures() {
 #ifndef USE_16C_PALETTE
     glTexImage2D(GL_TEXTURE_2D, 0, GL_COLOR_INDEX8_EXT, image1.width, image1.height, 0, GL_COLOR_INDEX, GL_UNSIGNED_BYTE, image1.data);
 #else
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_COLOR_INDEX4_EXT, image1.width, image1.height, 0, GL_COLOR_INDEX, GL_UNSIGNED_BYTE, image1.data);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_COLOR_INDEX4_EXT, image1.width, image1.height, 0, GL_COLOR_INDEX4_EXT, GL_UNSIGNED_BYTE, image1.data);
 #endif
 
     glBindTexture(GL_TEXTURE_2D, textures[1]);   // 2d texture (x and y size)
@@ -444,7 +449,7 @@ void LoadGLTextures() {
 #ifndef USE_16C_PALETTE
     glTexImage2D(GL_TEXTURE_2D, 0, GL_COLOR_INDEX8_EXT, image1.width, image1.height, 0, GL_COLOR_INDEX, GL_UNSIGNED_BYTE, image1.data);
 #else
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_COLOR_INDEX4_EXT, image1.width, image1.height, 0, GL_COLOR_INDEX, GL_UNSIGNED_BYTE, image1.data);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_COLOR_INDEX4_EXT, image1.width, image1.height, 0, GL_COLOR_INDEX4_EXT, GL_UNSIGNED_BYTE, image1.data);
 #endif
 
     glBindTexture(GL_TEXTURE_2D, textures[2]);
@@ -463,7 +468,7 @@ void LoadGLTextures() {
 #ifndef USE_16C_PALETTE
     glTexImage2D(GL_TEXTURE_2D, 0, GL_COLOR_INDEX8_EXT, image2.width, image2.height, 0, GL_COLOR_INDEX, GL_UNSIGNED_BYTE, image2.data);
 #else
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_COLOR_INDEX4_EXT, image2.width, image2.height, 0, GL_COLOR_INDEX, GL_UNSIGNED_BYTE, image2.data);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_COLOR_INDEX4_EXT, image2.width, image2.height, 0, GL_COLOR_INDEX4_EXT, GL_UNSIGNED_BYTE, image2.data);
 #endif
 }
 

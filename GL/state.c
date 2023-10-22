@@ -494,7 +494,11 @@ GLAPI void APIENTRY glEnable(GLenum cap) {
                 GPUState.is_dirty = GL_TRUE;
             }
         break;
+        case GL_TEXTURE_TWIDDLE_KOS:
+            _glSetTextureTwiddle(GL_TRUE);
+        break;
     default:
+        _glKosThrowError(GL_INVALID_VALUE, __func__);
         break;
     }
 }
@@ -596,7 +600,11 @@ GLAPI void APIENTRY glDisable(GLenum cap) {
                 GPUState.is_dirty = GL_TRUE;
             }
         break;
+        case GL_TEXTURE_TWIDDLE_KOS:
+            _glSetTextureTwiddle(GL_FALSE);
+        break;
     default:
+        _glKosThrowError(GL_INVALID_VALUE, __func__);
         break;
     }
 }
@@ -977,6 +985,10 @@ void APIENTRY glGetIntegerv(GLenum pname, GLint *params) {
         case GL_FREE_CONTIGUOUS_TEXTURE_MEMORY_KOS:
             *params = _glFreeContiguousTextureMemory();
         break;
+        case GL_TEXTURE_INTERNAL_FORMAT_KOS:
+            *params = _glGetTextureInternalFormat();
+        break;
+
     default:
         _glKosThrowError(GL_INVALID_ENUM, __func__);
         break;

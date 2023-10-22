@@ -12,7 +12,7 @@
 #define CLIP_DEBUG 0
 #define ZNEAR_CLIPPING_ENABLED 1
 
-static size_t AVAILABLE_VRAM = 16 * 1024 * 1024;
+static size_t AVAILABLE_VRAM = 8 * 1024 * 1024;
 static Matrix4x4 MATRIX;
 
 static SDL_Window* WINDOW = NULL;
@@ -33,6 +33,10 @@ static VideoMode vid_mode = {
 AlignedVector vbuffer;
 
 void InitGPU(_Bool autosort, _Bool fsaa) {
+
+    // 32-bit SDL has trouble with the wayland driver for some reason
+    setenv("SDL_VIDEODRIVER", "x11", 1);
+
     SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS);
 
     WINDOW = SDL_CreateWindow(
