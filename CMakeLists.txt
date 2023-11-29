@@ -109,14 +109,14 @@ else()
     )
 endif()
 
-add_library(GLdc STATIC ${SOURCES})
+add_library(GL STATIC ${SOURCES})
 
 if(FLTO_SUPPORTED)
-    set_property(TARGET GLdc PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
+    set_property(TARGET GL PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
 endif()
 
 if(NOT PLATFORM_DREAMCAST)
-set_target_properties(GLdc PROPERTIES
+set_target_properties(GL PROPERTIES
     COMPILE_OPTIONS "-m32"
     LINK_OPTIONS "-m32"
 )
@@ -126,7 +126,7 @@ link_libraries(m)
 
 include_directories(include)
 
-link_libraries(GLdc)
+link_libraries(GL)
 
 function(gen_sample sample)
     set(SAMPLE_SRCS ${ARGN})

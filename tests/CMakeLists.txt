@@ -14,7 +14,7 @@ ADD_CUSTOM_COMMAND(
 )
 
 add_executable(gldc_tests ${TEST_FILES} ${TEST_SOURCES} ${TEST_MAIN_FILENAME})
-target_link_libraries(gldc_tests GLdc)
+target_link_libraries(gldc_tests GL)
 
 if(NOT PLATFORM_DREAMCAST)
 set_target_properties(
