@@ -11,11 +11,11 @@ build:sh4-gcc:
     - cd builddir
     - cmake -DCMAKE_TOOLCHAIN_FILE=../toolchains/Dreamcast.cmake -DCMAKE_BUILD_TYPE=Release ..
     - make
-    - tar -zcf gldc.tar.gz libGLdc.a ../LICENSE ../README.md ../include
+    - tar -zcf gldc.tar.gz libGL.a ../LICENSE ../README.md ../include
   artifacts:
     paths:
     - builddir/gldc.tar.gz
-    
+
 build:x86-gcc:
   stage: build
   image: fedora:38
@@ -29,7 +29,7 @@ build:x86-gcc:
   artifacts:
     paths:
     - builddir/tests/gldc_tests
-    
+
 test:x86-gcc:
   stage: test
   image: fedora:38

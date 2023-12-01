@@ -935,7 +935,7 @@ static GLint _cleanInternalFormat(GLint internalFormat) {
     /* Paletted textures are always twiddled.. otherwise they don't work! */
     case GL_COLOR_INDEX4_EXT:
         return GL_COLOR_INDEX4_TWID_KOS;
-    case GL_COLOR_INDEX8_EXT:        
+    case GL_COLOR_INDEX8_EXT:
         return GL_COLOR_INDEX8_TWID_KOS;
 
     case GL_RGB_TWID_KOS:
@@ -1223,6 +1223,7 @@ static int _determineConversion(GLint internalFormat, GLenum format, GLenum type
         {_r8_to_rgb565, GL_RGB565_KOS, GL_RED, GL_UNSIGNED_BYTE, false, false},
         {NULL, GL_RGB565_KOS, GL_RGB, GL_UNSIGNED_SHORT_5_6_5, false, false},
         {NULL, GL_RGB565_TWID_KOS, GL_RGB, GL_UNSIGNED_SHORT_5_6_5_TWID_KOS, false, false},
+        {NULL, GL_RGB565_TWID_KOS, GL_RGB, GL_UNSIGNED_SHORT_5_6_5, true, false},
         {_rgb888_to_rgb565, GL_RGB565_TWID_KOS, GL_RGB, GL_UNSIGNED_BYTE, true, false},
         {NULL, GL_COLOR_INDEX8_EXT, GL_COLOR_INDEX, GL_UNSIGNED_BYTE, false, false},
         {NULL, GL_COLOR_INDEX8_EXT, GL_COLOR_INDEX, GL_BYTE, false, false},
@@ -1623,7 +1624,7 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
                     dst = conversionBuffer + (destStride * newLocation);
 
                     for(int j = 0; j < destStride; ++j)
-                        *dst++ = *src++;
+                        *dst++ = *(src + j);
 
                     src += sourceStride;
                 }
