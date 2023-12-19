@@ -2041,7 +2041,8 @@ GLuint _glFreeContiguousTextureMemory() {
     return alloc_count_continuous(ALLOC_BASE);
 }
 
-static void update_data_pointer(void* src, void* dst, void*) {
+static void update_data_pointer(void* src, void* dst, void* data) {
+    _GL_UNUSED(data);
     for(size_t id = 0; id < MAX_TEXTURE_COUNT; id++){
         TextureObject* txr = (TextureObject*) named_array_get(&TEXTURE_OBJECTS, id);
         if(txr && txr->data == src) {
