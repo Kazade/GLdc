@@ -1,6 +1,8 @@
 #include "../platform.h"
 #include "sh4.h"
 
+#include <dc/sq.h>
+
 
 #define CLIP_DEBUG 0
 
@@ -85,14 +87,12 @@ volatile uint32_t *sq = SQ_BASE_ADDRESS;
 static inline void _glFlushBuffer() {
     TRACE();
 
-    /* Wait for both store queues to complete */
-    sq = (uint32_t*) 0xe0000000;
-    sq[0] = sq[8] = 0;
+    sq_wait();
 }
 
 static inline void _glPushHeaderOrVertex(Vertex* v)  {
     TRACE();
-
+#if 0
     uint32_t* s = (uint32_t*) v;
     sq[0] = *(s++);
     sq[1] = *(s++);
@@ -104,6 +104,8 @@ static inline void _glPushHeaderOrVertex(Vertex* v)  {
     sq[7] = *(s++);
     __asm__("pref @%0" : : "r"(sq));
     sq += 8;
+#endif
+    pvr_sq_load(NULL, v, sizeof(Vertex), PVR_TA_INPUT);
 }
 
 static inline void _glClipEdge(const Vertex* const v1, const Vertex* const v2, Vertex* vout) {
