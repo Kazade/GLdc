@@ -170,7 +170,7 @@ void SceneListSubmit(Vertex* v2, int n) {
     uint8_t counter = 0;
 
     sq = SQ_BASE_ADDRESS;
-    sq_dest_addr = SQ_MASK_DEST(PVR_TA_INPUT)
+    sq_dest_addr = SQ_MASK_DEST(PVR_TA_INPUT);
     sq_lock((void*)PVR_TA_INPUT);
 
     for(int i = 0; i < n; ++i, ++v2) {
@@ -189,7 +189,7 @@ void SceneListSubmit(Vertex* v2, int n) {
             }
             break;
         default:
-            _glPushHeaderOrVertex(v2);
+            _glPushHeaderOrVertex(v2, 1);
             counter = 0;
             continue;
         };
@@ -260,7 +260,7 @@ void SceneListSubmit(Vertex* v2, int n) {
                 _glPerspectiveDivideVertex(b, h);
 
                 _glPushHeaderOrVertex(a, 2);
-                _glPushHeaderOrVertex(b);
+                //_glPushHeaderOrVertex(b);
             }
             break;
         case 10:
@@ -343,7 +343,7 @@ void SceneListSubmit(Vertex* v2, int n) {
             _glPerspectiveDivideVertex(c, h);
 
                 if(counter % 2 == 1) {
-                    _glPushHeaderOrVertex(a);
+                    _glPushHeaderOrVertex(a, 1);
                 }
                 _glPushHeaderOrVertex(a, 3);
 
