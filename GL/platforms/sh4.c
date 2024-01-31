@@ -6,7 +6,7 @@
 
 #define CLIP_DEBUG 0
 
-#define PVR_VERTEX_BUF_SIZE 2560 * 256
+#define PVR_VERTEX_BUF_SIZE 2048 * 256 * 2
 
 #define likely(x)      __builtin_expect(!!(x), 1)
 #define unlikely(x)    __builtin_expect(!!(x), 0)
@@ -29,7 +29,8 @@ void InitGPU(_Bool autosort, _Bool fsaa) {
         PVR_VERTEX_BUF_SIZE, /* Vertex buffer size */
         0, /* No DMA */
         fsaa, /* No FSAA */
-        (autosort) ? 0 : 1 /* Disable translucent auto-sorting to match traditional GL */
+        (autosort) ? 0 : 1 /* Disable translucent auto-sorting to match traditional GL */,
+        .opb_overflow_count = 1
     };
 
     pvr_init(&params);
