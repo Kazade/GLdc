@@ -82,7 +82,7 @@ GL_FORCE_INLINE void _glPerspectiveDivideVertex(Vertex* vertex, const float h) {
 }
 
 
-volatile uint32_t *sq = SQ_BASE_ADDRESS;
+//volatile uint32_t *sq = SQ_BASE_ADDRESS;
 
 static inline void _glFlushBuffer() {
     TRACE();
