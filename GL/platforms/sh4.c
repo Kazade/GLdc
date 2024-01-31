@@ -169,7 +169,7 @@ void SceneListSubmit(Vertex* v2, int n) {
     uint8_t counter = 0;
 
     sq = SQ_BASE_ADDRESS;
-    sq_lock();
+    sq_lock((void*)PVR_TA_INPUT);
 
     for(int i = 0; i < n; ++i, ++v2) {
         PREFETCH(v2 + 1);
