@@ -11,7 +11,7 @@
 #define likely(x)      __builtin_expect(!!(x), 1)
 #define unlikely(x)    __builtin_expect(!!(x), 0)
 
-//#define SQ_BASE_ADDRESS (void*) 0xe0000000
+#define SQ_BASE_ADDRESS (void*) 0xe0000000
 
 
 GL_FORCE_INLINE bool glIsVertex(const float flags) {
@@ -82,7 +82,7 @@ GL_FORCE_INLINE void _glPerspectiveDivideVertex(Vertex* vertex, const float h) {
 }
 
 
-//volatile uint32_t *sq = SQ_BASE_ADDRESS;
+volatile uint32_t *sq = SQ_BASE_ADDRESS;
 
 static inline void _glFlushBuffer() {
     TRACE();
@@ -105,7 +105,7 @@ static inline void _glPushHeaderOrVertex(Vertex* v)  {
     __asm__("pref @%0" : : "r"(sq));
     sq += 8;
 #endif
-    pvr_sq_load(NULL, v, sizeof(Vertex), PVR_DMA_TA);
+    sq_fast_cpy(SQ_MASK_DEST(PVR_TA_INPUT), v, 1);
 }
 
 static inline void _glClipEdge(const Vertex* const v1, const Vertex* const v2, Vertex* vout) {
@@ -136,7 +136,7 @@ static inline void _glClipEdge(const Vertex* const v1, const Vertex* const v2, V
 #define SPAN_SORT_CFG 0x005F8030
 static volatile uint32_t* PVR_LMMODE0 = (uint32_t*) 0xA05F6884;
 static volatile uint32_t *PVR_LMMODE1 = (uint32_t*) 0xA05F6888;
-//static volatile uint32_t *QACR = (uint32_t*) 0xFF000038;
+static volatile uint32_t *QACR = (uint32_t*) 0xFF000038;
 
 void SceneListSubmit(Vertex* v2, int n) {
     TRACE();
@@ -155,7 +155,7 @@ void SceneListSubmit(Vertex* v2, int n) {
     *PVR_LMMODE1 = 0;
 
     //Set QACR registers
-   // QACR[1] = QACR[0] = 0x11;
+    QACR[1] = QACR[0] = 0x11;
 
 #if CLIP_DEBUG
     Vertex* vertex = (Vertex*) src;
@@ -168,7 +168,8 @@ void SceneListSubmit(Vertex* v2, int n) {
     uint8_t visible_mask = 0;
     uint8_t counter = 0;
 
-    //sq = SQ_BASE_ADDRESS;
+    sq = SQ_BASE_ADDRESS;
+    sq_lock();
 
     for(int i = 0; i < n; ++i, ++v2) {
         PREFETCH(v2 + 1);
@@ -454,6 +455,8 @@ void SceneListSubmit(Vertex* v2, int n) {
     }
 
     _glFlushBuffer();
+
+    sq_unlock();
 }
 
 void SceneListFinish() {
