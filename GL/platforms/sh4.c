@@ -107,7 +107,7 @@ static inline void _glPushHeaderOrVertex(Vertex* v, size_t count)  {
     __asm__("pref @%0" : : "r"(sq));
     sq += 8;
 #endif
-    sq_fast_cpy((void*)sq_dest_addr, v, count * sizeof(Vertex));;
+    sq_fast_cpy((void*)sq_dest_addr, v, count);
 }
 
 static inline void _glClipEdge(const Vertex* const v1, const Vertex* const v2, Vertex* vout) {
