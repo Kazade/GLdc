@@ -32,6 +32,7 @@ void InitGPU(_Bool autosort, _Bool fsaa) {
 
     pvr_init(&params);
 
+#ifndef _arch_sub_naomi
     /* If we're PAL and we're NOT VGA, then use 50hz by default. This is the safest
     thing to do. If someone wants to force 60hz then they can call vid_set_mode later and hopefully
     that'll work... */
@@ -45,6 +46,7 @@ void InitGPU(_Bool autosort, _Bool fsaa) {
             vid_set_mode(DM_640x480_PAL_IL, PM_RGB565);
         }
     }
+#endif
 }
 
 void SceneBegin() {
