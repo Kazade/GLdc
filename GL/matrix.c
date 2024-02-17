@@ -6,7 +6,7 @@
 
 #include "../containers/stack.h"
 
-#define DEG2RAD (0.01745329251994329576923690768489)
+#define DEG2RAD (0.01745329251994329576923690768489f)
 
 
 /* Depth range */
@@ -174,8 +174,8 @@ void APIENTRY glRotatef(GLfloat angle, GLfloat x, GLfloat  y, GLfloat z) {
     };
 
     float r = DEG2RAD * angle;
-    float c = cos(r);
-    float s = sin(r);
+    float c = fcos(r);
+    float s = fsin(r);
 
     VEC3_NORMALIZE(x, y, z);
 
