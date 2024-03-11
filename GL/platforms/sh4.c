@@ -30,6 +30,15 @@ void InitGPU(_Bool autosort, _Bool fsaa) {
         (autosort) ? 0 : 1 /* Disable translucent auto-sorting to match traditional GL */
     };
 
+    /* Newer versions of KOS add an extra parameter to pvr_init_params_t
+     * called opb_overflow_count. To remain compatible we set that last
+     * parameter to something only if it exists */
+    const int opb_offset = offsetof(pvr_init_params_t, autosort_disabled) + 4;
+    if(sizeof(pvr_init_params_t) > opb_offset) {
+        int* opb_count = (int*)(((char*)&params) + opb_offset);
+        *opb_count = 2; // Two should be enough for anybody.. right?
+    }
+
     pvr_init(&params);
 
 #ifndef _arch_sub_naomi
