@@ -181,6 +181,23 @@ void SceneListSubmit(Vertex* v2, int n) {
     fprintf(stderr, "----\n");
 #endif
 
+    /* This is a bit cumbersome - in some cases (particularly case 2)
+       we finish the vertex submission with a duplicated final vertex so
+       that the tri-strip can be continued. However, if the next triangle in the
+       strip is not visible then the duplicated vertex would've been sent without 
+       the EOL flag. We won't know if we need the EOL flag or not when processing 
+       case 2. To workaround this we may queue a vertex temporarily here, in the normal
+       case it will be submitted by the next iteration with the same flags it had, but
+       in the invisible case it will be overridden to submit with EOL */
+    static Vertex qv;
+    Vertex* queued_vertex = NULL;
+
+#define QUEUE_VERTEX(v) \
+    do { queued_vertex = &qv; *queued_vertex = *(v); } while(0)
+
+#define SUBMIT_QUEUED_VERTEX(sflags) \
+    do { if(queued_vertex) { queued_vertex->flags = (sflags); _glPushHeaderOrVertex(queued_vertex); queued_vertex = NULL; } } while(0)
+
     uint8_t visible_mask = 0;
     uint8_t counter = 0;
 
@@ -224,6 +241,8 @@ void SceneListSubmit(Vertex* v2, int n) {
         switch(visible_mask) {
         case 15: /* All visible, but final vertex in strip */
         {
+            SUBMIT_QUEUED_VERTEX(qv.flags);
+
             _glPerspectiveDivideVertex(v0, h);
             _glPushHeaderOrVertex(v0);
 
@@ -235,6 +254,7 @@ void SceneListSubmit(Vertex* v2, int n) {
         }
         break;
         case 7:
+            SUBMIT_QUEUED_VERTEX(qv.flags);
             /* All visible, push the first vertex and move on */
             _glPerspectiveDivideVertex(v0, h);
             _glPushHeaderOrVertex(v0);
@@ -242,6 +262,8 @@ void SceneListSubmit(Vertex* v2, int n) {
         case 9:
             /* First vertex was visible, last in strip */
             {
+                SUBMIT_QUEUED_VERTEX(qv.flags);
+
                 Vertex __attribute__((aligned(32))) scratch[2];
                 Vertex* a = &scratch[0];
                 Vertex* b = &scratch[1];
@@ -265,6 +287,8 @@ void SceneListSubmit(Vertex* v2, int n) {
         case 1:
             /* First vertex was visible, but not last in strip */
             {
+                SUBMIT_QUEUED_VERTEX(qv.flags);
+
                 Vertex __attribute__((aligned(32))) scratch[2];
                 Vertex* a = &scratch[0];
                 Vertex* b = &scratch[1];
@@ -283,7 +307,8 @@ void SceneListSubmit(Vertex* v2, int n) {
 
                 _glPerspectiveDivideVertex(b, h);
                 _glPushHeaderOrVertex(b);
-                _glPushHeaderOrVertex(b);
+
+                QUEUE_VERTEX(b);
             }
             break;
         case 10:
@@ -291,6 +316,8 @@ void SceneListSubmit(Vertex* v2, int n) {
             /* Second vertex was visible. In self case we need to create a triangle and produce
                 two new vertices: 1-2, and 2-3. */
             {
+                SUBMIT_QUEUED_VERTEX(qv.flags);
+
                 Vertex __attribute__((aligned(32))) scratch[3];
                 Vertex* a = &scratch[0];
                 Vertex* b = &scratch[1];
@@ -317,6 +344,8 @@ void SceneListSubmit(Vertex* v2, int n) {
         case 11:
         case 3:  /* First and second vertex were visible */
         {
+            SUBMIT_QUEUED_VERTEX(qv.flags);
+
             Vertex __attribute__((aligned(32))) scratch[3];
             Vertex* a = &scratch[0];
             Vertex* b = &scratch[1];
@@ -348,6 +377,8 @@ void SceneListSubmit(Vertex* v2, int n) {
         case 4:
             /* Third vertex was visible. */
             {
+                SUBMIT_QUEUED_VERTEX(qv.flags);
+
                 Vertex __attribute__((aligned(32))) scratch[3];
                 Vertex* a = &scratch[0];
                 Vertex* b = &scratch[1];
@@ -377,6 +408,8 @@ void SceneListSubmit(Vertex* v2, int n) {
             break;
         case 13:
         {
+            SUBMIT_QUEUED_VERTEX(qv.flags);
+
             Vertex __attribute__((aligned(32))) scratch[3];
             Vertex* a = &scratch[0];
             Vertex* b = &scratch[1];
@@ -408,6 +441,8 @@ void SceneListSubmit(Vertex* v2, int n) {
         break;
         case 5:  /* First and third vertex were visible */
         {
+            SUBMIT_QUEUED_VERTEX(qv.flags);
+
             Vertex __attribute__((aligned(32))) scratch[3];
             Vertex* a = &scratch[0];
             Vertex* b = &scratch[1];
@@ -438,6 +473,8 @@ void SceneListSubmit(Vertex* v2, int n) {
         case 14:
         case 6:  /* Second and third vertex were visible */
         {
+            SUBMIT_QUEUED_VERTEX(qv.flags);
+
             Vertex __attribute__((aligned(32))) scratch[4];
             Vertex* a = &scratch[0];
             Vertex* b = &scratch[1];
@@ -469,6 +506,9 @@ void SceneListSubmit(Vertex* v2, int n) {
         break;
         case 8:
         default:
+            // Not visible, if there was a queued vertex, submit it with
+            // the EOL flag
+            SUBMIT_QUEUED_VERTEX(GPU_CMD_VERTEX_EOL);
             break;
         }
     }
