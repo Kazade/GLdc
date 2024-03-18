@@ -106,6 +106,10 @@ static inline void _glFlushBuffer() {
 static inline void _glPushHeaderOrVertex(Vertex* v)  {
     TRACE();
 
+#if CLIP_DEBUG
+    fprintf(stderr, "{%f, %f, %f, %f}, // %x (%x)\n", v->xyz[0], v->xyz[1], v->xyz[2], v->w, v->flags, v);
+#endif
+
     uint32_t* s = (uint32_t*) v;
     sq[0] = *(s++);
     sq[1] = *(s++);
@@ -169,13 +173,14 @@ void SceneListSubmit(Vertex* v2, int n) {
     QACR[1] = QACR[0] = 0x11;
 
 #if CLIP_DEBUG
-    Vertex* vertex = (Vertex*) src;
+    Vertex* vertex = (Vertex*) v2;
     for(int i = 0; i < n; ++i) {
-        fprintf(stderr, "{%f, %f, %f, %f}, // %x (%x)\n", vertex[i].xyz[0], vertex[i].xyz[1], vertex[i].xyz[2], vertex[i].w, vertex[i].flags, &vertex[i]);
+        fprintf(stderr, ">> {%f, %f, %f, %f}, // %x (%x)\n", vertex[i].xyz[0], vertex[i].xyz[1], vertex[i].xyz[2], vertex[i].w, vertex[i].flags, &vertex[i]);
     }
 
     fprintf(stderr, "----\n");
 #endif
+
     uint8_t visible_mask = 0;
     uint8_t counter = 0;
 
@@ -211,6 +216,10 @@ void SceneListSubmit(Vertex* v2, int n) {
             (v2->xyz[2] > -v2->w) << 2 |
             (counter == 0) << 3
         );
+
+#if CLIP_DEBUG
+        fprintf(stderr, "0x%x 0x%x 0x%x -> %d\n", v0, v1, v2, visible_mask);
+#endif
 
         switch(visible_mask) {
         case 15: /* All visible, but final vertex in strip */
