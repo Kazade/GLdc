@@ -127,7 +127,7 @@ static inline void _glClipEdge(const Vertex* const v1, const Vertex* const v2, V
     const static float o = 0.003921569f;  // 1 / 255
     const float d0 = v1->w + v1->xyz[2];
     const float d1 = v2->w + v2->xyz[2];
-    const float t = (fabs(d0) * (1.0f / sqrtf((d1 - d0) * (d1 - d0)))) + 0.000001f;
+    const float t = (fabs(d0) * (1.0f / sqrtf((d1 - d0) * (d1 - d0))));
     const float invt = 1.0f - t;
 
     vout->xyz[0] = invt * v1->xyz[0] + t * v2->xyz[0];
@@ -184,8 +184,8 @@ void SceneListSubmit(Vertex* v2, int n) {
     /* This is a bit cumbersome - in some cases (particularly case 2)
        we finish the vertex submission with a duplicated final vertex so
        that the tri-strip can be continued. However, if the next triangle in the
-       strip is not visible then the duplicated vertex would've been sent without 
-       the EOL flag. We won't know if we need the EOL flag or not when processing 
+       strip is not visible then the duplicated vertex would've been sent without
+       the EOL flag. We won't know if we need the EOL flag or not when processing
        case 2. To workaround this we may queue a vertex temporarily here, in the normal
        case it will be submitted by the next iteration with the same flags it had, but
        in the invisible case it will be overridden to submit with EOL */
@@ -228,9 +228,9 @@ void SceneListSubmit(Vertex* v2, int n) {
         Vertex* const v1 = v2 - 1;
 
         visible_mask = (
-            (v0->xyz[2] > -v0->w) << 0 |
-            (v1->xyz[2] > -v1->w) << 1 |
-            (v2->xyz[2] > -v2->w) << 2 |
+            (v0->xyz[2] >= -v0->w) << 0 |
+            (v1->xyz[2] >= -v1->w) << 1 |
+            (v2->xyz[2] >= -v2->w) << 2 |
             (counter == 0) << 3
         );
 
@@ -468,7 +468,7 @@ void SceneListSubmit(Vertex* v2, int n) {
             _glPushHeaderOrVertex(c);
             _glPerspectiveDivideVertex(b, h);
             _glPushHeaderOrVertex(b);
-            _glPushHeaderOrVertex(c);
+            QUEUE_VERTEX(c);
         }
         break;
         case 14:
@@ -513,6 +513,8 @@ void SceneListSubmit(Vertex* v2, int n) {
             break;
         }
     }
+
+    SUBMIT_QUEUED_VERTEX(GPU_CMD_VERTEX_EOL);
 
     _glFlushBuffer();
 }
