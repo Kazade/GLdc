@@ -338,7 +338,7 @@ void SceneListSubmit(Vertex* v2, int n) {
                 _glPushHeaderOrVertex(c);
 
                 _glPerspectiveDivideVertex(b, h);
-                _glPushHeaderOrVertex(b);
+                QUEUE_VERTEX(b);
             }
             break;
         case 11:
@@ -370,7 +370,8 @@ void SceneListSubmit(Vertex* v2, int n) {
 
             _glPerspectiveDivideVertex(a, h);
             _glPushHeaderOrVertex(c);
-            _glPushHeaderOrVertex(a);
+
+            QUEUE_VERTEX(a);
         }
         break;
         case 12:
