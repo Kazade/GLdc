@@ -4,7 +4,7 @@
 #include "sh4.h"
 
 
-#define CLIP_DEBUG 1
+#define CLIP_DEBUG 0
 
 #define PVR_VERTEX_BUF_SIZE 2560 * 256
 
@@ -192,7 +192,7 @@ void SceneListSubmit(Vertex* vertices, int n) {
 
 #if CLIP_DEBUG
     fprintf(stderr, "----\n");
-    
+
     Vertex* vertex = (Vertex*) vertices;
     for(int i = 0; i < n; ++i) {
         fprintf(stderr, "IN: {%f, %f, %f, %f}, // %x (%x)\n", vertex[i].xyz[0], vertex[i].xyz[1], vertex[i].xyz[2], vertex[i].w, vertex[i].flags, &vertex[i]);
@@ -230,6 +230,27 @@ void SceneListSubmit(Vertex* vertices, int n) {
         Vertex* v1 = v0 + 1;
         Vertex* v2 = v0 + 2;
 
+        assert(!is_header(v1));
+
+        if(is_header(v2)) {
+            // OK so we've hit a new context header
+            // we need to finalize this strip and move on
+            SUBMIT_QUEUED_VERTEX(qv.flags);
+
+            _glPerspectiveDivideVertex(v0, h);
+            _glPushHeaderOrVertex(v0);
+
+            _glPerspectiveDivideVertex(v1, h);
+            _glPushHeaderOrVertex(v1);
+            i += 2;
+            continue;
+        }
+
+        assert(!is_header(v2));
+
+        // FIXME: What if v1 or v2 are headers? Should we handle that or just
+        // assume the user has done something weird and all bets are off?
+
         int visible_mask = (
             (v0->xyz[2] >= -v0->w) << 0 |
             (v1->xyz[2] >= -v1->w) << 1 |
@@ -244,9 +265,9 @@ void SceneListSubmit(Vertex* vertices, int n) {
             SUBMIT_QUEUED_VERTEX(qv.flags);
         }
 
-    #if CLIP_DEBUG
-            fprintf(stderr, "0x%x 0x%x 0x%x -> %d\n", v0, v1, v2, visible_mask);
-    #endif
+#if CLIP_DEBUG
+        fprintf(stderr, "0x%x 0x%x 0x%x -> %d\n", v0, v1, v2, visible_mask);
+#endif
 
         Vertex __attribute__((aligned(32))) scratch[4];
         Vertex* a = &scratch[0], *b = &scratch[1], *c = &scratch[2], *d = &scratch[3];
@@ -277,7 +298,7 @@ void SceneListSubmit(Vertex* vertices, int n) {
 
                 QUEUE_VERTEX(b);
             break;
-            case SECOND_VISIBLE:            
+            case SECOND_VISIBLE:
                 memcpy_vertex(c, v1);
 
                 _glClipEdge(v0, v1, a);
@@ -384,18 +405,6 @@ void SceneListSubmit(Vertex* vertices, int n) {
             break;
             default:
                 fprintf(stderr, "ERROR\n");
-        }
-
-        if(v2->flags == GPU_CMD_VERTEX_EOL && visible_mask == ALL_VISIBLE) {
-            SUBMIT_QUEUED_VERTEX(qv.flags);
-
-            _glPerspectiveDivideVertex(v1, h);
-            _glPushHeaderOrVertex(v1);
-
-            _glPerspectiveDivideVertex(v2, h);
-            _glPushHeaderOrVertex(v2);
-            
-            i += 2;
         }
     }
 
