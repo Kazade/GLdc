@@ -216,7 +216,7 @@ void SceneListSubmit(Vertex* vertices, int n) {
 #define SUBMIT_QUEUED_VERTEX(sflags) \
     do { if(queued_vertex) { queued_vertex->flags = (sflags); _glPushHeaderOrVertex(queued_vertex); queued_vertex = NULL; } } while(0)
 
-    uint8_t visible_mask = 0;
+    int visible_mask = 0;
 
     sq = SQ_BASE_ADDRESS;
 
@@ -237,21 +237,21 @@ void SceneListSubmit(Vertex* vertices, int n) {
             // we need to finalize this strip and move on
             SUBMIT_QUEUED_VERTEX(qv.flags);
 
-            _glPerspectiveDivideVertex(v0, h);
-            _glPushHeaderOrVertex(v0);
+            // If the last triangle was all visible, we need
+            // to submit the last two vertices, any clipped triangles
+            // would've 
+            if(visible_mask == ALL_VISIBLE) {
+                _glPerspectiveDivideVertex(v0, h);
+                _glPushHeaderOrVertex(v0);
 
-            _glPerspectiveDivideVertex(v1, h);
-            _glPushHeaderOrVertex(v1);
-            i += 2;
+                _glPerspectiveDivideVertex(v1, h);
+                _glPushHeaderOrVertex(v1);
+                i += 2;
+            }
             continue;
         }
 
-        assert(!is_header(v2));
-
-        // FIXME: What if v1 or v2 are headers? Should we handle that or just
-        // assume the user has done something weird and all bets are off?
-
-        int visible_mask = (
+        visible_mask = (
             (v0->xyz[2] >= -v0->w) << 0 |
             (v1->xyz[2] >= -v1->w) << 1 |
             (v2->xyz[2] >= -v2->w) << 2

@@ -64,7 +64,7 @@ int check_start() {
     return 0;
 }
 
-static GLfloat movement = 0.0f;
+static GLfloat movement = -10.0f;
 static GLfloat rotation = 0.0f;
 
 void update_movement() {
