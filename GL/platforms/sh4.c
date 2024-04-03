@@ -221,9 +221,10 @@ void SceneListSubmit(Vertex* vertices, int n) {
     sq = SQ_BASE_ADDRESS;
 
     Vertex* v0 = vertices;
-    for(int i = 0; i < n - 2; ++i, v0++) {
+    for(int i = 0; i < n - 2; ++i, ++v0) {
         if(is_header(v0)) {
             _glPushHeaderOrVertex(v0);
+            visible_mask = 0;
             continue;
         }
 
@@ -235,19 +236,29 @@ void SceneListSubmit(Vertex* vertices, int n) {
         if(is_header(v2)) {
             // OK so we've hit a new context header
             // we need to finalize this strip and move on
-            SUBMIT_QUEUED_VERTEX(qv.flags);
 
             // If the last triangle was all visible, we need
             // to submit the last two vertices, any clipped triangles
             // would've 
             if(visible_mask == ALL_VISIBLE) {
+                SUBMIT_QUEUED_VERTEX(qv.flags);
+
                 _glPerspectiveDivideVertex(v0, h);
                 _glPushHeaderOrVertex(v0);
 
+                v1->flags = GPU_CMD_VERTEX_EOL;
+
                 _glPerspectiveDivideVertex(v1, h);
                 _glPushHeaderOrVertex(v1);
-                i += 2;
+            } else {
+                // If the previous triangle wasn't all visible, and we 
+                // queued a vertex - we force it to be EOL and submit
+                SUBMIT_QUEUED_VERTEX(GPU_CMD_VERTEX_EOL);
             }
+
+            i++;
+            v0++;        
+            visible_mask = 0;
             continue;
         }
 
