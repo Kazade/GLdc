@@ -233,7 +233,9 @@ void SceneListSubmit(Vertex* vertices, int n) {
 
         assert(!is_header(v1));
 
-        if(is_header(v2)) {
+        bool is_trailing = (v1->flags == GPU_CMD_VERTEX_EOL) || is_header(v2);
+
+        if(is_trailing) {
             // OK so we've hit a new context header
             // we need to finalize this strip and move on
 
