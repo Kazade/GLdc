@@ -221,7 +221,7 @@ void SceneListSubmit(Vertex* vertices, int n) {
     sq = SQ_BASE_ADDRESS;
 
     Vertex* v0 = vertices;
-    for(int i = 0; i < n - 2; ++i, ++v0) {
+    for(int i = 0; i < n - 1; ++i, ++v0) {
         if(is_header(v0)) {
             _glPushHeaderOrVertex(v0);
             visible_mask = 0;
@@ -229,11 +229,13 @@ void SceneListSubmit(Vertex* vertices, int n) {
         }
 
         Vertex* v1 = v0 + 1;
-        Vertex* v2 = v0 + 2;
+        Vertex* v2 = (i < n - 2) ? v0 + 2 : NULL;
 
         assert(!is_header(v1));
 
-        bool is_trailing = (v1->flags == GPU_CMD_VERTEX_EOL) || is_header(v2);
+        // We are trailing if we're on the penultimate vertex, or the next but one vertex is 
+        // an EOL, or v1 is an EOL (FIXME: possibly unnecessary and coverted by the other case?)
+        bool is_trailing = (v1->flags == GPU_CMD_VERTEX_EOL) || ((v2) ? is_header(v2) : true);
 
         if(is_trailing) {
             // OK so we've hit a new context header
