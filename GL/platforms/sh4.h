@@ -24,8 +24,7 @@
 #define GL_FORCE_INLINE static GL_INLINE_DEBUG
 #endif
 
-#define PREFETCH(addr) (void) 0
-//__builtin_prefetch((addr))
+#define PREFETCH(addr) __builtin_prefetch((addr))
 
 GL_FORCE_INLINE void* memcpy_fast(void *dest, const void *src, size_t len) {
   if(!len) {
