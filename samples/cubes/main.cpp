@@ -1,4 +1,3 @@
-
 #include <cstdio>
 #include <stdbool.h>
 #include <stdlib.h>
@@ -18,10 +17,12 @@ float avgfps = -1;
 #define RAD_TO_DEG 57.295779513082320876798154814105f
 #define MAX_CUBES 350
 
+size_t numCubes = 0;
+
 float timeElapsed = 0.0f;
 const float dt = 1.0f / 60.0f;
 
-float angle = 0;
+float angleDegrees = 0;
 const float invAngle360 = 1.0f / 360.0f;
 const float cameraDistance = 3.0f;
 
@@ -84,7 +85,7 @@ float cubeVertices[] =
 	-1.0f, -1.0f, +1.0f, // vertex 20
 	-1.0f, -1.0f, -1.0f, // vertex 21
 	-1.0f, +1.0f, -1.0f, // vertex 22
-	-1.0f, +1.0f, +1.0f // vertex 23
+	-1.0f, +1.0f, +1.0f  // vertex 23
 };
 
 // Set up indices array
@@ -117,17 +118,11 @@ typedef struct
 } Cube;
 
 Cube cubes[MAX_CUBES];
-
-int numCubes = 0;
-
-// Create a 4x4 identity matrix
-float cubeTransformationMatrix[16] = { 1.0f, 0.0f, 0.0f, 0.0f,
-									  0.0f, 1.0f, 0.0f, 0.0f,
-									  0.0f, 0.0f, 1.0f, 0.0f,
-									  0.0f, 0.0f, 0.0f, 1.0f };
+float lutScaleFactors[MAX_CUBES];
 
 
-void debugLog(const char* msg) {
+void debugLog(const char* msg) 
+{
 #ifdef __DREAMCAST__
 	dbglog(DBG_KDEBUG, "%s\n", msg);
 #else
@@ -136,7 +131,8 @@ void debugLog(const char* msg) {
 }
 
 
-void runningStats() {
+void runningStats() 
+{
 #ifdef __DREAMCAST__
 	pvr_stats_t stats;
 	pvr_get_stats(&stats);
@@ -148,14 +144,17 @@ void runningStats() {
 #endif
 }
 
-void avgStats() {
+
+void avgStats() 
+{
 #ifdef __DREAMCAST__
 	dbglog(DBG_DEBUG, "Average frame rate: ~%f fps\n", avgfps);
 #endif
 }
 
 
-void stats() {
+void stats() 
+{
 #ifdef __DREAMCAST__
 	pvr_stats_t stats;
 
@@ -166,9 +165,10 @@ void stats() {
 }
 
 
-void addCube(float r, float x, float y, float z, float vx, float vy, float vz)
+void addCube(const float r, const float x, const float y, const float z, const float vx, const float vy, const float vz)
 {
-	if (numCubes < MAX_CUBES) {
+	if (numCubes < MAX_CUBES) 
+	{
 		cubes[numCubes].r = r;
 		cubes[numCubes].x = x;
 		cubes[numCubes].y = y;
@@ -181,24 +181,18 @@ void addCube(float r, float x, float y, float z, float vx, float vy, float vz)
 }
 
 
-void addCubeQuick(float x, float y, float z, float scale_factor)
-{
-	addCube(0.5f * scale_factor, x, y, z, 0, 0, 0);
-}
-
-
 void updateCubes(float dt)
 {
-	for (size_t i = 0; i < numCubes; i++)
+	for (size_t i = 0; i < MAX_CUBES; i++)
 	{
-		Cube* cube = &cubes[i];
-		cube->x += cube->vx * dt;
-		cube->y += cube->vy * dt;
-		cube->z += cube->vz * dt;
+		Cube* pCube = &cubes[i];
+		pCube->x += pCube->vx * dt;
+		pCube->y += pCube->vy * dt;
+		pCube->z += pCube->vz * dt;
 
-		if (cube->x < -3 || cube->x > +3) { cube->vx *= -1; }
-		if (cube->y < -3 || cube->y > +3) { cube->vy *= -1; }
-		if (cube->z < -3 || cube->z > +3) { cube->vz *= -1; }
+		if (pCube->x < -3 || pCube->x > +3) { pCube->vx *= -1; }
+		if (pCube->y < -3 || pCube->y > +3) { pCube->vy *= -1; }
+		if (pCube->z < -3 || pCube->z > +3) { pCube->vz *= -1; }
 	}
 }
 
@@ -211,31 +205,27 @@ void renderUnitCube()
 	glVertexPointer(3, GL_FLOAT, 0, cubeVertices);
 	glColorPointer(4, GL_UNSIGNED_BYTE, 0, faceColors);
 
-	if (isDrawingArrays) {
-		glDrawArrays(GL_QUADS, 0, 24);
-	}
-	else {
-		glDrawElements(GL_QUADS, 24, GL_UNSIGNED_INT, cubeIndices);
-	}
+	isDrawingArrays ? glDrawArrays(GL_QUADS, 0, 24) : glDrawElements(GL_QUADS, 24, GL_UNSIGNED_INT, cubeIndices);
 
 	glDisableClientState(GL_COLOR_ARRAY);
 	glDisableClientState(GL_VERTEX_ARRAY);
 }
 
 
-void renderCubes(float angle)
+void renderCubes(const float angleRotation)
 {
-	for (size_t i = 0; i < numCubes; i++) {
-		const float scale_factor = 0.05f + (i / (float)numCubes) * 0.35f;
-		Cube* cube = &cubes[i];
+	for (size_t i = 0; i < MAX_CUBES; i++) 
+	{
+		const float scaleFactor = lutScaleFactors[i];
+		Cube* pCube = &cubes[i];
 
 		glPushMatrix(); // Save previous camera state
 		glMatrixMode(GL_MODELVIEW);
 
-		glTranslatef(cube->x, cube->y, cube->z);
-		glRotatef(angle, 1, 1, 1); // Rotate camera / object
+		glTranslatef(pCube->x, pCube->y, pCube->z);
+		glRotatef(angleRotation, 1, 1, 1); // Rotate camera / object
 
-		glScalef(scale_factor, scale_factor, scale_factor); // Apply scale factor
+		glScalef(scaleFactor, scaleFactor, scaleFactor); // Apply scale factor
 
 		renderUnitCube();
 		glPopMatrix(); // Restore previous camera state
@@ -243,9 +233,9 @@ void renderCubes(float angle)
 }
 
 
-float rnd(float Min, float Max)
+float rnd(float valueMin, float valueMax)
 {
-	return (Max - Min) * (float)rand() / (float)RAND_MAX + Min;
+	return (valueMax - valueMin) * (float)rand() / (float)RAND_MAX + valueMin;
 }
 
 
@@ -279,12 +269,19 @@ void initialize()
 	glLoadIdentity();
 
 	// Set up colors (each face has a different color)
-	for (int i = 0; i < 6; i++)
+	for (size_t i = 0; i < 6; i++)
 	{
 		faceColors[i * 4] = colors[i];
 		faceColors[i * 4 + 1] = colors[i];
 		faceColors[i * 4 + 2] = colors[i];
 		faceColors[i * 4 + 3] = colors[i];
+	}
+
+	// Precalculate scale factors and store them in a LUT
+	const float incFactor = 0.35f / (float)MAX_CUBES;
+	for (size_t i = 0; i < MAX_CUBES; ++i) 
+	{
+		lutScaleFactors[i] = 0.05f + (i * incFactor);
 	}
 }
 
@@ -305,9 +302,9 @@ void updateLogic()
 {
 	updateTimer();
 
-	const int fullRot = (int)(angle * invAngle360);
-	angle -= fullRot * 360.0f;
-	angle += 50.0f * dt;
+	const int fullRot = (int)(angleDegrees * invAngle360);
+	angleDegrees -= fullRot * 360.0f;
+	angleDegrees += 50.0f * dt;
 
 	const float zoomVal = __builtin_sinf(timeElapsed) * 5.0f;
 
@@ -332,7 +329,7 @@ void updateLogic()
 
 	updateCubes(dt);
 
-	renderCubes(angle);
+	renderCubes(angleDegrees);
 
 	// Reset ModelView matrix to remove camera transformation
 	float matrix[16];
@@ -368,28 +365,14 @@ void updateInput()
 		{
 			isDrawingArrays = !isDrawingArrays;
 
-			if (isDrawingArrays)
-			{
-				glClearColor(0.3f, 0.0f, 0.3f, 1.0f);
-			}
-			else
-			{
-				glClearColor(0.0f, 0.0f, 0.3f, 1.0f);
-			}
+			isDrawingArrays ? glClearColor(0.3f, 0.0f, 0.3f, 1.0f) : glClearColor(0.0f, 0.0f, 0.3f, 1.0f);
 		}
 
 		if (state && (state->buttons & CONT_B) && !(prevButtons & CONT_B))
 		{
 			isBlendingEnabled = !isBlendingEnabled;
 
-			if (isBlendingEnabled)
-			{
-				glEnable(GL_BLEND);
-			}
-			else
-			{
-				glDisable(GL_BLEND);
-			}
+			isBlendingEnabled ? glEnable(GL_BLEND) : glDisable(GL_BLEND);
 		}
 
 		prevButtons = state->buttons;
@@ -420,7 +403,6 @@ int main(int argc, char* argv[])
 
 	for (size_t i = 0; i < MAX_CUBES; i++)
 	{
-
 		const float r = rnd(0.1f, 0.5f);
 		const float x = rnd(-3.0f, 3.0f);
 		const float y = rnd(-3.0f, 3.0f);
