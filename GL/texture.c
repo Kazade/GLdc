@@ -1148,6 +1148,26 @@ GL_FORCE_INLINE void _rgba4444_to_argb4444(const GLubyte* source, GLubyte* dest)
     *((GLushort*) dest) = ((*src & 0x000F) << 12) | *src >> 4;
 }
 
+GL_FORCE_INLINE void _argb1555_to_argb4444(const GLubyte* source, GLubyte* dest) {
+    GLushort src = *((GLushort*) source);
+
+    uint8_t a = (src >> 15) & 0x01;
+    uint8_t r = (src >> 10) & 0x1F;
+    uint8_t g = (src >> 5) & 0x1F;
+    uint8_t b = src & 0x1F;
+
+    // Alpha is either 0 or 15
+    a = (a << 4) - a;
+
+    // Bitwise magic to scale from 5 to 4 bits.
+    // Shift left by 4 to multiply by 16, shift right by 5 to divide by 32.
+    r = (r << 4) >> 5;
+    g = (g << 4) >> 5;
+    b = (b << 4) >> 5;
+
+    *((GLushort*) dest) = (a << 12) | (r << 8) | (g << 4) | b;
+}
+
 GL_FORCE_INLINE void _rgba4444_to_rgba8888(const GLubyte* source, GLubyte* dest) {
     GLushort src = *((GLushort*) source);
     GLubyte* dst = (GLubyte*) dest;
@@ -1216,6 +1236,7 @@ static int _determineConversion(GLint internalFormat, GLenum format, GLenum type
         {NULL, GL_ARGB4444_TWID_KOS, GL_BGRA, GL_UNSIGNED_SHORT_4_4_4_4_REV_TWID_KOS, false, false},
         {_rgba8888_to_argb4444, GL_ARGB4444_TWID_KOS, GL_RGBA, GL_UNSIGNED_BYTE, true, false},
         {NULL, GL_ARGB1555_KOS, GL_BGRA, GL_UNSIGNED_SHORT_1_5_5_5_REV, false, false},
+        {_argb1555_to_argb4444, GL_ARGB4444_TWID_KOS, GL_RGBA, GL_UNSIGNED_SHORT_1_5_5_5_REV, true, false},
         {NULL, GL_ARGB1555_TWID_KOS, GL_BGRA, GL_UNSIGNED_SHORT_1_5_5_5_REV_TWID_KOS, false, false},
         {_rgba8888_to_rgb565, GL_RGB565_KOS, GL_RGBA, GL_UNSIGNED_BYTE, false, false},
         {_r8_to_rgb565, GL_RGB565_KOS, GL_RED, GL_UNSIGNED_BYTE, false, false},
