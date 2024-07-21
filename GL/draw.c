@@ -210,14 +210,14 @@ static void _readVertexData3fARGB(const GLubyte* in, GLubyte* output) {
     output[R8IDX] = (GLubyte) clamp(input[0] * 255.0f, 0, 255);
     output[G8IDX] = (GLubyte) clamp(input[1] * 255.0f, 0, 255);
     output[B8IDX] = (GLubyte) clamp(input[2] * 255.0f, 0, 255);
-    output[A8IDX] = 1.0f;
+    output[A8IDX] = 255;
 }
 
 static void _readVertexData3ubARGB(const GLubyte* __restrict__ input, GLubyte* __restrict__ output) {
     output[R8IDX] = input[0];
     output[G8IDX] = input[1];
     output[B8IDX] = input[2];
-    output[A8IDX] = 1.0f;
+    output[A8IDX] = 255;
 }
 
 static void _readVertexData4ubRevARGB(const GLubyte* __restrict__ input, GLubyte* __restrict__ output) {
