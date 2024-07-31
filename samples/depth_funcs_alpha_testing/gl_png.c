@@ -48,7 +48,6 @@ int dtex_to_gl_texture(texture *tex, char* filename) {
 		GLboolean twiddled = (header.type & (1 << 26)) < 1;
 		GLboolean compressed = (header.type & (1 << 30)) > 0;
 		GLboolean mipmapped = (header.type & (1 << 31)) > 0;
-		GLboolean strided = (header.type & (1 << 25)) > 0;
 		GLuint 		format = (header.type >> 27) & 0b111;
 
 		image->data = (char *) malloc (header.size);
