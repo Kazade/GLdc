@@ -13,8 +13,6 @@
 #define likely(x)      __builtin_expect(!!(x), 1)
 #define unlikely(x)    __builtin_expect(!!(x), 0)
 
-#define SQ_BASE_ADDRESS (void*) 0xe0000000
-
 
 GL_FORCE_INLINE bool glIsVertex(const float flags) {
     return flags == GPU_CMD_VERTEX_EOL || flags == GPU_CMD_VERTEX;
@@ -75,29 +73,28 @@ GL_FORCE_INLINE float _glFastInvert(float x) {
     return (1.0f / __builtin_sqrtf(x * x));
 }
 
-GL_FORCE_INLINE void _glPerspectiveDivideVertex(Vertex* vertex, const float h) {
+GL_FORCE_INLINE void _glPerspectiveDivideVertex(Vertex* vertex, const float h, int count) {
     TRACE();
 
-    const float f = _glFastInvert(vertex->w);
+    for(int v = 0; v < count; ++v) { 
+        const float f = _glFastInvert(vertex[v].w);
 
-    /* Convert to NDC and apply viewport */
-    vertex->xyz[0] = (vertex->xyz[0] * f * 320) + 320;
-    vertex->xyz[1] = (vertex->xyz[1] * f * -240) + 240;
+        /* Convert to NDC and apply viewport */
+        vertex[v].xyz[0] = (vertex[v].xyz[0] * f * 320) + 320;
+        vertex[v].xyz[1] = (vertex[v].xyz[1] * f * -240) + 240;
 
-    /* Orthographic projections need to use invZ otherwise we lose
-    the depth information. As w == 1, and clip-space range is -w to +w
-    we add 1.0 to the Z to bring it into range. We add a little extra to
-    avoid a divide by zero.
-    */
-    if(vertex->w == 1.0f) {
-        vertex->xyz[2] = _glFastInvert(1.0001f + vertex->xyz[2]);
-    } else {
-        vertex->xyz[2] = f;
+        /* Orthographic projections need to use invZ otherwise we lose
+        the depth information. As w == 1, and clip-space range is -w to +w
+        we add 1.0 to the Z to bring it into range. We add a little extra to
+        avoid a divide by zero.
+        */
+        if(vertex[v].w == 1.0f) {
+            vertex[v].xyz[2] = _glFastInvert(1.0001f + vertex[v].xyz[2]);
+        } else {
+            vertex[v].xyz[2] = f;
+        }
     }
 }
-
-
-volatile uint32_t *sq = SQ_BASE_ADDRESS;
 
 static inline void _glFlushBuffer() {
     TRACE();
@@ -142,7 +139,6 @@ static inline void _glClipEdge(const Vertex* const v1, const Vertex* const v2, V
 #define SPAN_SORT_CFG 0x005F8030
 static volatile uint32_t* PVR_LMMODE0 = (uint32_t*) 0xA05F6884;
 static volatile uint32_t *PVR_LMMODE1 = (uint32_t*) 0xA05F6888;
-static volatile uint32_t *QACR = (uint32_t*) 0xFF000038;
 
 enum Visible {
     NONE_VISIBLE = 0,
@@ -175,9 +171,6 @@ void SceneListSubmit(Vertex* vertices, int n) {
     *PVR_LMMODE0 = 0;
     *PVR_LMMODE1 = 0;
 
-    //Set QACR registers
-    QACR[1] = QACR[0] = 0x11;
-
 #if CLIP_DEBUG
     fprintf(stderr, "----\n");
 
@@ -206,7 +199,6 @@ void SceneListSubmit(Vertex* vertices, int n) {
 
     int visible_mask = 0;
 
-    sq = SQ_BASE_ADDRESS;
     sq_dest_addr = (uintptr_t)SQ_MASK_DEST(PVR_TA_INPUT);
     sq_lock((void *)PVR_TA_INPUT);
 
@@ -237,13 +229,8 @@ void SceneListSubmit(Vertex* vertices, int n) {
             if(visible_mask == ALL_VISIBLE) {
                 SUBMIT_QUEUED_VERTEX(qv.flags);
 
-                _glPerspectiveDivideVertex(v0, h);
-                //_glPushHeaderOrVertex(v0);
-
+                _glPerspectiveDivideVertex(v0, h, 2);
                 v1->flags = GPU_CMD_VERTEX_EOL;
-
-                _glPerspectiveDivideVertex(v1, h);
-                //_glPushHeaderOrVertex(v1);
                 _glPushHeaderOrVertex(v0, 2);
             } else {
                 // If the previous triangle wasn't all visible, and we
@@ -280,7 +267,7 @@ void SceneListSubmit(Vertex* vertices, int n) {
 
         switch(visible_mask) {
             case ALL_VISIBLE:
-                _glPerspectiveDivideVertex(v0, h);
+                _glPerspectiveDivideVertex(v0, h, 1);
                 QUEUE_VERTEX(v0);
             break;
             case NONE_VISIBLE:
@@ -293,14 +280,10 @@ void SceneListSubmit(Vertex* vertices, int n) {
                 _glClipEdge(v2, v0, b);
                 b->flags = GPU_CMD_VERTEX;
 
-                _glPerspectiveDivideVertex(v0, h);
+                _glPerspectiveDivideVertex(v0, h, 1);
                 _glPushHeaderOrVertex(v0, 1);
 
-                _glPerspectiveDivideVertex(a, h);
-                //_glPushHeaderOrVertex(a);
-
-                _glPerspectiveDivideVertex(b, h);
-                //_glPushHeaderOrVertex(b);
+                _glPerspectiveDivideVertex(a, h, 2);
                 _glPushHeaderOrVertex(a, 2);
 
                 QUEUE_VERTEX(b);
@@ -314,13 +297,11 @@ void SceneListSubmit(Vertex* vertices, int n) {
                 _glClipEdge(v1, v2, b);
                 b->flags = v2->flags;
 
-                _glPerspectiveDivideVertex(a, h);
+                _glPerspectiveDivideVertex(a, h, 3);
                 _glPushHeaderOrVertex(a, 1);
 
-                _glPerspectiveDivideVertex(c, h);
                 _glPushHeaderOrVertex(c, 1);
 
-                _glPerspectiveDivideVertex(b, h);
                 QUEUE_VERTEX(b);
             break;
             case THIRD_VISIBLE:
@@ -332,15 +313,9 @@ void SceneListSubmit(Vertex* vertices, int n) {
                 _glClipEdge(v1, v2, b);
                 b->flags = GPU_CMD_VERTEX;
 
-                _glPerspectiveDivideVertex(a, h);
-                //_glPushHeaderOrVertex(a);
-                //_glPushHeaderOrVertex(a);
-
-                _glPerspectiveDivideVertex(b, h);
-                //_glPushHeaderOrVertex(b);
+                _glPerspectiveDivideVertex(a, h, 3);
                 _glPushHeaderOrVertex(a, 2);
 
-                _glPerspectiveDivideVertex(c, h);
                 QUEUE_VERTEX(c);
             break;
             case FIRST_AND_SECOND_VISIBLE:
@@ -349,20 +324,16 @@ void SceneListSubmit(Vertex* vertices, int n) {
                 _glClipEdge(v2, v0, b);
                 b->flags = GPU_CMD_VERTEX;
 
-                _glPerspectiveDivideVertex(v0, h);
+                _glPerspectiveDivideVertex(v0, h, 1);
                 _glPushHeaderOrVertex(v0, 1);
 
                 _glClipEdge(v1, v2, a);
                 a->flags = v2->flags;
 
-                _glPerspectiveDivideVertex(c, h);
+                _glPerspectiveDivideVertex(a, h, 3);
+
                 _glPushHeaderOrVertex(c, 1);
 
-                _glPerspectiveDivideVertex(b, h);
-                //_glPushHeaderOrVertex(b);
-
-                _glPerspectiveDivideVertex(a, h);
-                //_glPushHeaderOrVertex(c);
                 _glPushHeaderOrVertex(b, 2);
 
                 QUEUE_VERTEX(a);
@@ -377,18 +348,13 @@ void SceneListSubmit(Vertex* vertices, int n) {
                 _glClipEdge(v2, v0, b);
                 b->flags = GPU_CMD_VERTEX;
 
-                _glPerspectiveDivideVertex(a, h);
+                _glPerspectiveDivideVertex(a, h, 4);
                 _glPushHeaderOrVertex(a, 1);
 
-                _glPerspectiveDivideVertex(c, h);
                 _glPushHeaderOrVertex(c, 1);
 
-                _glPerspectiveDivideVertex(b, h);
-                //_glPushHeaderOrVertex(b);
-                //_glPushHeaderOrVertex(c);
                 _glPushHeaderOrVertex(b, 2);
 
-                _glPerspectiveDivideVertex(d, h);
                 QUEUE_VERTEX(d);
             break;
             case FIRST_AND_THIRD_VISIBLE:
@@ -401,16 +367,16 @@ void SceneListSubmit(Vertex* vertices, int n) {
                 _glClipEdge(v1, v2, b);
                 b->flags = GPU_CMD_VERTEX;
 
-                _glPerspectiveDivideVertex(v0, h);
+                _glPerspectiveDivideVertex(v0, h, 1);
                 _glPushHeaderOrVertex(v0, 1);
 
-                _glPerspectiveDivideVertex(a, h);
+                _glPerspectiveDivideVertex(a, h, 3);
                 _glPushHeaderOrVertex(a, 1);
 
-                _glPerspectiveDivideVertex(c, h);
                 _glPushHeaderOrVertex(c, 1);
-                _glPerspectiveDivideVertex(b, h);
+
                 _glPushHeaderOrVertex(b, 1);
+                
                 QUEUE_VERTEX(c);
             break;
             default:
@@ -421,7 +387,6 @@ void SceneListSubmit(Vertex* vertices, int n) {
     SUBMIT_QUEUED_VERTEX(GPU_CMD_VERTEX_EOL);
 
     _glFlushBuffer();
-
     sq_unlock();
 }
 
