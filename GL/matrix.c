@@ -16,9 +16,11 @@ GLfloat DEPTH_RANGE_MULTIPLIER_H = (0 + 1) / 2;
 static Stack __attribute__((aligned(32))) MATRIX_STACKS[4]; // modelview, projection, texture
 static Matrix4x4 __attribute__((aligned(32))) NORMAL_MATRIX;
 static Matrix4x4 __attribute__((aligned(32))) VIEWPORT_MATRIX;
+static Matrix4x4 __attribute__((aligned(32))) PROJECTION_MATRIX;
 
 static GLenum MATRIX_MODE = GL_MODELVIEW;
 static GLubyte MATRIX_IDX = 0;
+static GLboolean NORMAL_DIRTY, PROJECTION_DIRTY;
 
 static const Matrix4x4 __attribute__((aligned(32))) IDENTITY = {
     1.0f, 0.0f, 0.0f, 0.0f,
@@ -92,25 +94,24 @@ static void transpose(GLfloat* m) {
 }
 
 /* When projection matrix changes, need to pre-multiply with viewport transform matrix */
-static void OnProjectionChanged() {
+static void UpdateProjectionMatrix() {
+    PROJECTION_DIRTY = false;
     UploadMatrix4x4(&VIEWPORT_MATRIX);
     MultiplyMatrix4x4(stack_top(MATRIX_STACKS + (GL_PROJECTION & 0xF)));
-    DownloadMatrix4x4(stack_top(MATRIX_STACKS + (GL_PROJECTION & 0xF)));
+    DownloadMatrix4x4(&PROJECTION_MATRIX);
 }
 
 /* When modelview matrix changes, need to re-compute normal matrix */
-static void OnModelviewChanged() {
+static void UpdateNormalMatrix() {
+    NORMAL_DIRTY = false;
     MEMCPY4(NORMAL_MATRIX, stack_top(MATRIX_STACKS + (GL_MODELVIEW & 0xF)), sizeof(Matrix4x4));
     inverse((GLfloat*) NORMAL_MATRIX);
     transpose((GLfloat*) NORMAL_MATRIX);
 }
 
 static void OnMatrixChanged() {
-    if(MATRIX_MODE == GL_MODELVIEW) {
-        OnModelviewChanged();
-    } else if(MATRIX_MODE == GL_PROJECTION) {
-        OnProjectionChanged();
-    }
+    if(MATRIX_MODE == GL_MODELVIEW)  NORMAL_DIRTY = true;
+    if(MATRIX_MODE == GL_PROJECTION) PROJECTION_DIRTY = true;
 }
 
 
@@ -125,13 +126,12 @@ void APIENTRY glPushMatrix() {
     void* ret = stack_push(MATRIX_STACKS + MATRIX_IDX, top);
     (void) ret;
     assert(ret);
+    OnMatrixChanged();
 }
 
 void APIENTRY glPopMatrix() {
     stack_pop(MATRIX_STACKS + MATRIX_IDX);
-    if(MATRIX_MODE == GL_MODELVIEW) {
-        OnModelviewChanged();
-    }
+    OnMatrixChanged();
 }
 
 void APIENTRY glLoadIdentity() {
@@ -356,14 +356,14 @@ void glMultTransposeMatrixf(const GLfloat *m) {
 
 /* Set the GL viewport */
 void APIENTRY glViewport(GLint x, GLint y, GLsizei width, GLsizei height) {
-    VIEWPORT_MATRIX[0][0] =  width * 0.5f;
-    VIEWPORT_MATRIX[1][1] = -height * 0.5f;
-    VIEWPORT_MATRIX[2][2] = 1.0f;
-    VIEWPORT_MATRIX[3][3] = 1.0f;
+    VIEWPORT_MATRIX[M0]  =  width *  0.5f;
+    VIEWPORT_MATRIX[M5]  = height * -0.5f;
+    VIEWPORT_MATRIX[M10] = 1.0f;
+    VIEWPORT_MATRIX[M15] = 1.0f;
     
-    VIEWPORT_MATRIX[3][0] = x + width * 0.5f;
-    VIEWPORT_MATRIX[3][1] = GetVideoMode()->height - (y + height * 0.5f);
-    OnProjectionChanged();
+    VIEWPORT_MATRIX[M12] = x + width * 0.5f;
+    VIEWPORT_MATRIX[M13] = GetVideoMode()->height - (y + height * 0.5f);
+    PROJECTION_DIRTY = true;
 }
 
 /* Set the depth range */
@@ -455,14 +455,17 @@ void _glMatrixLoadModelView() {
 }
 
 void _glMatrixLoadProjection() {
-    UploadMatrix4x4((const Matrix4x4*) stack_top(MATRIX_STACKS + (GL_PROJECTION & 0xF)));
+    if (PROJECTION_DIRTY) UpdateProjectionMatrix();
+    UploadMatrix4x4(&PROJECTION_MATRIX);
 }
 
 void _glMatrixLoadModelViewProjection() {
-    UploadMatrix4x4((const Matrix4x4*) stack_top(MATRIX_STACKS + (GL_PROJECTION & 0xF)));
+    if (PROJECTION_DIRTY) UpdateProjectionMatrix();
+    UploadMatrix4x4(&PROJECTION_MATRIX);
     MultiplyMatrix4x4((const Matrix4x4*) stack_top(MATRIX_STACKS + (GL_MODELVIEW & 0xF)));
 }
 
 void _glMatrixLoadNormal() {
+    if (NORMAL_DIRTY) UpdateNormalMatrix();
     UploadMatrix4x4((const Matrix4x4*) &NORMAL_MATRIX);
 }

@@ -946,35 +946,6 @@ static void light(SubmissionTarget* target) {
     _glPerformLighting(vertex, ES, target->count);
 }
 
-GL_FORCE_INLINE void divide(SubmissionTarget* target) {
-    TRACE();
-
-    /* Perform perspective divide on each vertex */
-    Vertex* vertex = _glSubmissionTargetStart(target);
-
-    const float h = GetVideoMode()->height;
-
-    ITERATE(target->count) {
-        const float f = MATH_Fast_Invert(vertex->w);
-
-        /* Convert to NDC and apply viewport */
-        vertex->xyz[0] = MATH_fmac(
-            VIEWPORT.hwidth, vertex->xyz[0] * f, VIEWPORT.x_plus_hwidth
-        );
-        vertex->xyz[1] = h - MATH_fmac(
-            VIEWPORT.hheight, vertex->xyz[1] * f, VIEWPORT.y_plus_hheight
-        );
-
-        /* Apply depth range */
-        vertex->xyz[2] = MAX(
-            1.0f - MATH_fmac(vertex->xyz[2] * f, 0.5f, 0.5f),
-            PVR_MIN_Z
-        );
-
-        ++vertex;
-    }
-}
-
 GL_FORCE_INLINE int _calc_pvr_face_culling() {
     if(!_glIsCullingEnabled()) {
         return GPU_CULLING_SMALL;
