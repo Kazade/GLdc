@@ -81,8 +81,8 @@ GL_FORCE_INLINE void _glPerspectiveDivideVertex(Vertex* vertex, const float h, i
 
         /* Convert to screenspace */
         /* (note that vertices have already been viewport transformed) */
-        vertex->xyz[0] *= f;
-        vertex->xyz[1] *= f;
+        vertex[v].xyz[0] *= f;
+        vertex[v].xyz[1] *= f;
 
         /* Orthographic projections need to use invZ otherwise we lose
         the depth information. As w == 1, and clip-space range is -w to +w
