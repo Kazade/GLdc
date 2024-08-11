@@ -163,13 +163,6 @@ void APIENTRY glVertex3f(GLfloat x, GLfloat y, GLfloat z) {
 
     IMVertex* vert = aligned_vector_extend(&VERTICES, 1);
 
-    /* Resizing could've invalidated the pointers */
-    IM_ATTRIBS.vertex.ptr = VERTICES.data;
-    IM_ATTRIBS.uv.ptr = IM_ATTRIBS.vertex.ptr + 12;
-    IM_ATTRIBS.st.ptr = IM_ATTRIBS.uv.ptr + 8;
-    IM_ATTRIBS.colour.ptr = IM_ATTRIBS.st.ptr + 8;
-    IM_ATTRIBS.normal.ptr = IM_ATTRIBS.colour.ptr + 4;
-
     uint32_t* dest = (uint32_t*) &vert->x;
     *(dest++) = *((uint32_t*) &x);
     *(dest++) = *((uint32_t*) &y);
@@ -253,6 +246,13 @@ void APIENTRY glNormal3fv(const GLfloat* v) {
 
 void APIENTRY glEnd() {
     IMMEDIATE_MODE_ACTIVE = GL_FALSE;
+
+    /* Resizing could've invalidated the pointers */
+    IM_ATTRIBS.vertex.ptr = VERTICES.data;
+    IM_ATTRIBS.uv.ptr     = IM_ATTRIBS.vertex.ptr + 12;
+    IM_ATTRIBS.st.ptr     = IM_ATTRIBS.uv.ptr + 8;
+    IM_ATTRIBS.colour.ptr = IM_ATTRIBS.st.ptr + 8;
+    IM_ATTRIBS.normal.ptr = IM_ATTRIBS.colour.ptr + 4;
 
     GLuint* attrs = &ENABLED_VERTEX_ATTRIBUTES;
 
