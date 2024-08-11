@@ -22,8 +22,7 @@ KOS_INIT_ROMDISK(romdisk);
 
 /* floats for x rotation, y rotation, z rotation */
 float xrot, yrot, zrot;
-/* storage for one texture  */
-int texture[1];
+GLuint texture[1];
 
 typedef struct {
     unsigned int height;
