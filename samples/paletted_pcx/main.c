@@ -41,7 +41,7 @@
 /* floats for x rotation, y rotation, z rotation */
 float xrot, yrot, zrot;
 
-int textures[3];
+GLuint textures[3];
 
 typedef struct {
 	uint32_t height;
@@ -272,7 +272,7 @@ int BMP_GetPalette(FILE *pFile)
 		bitCount = BmpInfoHeader.ClrImportant * sizeof(RGB_QUAD);
 
 		if (fread(BmpRgbQuad, 1, bitCount, pFile) != bitCount){
-            fprintf(stderr, "Failed to read palette: %d\n", bitCount);
+            fprintf(stderr, "Failed to read palette: %ld\n", bitCount);
 			return 0;
 		}
 
@@ -293,7 +293,7 @@ int BMP_GetPalette(FILE *pFile)
 int BMP_Depack(FILE *pFile,char *pZone)
 {
 	char	PadRead[4];
-	int32_t	i, j, Offset, PadSize, pix, c;
+	int32_t	i, j, Offset, PadSize, c;
 
 	if (BmpInfoHeader.Compression != BMP_BI_RGB)
 		return 0;
@@ -356,7 +356,7 @@ int LoadPalettedBMP(const char* filename, Image* image)
 	}
 
 	/* store palette information */
-	image->palette = BmpPal;
+	image->palette = (char*)BmpPal;
 	image->palette_width = 16;
 
 

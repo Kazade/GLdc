@@ -80,9 +80,7 @@ static struct {
     .color_control = GL_SINGLE_COLOR,
     .color_material_mode = GL_AMBIENT_AND_DIFFUSE,
     .color_material_mask = AMBIENT_MASK | DIFFUSE_MASK,
-    .lights = {0},
     .enabled_light_count = 0,
-    .material = {0},
     .shade_model = GL_SMOOTH
 };
 

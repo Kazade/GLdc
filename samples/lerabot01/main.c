@@ -26,7 +26,7 @@ KOS_INIT_ROMDISK(romdisk);
 float xrot, yrot, zrot;
 
 /* storage for one texture  */
-int texture[1];
+GLuint texture[1];
 
 // Load Bitmaps And Convert To Textures
 void LoadGLTextures() {
@@ -81,7 +81,7 @@ void InitGL(int Width, int Height)	        // We call this right after our OpenG
 
     GLfloat l1_pos[] = {5.0, 0.0, 1.0, 1.0};
     GLfloat l1_diff[] = {1.0, 0.0, 0.0, 1.0};
-    GLfloat l1_amb[] = {0.5, 0.5, 0.5, 1.0};
+    //GLfloat l1_amb[] = {0.5, 0.5, 0.5, 1.0};
 
     //glLightfv(GL_LIGHT1, GL_AMBIENT,  l1_amb);
     glLightfv(GL_LIGHT1, GL_DIFFUSE,  l1_diff);
@@ -93,7 +93,7 @@ void InitGL(int Width, int Height)	        // We call this right after our OpenG
     GLfloat l2_pos[] = {0.0, 15.0, 1.0, 1.0};
     GLfloat l2_dir[] = {0.0, -1.0, 0.0};
     GLfloat l2_diff[] = {0.5, 0.5, 0.0, 1.0};
-    GLfloat l2_amb[] = {0.5, 0.5, 0.5, 1.0};
+    //GLfloat l2_amb[] = {0.5, 0.5, 0.5, 1.0};
 
     glEnable(GL_LIGHT2);
     glLightfv(GL_LIGHT2, GL_DIFFUSE, l2_diff);
@@ -145,7 +145,7 @@ void DrawTexturedQuad(int tex, float x, float y, float z)
   GLfloat y0 = y - texH / 2;
   GLfloat x1 = x + texW / 2;
   GLfloat y1 = y + texH / 2;
-  GLfloat color[] = {1.0f, 1.0f, 1.0f, 1.0f};
+  //GLfloat color[] = {1.0f, 1.0f, 1.0f, 1.0f};
   GLfloat mat_ambient[] = {1.0f, 1.0f, 1.0f, 1.0f};
 
   GLfloat vertex_data[] = {
@@ -170,14 +170,6 @@ void DrawTexturedQuad(int tex, float x, float y, float z)
   	0.0, 0.0, 1.0,
   	0.0, 0.0, 1.0,
   	0.0, 0.0, 1.0
-  };
-
-  GLfloat color_data[] = {
-  	/* 2D Coordinate, texture coordinate */
-  	color[0], color[1], color[2], color[3],
-  	color[0], color[1], color[2], color[3],
-  	color[0], color[1], color[2], color[3],
-  	color[0], color[1], color[2], color[3]
   };
 
   //GLint indices[] = {0,1,2,3,2,3};

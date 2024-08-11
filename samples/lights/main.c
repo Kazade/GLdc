@@ -24,8 +24,7 @@ KOS_INIT_ROMDISK(romdisk);
 #include "../loadbmp.h"
 
 float xrot, yrot, zrot;
-
-int texture[1];
+GLuint texture[1];
 
 void LoadGLTextures() {
 

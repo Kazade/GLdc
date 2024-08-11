@@ -158,30 +158,31 @@ void APIENTRY glColor3fv(const GLfloat* v) {
     COLOR[B8IDX] = (GLubyte)(v[2] * 255);
 }
 
+typedef union punned {
+    GLubyte*   byte;
+    GLfloat*   flt;
+    uint32_t*  u32;
+    void*      vptr;
+    uintptr_t  uptr;
+} punned_t;
+
 void APIENTRY glVertex3f(GLfloat x, GLfloat y, GLfloat z) {
     IM_ENABLED_VERTEX_ATTRIBUTES |= VERTEX_ENABLED_FLAG;
 
     IMVertex* vert = aligned_vector_extend(&VERTICES, 1);
 
-    /* Resizing could've invalidated the pointers */
-    IM_ATTRIBS.vertex.ptr = VERTICES.data;
-    IM_ATTRIBS.uv.ptr = IM_ATTRIBS.vertex.ptr + 12;
-    IM_ATTRIBS.st.ptr = IM_ATTRIBS.uv.ptr + 8;
-    IM_ATTRIBS.colour.ptr = IM_ATTRIBS.st.ptr + 8;
-    IM_ATTRIBS.normal.ptr = IM_ATTRIBS.colour.ptr + 4;
-
-    uint32_t* dest = (uint32_t*) &vert->x;
-    *(dest++) = *((uint32_t*) &x);
-    *(dest++) = *((uint32_t*) &y);
-    *(dest++) = *((uint32_t*) &z);
-    *(dest++) = *((uint32_t*) &UV_COORD[0]);
-    *(dest++) = *((uint32_t*) &UV_COORD[1]);
-    *(dest++) = *((uint32_t*) &ST_COORD[0]);
-    *(dest++) = *((uint32_t*) &ST_COORD[1]);
-    *(dest++) = *((uint32_t*) COLOR);
-    *(dest++) = *((uint32_t*) &NORMAL[0]);
-    *(dest++) = *((uint32_t*) &NORMAL[1]);
-    *(dest++) = *((uint32_t*) &NORMAL[2]);
+    punned_t dest = { .flt = &vert->x };
+    *(dest.flt++) = x;
+    *(dest.flt++) = y;
+    *(dest.flt++) = z;
+    *(dest.flt++) = UV_COORD[0];
+    *(dest.flt++) = UV_COORD[1];
+    *(dest.flt++) = ST_COORD[0];
+    *(dest.flt++) = ST_COORD[1];
+    *(dest.u32++) = *((uint32_t*)(void*) COLOR);
+    *(dest.flt++) = NORMAL[0];
+    *(dest.flt++) = NORMAL[1];
+    *(dest.flt++) = NORMAL[2];
 }
 
 void APIENTRY glVertex3fv(const GLfloat* v) {
@@ -253,6 +254,13 @@ void APIENTRY glNormal3fv(const GLfloat* v) {
 
 void APIENTRY glEnd() {
     IMMEDIATE_MODE_ACTIVE = GL_FALSE;
+
+    /* Resizing could've invalidated the pointers */
+    IM_ATTRIBS.vertex.ptr = VERTICES.data;
+    IM_ATTRIBS.uv.ptr     = IM_ATTRIBS.vertex.ptr + 12;
+    IM_ATTRIBS.st.ptr     = IM_ATTRIBS.uv.ptr + 8;
+    IM_ATTRIBS.colour.ptr = IM_ATTRIBS.st.ptr + 8;
+    IM_ATTRIBS.normal.ptr = IM_ATTRIBS.colour.ptr + 4;
 
     GLuint* attrs = &ENABLED_VERTEX_ATTRIBUTES;
 

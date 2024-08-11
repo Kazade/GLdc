@@ -435,7 +435,7 @@ bool test_clip_case_001() {
 
     SceneListSubmit(&data[0], data.size());
 
-    check_equal(sent.size(), 5);
+    check_equal(sent.size(), 5u);
     check_equal(sent[0].flags, GPU_CMD_POLYHDR);
     check_equal(sent[1].flags, GPU_CMD_VERTEX);
     check_equal(sent[2].flags, GPU_CMD_VERTEX);
@@ -461,7 +461,7 @@ bool test_clip_case_010() {
 
     SceneListSubmit(&data[0], data.size());
 
-    check_equal(sent.size(), 4);
+    check_equal(sent.size(), 4u);
     check_equal(sent[0].flags, GPU_CMD_POLYHDR);
     check_equal(sent[1].flags, GPU_CMD_VERTEX);
     check_equal(sent[2].flags, GPU_CMD_VERTEX);
@@ -481,7 +481,7 @@ bool test_clip_case_100() {
 
     SceneListSubmit(&data[0], data.size());
 
-    check_equal(sent.size(), 5);
+    check_equal(sent.size(), 5u);
     check_equal(sent[0].flags, GPU_CMD_POLYHDR);
     check_equal(sent[1].flags, GPU_CMD_VERTEX);
     check_equal(sent[2].flags, GPU_CMD_VERTEX);
@@ -507,7 +507,7 @@ bool test_clip_case_110() {
 
     SceneListSubmit(&data[0], data.size());
 
-    check_equal(sent.size(), 6);
+    check_equal(sent.size(), 6u);
     check_equal(sent[0].flags, GPU_CMD_POLYHDR);
     check_equal(sent[1].flags, GPU_CMD_VERTEX);
     check_equal(sent[2].flags, GPU_CMD_VERTEX);
@@ -530,7 +530,7 @@ bool test_clip_case_011() {
 
     SceneListSubmit(&data[0], data.size());
 
-    check_equal(sent.size(), 6);
+    check_equal(sent.size(), 6u);
     check_equal(sent[0].flags, GPU_CMD_POLYHDR);
     check_equal(sent[1].flags, GPU_CMD_VERTEX);
     check_equal(sent[2].flags, GPU_CMD_VERTEX);
@@ -553,7 +553,7 @@ bool test_clip_case_101() {
 
     SceneListSubmit(&data[0], data.size());
 
-    check_equal(sent.size(), 6);
+    check_equal(sent.size(), 6u);
     check_equal(sent[0].flags, GPU_CMD_POLYHDR);
     check_equal(sent[1].flags, GPU_CMD_VERTEX);
     check_equal(sent[2].flags, GPU_CMD_VERTEX);
@@ -576,7 +576,7 @@ bool test_clip_case_111() {
 
     SceneListSubmit(&data[0], data.size());
 
-    check_equal(sent.size(), 4);
+    check_equal(sent.size(), 4u);
     check_equal(sent[0].flags, GPU_CMD_POLYHDR);
     check_equal(sent[1].flags, GPU_CMD_VERTEX);
     check_equal(sent[2].flags, GPU_CMD_VERTEX);
