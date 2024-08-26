@@ -55,7 +55,7 @@ __BEGIN_DECLS
 #define GL_FRONT_FACE       0x0B46
 
 /* Scissor box */
-#define GL_SCISSOR_TEST     0x0008      /* capability bit */
+#define GL_SCISSOR_TEST     0x0C11
 #define GL_SCISSOR_BOX      0x0C10
 
 /* Stencil actions */
@@ -109,7 +109,7 @@ __BEGIN_DECLS
 #define GL_SRC_ALPHA_SATURATE   0x0308
 
 /* Misc texture constants */
-#define GL_TEXTURE_2D           0x0001      /* capability bit */
+#define GL_TEXTURE_2D           0x0DE1
 #define GL_TEXTURE_WRAP_S       0x2802
 #define GL_TEXTURE_WRAP_T       0x2803
 #define GL_TEXTURE_MAG_FILTER   0x2800
@@ -204,7 +204,7 @@ __BEGIN_DECLS
 #define GL_CLIP_PLANE5      0x3005
 
 /* Fog */
-#define GL_FOG              0x0004      /* capability bit */
+#define GL_FOG              0x0B60
 #define GL_FOG_MODE         0x0B65
 #define GL_FOG_DENSITY      0x0B62
 #define GL_FOG_COLOR        0x0B66
@@ -226,7 +226,7 @@ __BEGIN_DECLS
 #define GL_FOG_HINT                     0x0C54
 
 /* Lighting constants */
-#define GL_LIGHTING     0x0b50
+#define GL_LIGHTING                       0x0b50
 
 #define GL_LIGHT0                         0x4000
 #define GL_LIGHT1                         0x4001
