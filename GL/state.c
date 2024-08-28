@@ -495,9 +495,12 @@ GLAPI void APIENTRY glEnable(GLenum cap) {
         case GL_TEXTURE_TWIDDLE_KOS:
             _glSetTextureTwiddle(GL_TRUE);
         break;
-    default:
-        _glKosThrowError(GL_INVALID_VALUE, __func__);
-        break;
+        case GL_MULTISAMPLE:
+            // Not supported, but not an error
+            break;
+        default:
+            _glKosThrowError(GL_INVALID_VALUE, __func__);
+            break;
     }
 }
 
@@ -601,9 +604,12 @@ GLAPI void APIENTRY glDisable(GLenum cap) {
         case GL_TEXTURE_TWIDDLE_KOS:
             _glSetTextureTwiddle(GL_FALSE);
         break;
-    default:
-        _glKosThrowError(GL_INVALID_VALUE, __func__);
-        break;
+        case GL_MULTISAMPLE:
+            // Not supported, but not an error
+            break;
+        default:
+            _glKosThrowError(GL_INVALID_VALUE, __func__);
+            break;
     }
 }
 
