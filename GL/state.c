@@ -216,12 +216,54 @@ GLboolean _glIsNormalizeEnabled() {
     return GPUState.normalize_enabled;
 }
 
-GLenum _glGetBlendSourceFactor() {
-    return GPUState.blend_sfactor;
+GLenum _glGetGpuBlendSrcFactor() {
+    switch(GPUState.blend_sfactor) {
+    case GL_ZERO:
+        return GPU_BLEND_ZERO;
+    case GL_SRC_ALPHA:
+        return GPU_BLEND_SRCALPHA;
+    case GL_DST_COLOR:
+        return GPU_BLEND_DESTCOLOR;
+    case GL_DST_ALPHA:
+        return GPU_BLEND_DESTALPHA;
+    case GL_ONE_MINUS_DST_COLOR:
+        return GPU_BLEND_INVDESTCOLOR;
+    case GL_ONE_MINUS_SRC_ALPHA:
+        return GPU_BLEND_INVSRCALPHA;
+    case GL_ONE_MINUS_DST_ALPHA:
+        return GPU_BLEND_INVDESTALPHA;
+    case GL_ONE:
+        return GPU_BLEND_ONE;
+    default:
+        fprintf(stderr, "Invalid src blend mode: %u\n", (unsigned int)GPUState.blend_sfactor);
+        return GPU_BLEND_ONE;
+    }
 }
 
-GLenum _glGetBlendDestFactor() {
-    return GPUState.blend_dfactor;
+GLenum _glGetGpuBlendDstFactor() {
+    switch(GPUState.blend_dfactor) {
+    case GL_ZERO:
+        return GPU_BLEND_ZERO;
+    case GL_SRC_ALPHA:
+        return GPU_BLEND_SRCALPHA;
+    case GL_SRC_COLOR:
+        // actually 'src' color in PVR2 when used as dst blend factor
+        return GPU_BLEND_DESTCOLOR; 
+    case GL_DST_ALPHA:
+        return GPU_BLEND_DESTALPHA;
+    case GL_ONE_MINUS_SRC_COLOR:
+        // actually 'src' color in PVR2 when used as dst blend factor
+        return GPU_BLEND_INVDESTCOLOR; 
+    case GL_ONE_MINUS_SRC_ALPHA:
+        return GPU_BLEND_INVSRCALPHA;
+    case GL_ONE_MINUS_DST_ALPHA:
+        return GPU_BLEND_INVDESTALPHA;
+    case GL_ONE:
+        return GPU_BLEND_ONE;
+    default:
+        fprintf(stderr, "Invalid dst blend mode: %u\n", (unsigned int)GPUState.blend_dfactor);
+        return GPU_BLEND_ONE;
+    }
 }
 
 

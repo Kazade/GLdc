@@ -985,42 +985,6 @@ GL_FORCE_INLINE int _calc_pvr_depth_test() {
     }
 }
 
-GL_FORCE_INLINE int _calcPVRBlendFactor(GLenum factor) {
-    switch(factor) {
-    case GL_ZERO:
-        return GPU_BLEND_ZERO;
-    case GL_SRC_ALPHA:
-        return GPU_BLEND_SRCALPHA;
-    case GL_DST_COLOR:
-        return GPU_BLEND_DESTCOLOR;
-    case GL_DST_ALPHA:
-        return GPU_BLEND_DESTALPHA;
-    case GL_ONE_MINUS_DST_COLOR:
-        return GPU_BLEND_INVDESTCOLOR;
-    case GL_ONE_MINUS_SRC_ALPHA:
-        return GPU_BLEND_INVSRCALPHA;
-    case GL_ONE_MINUS_DST_ALPHA:
-        return GPU_BLEND_INVDESTALPHA;
-    case GL_ONE:
-        return GPU_BLEND_ONE;
-    default:
-        fprintf(stderr, "Invalid blend mode: %u\n", (unsigned int) factor);
-        return GPU_BLEND_ONE;
-    }
-}
-
-
-GL_FORCE_INLINE void _updatePVRBlend(PolyContext* context) {
-    if(_glIsBlendingEnabled() || _glIsAlphaTestEnabled()) {
-        context->gen.alpha = GPU_ALPHA_ENABLE;
-    } else {
-        context->gen.alpha = GPU_ALPHA_DISABLE;
-    }
-
-    context->blend.src = _calcPVRBlendFactor(_glGetBlendSourceFactor());
-    context->blend.dst = _calcPVRBlendFactor(_glGetBlendDestFactor());
-}
-
 GL_FORCE_INLINE void apply_poly_header(PolyHeader* header, GLboolean multiTextureHeader, PolyList* activePolyList, GLshort textureUnit) {
     TRACE();
 
@@ -1051,7 +1015,11 @@ GL_FORCE_INLINE void apply_poly_header(PolyHeader* header, GLboolean multiTextur
         ctx.gen.fog_type = GPU_FOG_DISABLE;
     }
 
-    _updatePVRBlend(&ctx);
+    if(_glIsBlendingEnabled() || _glIsAlphaTestEnabled()) {
+        ctx.gen.alpha = GPU_ALPHA_ENABLE;
+    } else {
+        ctx.gen.alpha = GPU_ALPHA_DISABLE;
+    }
 
     if(ctx.list_type == GPU_LIST_OP_POLY) {
         /* Opaque polys are always one/zero */
@@ -1062,9 +1030,14 @@ GL_FORCE_INLINE void apply_poly_header(PolyHeader* header, GLboolean multiTextur
         ctx.blend.src = GPU_BLEND_SRCALPHA;
         ctx.blend.dst = GPU_BLEND_INVSRCALPHA;
         ctx.depth.comparison = GPU_DEPTHCMP_LEQUAL;
-    } else if(ctx.list_type == GPU_LIST_TR_POLY && AUTOSORT_ENABLED) {
-        /* Autosort mode requires this mode for transparent polys */
-        ctx.depth.comparison = GPU_DEPTHCMP_GEQUAL;
+    } else {
+        ctx.blend.src = _glGetGpuBlendSrcFactor();
+        ctx.blend.dst = _glGetGpuBlendDstFactor();
+
+        if(ctx.list_type == GPU_LIST_TR_POLY && AUTOSORT_ENABLED) {
+            /* Autosort mode requires this mode for transparent polys */
+            ctx.depth.comparison = GPU_DEPTHCMP_GEQUAL;
+        }
     }
 
     _glUpdatePVRTextureContext(&ctx, textureUnit);
