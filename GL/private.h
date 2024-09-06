@@ -385,8 +385,8 @@ GLboolean _glIsFogEnabled();
 GLenum _glGetDepthFunc();
 GLenum _glGetCullFace();
 GLenum _glGetFrontFace();
-GLenum _glGetBlendSourceFactor();
-GLenum _glGetBlendDestFactor();
+GLenum _glGetGpuBlendSrcFactor();
+GLenum _glGetGpuBlendDstFactor();
 
 extern PolyList OP_LIST;
 extern PolyList PT_LIST;
