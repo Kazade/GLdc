@@ -456,7 +456,7 @@ void alloc_run_defrag(void* pool, defrag_address_move callback, int max_iteratio
 
         while(it) {
             void* potential_dest = alloc_next_available(pool, it->size);
-            if(potential_dest < it->pointer) {
+            if(potential_dest && potential_dest < it->pointer) {
                 potential_dest = alloc_malloc(pool, it->size);
                 memcpy(potential_dest, it->pointer, it->size);
 
