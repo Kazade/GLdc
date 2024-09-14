@@ -244,13 +244,17 @@ int alloc_init(void* pool, size_t size) {
 
     memset(pool_header.block_usage, 0, BLOCK_COUNT);
     pool_header.pool = pool;
-    pool_header.pool_size = size;
 
     intptr_t base_address = (intptr_t) pool_header.pool;
     base_address = round_up(base_address, 2048);
 
     pool_header.base_address = (uint8_t*) base_address;
     pool_header.block_count = ((p + size) - pool_header.base_address) / 2048;
+
+    /* The pool size might be less than the passed size if the memory
+     * wasn't aligned to 2048 */
+    pool_header.pool_size = pool_header.block_count * 2048;
+
     pool_header.allocations = NULL;
 
     assert(((uintptr_t) pool_header.base_address) % 2048 == 0);
@@ -490,30 +494,24 @@ static inline uint8_t count_ones(uint8_t byte) {
 size_t alloc_count_free(void* pool) {
     (void) pool;
 
-    uint8_t* it = pool_header.block_usage;
-    uint8_t* end = it + pool_header.block_count;
+    size_t total_used = 0;
 
-    size_t total_free = 0;
-
-    while(it < end) {
-        total_free += count_ones(*it) * 256;
-        ++it;
+    for(size_t i = 0; i < pool_header.block_count; ++i) {
+        total_used += count_ones(pool_header.block_usage[i]) * 256;
     }
 
-    return total_free;
+    return pool_header.pool_size - total_used;
 }
 
 size_t alloc_count_continuous(void* pool) {
     (void) pool;
 
     size_t largest_block = 0;
-
-    uint8_t* it = pool_header.block_usage;
-    uint8_t* end = it + pool_header.block_count;
-
     size_t current_block = 0;
-    while(it < end) {
-        uint8_t t = *it++;
+
+    for(size_t i = 0; i < pool_header.block_count; ++i) {
+        uint8_t t = pool_header.block_usage[i];
+
         if(!t) {
             current_block += 2048;
         } else {
@@ -528,6 +526,10 @@ size_t alloc_count_continuous(void* pool) {
                 }
             }
         }
+    }
+
+    if(largest_block < current_block) {
+        largest_block = current_block;
     }
 
     return largest_block;
