@@ -585,12 +585,13 @@ static void _readPositionData(ReadDiffuseFunc func, const GLuint first, const GL
     const GLsizei vstride = ATTRIB_POINTERS.vertex.stride;
     const GLubyte* vptr = ((GLubyte*) ATTRIB_POINTERS.vertex.ptr + (first * vstride));
 
-    float pos[3];
+    float pos[3], w = 1.0f;
 
     ITERATE(count) {
         PREFETCH(vptr + vstride);
         func(vptr, (GLubyte*) pos);
         it->flags = GPU_CMD_VERTEX;
+        TransformVertex(pos, &w, it->xyz, &it->w);
 
         vptr += vstride;
         ++it;
@@ -678,6 +679,7 @@ static void generateElements(
     Vertex* output = _glSubmissionTargetStart(target);
     VertexExtra* ve = aligned_vector_at(target->extras, 0);
 
+    float pos[3], w = 1.0f;
     uint32_t i = first;
     uint32_t idx = 0;
 
@@ -705,7 +707,8 @@ static void generateElements(
         st = (GLubyte*) ATTRIB_POINTERS.st.ptr + (idx * ststride);
         nxyz = (GLubyte*) ATTRIB_POINTERS.normal.ptr + (idx * nstride);
 
-        pos_func(xyz, (GLubyte*) output->xyz);
+        pos_func(xyz, (GLubyte*) pos);
+        TransformVertex((const float*) pos, &w, output->xyz, &output->w);
         uv_func(uv, (GLubyte*) output->uv);
         diffuse_func(bgra, output->bgra);
         st_func(st, (GLubyte*) ve->st);
@@ -1177,12 +1180,6 @@ GL_FORCE_INLINE void submitVertices(GLenum mode, GLsizei first, GLuint count, GL
 
     /* If we're FAST_PATH_ENABLED, then this will do the transform for us */
     generate(target, mode, first, count, (GLubyte*) indices, type);
-
-    /* No fast path, then we have to do another iteration :( */
-    if(!FAST_PATH_ENABLED) {
-        /* Multiply by modelview */
-        transform(target);
-    }
 
     if(_glIsLightingEnabled()){
         light(target);
