@@ -25,6 +25,7 @@ extern void* memcpy4 (void *dest, const void *src, size_t count);
 #define GL_NO_INSTRUMENT inline __attribute__((no_instrument_function))
 #define GL_INLINE_DEBUG GL_NO_INSTRUMENT __attribute__((always_inline))
 #define GL_FORCE_INLINE static GL_INLINE_DEBUG
+#define GL_NO_INLINE __attribute__((noinline))
 #define _GL_UNUSED(x) (void)(x)
 
 #define _PACK4(v) ((v * 0xF) / 0xFF)

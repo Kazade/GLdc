@@ -436,7 +436,7 @@ GL_FORCE_INLINE void genTriangleStrip(Vertex* output, GLuint count) {
 }
 
 #define QUADSTRIP_COUNT(count) (((count) - 2) * 2)
-static void genQuadStrip(Vertex* output, GLuint count) {
+static GL_NO_INLINE void genQuadStrip(Vertex* output, GLuint count) {
     Vertex* dst = output + QUADSTRIP_COUNT(count) - 1;
     Vertex* src = output + count;//(count - 1);
 
@@ -454,7 +454,7 @@ static void genQuadStrip(Vertex* output, GLuint count) {
 }
 
 #define TRIFAN_COUNT(count) (((count) - 2) * 3)
-static void genTriangleFan(Vertex* output, GLuint count) {
+static GL_NO_INLINE void genTriangleFan(Vertex* output, GLuint count) {
     Vertex* dst = output + TRIFAN_COUNT(count) - 1;
     Vertex* src = output + count - 1;
 
@@ -469,7 +469,7 @@ static void genTriangleFan(Vertex* output, GLuint count) {
 }
 
 #define POINTS_COUNT(count) ((count) * 4)
-static void genPoints(Vertex* output, GLuint count) {
+static GL_NO_INLINE void genPoints(Vertex* output, GLuint count) {
     Vertex* dst = output + POINTS_COUNT(count) - 1;
     Vertex* src = output + count - 1;
     float half_size = HALF_POINT_SIZE;
@@ -540,7 +540,7 @@ static Vertex* draw_line(Vertex* dst, Vertex* v1, Vertex* v2) {
 }
 
 #define LINES_COUNT(count) (((count) / 2) * 4)
-static void genLines(Vertex* output, GLuint count) {
+static GL_NO_INLINE void genLines(Vertex* output, GLuint count) {
     Vertex* dst = output + LINES_COUNT(count) - 1;
     Vertex* src = output + count - 1;
 
@@ -551,7 +551,7 @@ static void genLines(Vertex* output, GLuint count) {
 }
 
 #define LINE_STRIP_COUNT(count) (((count) - 1) * 4)
-static void genLineStrip(Vertex* output, GLuint count) {
+static GL_NO_INLINE void genLineStrip(Vertex* output, GLuint count) {
     Vertex* dst = output + LINE_STRIP_COUNT(count) - 1;
     Vertex* src = output + count - 1;
 
@@ -562,7 +562,7 @@ static void genLineStrip(Vertex* output, GLuint count) {
 }
 
 #define LINE_LOOP_COUNT(count) ((count) * 4)
-static void genLineLoop(Vertex* output, GLuint count) {
+static GL_NO_INLINE void genLineLoop(Vertex* output, GLuint count) {
     Vertex* dst = output + LINE_LOOP_COUNT(count) - 1;
     Vertex* src = output + count - 1;
 	Vertex last = *src, first = *output;
