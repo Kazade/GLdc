@@ -3,7 +3,8 @@
 #include <stdio.h>
 
 #include "private.h"
-
+GLfloat HALF_LINE_WIDTH = 1.0f / 2.0f;
+GLfloat HALF_POINT_SIZE = 1.0f / 2.0f;
 
 static struct {
     GLboolean is_dirty;
@@ -773,7 +774,11 @@ GLAPI void APIENTRY glAlphaFunc(GLenum func, GLclampf ref) {
 }
 
 void glLineWidth(GLfloat width) {
-    _GL_UNUSED(width);
+    HALF_LINE_WIDTH = width / 2.0f;
+}
+
+void glPointSize(GLfloat size) {
+    HALF_POINT_SIZE = size / 2.0f;
 }
 
 void glPolygonOffset(GLfloat factor, GLfloat units) {

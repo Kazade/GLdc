@@ -25,6 +25,7 @@ extern void* memcpy4 (void *dest, const void *src, size_t count);
 #define GL_NO_INSTRUMENT inline __attribute__((no_instrument_function))
 #define GL_INLINE_DEBUG GL_NO_INSTRUMENT __attribute__((always_inline))
 #define GL_FORCE_INLINE static GL_INLINE_DEBUG
+#define GL_NO_INLINE __attribute__((noinline))
 #define _GL_UNUSED(x) (void)(x)
 
 #define _PACK4(v) ((v * 0xF) / 0xFF)
@@ -259,6 +260,12 @@ do {                 \
     memcpy_vertex(b, &c); \
 } while(0)
 
+#ifdef __DREAMCAST__
+#define fast_rsqrt(x) frsqrt(x)
+#else
+#define fast_rsqrt(x) (1.0f / __builtin_sqrtf(x))
+#endif
+
 /* ClipVertex doesn't have room for these, so we need to parse them
  * out separately. Potentially 'w' will be housed here if we support oargb */
 typedef struct {
@@ -319,6 +326,9 @@ void _glMatrixLoadModelViewProjection();
 
 extern GLfloat DEPTH_RANGE_MULTIPLIER_L;
 extern GLfloat DEPTH_RANGE_MULTIPLIER_H;
+
+extern GLfloat HALF_LINE_WIDTH;
+extern GLfloat HALF_POINT_SIZE;
 
 Matrix4x4* _glGetProjectionMatrix();
 Matrix4x4* _glGetModelViewMatrix();

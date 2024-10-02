@@ -435,19 +435,145 @@ GL_FORCE_INLINE void genTriangleStrip(Vertex* output, GLuint count) {
     output[count - 1].flags = GPU_CMD_VERTEX_EOL;
 }
 
-static void genTriangleFan(Vertex* output, GLuint count) {
-    gl_assert(count <= 255);
+#define QUADSTRIP_COUNT(count) (((count) - 2) * 2)
+static GL_NO_INLINE void genQuadStrip(Vertex* output, GLuint count) {
+    Vertex* dst = output + QUADSTRIP_COUNT(count) - 1;
+    Vertex* src = output + count;//(count - 1);
 
-    Vertex* dst = output + (((count - 2) * 3) - 1);
-    Vertex* src = output + (count - 1);
+    for (; count > 2; count -= 2) {
+        // Have to copy because of src/dst overlapping on first quad
+		Vertex src1 = src[-1], src2 = src[-2], src3 = src[-3], src4 = src[-4];
 
-    GLubyte i = count - 2;
-    while(i--) {
-        *dst = *src--;
+        *dst   = src3;
+        (*dst--).flags = GPU_CMD_VERTEX_EOL;
+        *dst-- = src4;
+        *dst-- = src1;
+        *dst-- = src2;
+        src -= 2;
+    }
+}
+
+#define TRIFAN_COUNT(count) (((count) - 2) * 3)
+static GL_NO_INLINE void genTriangleFan(Vertex* output, GLuint count) {
+    Vertex* dst = output + TRIFAN_COUNT(count) - 1;
+    Vertex* src = output + count - 1;
+
+    // Triangles generated as {first vertex, prior vertex, current vertex}
+    // e.g. {v1, v2, v3, v4} produces {v1, v2, v3}, {v1, v3, v4}
+    for (; count > 2; count--) {
+        *dst   = *src--;
         (*dst--).flags = GPU_CMD_VERTEX_EOL;
         *dst-- = *src;
         *dst-- = *output;
     }
+}
+
+#define POINTS_COUNT(count) ((count) * 4)
+static GL_NO_INLINE void genPoints(Vertex* output, GLuint count) {
+    Vertex* dst = output + POINTS_COUNT(count) - 1;
+    Vertex* src = output + count - 1;
+    float half_size = HALF_POINT_SIZE;
+
+    // Expands v to { v + (-S/2,S/2), v + (S/2,S/2), v + (-S/2,S/2), (S/2,-S/2) }
+    for (; count > 0; count--, src--) {
+        *dst = *src;
+        dst->flags = GPU_CMD_VERTEX_EOL;
+        dst->xyz[0] -= half_size; dst->xyz[1] -= half_size;
+        dst--;
+
+        *dst = *src;
+        dst->xyz[0] += half_size; dst->xyz[1] -= half_size;
+        dst--;
+
+        *dst = *src;
+        dst->xyz[0] -= half_size; dst->xyz[1] += half_size;
+        dst--;
+
+        *dst = *src;
+        dst->xyz[0] += half_size; dst->xyz[1] += half_size;
+        dst--;
+    }
+}
+
+// Heavily based on the pvrline example by jnmartin84
+// Which is based on https://devcry.heiho.net/html/2017/20170820-opengl-line-drawing.html
+static Vertex* draw_line(Vertex* dst, Vertex* v1, Vertex* v2) {
+    Vertex ov1 = *v1;
+    Vertex ov2 = *v2;
+    // TODO don't copy unless dst might overlap v1/v2 
+
+	// Essentially "expands" a line into a quad by
+    // 1) Calculating normal of the line from v1 to v2
+	// 2) Scaling normal by the line width
+	// 3) Offseting the endpoints wrt the scaled normal
+    float dx = ov2.xyz[0] - ov1.xyz[0];
+    float dy = ov2.xyz[1] - ov1.xyz[1];
+
+    float inverse_mag = fast_rsqrt((dx*dx) + (dy*dy)) * HALF_LINE_WIDTH;
+    float nx = -dy * inverse_mag;
+    float ny =  dx * inverse_mag;
+
+    // Expand first endpoint both "up" and "down"
+    *dst = ov1;
+    dst->flags = GPU_CMD_VERTEX_EOL;
+    dst->xyz[0] += nx;
+    dst->xyz[1] += ny;
+    dst--;
+
+    *dst = ov1;
+    dst->xyz[0] -= nx;
+    dst->xyz[1] -= ny;
+    dst--;
+
+    // Expand second endpoint both "up" and "down"
+    *dst = ov2;
+    dst->xyz[0] += nx;
+    dst->xyz[1] += ny;
+    dst--;
+
+    *dst = ov2;
+    dst->xyz[0] -= nx;
+    dst->xyz[1] -= ny;
+    dst--;
+
+    return dst;
+}
+
+#define LINES_COUNT(count) (((count) / 2) * 4)
+static GL_NO_INLINE void genLines(Vertex* output, GLuint count) {
+    Vertex* dst = output + LINES_COUNT(count) - 1;
+    Vertex* src = output + count - 1;
+
+    // Draws line using two vertices
+    for (; count >= 2; count -= 2, src -= 2) {
+        dst = draw_line(dst, src, src - 1);
+    }
+}
+
+#define LINE_STRIP_COUNT(count) (((count) - 1) * 4)
+static GL_NO_INLINE void genLineStrip(Vertex* output, GLuint count) {
+    Vertex* dst = output + LINE_STRIP_COUNT(count) - 1;
+    Vertex* src = output + count - 1;
+
+    // Draws line using current and prior vertex
+    for (; count > 1; count--, src--) {
+        dst = draw_line(dst, src, src - 1);
+    }
+}
+
+#define LINE_LOOP_COUNT(count) ((count) * 4)
+static GL_NO_INLINE void genLineLoop(Vertex* output, GLuint count) {
+    Vertex* dst = output + LINE_LOOP_COUNT(count) - 1;
+    Vertex* src = output + count - 1;
+	Vertex last = *src, first = *output;
+	
+    // Draws line using current and prior vertex
+    for (; count > 1; count--, src--) {
+        dst = draw_line(dst, src, src - 1);
+    }
+
+    // Connect first and last vertex
+	draw_line(dst, &first, &last);
 }
 
 typedef void (*ReadPositionFunc)(const GLubyte*, GLubyte*);
@@ -891,11 +1017,28 @@ static void generate(SubmissionTarget* target, const GLenum mode, const GLsizei 
     case GL_QUADS:
         genQuads(it, count);
         break;
+    case GL_TRIANGLE_STRIP:
+        genTriangleStrip(it, count);
+        break;
+
+    case GL_QUAD_STRIP:
+        genQuadStrip(it, count);
+        break;
     case GL_TRIANGLE_FAN:
         genTriangleFan(it, count);
         break;
-    case GL_TRIANGLE_STRIP:
-        genTriangleStrip(it, count);
+
+    case GL_POINTS:
+        genPoints(it, count);
+        break;
+    case GL_LINES:
+        genLines(it, count);
+        break;
+    case GL_LINE_STRIP:
+        genLineStrip(it, count);
+        break;
+    case GL_LINE_LOOP:
+        genLineLoop(it, count);
         break;
     default:
         gl_assert(0 && "Not Implemented");
@@ -1093,6 +1236,23 @@ void _glInitSubmissionTarget() {
     target->extras = &VERTEX_EXTRAS;
 }
 
+GL_FORCE_INLINE GLuint calcFinalVertices(GLenum mode, GLuint count) {
+    switch (mode) {
+        case GL_POINTS:
+            return POINTS_COUNT(count);
+        case GL_LINE_LOOP:
+            return LINE_LOOP_COUNT(count);
+        case GL_LINE_STRIP:
+            return LINE_STRIP_COUNT(count);
+        case GL_LINES:
+            return LINES_COUNT(count);
+        case GL_TRIANGLE_FAN:
+            return TRIFAN_COUNT(count);
+        case GL_QUAD_STRIP:
+            return QUADSTRIP_COUNT(count);
+    }
+    return count;
+}
 
 GL_FORCE_INLINE void submitVertices(GLenum mode, GLsizei first, GLuint count, GLenum type, const GLvoid* indices) {
 
@@ -1102,14 +1262,10 @@ GL_FORCE_INLINE void submitVertices(GLenum mode, GLsizei first, GLuint count, GL
     TRACE();
 
     /* Do nothing if vertices aren't enabled */
-    if(!(ENABLED_VERTEX_ATTRIBUTES & VERTEX_ENABLED_FLAG)) {
-        return;
-    }
+    if(!(ENABLED_VERTEX_ATTRIBUTES & VERTEX_ENABLED_FLAG)) return;
 
     /* No vertices? Do nothing */
-    if(!count) {
-        return;
-    }
+    if(!count) return;
 
     /* Polygons are treated as triangle fans, the only time this would be a
      * problem is if we supported glPolygonMode(..., GL_LINE) but we don't.
@@ -1131,14 +1287,6 @@ GL_FORCE_INLINE void submitVertices(GLenum mode, GLsizei first, GLuint count, GL
         }
     }
 
-    if(mode == GL_LINE_STRIP || mode == GL_LINES) {
-        fprintf(stderr, "Line drawing is currently unsupported\n");
-        return;
-    }
-
-    // We don't handle this any further, so just make sure we never pass it down */
-    gl_assert(mode != GL_POLYGON);
-
     target->output = _glActivePolyList();
     gl_assert(target->output);
     gl_assert(extras);
@@ -1147,7 +1295,7 @@ GL_FORCE_INLINE void submitVertices(GLenum mode, GLsizei first, GLuint count, GL
 
     GLboolean header_required = (vector_size == 0) || _glGPUStateIsDirty();
 
-    target->count = (mode == GL_TRIANGLE_FAN) ? ((count - 2) * 3) : count;
+    target->count = calcFinalVertices(mode, count);
     target->header_offset = vector_size;
     target->start_offset = target->header_offset + (header_required ? 1 : 0);
 
