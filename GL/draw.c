@@ -474,23 +474,23 @@ static GL_NO_INLINE void genPoints(Vertex* output, GLuint count) {
     Vertex* src = output + count - 1;
     float half_size = HALF_POINT_SIZE;
 
-    // Expands v to { v + (-S/2,S/2), v + (S/2,S/2), v + (-S/2,S/2), (S/2,-S/2) }
+    // Expands v to { v + (S/2,-S/2), v + (S/2,S/2), v + (-S/2,-S/2), (-S/2,S/2) }
     for (; count > 0; count--, src--) {
         *dst = *src;
         dst->flags = GPU_CMD_VERTEX_EOL;
-        dst->xyz[0] -= half_size; dst->xyz[1] -= half_size;
-        dst--;
-
-        *dst = *src;
-        dst->xyz[0] += half_size; dst->xyz[1] -= half_size;
-        dst--;
-
-        *dst = *src;
         dst->xyz[0] -= half_size; dst->xyz[1] += half_size;
         dst--;
 
         *dst = *src;
         dst->xyz[0] += half_size; dst->xyz[1] += half_size;
+        dst--;
+
+        *dst = *src;
+        dst->xyz[0] -= half_size; dst->xyz[1] -= half_size;
+        dst--;
+
+        *dst = *src;
+        dst->xyz[0] += half_size; dst->xyz[1] -= half_size;
         dst--;
     }
 }
@@ -513,11 +513,10 @@ static Vertex* draw_line(Vertex* dst, Vertex* v1, Vertex* v2) {
     float nx = -dy * inverse_mag;
     float ny =  dx * inverse_mag;
 
-    // Expand first endpoint both "up" and "down"
-    *dst = ov1;
+    *dst = ov2;
     dst->flags = GPU_CMD_VERTEX_EOL;
-    dst->xyz[0] += nx;
-    dst->xyz[1] += ny;
+    dst->xyz[0] -= nx;
+    dst->xyz[1] -= ny;
     dst--;
 
     *dst = ov1;
@@ -525,15 +524,14 @@ static Vertex* draw_line(Vertex* dst, Vertex* v1, Vertex* v2) {
     dst->xyz[1] -= ny;
     dst--;
 
-    // Expand second endpoint both "up" and "down"
     *dst = ov2;
     dst->xyz[0] += nx;
     dst->xyz[1] += ny;
     dst--;
 
-    *dst = ov2;
-    dst->xyz[0] -= nx;
-    dst->xyz[1] -= ny;
+    *dst = ov1;
+    dst->xyz[0] += nx;
+    dst->xyz[1] += ny;
     dst--;
 
     return dst;
