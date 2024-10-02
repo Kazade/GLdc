@@ -442,17 +442,20 @@ static void genQuadStrip(Vertex* output, GLuint count) {
     for (; count > 2; count -= 2) {
         *dst   = src[-1];
         (*dst--).flags = GPU_CMD_VERTEX_EOL;
-        *dst-- = src[-2];
         *dst-- = src[-3];
+        *dst-- = src[-2];
         *dst-- = src[-4];
         src -= 2;
     }
 }
 
+#define TRIFAN_COUNT(count) (((count) - 2) * 3)
 static void genTriangleFan(Vertex* output, GLuint count) {
-    Vertex* dst = output + (((count - 2) * 3) - 1);
-    Vertex* src = output + (count - 1);
+    Vertex* dst = output + TRIFAN_COUNT(count) - 1;
+    Vertex* src = output + count - 1;
 
+    // Triangles generated as {first vertex, prior vertex, current vertex}
+    // e.g. {v1, v2, v3, v4} produces {v1, v2, v3}, {v1, v3, v4}
     for (; count > 2; count--) {
         *dst   = *src--;
         (*dst--).flags = GPU_CMD_VERTEX_EOL;
@@ -462,100 +465,111 @@ static void genTriangleFan(Vertex* output, GLuint count) {
 }
 
 #define POINTS_COUNT(count) ((count) * 4)
-#define POINT_SIZE 0.5f
 static void genPoints(Vertex* output, GLuint count) {
     Vertex* dst = output + POINTS_COUNT(count) - 1;
     Vertex* src = output + count - 1;
+    float half_size = HALF_POINT_SIZE;
 
-    // Expands v to { v + (-S/2,S/2), v + (S/2,S/2), v + (S/2,-S/2), (-S/2,-S/2) }
+    // Expands v to { v + (-S/2,S/2), v + (S/2,S/2), v + (-S/2,S/2), (S/2,-S/2) }
     for (; count > 0; count--, src--) {
         *dst = *src;
         dst->flags = GPU_CMD_VERTEX_EOL;
-        dst->xyz[0] -= POINT_SIZE; dst->xyz[1] -= POINT_SIZE;
+        dst->xyz[0] -= half_size; dst->xyz[1] -= half_size;
         dst--;
 
         *dst = *src;
-        dst->xyz[0] += POINT_SIZE; dst->xyz[1] -= POINT_SIZE;
+        dst->xyz[0] += half_size; dst->xyz[1] -= half_size;
         dst--;
 
         *dst = *src;
-        dst->xyz[0] += POINT_SIZE; dst->xyz[1] += POINT_SIZE;
+        dst->xyz[0] -= half_size; dst->xyz[1] += half_size;
         dst--;
 
         *dst = *src;
-        dst->xyz[0] -= POINT_SIZE; dst->xyz[1] += POINT_SIZE;
-        dst--;
-    }
-}
-
-static void genLines(Vertex* output, GLuint count) {
-    Vertex* dst = output + ((count/2) * 3) - 1;
-    Vertex* src = output + (count        ) - 1;
-
-    for (; count > 0; count -= 2) {
-        *dst = *src;
-        dst->flags = GPU_CMD_VERTEX_EOL;
-        dst--; src--;
-
-        *dst = *src;
-        dst--;
-
-        *dst = *src;
-        dst->xyz[1] += 5;
-        dst--; src--;
-    }
-}
-
-static void genLineStrip(Vertex* output, GLuint count) {
-    Vertex* dst = output + (((count - 1) * 3) - 1);
-    Vertex* src = output + (count - 1);
-
-    for (; count > 1; count--) {
-        *dst = *src;
-        dst->flags = GPU_CMD_VERTEX_EOL;
-        dst--; src--;
-
-        *dst = *src;
-        dst--;
-
-        *dst = *src;
-        dst->xyz[0] += 5;
-        dst->xyz[1] += 5;
+        dst->xyz[0] += half_size; dst->xyz[1] += half_size;
         dst--;
     }
 }
 
-static void genLineLoop(Vertex* output, GLuint count) {
-    Vertex* dst = output + ((count * 3) - 1);
-    Vertex* src = output + (count - 1);
-	Vertex last = *src;
-	
-    for (; count > 1; count--) {
-        *dst = *src;
-        dst->flags = GPU_CMD_VERTEX_EOL;
-        dst--; src--;
+// Heavily based on the pvrline example by jnmartin84
+// Which is based on https://devcry.heiho.net/html/2017/20170820-opengl-line-drawing.html
+static Vertex* draw_line(Vertex* dst, Vertex* v1, Vertex* v2) {
+    Vertex ov1 = *v1;
+    Vertex ov2 = *v2;
+    // TODO don't copy unless dst might overlap v1/v2 
 
-        *dst = *src;
-        dst--;
+	// Essentially "expands" a line into a quad by
+    // 1) Calculating normal of the line from v1 to v2
+	// 2) Scaling normal by the line width
+	// 3) Offseting the endpoints wrt the scaled normal
+    float dx = ov2.xyz[0] - ov1.xyz[0];
+    float dy = ov2.xyz[1] - ov1.xyz[1];
 
-        *dst = *src;
-        dst->xyz[0] += 5;
-        dst->xyz[1] += 5;
-        dst--;
-    }
+    float inverse_mag = frsqrt((dx*dx) + (dy*dy)) * HALF_LINE_WIDTH;
+    float nx = -dy * inverse_mag;
+    float ny =  dx * inverse_mag;
 
-	// Connect first and last points
-    *dst = last;
+    // Expand first endpoint both "up" and "down"
+    *dst = ov1;
     dst->flags = GPU_CMD_VERTEX_EOL;
+    dst->xyz[0] += nx;
+    dst->xyz[1] += ny;
     dst--;
 
-    *dst = *output;
+    *dst = ov1;
+    dst->xyz[0] -= nx;
+    dst->xyz[1] -= ny;
     dst--;
 
-    *dst = *output;
-    dst->xyz[0] += 5;
-    dst->xyz[1] += 5;
+    // Expand second endpoint both "up" and "down"
+    *dst = ov2;
+    dst->xyz[0] += nx;
+    dst->xyz[1] += ny;
     dst--;
+
+    *dst = ov2;
+    dst->xyz[0] -= nx;
+    dst->xyz[1] -= ny;
+    dst--;
+
+    return dst;
+}
+
+#define LINES_COUNT(count) (((count) / 2) * 4)
+static void genLines(Vertex* output, GLuint count) {
+    Vertex* dst = output + LINES_COUNT(count) - 1;
+    Vertex* src = output + count - 1;
+
+    // Draws line using two vertices
+    for (; count >= 2; count -= 2, src -= 2) {
+        dst = draw_line(dst, src, src - 1);
+    }
+}
+
+#define LINE_STRIP_COUNT(count) (((count) - 1) * 4)
+static void genLineStrip(Vertex* output, GLuint count) {
+    Vertex* dst = output + LINE_STRIP_COUNT(count) - 1;
+    Vertex* src = output + count - 1;
+
+    // Draws line using current and prior vertex
+    for (; count > 1; count--, src--) {
+        dst = draw_line(dst, src, src - 1);
+    }
+}
+
+#define LINE_LOOP_COUNT(count) ((count) * 4)
+static void genLineLoop(Vertex* output, GLuint count) {
+    Vertex* dst = output + LINE_LOOP_COUNT(count) - 1;
+    Vertex* src = output + count - 1;
+	Vertex last = *src, first = *output;
+	
+    // Draws line using current and prior vertex
+    for (; count > 1; count--, src--) {
+        dst = draw_line(dst, src, src - 1);
+    }
+
+    // Connect first and last vertex
+	draw_line(dst, &first, &last);
 }
 
 typedef void (*ReadPositionFunc)(const GLubyte*, GLubyte*);
@@ -1222,27 +1236,14 @@ GL_FORCE_INLINE GLuint calcFinalVertices(GLenum mode, GLuint count) {
     switch (mode) {
         case GL_POINTS:
             return POINTS_COUNT(count);
-
         case GL_LINE_LOOP:
-            // Triangles generated as {prior vertex, current vertex, current vertex}
-            //  plus one triangle to connect final and initial vertex
-            // e.g. {v1, v2, v3, v4} produces {v1, v1, v2}, {v2, v2, v3}, {v3, v3, v4}, {v4, v4, v1}
-            return count * 3;
-
+            return LINE_LOOP_COUNT(count);
         case GL_LINE_STRIP:
-            // Triangles generated as {prior vertex, prior vertex, current vertex}
-            // e.g. {v1, v2, v3, v4} produces {v1, v1, v2}, {v2, v2, v3}, {v3, v3, v4}
-            return (count - 1) * 3;
-
+            return LINE_STRIP_COUNT(count);
         case GL_LINES:
-            // Triangles generated as {first vertex, first vertex, second vertex}
-            // e.g. {v1, v2, v3, v4} produces {v1, v1, v2}, {v3, v3, v4}
-            return (count / 2) * 3;
-
+            return LINES_COUNT(count);
         case GL_TRIANGLE_FAN:
-            // Triangles generated as {first vertex, prior vertex, current vertex}
-            // e.g. {v1, v2, v3, v4} produces {v1, v2, v3}, {v1, v3, v4}
-            return (count - 2) * 3;
+            return TRIFAN_COUNT(count);
 
         case GL_QUAD_STRIP:
             //return ((count - 2) / 2) * 4;

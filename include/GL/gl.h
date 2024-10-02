@@ -552,6 +552,10 @@ GLAPI GLvoid APIENTRY glRecti(GLint x1, GLint y1, GLint x2, GLint y2);
 GLAPI GLvoid APIENTRY glRectiv(const GLint *v1, const GLint *v2);
 #define glRectsv glRectiv
 
+/* Primitive configuration */
+GLAPI void APIENTRY glLineWidth(GLfloat width);
+GLAPI void APIENTRY glPointSize(GLfloat size);
+
 /* Enable / Disable Capability */
 /* Currently Supported Capabilities:
         GL_TEXTURE_2D
@@ -742,7 +746,6 @@ GLAPI GLenum APIENTRY glGetError(void);
 
 /* Non Operational Stubs for portability */
 GLAPI void APIENTRY glAlphaFunc(GLenum func, GLclampf ref);
-GLAPI void APIENTRY glLineWidth(GLfloat width);
 GLAPI void APIENTRY glPolygonMode(GLenum face, GLenum mode);
 GLAPI void APIENTRY glPolygonOffset(GLfloat factor, GLfloat units);
 GLAPI void APIENTRY glGetTexParameterfv(GLenum target, GLenum pname, GLfloat *params);

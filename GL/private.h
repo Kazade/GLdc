@@ -320,6 +320,9 @@ void _glMatrixLoadModelViewProjection();
 extern GLfloat DEPTH_RANGE_MULTIPLIER_L;
 extern GLfloat DEPTH_RANGE_MULTIPLIER_H;
 
+extern GLfloat HALF_LINE_WIDTH;
+extern GLfloat HALF_POINT_SIZE;
+
 Matrix4x4* _glGetProjectionMatrix();
 Matrix4x4* _glGetModelViewMatrix();
 
