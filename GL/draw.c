@@ -435,16 +435,20 @@ GL_FORCE_INLINE void genTriangleStrip(Vertex* output, GLuint count) {
     output[count - 1].flags = GPU_CMD_VERTEX_EOL;
 }
 
+#define QUADSTRIP_COUNT(count) (((count) - 2) * 2)
 static void genQuadStrip(Vertex* output, GLuint count) {
-    Vertex* dst = output + (((count - 2) * 2) - 1);
+    Vertex* dst = output + QUADSTRIP_COUNT(count) - 1;
     Vertex* src = output + count;//(count - 1);
 
     for (; count > 2; count -= 2) {
-        *dst   = src[-1];
+        // Have to copy because of src/dst overlapping on first quad
+		Vertex src1 = src[-1], src2 = src[-2], src3 = src[-3], src4 = src[-4];
+
+        *dst   = src3;
         (*dst--).flags = GPU_CMD_VERTEX_EOL;
-        *dst-- = src[-3];
-        *dst-- = src[-2];
-        *dst-- = src[-4];
+        *dst-- = src4;
+        *dst-- = src1;
+        *dst-- = src2;
         src -= 2;
     }
 }
@@ -1244,10 +1248,8 @@ GL_FORCE_INLINE GLuint calcFinalVertices(GLenum mode, GLuint count) {
             return LINES_COUNT(count);
         case GL_TRIANGLE_FAN:
             return TRIFAN_COUNT(count);
-
         case GL_QUAD_STRIP:
-            //return ((count - 2) / 2) * 4;
-            return (count - 2) * 2;
+            return QUADSTRIP_COUNT(count);
     }
     return count;
 }
