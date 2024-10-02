@@ -260,6 +260,12 @@ do {                 \
     memcpy_vertex(b, &c); \
 } while(0)
 
+#ifdef __DREAMCAST__
+#define fast_rsqrt(x) frsqrt(x)
+#else
+#define fast_rsqrt(x) (1.0f / __builtin_sqrtf(x))
+#endif
+
 /* ClipVertex doesn't have room for these, so we need to parse them
  * out separately. Potentially 'w' will be housed here if we support oargb */
 typedef struct {

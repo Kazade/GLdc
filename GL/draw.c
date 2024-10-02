@@ -509,7 +509,7 @@ static Vertex* draw_line(Vertex* dst, Vertex* v1, Vertex* v2) {
     float dx = ov2.xyz[0] - ov1.xyz[0];
     float dy = ov2.xyz[1] - ov1.xyz[1];
 
-    float inverse_mag = frsqrt((dx*dx) + (dy*dy)) * HALF_LINE_WIDTH;
+    float inverse_mag = fast_rsqrt((dx*dx) + (dy*dy)) * HALF_LINE_WIDTH;
     float nx = -dy * inverse_mag;
     float ny =  dx * inverse_mag;
 
