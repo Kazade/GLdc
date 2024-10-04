@@ -60,20 +60,11 @@ void InitGPU(_Bool autosort, _Bool fsaa) {
 #endif
 }
 
-void SceneBegin() {
-    pvr_wait_ready();
-    pvr_scene_begin();
-}
-
-void SceneListBegin(GPUList list) {
-    pvr_list_begin(list);
-}
-
 GL_FORCE_INLINE float _glFastInvert(float x) {
     return (1.0f / __builtin_sqrtf(x * x));
 }
 
-GL_FORCE_INLINE void _glPerspectiveDivideVertex(Vertex* vertex, const float h, int count) {
+GL_FORCE_INLINE void _glPerspectiveDivideVertex(Vertex* vertex, int count) {
     TRACE();
 
     for(int v = 0; v < count; ++v) { 
@@ -95,12 +86,6 @@ GL_FORCE_INLINE void _glPerspectiveDivideVertex(Vertex* vertex, const float h, i
             vertex[v].xyz[2] = f;
         }
     }
-}
-
-static inline void _glFlushBuffer() {
-    TRACE();
-
-    sq_wait();
 }
 
 static uintptr_t sq_dest_addr = 0;
@@ -164,8 +149,6 @@ void SceneListSubmit(Vertex* vertices, int n) {
         return;
     }
 
-    const float h = GetVideoMode()->height;
-
     PVR_SET(SPAN_SORT_CFG, 0x0);
 
     //Set PVR DMA registers
@@ -199,9 +182,7 @@ void SceneListSubmit(Vertex* vertices, int n) {
     do { if(queued_vertex) { queued_vertex->flags = (sflags); _glPushHeaderOrVertex(queued_vertex, 1); queued_vertex = NULL; } } while(0)
 
     int visible_mask = 0;
-
     sq_dest_addr = (uintptr_t)SQ_MASK_DEST(PVR_TA_INPUT);
-    sq_lock((void *)PVR_TA_INPUT);
 
     Vertex* v0 = vertices;
     for(int i = 0; i < n - 1; ++i, ++v0) {
@@ -230,7 +211,7 @@ void SceneListSubmit(Vertex* vertices, int n) {
             if(visible_mask == ALL_VISIBLE) {
                 SUBMIT_QUEUED_VERTEX(qv.flags);
 
-                _glPerspectiveDivideVertex(v0, h, 2);
+                _glPerspectiveDivideVertex(v0, 2);
                 v1->flags = GPU_CMD_VERTEX_EOL;
                 _glPushHeaderOrVertex(v0, 2);
             } else {
@@ -268,7 +249,7 @@ void SceneListSubmit(Vertex* vertices, int n) {
 
         switch(visible_mask) {
             case ALL_VISIBLE:
-                _glPerspectiveDivideVertex(v0, h, 1);
+                _glPerspectiveDivideVertex(v0, 1);
                 QUEUE_VERTEX(v0);
             break;
             case NONE_VISIBLE:
@@ -281,10 +262,10 @@ void SceneListSubmit(Vertex* vertices, int n) {
                 _glClipEdge(v2, v0, b);
                 b->flags = GPU_CMD_VERTEX;
 
-                _glPerspectiveDivideVertex(v0, h, 1);
+                _glPerspectiveDivideVertex(v0, 1);
                 _glPushHeaderOrVertex(v0, 1);
 
-                _glPerspectiveDivideVertex(a, h, 2);
+                _glPerspectiveDivideVertex(a, 2);
                 _glPushHeaderOrVertex(a, 2);
 
                 QUEUE_VERTEX(b);
@@ -298,7 +279,7 @@ void SceneListSubmit(Vertex* vertices, int n) {
                 _glClipEdge(v1, v2, b);
                 b->flags = v2->flags;
 
-                _glPerspectiveDivideVertex(a, h, 3);
+                _glPerspectiveDivideVertex(a, 3);
                 _glPushHeaderOrVertex(a, 1);
 
                 _glPushHeaderOrVertex(c, 1);
@@ -314,7 +295,7 @@ void SceneListSubmit(Vertex* vertices, int n) {
                 _glClipEdge(v1, v2, b);
                 b->flags = GPU_CMD_VERTEX;
 
-                _glPerspectiveDivideVertex(a, h, 3);
+                _glPerspectiveDivideVertex(a, 3);
                 _glPushHeaderOrVertex(a, 2);
 
                 QUEUE_VERTEX(c);
@@ -325,13 +306,13 @@ void SceneListSubmit(Vertex* vertices, int n) {
                 _glClipEdge(v2, v0, b);
                 b->flags = GPU_CMD_VERTEX;
 
-                _glPerspectiveDivideVertex(v0, h, 1);
+                _glPerspectiveDivideVertex(v0, 1);
                 _glPushHeaderOrVertex(v0, 1);
 
                 _glClipEdge(v1, v2, a);
                 a->flags = v2->flags;
 
-                _glPerspectiveDivideVertex(a, h, 3);
+                _glPerspectiveDivideVertex(a, 3);
 
                 _glPushHeaderOrVertex(c, 1);
 
@@ -349,7 +330,7 @@ void SceneListSubmit(Vertex* vertices, int n) {
                 _glClipEdge(v2, v0, b);
                 b->flags = GPU_CMD_VERTEX;
 
-                _glPerspectiveDivideVertex(a, h, 4);
+                _glPerspectiveDivideVertex(a, 4);
                 _glPushHeaderOrVertex(a, 1);
 
                 _glPushHeaderOrVertex(c, 1);
@@ -368,10 +349,10 @@ void SceneListSubmit(Vertex* vertices, int n) {
                 _glClipEdge(v1, v2, b);
                 b->flags = GPU_CMD_VERTEX;
 
-                _glPerspectiveDivideVertex(v0, h, 1);
+                _glPerspectiveDivideVertex(v0, 1);
                 _glPushHeaderOrVertex(v0, 1);
 
-                _glPerspectiveDivideVertex(a, h, 3);
+                _glPerspectiveDivideVertex(a, 3);
                 _glPushHeaderOrVertex(a, 1);
 
                 _glPushHeaderOrVertex(c, 1);
@@ -387,8 +368,19 @@ void SceneListSubmit(Vertex* vertices, int n) {
 
     SUBMIT_QUEUED_VERTEX(GPU_CMD_VERTEX_EOL);
 
-    _glFlushBuffer();
-    sq_unlock();
+    sq_wait();
+}
+
+void SceneBegin() {
+    pvr_wait_ready();
+    pvr_scene_begin();
+}
+
+static pvr_dr_state_t dr_state;
+void SceneListBegin(GPUList list) {
+    pvr_list_begin(list);
+    /* Direct rendering auto acquires/releases store queue */
+    pvr_dr_init(&dr_state);
 }
 
 void SceneListFinish() {
