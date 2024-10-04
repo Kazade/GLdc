@@ -78,15 +78,16 @@ void build_twiddle_table(int32_t w, int32_t h) {
     }
 }
 
-/* Given a 0-based texel location, and an image width/height. Return the
- * new 0-based texel location */
-GL_FORCE_INLINE uint32_t twid_location(uint32_t i, uint32_t w, uint32_t h) {
+static void twid_prepare_table(uint32_t w, uint32_t h) {
     if(TWIDDLE_TABLE.width != w || TWIDDLE_TABLE.height != h || !TWIDDLE_TABLE.table) {
         build_twiddle_table(w, h);
     }
+}
 
-    uint32_t ret = TWIDDLE_TABLE.table[i];
-    return ret;
+/* Given a 0-based texel location, returns new 0-based texel location */
+/* NOTE: twid_prepare_table must have been called beforehand for correct behaviour */
+GL_FORCE_INLINE uint32_t twid_location(uint32_t i) {
+    return TWIDDLE_TABLE.table[i];
 }
 
 
@@ -1634,8 +1635,10 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
             if(is4BPPFormat(internalFormat) && is4BPPFormat(format)) {
                 // Special case twiddling. We have to unpack each src value
                 // and repack into the right place
+                twid_prepare_table(width, height);
+
                 for(uint32_t i = 0; i < (width * height); ++i) {
-                    uint32_t newLocation = twid_location(i, width, height);
+                    uint32_t newLocation = twid_location(i);
 
                     assert(newLocation < (width * height));
                     assert((newLocation / 2) < destBytes);
@@ -1655,8 +1658,10 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
                     }
                 }
             } else {
+                twid_prepare_table(width, height);
+
                 for(uint32_t i = 0; i < (width * height); ++i) {
-                    uint32_t newLocation = twid_location(i, width, height);
+                    uint32_t newLocation = twid_location(i);
                     dst = conversionBuffer + (destStride * newLocation);
 
                     for(int j = 0; j < destStride; ++j)
@@ -1667,8 +1672,10 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
             }
         } else if(needs_conversion == 3) {
             // Convert + twiddle
+            twid_prepare_table(width, height);
+
             for(uint32_t i = 0; i < (width * height); ++i) {
-                uint32_t newLocation = twid_location(i, width, height);
+                uint32_t newLocation = twid_location(i);
                 dst = conversionBuffer + (destStride * newLocation);
                 src = data + (sourceStride * i);
                 conversion(src, dst);
