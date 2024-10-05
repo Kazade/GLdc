@@ -2,10 +2,11 @@
 #include <math.h>
 #include <stdlib.h>
 
-#ifdef SDL2_BUILD
+#ifndef __DREAMCAST__
 #include <SDL2/SDL.h>
 static SDL_Window* win_handle;
 #else
+#include <kos.h>
 #include <GL/glkos.h>
 #endif
 
@@ -116,15 +117,36 @@ static void DrawTriFan(float y) {
 	glEnd();
 }
 
-int main(int argc, char *argv[]) {
-#ifdef SDL2_BUILD
+static void sample_init() {
+#ifndef __DREAMCAST__
 	SDL_Init(SDL_INIT_EVERYTHING);
 	win_handle = SDL_CreateWindow("Shapes", 0, 0, 640, 480, SDL_WINDOW_OPENGL);
 	SDL_GL_CreateContext(win_handle);
 #else
     glKosInit();
 #endif
+}
 
+static int sample_should_exit() {
+#ifndef __DREAMCAST__
+    SDL_Event event;
+    while (SDL_PollEvent(&event)) {
+        if(event.type == SDL_QUIT) return 1;
+    }
+    return 0;
+#else
+    maple_device_t *cont = maple_enum_type(0, MAPLE_FUNC_CONTROLLER);
+    if (!cont) return 0;
+
+    cont_state_t *state = (cont_state_t *)maple_dev_status(cont);
+    if (!state) return 0;
+
+    return state->buttons & CONT_START;
+#endif
+}
+
+int main(int argc, char *argv[]) {
+    sample_init();
 	glClearColor(0.5f, 0.5f, 0.5f, 1);
 	glViewport(0, 0, 640, 480);
 
@@ -139,17 +161,8 @@ int main(int argc, char *argv[]) {
 	mat[3][3] = 1;
 	glLoadMatrixf(mat);
 
-	int running = 1;
-
-	while (running) {
+	while (!sample_should_exit()) {
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-#ifdef SDL2_BUILD
-		SDL_Event event;
-		while (SDL_PollEvent(&event)) {
-			if(event.type == SDL_QUIT) running = 0;
-		}
-#endif
 
 		DrawTriStrip(300);
 		DrawTriFan(300);
@@ -160,9 +173,9 @@ int main(int argc, char *argv[]) {
 
 		glPointSize(5);
 		DrawPoint(100);
-		glLineWidth(0.5f);
-		DrawLineLoop(100);
 		glLineWidth(2);
+		DrawLineLoop(100);
+		glLineWidth(4);
 		DrawLineStrip(100);
 		glLineWidth(10);
 		DrawLine(100);

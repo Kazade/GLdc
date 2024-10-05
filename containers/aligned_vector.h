@@ -27,6 +27,7 @@ static inline void* memalign(size_t alignment, size_t size) {
 #define AV_INLINE_DEBUG AV_NO_INSTRUMENT __attribute__((always_inline))
 #define AV_FORCE_INLINE static AV_INLINE_DEBUG
 #endif
+#define AV_NO_INLINE __attribute__((noinline))
 
 
 #ifdef __DREAMCAST__
@@ -86,35 +87,14 @@ typedef struct {
 
 void aligned_vector_init(AlignedVector* vector, uint32_t element_size);
 
+/* Resizes the backing array if necessary so that element_count elements can fit in the array */
+/* (note that only capacity is potentially changed, size is never changed) */
+AV_NO_INLINE void* aligned_vector_reserve(AlignedVector* vector, uint32_t element_count);
+
 AV_FORCE_INLINE void* aligned_vector_at(const AlignedVector* vector, const uint32_t index) {
     const AlignedVectorHeader* hdr = &vector->hdr;
     assert(index < hdr->size);
     return vector->data + (index * hdr->element_size);
-}
-
-AV_FORCE_INLINE void* aligned_vector_reserve(AlignedVector* vector, uint32_t element_count) {
-    AlignedVectorHeader* hdr = &vector->hdr;
-
-    if(element_count < hdr->capacity) {
-        return aligned_vector_at(vector, element_count);
-    }
-
-    uint32_t original_byte_size = (hdr->size * hdr->element_size);
-
-    /* We overallocate so that we don't make small allocations during push backs */
-    element_count = ROUND_TO_CHUNK_SIZE(element_count);
-
-    uint32_t new_byte_size = (element_count * hdr->element_size);
-    uint8_t* original_data = vector->data;
-
-    vector->data = (uint8_t*) memalign(0x20, new_byte_size);
-    assert(vector->data);
-
-    AV_MEMCPY4(vector->data, original_data, original_byte_size);
-    free(original_data);
-
-    hdr->capacity = element_count;
-    return vector->data + original_byte_size;
 }
 
 AV_FORCE_INLINE AlignedVectorHeader* aligned_vector_header(const AlignedVector* vector) {
