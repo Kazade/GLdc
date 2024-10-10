@@ -9,6 +9,7 @@
 #define CLIP_DEBUG 0
 
 #define PVR_VERTEX_BUF_SIZE 2560 * 256
+#define PVR_OPB_COUNT       2
 
 #define likely(x)      __builtin_expect(!!(x), 1)
 #define unlikely(x)    __builtin_expect(!!(x), 0)
@@ -29,17 +30,9 @@ void InitGPU(_Bool autosort, _Bool fsaa) {
         PVR_VERTEX_BUF_SIZE, /* Vertex buffer size */
         0, /* No DMA */
         fsaa, /* No FSAA */
-        (autosort) ? 0 : 1 /* Disable translucent auto-sorting to match traditional GL */
+        (autosort) ? 0 : 1, /* Disable translucent auto-sorting to match traditional GL */
+        PVR_OPB_COUNT /* Number of tile object pointer overflow bins. */
     };
-
-    /* Newer versions of KOS add an extra parameter to pvr_init_params_t
-     * called opb_overflow_count. To remain compatible we set that last
-     * parameter to something only if it exists */
-    const int opb_offset = offsetof(pvr_init_params_t, autosort_disabled) + 4;
-    if(sizeof(pvr_init_params_t) > opb_offset) {
-        int* opb_count = (int*)(((char*)&params) + opb_offset);
-        *opb_count = 2; // Two should be enough for anybody.. right?
-    }
 
     pvr_init(&params);
 
