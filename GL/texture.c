@@ -1480,6 +1480,100 @@ static bool _glTexImage2DValidate(GLenum target, GLint level, GLint internalForm
     return true;
 }
 
+static bool _glTexSubImage2DValidate(GLenum target, GLint level, GLint xoffset, GLint yoffset, GLsizei width, GLsizei height, GLenum format, GLenum type) {
+    if (target != GL_TEXTURE_2D) {
+        INFO_MSG("Invalid target. Only GL_TEXTURE_2D is supported.");
+        _glKosThrowError(GL_INVALID_ENUM, __func__);
+        return false;
+    }
+
+    if (width > 1024 || height > 1024) {
+        INFO_MSG("Invalid subimage size. Maximum 1024x1024.");
+        _glKosThrowError(GL_INVALID_VALUE, __func__);
+        return false;
+    }
+
+    // Ensure format is valid
+    GLint validFormats[] = {
+        GL_ALPHA,
+        GL_LUMINANCE,
+        GL_INTENSITY,
+        GL_LUMINANCE_ALPHA,
+        GL_RED,
+        GL_RGB,
+        GL_RGBA,
+        GL_BGRA,
+        GL_COLOR_INDEX,
+        GL_COLOR_INDEX4_EXT,  /* Extension, for glCompressedTexImage pass-thru */
+        GL_COLOR_INDEX8_EXT,   /* Extension, for glCompressedTexImage pass-thru */
+        GL_COLOR_INDEX4_TWID_KOS,  /* Extension, for glCompressedTexImage pass-thru */
+        GL_COLOR_INDEX8_TWID_KOS,   /* Extension, for glCompressedTexImage pass-thru */
+        0
+    };
+
+    if (_glCheckValidEnum(format, validFormats, __func__) != 0) {
+        return false;
+    }
+
+    // Validate type
+    if (format != GL_COLOR_INDEX4_EXT && format != GL_COLOR_INDEX4_TWID_KOS) {
+        /* Abuse determineStride to see if type is valid */
+        if (_determineStride(GL_RGBA, type) == -1) {
+            INFO_MSG("Invalid pixel data type.");
+            _glKosThrowError(GL_INVALID_ENUM, __func__);
+            return false;
+        }
+    }
+
+    // Validate offsets and dimensions
+    GLint maxTextureWidth = 1024;  // Assuming maximum texture size
+    GLint maxTextureHeight = 1024;
+
+    if (xoffset < 0 || yoffset < 0 || (xoffset + width) > maxTextureWidth || (yoffset + height) > maxTextureHeight) {
+        INFO_MSG("Subimage exceeds the dimensions of the texture.");
+        _glKosThrowError(GL_INVALID_VALUE, __func__);
+        return false;
+    }
+
+    if (level < 0) {
+        INFO_MSG("Invalid mipmap level.");
+        _glKosThrowError(GL_INVALID_VALUE, __func__);
+        return false;
+    }
+
+    // Check for the power-of-two requirement
+    if (level == 0) {
+        if ((width < 8 || (width & -width) != width)) {
+            INFO_MSG("Width must be a power of two and at least 8.");
+            _glKosThrowError(GL_INVALID_VALUE, __func__);
+            return false;
+        }
+
+        if ((height < 8 || (height & -height) != height)) {
+            INFO_MSG("Height must be a power of two and at least 8.");
+            _glKosThrowError(GL_INVALID_VALUE, __func__);
+            return false;
+        }
+    } else {
+        // Mipmap level should not be 1x1
+        if ((width < 2) || (height < 2)) {
+            INFO_MSG("Mipmap level must be at least 2x2.");
+            _glKosThrowError(GL_INVALID_VALUE, __func__);
+            return false;
+        }
+    }
+
+    // Ensure no border (since glTexSubImage2D doesn't allow it)
+    GLint border = 0; // No border allowed
+    if (border != 0) {
+        INFO_MSG("Border must be zero for glTexSubImage2D.");
+        _glKosThrowError(GL_INVALID_VALUE, __func__);
+        return false;
+    }
+
+    return true;
+}
+
 static inline GLboolean is4BPPFormat(GLenum format) {
     return format == GL_COLOR_INDEX4_EXT || format == GL_COLOR_INDEX4_TWID_KOS;
 }
@@ -1998,19 +2092,164 @@ GLAPI void APIENTRY glGetColorTableParameterfvEXT(GLenum target, GLenum pname, G
     _glKosThrowError(GL_INVALID_OPERATION, __func__);
 }
 
-GLAPI void APIENTRY glTexSubImage2D(
-    GLenum target, GLint level, GLint xoffset, GLint yoffset,
-    GLsizei width, GLsizei height, GLenum format, GLenum type, const GLvoid *pixels) {
-    _GL_UNUSED(target);
-    _GL_UNUSED(level);
-    _GL_UNUSED(xoffset);
-    _GL_UNUSED(yoffset);
-    _GL_UNUSED(width);
-    _GL_UNUSED(height);
-    _GL_UNUSED(format);
-    _GL_UNUSED(type);
-    _GL_UNUSED(pixels);
-    gl_assert(0 && "Not Implemented");
+void APIENTRY glTexSubImage2D(GLenum target, GLint level, GLint xoffset, GLint yoffset,
+                              GLsizei width, GLsizei height, GLenum format,
+                              GLenum type, const GLvoid *data) {
+    TRACE();
+
+    if (!_glTexSubImage2DValidate(target, level, xoffset, yoffset, width, height, format, type)) {
+        return;
+    }
+
+    gl_assert(ACTIVE_TEXTURE < MAX_GLDC_TEXTURE_UNITS);
+    TextureObject* active = TEXTURE_UNITS[ACTIVE_TEXTURE];
+
+    if (!active || !active->data) {
+        INFO_MSG("Called glTexSubImage2D on unbound or uninitialized texture");
+        _glKosThrowError(GL_INVALID_OPERATION, __func__);
+        return;
+    }
+
+    // Ensure the subregion fits within the existing texture
+    if (xoffset < 0 || yoffset < 0 || 
+        xoffset + width > active->width || 
+        yoffset + height > active->height) {
+        _glKosThrowError(GL_INVALID_VALUE, __func__);
+        return;
+    }
+
+    GLboolean isPaletted = (
+        active->internalFormat == GL_COLOR_INDEX8_EXT ||
+        active->internalFormat == GL_COLOR_INDEX4_EXT ||
+        active->internalFormat == GL_COLOR_INDEX4_TWID_KOS ||
+        active->internalFormat == GL_COLOR_INDEX8_TWID_KOS
+    ) ? GL_TRUE : GL_FALSE;
+
+    GLenum cleanInternalFormat = _cleanInternalFormat(active->internalFormat);
+    GLint destStride = _determineStrideInternal(cleanInternalFormat);
+    GLint sourceStride = _determineStride(format, type);
+    GLuint srcBytes = (width * height * sourceStride);
+    GLuint destBytes = (width * height * destStride);
+
+    TextureConversionFunc conversion;
+    int needs_conversion = _determineConversion(cleanInternalFormat, format, type, &conversion);
+
+    // Handle 4bpp formats
+    if (format == GL_COLOR_INDEX4_EXT || format == GL_COLOR_INDEX4_TWID_KOS) {
+        srcBytes /= 2;
+    }
+
+    if ((needs_conversion & CONVERSION_TYPE_PACK) == CONVERSION_TYPE_PACK) {
+        destBytes /= 2;
+    } else if (active->internalFormat == GL_COLOR_INDEX4_EXT || active->internalFormat == GL_COLOR_INDEX4_TWID_KOS) {
+        destBytes /= 2;
+    }
+
+    if (needs_conversion < 0) {
+        _glKosThrowError(GL_INVALID_VALUE, __func__);
+        INFO_MSG("Couldn't find necessary texture conversion\n");
+        return;
+    }
+
+    // Calculate the starting point for the subregion in the texture data
+    GLubyte* targetData = active->data + (yoffset * active->width + xoffset) * destStride;
+
+    if (needs_conversion > 0) {
+        GLubyte* conversionBuffer = (GLubyte*) memalign(32, srcBytes);
+        const GLubyte* src = data;
+        GLubyte* dst = conversionBuffer;
+
+        bool pack = (needs_conversion & CONVERSION_TYPE_PACK) == CONVERSION_TYPE_PACK;
+        needs_conversion &= ~CONVERSION_TYPE_PACK;
+
+        if (needs_conversion == CONVERSION_TYPE_CONVERT) {
+            for (uint32_t i = 0; i < (width * height); ++i) {
+                conversion(src, dst);
+                dst += destStride;
+                src += sourceStride;
+            }
+        } else if (needs_conversion == 2) {
+            // Twiddle
+            if (is4BPPFormat(active->internalFormat) && is4BPPFormat(format)) {
+                // Special case twiddling for 4BPP formats
+                twid_prepare_table(width, height);
+
+                for (uint32_t i = 0; i < (width * height); ++i) {
+                    uint32_t newLocation = twid_location(i);
+
+                    assert(newLocation < (width * height));
+                    assert((newLocation / 2) < destBytes);
+                    assert((i / 2) < srcBytes);
+
+                    src = &((uint8_t*) data)[i / 2];
+                    dst = &conversionBuffer[newLocation / 2];
+
+                    uint8_t src_value = (i % 2) == 0 ? (*src >> 4) : (*src & 0xF);
+
+                    if (newLocation % 2 == 1) {
+                        *dst = (*dst & 0xF) | (src_value << 4);
+                    } else {
+                        *dst = (*dst & 0xF0) | (src_value & 0xF);
+                    }
+                }
+            } else {
+                twid_prepare_table(width, height);
+
+                for (uint32_t i = 0; i < (width * height); ++i) {
+                    uint32_t newLocation = twid_location(i);
+                    dst = conversionBuffer + (destStride * newLocation);
+
+                    for (int j = 0; j < destStride; ++j)
+                        *dst++ = *(src + j);
+
+                    src += sourceStride;
+                }
+            }
+        } else if (needs_conversion == 3) {
+            // Convert + twiddle
+            twid_prepare_table(width, height);
+
+            for (uint32_t i = 0; i < (width * height); ++i) {
+                uint32_t newLocation = twid_location(i);
+                dst = conversionBuffer + (destStride * newLocation);
+                src = data + (sourceStride * i);
+                conversion(src, dst);
+            }
+        } else if (pack) {
+            FASTCPY(conversionBuffer, data, srcBytes);
+        }
+
+        if (pack) {
+            assert(isPaletted);
+            size_t dst_byte = 0;
+            for (size_t src_byte = 0; src_byte < srcBytes; ++src_byte) {
+                uint8_t v = conversionBuffer[src_byte];
+
+                if (src_byte % 2 == 0) {
+                    conversionBuffer[dst_byte] = (conversionBuffer[dst_byte] & 0xF) | ((v & 0xF) << 4);
+                } else {
+                    conversionBuffer[dst_byte] = (conversionBuffer[dst_byte] & 0xF0) | (v & 0xF);
+                    dst_byte++;
+                }
+            }
+        }
+
+        // Copy the converted data to the texture, respecting the subimage dimensions
+        for (GLsizei y = 0; y < height; ++y) {
+            FASTCPY(targetData, conversionBuffer + y * width * destStride, width * destStride);
+            targetData += active->width * destStride; // Move to next row in target
+        }
+
+        free(conversionBuffer);
+    } else {
+        // No conversion necessary, we can update data directly
+        for (GLsizei y = 0; y < height; ++y) {
+            FASTCPY(targetData, (GLubyte*)data + y * width * sourceStride, width * sourceStride);
+            targetData += active->width * destStride; // Move to next row in target
+        }
+    }
+
+    _glGPUStateMarkDirty();
 }
 
 GLAPI void APIENTRY glCopyTexSubImage2D(GLenum target, GLint level, GLint xoffset, GLint yoffset, GLint x, GLint y, GLsizei width, GLsizei height) {

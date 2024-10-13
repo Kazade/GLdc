@@ -53,8 +53,11 @@ void LoadGLTextures() {
 
     // 2d texture, level of detail 0 (normal), 3 components (red, green, blue), x size from image, y size from image,
     // border 0 (normal), rgb color data, unsigned byte data, and finally the data itself.
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, image1->sizeX, image1->sizeY, 0, GL_RGB, GL_UNSIGNED_BYTE, image1->data);
+    // Create an empty texture first
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, image1->sizeX, image1->sizeY, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
 
+    // Update the texture with the image data
+    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, image1->sizeX, image1->sizeY, GL_RGB, GL_UNSIGNED_BYTE, image1->data); 
     free(image1);
 }
 

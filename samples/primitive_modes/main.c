@@ -159,7 +159,7 @@ int main(int argc, char *argv[]) {
 	mat[3][1] = -(T + B) / (T - B);
 	mat[3][2] = -(F + N) / (F - N);
 	mat[3][3] = 1;
-	glLoadMatrixf(mat);
+	glLoadMatrixf(*mat);
 
 	while (!sample_should_exit()) {
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
