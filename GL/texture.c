@@ -1480,7 +1480,9 @@ static bool _glTexImage2DValidate(GLenum target, GLint level, GLint internalForm
     return true;
 }
 
-static bool _glTexSubImage2DValidate(GLenum target, GLint level, GLint xoffset, GLint yoffset, GLsizei width, GLsizei height, GLenum format, GLenum type) {
+static bool _glTexSubImage2DValidate(GLenum target, GLint level, GLint xoffset, GLint yoffset,
+                                     GLsizei width, GLsizei height, GLenum format, GLenum type,
+                                     GLsizei textureWidth, GLsizei textureHeight) {
     if (target != GL_TEXTURE_2D) {
         INFO_MSG("Invalid target. Only GL_TEXTURE_2D is supported.");
         _glKosThrowError(GL_INVALID_ENUM, __func__);
@@ -1517,7 +1519,7 @@ static bool _glTexSubImage2DValidate(GLenum target, GLint level, GLint xoffset, 
 
     // Validate type
     if (format != GL_COLOR_INDEX4_EXT && format != GL_COLOR_INDEX4_TWID_KOS) {
-        /* Abuse determineStride to see if type is valid */
+        /* Use determineStride to see if type is valid */
         if (_determineStride(GL_RGBA, type) == -1) {
             INFO_MSG("Invalid pixel data type.");
             _glKosThrowError(GL_INVALID_ENUM, __func__);
@@ -1525,11 +1527,10 @@ static bool _glTexSubImage2DValidate(GLenum target, GLint level, GLint xoffset, 
         }
     }
 
-    // Validate offsets and dimensions
-    GLint maxTextureWidth = 1024;  // Assuming maximum texture size
-    GLint maxTextureHeight = 1024;
-
-    if (xoffset < 0 || yoffset < 0 || (xoffset + width) > maxTextureWidth || (yoffset + height) > maxTextureHeight) {
+    // Validate offsets and dimensions using the underlying texture size
+    if (xoffset < 0 || yoffset < 0 || 
+        (xoffset + width) > textureWidth || 
+        (yoffset + height) > textureHeight) {
         INFO_MSG("Subimage exceeds the dimensions of the texture.");
         _glKosThrowError(GL_INVALID_VALUE, __func__);
         return false;
@@ -1539,28 +1540,6 @@ static bool _glTexSubImage2DValidate(GLenum target, GLint level, GLint xoffset, 
         INFO_MSG("Invalid mipmap level.");
         _glKosThrowError(GL_INVALID_VALUE, __func__);
         return false;
-    }
-
-    // Check for the power-of-two requirement
-    if (level == 0) {
-        if ((width < 8 || (width & -width) != width)) {
-            INFO_MSG("Width must be a power of two and at least 8.");
-            _glKosThrowError(GL_INVALID_VALUE, __func__);
-            return false;
-        }
-
-        if ((height < 8 || (height & -height) != height)) {
-            INFO_MSG("Height must be a power of two and at least 8.");
-            _glKosThrowError(GL_INVALID_VALUE, __func__);
-            return false;
-        }
-    } else {
-        // Mipmap level should not be 1x1
-        if ((width < 2) || (height < 2)) {
-            INFO_MSG("Mipmap level must be at least 2x2.");
-            _glKosThrowError(GL_INVALID_VALUE, __func__);
-            return false;
-        }
     }
 
     // Ensure no border (since glTexSubImage2D doesn't allow it)
@@ -2097,9 +2076,8 @@ void APIENTRY glTexSubImage2D(GLenum target, GLint level, GLint xoffset, GLint y
                               GLenum type, const GLvoid *data) {
     TRACE();
 
-    if (!_glTexSubImage2DValidate(target, level, xoffset, yoffset, width, height, format, type)) {
-        return;
-    }
+    // printf("glTexSubImage2D called with: target=%d, level=%d, xoffset=%d, yoffset=%d, width=%d, height=%d, format=%d, type=%d\n",
+    //        target, level, xoffset, yoffset, width, height, format, type);
 
     gl_assert(ACTIVE_TEXTURE < MAX_GLDC_TEXTURE_UNITS);
     TextureObject* active = TEXTURE_UNITS[ACTIVE_TEXTURE];
@@ -2110,11 +2088,31 @@ void APIENTRY glTexSubImage2D(GLenum target, GLint level, GLint xoffset, GLint y
         return;
     }
 
-    // Ensure the subregion fits within the existing texture
-    if (xoffset < 0 || yoffset < 0 || 
-        xoffset + width > active->width || 
-        yoffset + height > active->height) {
-        _glKosThrowError(GL_INVALID_VALUE, __func__);
+    // Retrieve the dimensions of the currently bound texture
+    GLsizei textureWidth = active->width;
+    GLsizei textureHeight = active->height;
+
+    // printf("Texture dimensions: width=%d, height=%d\n", textureWidth, textureHeight);
+    // printf("Subimage dimensions: width=%d, height=%d\n", width, height);
+
+    // Check if the texture has been resized
+    GLboolean isResized = (width != textureWidth || height != textureHeight);
+    // if (isResized) {
+    //     printf("Texture has been resized. Adjusting copy strategy.\n");
+    // }
+
+    // Validate the subregion fits within the existing texture dimensions
+    // if (xoffset < 0 || yoffset < 0 || 
+    //     xoffset + width > textureWidth || 
+    //     yoffset + height > textureHeight) {
+    //     INFO_MSG("Error: Subregion does not fit within texture dimensions\n");
+    //     _glKosThrowError(GL_INVALID_VALUE, __func__);
+    //     return;
+    // }
+
+    // Pass the texture dimensions to the validation function
+    if (!_glTexSubImage2DValidate(target, level, xoffset, yoffset, width, height, format, type, textureWidth, textureHeight)) {
+        INFO_MSG("Error: _glTexSubImage2DValidate failed\n");
         return;
     }
 
@@ -2125,24 +2123,40 @@ void APIENTRY glTexSubImage2D(GLenum target, GLint level, GLint xoffset, GLint y
         active->internalFormat == GL_COLOR_INDEX8_TWID_KOS
     ) ? GL_TRUE : GL_FALSE;
 
+    // printf("isPaletted: %s\n", isPaletted ? "true" : "false");
+
     GLenum cleanInternalFormat = _cleanInternalFormat(active->internalFormat);
-    GLint destStride = _determineStrideInternal(cleanInternalFormat);
+    // printf("cleanInternalFormat: %d\n", cleanInternalFormat);
+
+    // Determine source stride
     GLint sourceStride = _determineStride(format, type);
     GLuint srcBytes = (width * height * sourceStride);
-    GLuint destBytes = (width * height * destStride);
+
+    // Calculate destination stride (this accounts for both POT and NPOT)
+    GLint destStride = _determineStrideInternal(cleanInternalFormat);
+
+    // printf("sourceStride: %d, destStride: %d, srcBytes: %u\n", sourceStride, destStride, srcBytes);
+
+    // Calculate destBytes using the texture's full dimensions
+    GLuint destBytes = (textureWidth * textureHeight * destStride);
 
     TextureConversionFunc conversion;
     int needs_conversion = _determineConversion(cleanInternalFormat, format, type, &conversion);
 
-    // Handle 4bpp formats
+    // printf("needs_conversion: %d\n", needs_conversion);
+
+    // Adjust source bytes for 4bpp formats
     if (format == GL_COLOR_INDEX4_EXT || format == GL_COLOR_INDEX4_TWID_KOS) {
         srcBytes /= 2;
+        // printf("Adjusted srcBytes for 4bpp format: %u\n", srcBytes);
     }
 
     if ((needs_conversion & CONVERSION_TYPE_PACK) == CONVERSION_TYPE_PACK) {
         destBytes /= 2;
+        // printf("Adjusted destBytes for CONVERSION_TYPE_PACK: %u\n", destBytes);
     } else if (active->internalFormat == GL_COLOR_INDEX4_EXT || active->internalFormat == GL_COLOR_INDEX4_TWID_KOS) {
         destBytes /= 2;
+        // printf("Adjusted destBytes for 4bpp internal format: %u\n", destBytes);
     }
 
     if (needs_conversion < 0) {
@@ -2152,77 +2166,67 @@ void APIENTRY glTexSubImage2D(GLenum target, GLint level, GLint xoffset, GLint y
     }
 
     // Calculate the starting point for the subregion in the texture data
-    GLubyte* targetData = active->data + (yoffset * active->width + xoffset) * destStride;
-
+    GLubyte* targetData = active->data + (yoffset * textureWidth + xoffset) * destStride;
+    // printf("targetData offset: %td bytes\n", (ptrdiff_t)((uintptr_t)targetData - (uintptr_t)active->data));
+    
     if (needs_conversion > 0) {
-        GLubyte* conversionBuffer = (GLubyte*) memalign(32, srcBytes);
+        GLubyte* conversionBuffer = (GLubyte*) memalign(32, textureWidth * textureHeight * destStride);
+        // printf("Allocated conversionBuffer of size %u at %p\n", textureWidth * textureHeight * destStride, (void*)conversionBuffer);
+
         const GLubyte* src = data;
         GLubyte* dst = conversionBuffer;
 
         bool pack = (needs_conversion & CONVERSION_TYPE_PACK) == CONVERSION_TYPE_PACK;
         needs_conversion &= ~CONVERSION_TYPE_PACK;
 
+        // printf("Conversion type: %d, pack: %s\n", needs_conversion, pack ? "true" : "false");
+
         if (needs_conversion == CONVERSION_TYPE_CONVERT) {
-            for (uint32_t i = 0; i < (width * height); ++i) {
-                conversion(src, dst);
-                dst += destStride;
-                src += sourceStride;
-            }
-        } else if (needs_conversion == 2) {
-            // Twiddle
-            if (is4BPPFormat(active->internalFormat) && is4BPPFormat(format)) {
-                // Special case twiddling for 4BPP formats
-                twid_prepare_table(width, height);
-
-                for (uint32_t i = 0; i < (width * height); ++i) {
-                    uint32_t newLocation = twid_location(i);
-
-                    assert(newLocation < (width * height));
-                    assert((newLocation / 2) < destBytes);
-                    assert((i / 2) < srcBytes);
-
-                    src = &((uint8_t*) data)[i / 2];
-                    dst = &conversionBuffer[newLocation / 2];
-
-                    uint8_t src_value = (i % 2) == 0 ? (*src >> 4) : (*src & 0xF);
-
-                    if (newLocation % 2 == 1) {
-                        *dst = (*dst & 0xF) | (src_value << 4);
-                    } else {
-                        *dst = (*dst & 0xF0) | (src_value & 0xF);
-                    }
-                }
-            } else {
-                twid_prepare_table(width, height);
-
-                for (uint32_t i = 0; i < (width * height); ++i) {
-                    uint32_t newLocation = twid_location(i);
-                    dst = conversionBuffer + (destStride * newLocation);
-
-                    for (int j = 0; j < destStride; ++j)
-                        *dst++ = *(src + j);
-
+            // printf("Performing conversion\n");
+            for (uint32_t y = 0; y < height; ++y) {
+                for (uint32_t x = 0; x < width; ++x) {
+                    conversion(src, dst);
+                    dst += destStride;
                     src += sourceStride;
                 }
+                // Clear the remaining part of the row if resized
+                if (isResized) {
+                    memset(dst, 0, (textureWidth - width) * destStride);
+                    dst += (textureWidth - width) * destStride;
+                }
             }
-        } else if (needs_conversion == 3) {
-            // Convert + twiddle
-            twid_prepare_table(width, height);
+            // Clear remaining rows if resized
+            if (isResized) {
+                memset(dst, 0, (textureHeight - height) * textureWidth * destStride);
+            }
+        } else if (needs_conversion == 2 || needs_conversion == 3) {
+            // printf("Performing twiddling %s\n", needs_conversion == 3 ? "with conversion" : "");
+            twid_prepare_table(textureWidth, textureHeight);
 
-            for (uint32_t i = 0; i < (width * height); ++i) {
-                uint32_t newLocation = twid_location(i);
-                dst = conversionBuffer + (destStride * newLocation);
-                src = data + (sourceStride * i);
-                conversion(src, dst);
+            for (uint32_t y = 0; y < textureHeight; ++y) {
+                for (uint32_t x = 0; x < textureWidth; ++x) {
+                    uint32_t srcIndex = y * width + x;
+                    uint32_t newLocation = twid_location(y * textureWidth + x);
+                    dst = conversionBuffer + (destStride * newLocation);
+
+                    if (x < width && y < height) {
+                        if (needs_conversion == 3) {
+                            conversion(src + srcIndex * sourceStride, dst);
+                        } else {
+                            memcpy(dst, src + srcIndex * sourceStride, destStride);
+                        }
+                    } else {
+                        memset(dst, 0, destStride);
+                    }
+                }
             }
-        } else if (pack) {
-            FASTCPY(conversionBuffer, data, srcBytes);
         }
 
         if (pack) {
             assert(isPaletted);
+            // printf("Packing paletted texture\n");
             size_t dst_byte = 0;
-            for (size_t src_byte = 0; src_byte < srcBytes; ++src_byte) {
+            for (size_t src_byte = 0; src_byte < destBytes; ++src_byte) {
                 uint8_t v = conversionBuffer[src_byte];
 
                 if (src_byte % 2 == 0) {
@@ -2234,22 +2238,38 @@ void APIENTRY glTexSubImage2D(GLenum target, GLint level, GLint xoffset, GLint y
             }
         }
 
-        // Copy the converted data to the texture, respecting the subimage dimensions
-        for (GLsizei y = 0; y < height; ++y) {
-            FASTCPY(targetData, conversionBuffer + y * width * destStride, width * destStride);
-            targetData += active->width * destStride; // Move to next row in target
-        }
+        // Copy the converted data to the texture
+        // printf("Copying converted data to texture\n");
+        FASTCPY(targetData, conversionBuffer, destBytes);
 
         free(conversionBuffer);
+        // printf("Freed conversionBuffer\n");
     } else {
         // No conversion necessary, we can update data directly
+        // printf("No conversion needed, copying data directly\n");
         for (GLsizei y = 0; y < height; ++y) {
-            FASTCPY(targetData, (GLubyte*)data + y * width * sourceStride, width * sourceStride);
-            targetData += active->width * destStride; // Move to next row in target
+            GLsizei srcRowWidth = width * sourceStride;
+            GLsizei destRowWidth = textureWidth * destStride;
+            FASTCPY(targetData, (GLubyte*)data + y * srcRowWidth, srcRowWidth);
+            
+            // If resized, we need to clear the remaining part of the row
+            if (isResized && width < textureWidth) {
+                memset(targetData + srcRowWidth, 0, destRowWidth - srcRowWidth);
+            }
+            
+            targetData += destRowWidth; // Move to next row in target
+        }
+
+        // If resized, we need to clear the remaining rows
+        if (isResized && height < textureHeight) {
+            GLsizei remainingRows = textureHeight - height;
+            GLsizei rowSize = textureWidth * destStride;
+            memset(targetData, 0, remainingRows * rowSize);
         }
     }
 
     _glGPUStateMarkDirty();
+    // printf("glTexSubImage2D completed\n");
 }
 
 GLAPI void APIENTRY glCopyTexSubImage2D(GLenum target, GLint level, GLint xoffset, GLint yoffset, GLint x, GLint y, GLsizei width, GLsizei height) {
