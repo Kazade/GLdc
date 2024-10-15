@@ -2213,51 +2213,12 @@ void APIENTRY glTexSubImage2D(GLenum target, GLint level, GLint xoffset, GLint y
         FASTCPY(targetData, conversionBuffer, destBytes);
 
         free(conversionBuffer);
-        // printf("Freed conversionBuffer\n");
     } else {
         // No conversion necessary, we can update data directly
-        GLboolean fullUpdate = (xoffset == 0 && yoffset == 0 && width == textureWidth && height == textureHeight);
-        
-        if (fullUpdate) {
-            // If it's a full texture update, we can simply copy all the data at once
-            FASTCPY(targetData, data, srcBytes);
-        } else {
-            // For partial updates, copy row by row
-            for (GLsizei y = 0; y < height; ++y) {
-                GLsizei srcRowWidth = width * sourceStride;
-                GLubyte* destRow = targetData + ((y + yoffset) * textureWidth + xoffset) * destStride;
-                FASTCPY(destRow, (GLubyte*)data + y * srcRowWidth, srcRowWidth);
-            }
-            
-            // Clear any remaining parts of the texture
-            if (xoffset > 0 || yoffset > 0 || width < textureWidth || height < textureHeight) {
-                GLubyte* clearBuffer = (GLubyte*) memalign(32, destBytes);
-                memset(clearBuffer, 0, destBytes);
-                
-                // Clear left and right sides
-                for (GLsizei y = 0; y < textureHeight; ++y) {
-                    if (xoffset > 0) {
-                        FASTCPY(targetData + y * textureWidth * destStride, clearBuffer, xoffset * destStride);
-                    }
-                    if (xoffset + width < textureWidth) {
-                        FASTCPY(targetData + (y * textureWidth + xoffset + width) * destStride, 
-                                clearBuffer, 
-                                (textureWidth - (xoffset + width)) * destStride);
-                    }
-                }
-                
-                // Clear top and bottom
-                if (yoffset > 0) {
-                    FASTCPY(targetData, clearBuffer, yoffset * textureWidth * destStride);
-                }
-                if (yoffset + height < textureHeight) {
-                    FASTCPY(targetData + ((yoffset + height) * textureWidth) * destStride,
-                            clearBuffer,
-                            (textureHeight - (yoffset + height)) * textureWidth * destStride);
-                }
-                
-                free(clearBuffer);
-            }
+        for (GLsizei y = 0; y < height; ++y) {
+            GLsizei srcRowWidth = width * sourceStride;
+            GLubyte* destRow = targetData + ((y + yoffset) * textureWidth + xoffset) * destStride;
+            FASTCPY(destRow, (GLubyte*)data + y * srcRowWidth, srcRowWidth);
         }
     }
 
