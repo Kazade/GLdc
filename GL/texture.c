@@ -2160,9 +2160,11 @@ void APIENTRY glTexSubImage2D(GLenum target, GLint level, GLint xoffset, GLint y
         bool pack = (needs_conversion & CONVERSION_TYPE_PACK) == CONVERSION_TYPE_PACK;
         needs_conversion &= ~CONVERSION_TYPE_PACK;
 
-        // Initialize the entire buffer with zeros
-        memset(conversionBuffer, 0, destBytes);
-
+        // Only initialize the buffer with zeros if it's a partial update
+        if (xoffset != 0 || yoffset != 0 || width != textureWidth || height != textureHeight) {
+            memset(conversionBuffer, 0, destBytes);
+        }
+        // printf("Conversion type: %d, pack: %s\n", needs_conversion, pack ? "true" : "false");
         if (needs_conversion == CONVERSION_TYPE_CONVERT) {
             // printf("Performing conversion\n");
             for (uint32_t y = 0; y < height; ++y) {
