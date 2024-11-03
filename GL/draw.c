@@ -504,7 +504,7 @@ ReadPositionFunc calcReadSecondaryColorFunc() {
      * direction */
 
     if((ENABLED_VERTEX_ATTRIBUTES & SECONDARY_COLOR_ENABLED_FLAG) !=
-       SECONDARY_ENABLED_FLAG) {
+       SECONDARY_COLOR_ENABLED_FLAG) {
         /* Just fill the whole thing black if the attribute is disabled */
         return _fillBlackARGB;
     }
@@ -723,9 +723,9 @@ static void _readDiffuseData(ReadDiffuseFunc func, const GLuint first, const GLu
 static void _readSecondaryColorData(ReadSecondaryColorFunc func,
                                     const GLuint first, const GLuint count,
                                     Vertex* it) {
-    const GLuint cstride = ATTRIB_POINTERS.secondary_colour.stride;
+    const GLuint cstride = ATTRIB_POINTERS.secondary_color.stride;
     const GLubyte* cptr =
-        ((GLubyte*)ATTRIB_POINTERS.secondary_colour.ptr) + (first * cstride);
+        ((GLubyte*)ATTRIB_POINTERS.secondary_color.ptr) + (first * cstride);
 
     ITERATE(count) {
         PREFETCH(cptr + cstride);
@@ -1369,7 +1369,7 @@ void APIENTRY glEnableClientState(GLenum cap) {
             (ENABLED_VERTEX_ATTRIBUTES |= UV_ENABLED_FLAG);
     break;
     case GL_SECONDARY_COLOR_ARRAY:
-        ENABLED_VERTEX_ATTRIBUTES |= SECONDARY_COLOUR_ENABLED_FLAG;
+        ENABLED_VERTEX_ATTRIBUTES |= SECONDARY_COLOR_ENABLED_FLAG;
         break;
     default:
         _glKosThrowError(GL_INVALID_ENUM, __func__);
@@ -1400,7 +1400,7 @@ void APIENTRY glDisableClientState(GLenum cap) {
             (ENABLED_VERTEX_ATTRIBUTES &= ~UV_ENABLED_FLAG);
     break;
     case GL_SECONDARY_COLOR_ARRAY:
-        ENABLED_VERTEX_ATTRIBUTES &= ~SECONDARY_COLOUR_ENABLED_FLAG;
+        ENABLED_VERTEX_ATTRIBUTES &= ~SECONDARY_COLOR_ENABLED_FLAG;
         break;
     default:
         _glKosThrowError(GL_INVALID_ENUM, __func__);
