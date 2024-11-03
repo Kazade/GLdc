@@ -13,8 +13,9 @@
 #endif
 
 #include <GL/gl.h>
-#include <GL/glu.h>
 #include <GL/glkos.h>
+#include <GL/glu.h>
+#include <stdio.h>
 
 /* Simple OpenGL example to demonstrate blending and lighting.
 

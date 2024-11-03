@@ -54,23 +54,18 @@ KOS_INIT_ROMDISK(romdisk);
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #endif
-#if defined(__APPLE__) && defined(__MACH__)
-#include <OpenGL/gl.h>	// Header File For The OpenGL32 Library
-#include <OpenGL/glu.h>	// Header File For The GLu32 Library
-#elif defined(__DREAMCAST__)
+
+#ifdef __DREAMCAST__
 #include <kos.h>
+#endif
+
 #include <GL/gl.h>	// Header File For The OpenGL32 Library
 #include <GL/glu.h>	// Header File For The GLu32 Library
 #include <GL/glkos.h>
-#else
-#include <GL/gl.h>	// Header File For The OpenGL32 Library
-#include <GL/glu.h>	// Header File For The GLu32 Library
-#endif
 
 #define BOOL    int
 #define FALSE   0
 #define TRUE    1
-
 
 uint8_t*	keys;			// Array Used For The Keyboard Routine
 BOOL	active=TRUE;		// Window Active Flag Set To TRUE By Default
