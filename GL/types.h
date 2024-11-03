@@ -8,9 +8,10 @@ typedef struct {
     float xyz[3];
     float uv[2];
     uint8_t bgra[4];
-
-    /* In the pvr_vertex_t structure, this next 4 bytes is oargb
-     * but we're not using that for now, so having W here makes the code
-     * simpler */
-    float w;
+    uint8_t oargb[4];
+    // PVR vertex ends here
+    float nxyz[3];    // 12
+    float st[2];      // 20
+    float w;          // 24
+    float padding[2]; // 32
 } __attribute__ ((aligned (32))) Vertex;

@@ -259,13 +259,6 @@ do {                 \
     memcpy_vertex(b, &c); \
 } while(0)
 
-/* ClipVertex doesn't have room for these, so we need to parse them
- * out separately. Potentially 'w' will be housed here if we support oargb */
-typedef struct {
-    float nxyz[3];
-    float st[2];
-} VertexExtra;
-
 /* Generating PVR vertices from the user-submitted data gets complicated, particularly
  * when a realloc could invalidate pointers. This structure holds all the information
  * we need on the target vertex array to allow passing around to the various stages (e.g. generate/clip etc.)
@@ -275,9 +268,6 @@ typedef struct __attribute__((aligned(32))) {
     uint32_t header_offset; // The offset of the header in the output list
     uint32_t start_offset; // The offset into the output list
     uint32_t count; // The number of vertices in this output
-
-    /* Pointer to count * VertexExtra; */
-    AlignedVector* extras;
 } SubmissionTarget;
 
 Vertex* _glSubmissionTargetStart(SubmissionTarget* target);
@@ -344,6 +334,7 @@ typedef struct {
     AttribPointer st; // 64
     AttribPointer normal; // 80
     AttribPointer padding; // 96
+    AttribPointer secondary_color;
 } AttribPointerList;
 
 GLboolean _glCheckValidEnum(GLint param, GLint* values, const char* func);

@@ -21,8 +21,6 @@ MAKE_FUNC(POLYMODE)
     GLuint stride;
     const GLubyte* ptr;
     Vertex* it;
-    VertexExtra* ve;
-
 
     for(min = 0; min < count; min += BATCH_SIZE) {
         const Vertex* start = ((Vertex*) _glSubmissionTargetStart(target)) + min;
@@ -80,47 +78,45 @@ MAKE_FUNC(POLYMODE)
             ptr += stride;
         }
 
-        start = aligned_vector_at(target->extras, min);
-
         stride = ATTRIB_POINTERS.st.stride;
         ptr = (ENABLED_VERTEX_ATTRIBUTES & ST_ENABLED_FLAG) ? ATTRIB_POINTERS.st.ptr + (offset * stride) : NULL;
-        ve = (VertexExtra*) start;
+        it = (Vertex*) start;
 
         if(ptr) {
             PREFETCH(ptr);
 
-            for(int_fast32_t i = 0; i < loop; ++i, ++ve) {
+            for(int_fast32_t i = 0; i < loop; ++i, ++it) {
                 PREFETCH(ptr + stride);
-                ve->st[0] = ((float*) ptr)[0];
-                ve->st[1] = ((float*) ptr)[1];
+                it->st[0] = ((float*) ptr)[0];
+                it->st[1] = ((float*) ptr)[1];
                 ptr += stride;
             }
         } else {
-            for(int_fast32_t i = 0; i < loop; ++i, ++ve) {
-                ve->st[0] = 0;
-                ve->st[1] = 0;
+            for(int_fast32_t i = 0; i < loop; ++i, ++it) {
+                it->st[0] = 0;
+                it->st[1] = 0;
             }
         }
 
         stride = ATTRIB_POINTERS.normal.stride;
         ptr = (ENABLED_VERTEX_ATTRIBUTES & NORMAL_ENABLED_FLAG) ? ATTRIB_POINTERS.normal.ptr + (offset * stride) : NULL;
-        ve = (VertexExtra*) start;
+        it = (Vertex*) start;
 
         if(ptr) {
             PREFETCH(ptr);
 
-            for(int_fast32_t i = 0; i < loop; ++i, ++ve) {
+            for(int_fast32_t i = 0; i < loop; ++i, ++it) {
                 PREFETCH(ptr + stride);
-                ve->nxyz[0] = ((float*) ptr)[0];
-                ve->nxyz[1] = ((float*) ptr)[1];
-                ve->nxyz[2] = ((float*) ptr)[2];
+                it->nxyz[0] = ((float*) ptr)[0];
+                it->nxyz[1] = ((float*) ptr)[1];
+                it->nxyz[2] = ((float*) ptr)[2];
                 ptr += stride;
             }
         } else {
-            for(int_fast32_t i = 0; i < loop; ++i, ++ve) {
-                ve->nxyz[0] = 0;
-                ve->nxyz[1] = 0;
-                ve->nxyz[2] = 0;
+            for(int_fast32_t i = 0; i < loop; ++i, ++it) {
+                it->nxyz[0] = 0;
+                it->nxyz[1] = 0;
+                it->nxyz[2] = 0;
             }
         }
     }

@@ -74,6 +74,11 @@ void _glInitImmediateMode(GLuint initial_size) {
     IM_ATTRIBS.normal.stride = sizeof(IMVertex);
     IM_ATTRIBS.normal.type = GL_FLOAT;
     IM_ATTRIBS.normal.size = 3;
+
+    IM_ATTRIBS.secondary_color.ptr = NULL;
+    IM_ATTRIBS.secondary_color.stride = 0;
+    IM_ATTRIBS.secondary_color.type = GL_UNSIGNED_BYTE;
+    IM_ATTRIBS.secondary_color.size = 0;
 }
 
 void APIENTRY glBegin(GLenum mode) {

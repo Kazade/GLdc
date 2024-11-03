@@ -1,4 +1,4 @@
-/* KallistiGL for KallistiOS ##version##
+#/* KallistiGL for KallistiOS ##version##
 
    libgl/gl.h
    Copyright (C) 2013-2014 Josh "PH3NOM" Pearson
@@ -646,22 +646,20 @@ GLAPI void APIENTRY glCopyTexImage2D(GLenum target, GLint level, GLenum internal
 GLAPI void APIENTRY glCopyTexImage1D(GLenum target, GLint level, GLenum internalformat, GLint x, GLint y, GLsizei width, GLint border);
 GLAPI void APIENTRY glReadPixels(GLint x, GLint y, GLsizei width, GLsizei height, GLenum format, GLenum type, GLvoid *pixels);
 
-
-/* GL Array API - Only GL_TRIANGLES, GL_TRIANGLE_STRIP, and GL_QUADS are supported */
 GLAPI void APIENTRY glVertexPointer(GLint size, GLenum type,
                                     GLsizei stride, const GLvoid *pointer);
 
 GLAPI void APIENTRY glTexCoordPointer(GLint size, GLenum type,
                                       GLsizei stride, const GLvoid *pointer);
 
-/* If a Normal Pointer is set and GL Lighting has been enabled,
-   Vertex Lighting will be used instead of glColorPointer */
 GLAPI void APIENTRY glNormalPointer(GLenum type, GLsizei stride, const GLvoid *pointer);
 
-/* Use either this OR glNormalPointer to color vertices, NOT both */
 GLAPI void APIENTRY glColorPointer(GLint size, GLenum type,
                                    GLsizei stride, const GLvoid *pointer);
 
+GLAPI void APIENTRY glSecondaryColorPointer(GLint size, GLenum type,
+                                            GLsizei stride,
+                                            const GLvoid* pointer);
 /* Array Data Submission */
 GLAPI void APIENTRY glDrawArrays(GLenum mode, GLint first, GLsizei count);
 GLAPI void APIENTRY glDrawElements(GLenum mode, GLsizei count, GLenum type, const GLvoid *indices);
