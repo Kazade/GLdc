@@ -44,6 +44,7 @@ extern void* memcpy4 (void *dest, const void *src, size_t count);
 #define ST_ENABLED_FLAG         (1 << 2)
 #define DIFFUSE_ENABLED_FLAG    (1 << 3)
 #define NORMAL_ENABLED_FLAG     (1 << 4)
+#define SECONDARY_COLOR_ENABLED_FLAG (1 << 5)
 
 #define MAX_TEXTURE_SIZE 1024
 

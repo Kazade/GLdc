@@ -263,6 +263,7 @@ __BEGIN_DECLS
 #define GL_COLOR_ARRAY                    0x8076
 #define GL_INDEX_ARRAY                    0x8077
 #define GL_TEXTURE_COORD_ARRAY            0x8078
+#define GL_SECONDARY_COLOR_ARRAY 0x845E
 
 /* LightParameter */
 #define GL_AMBIENT                        0x1200

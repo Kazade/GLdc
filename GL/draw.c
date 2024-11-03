@@ -255,6 +255,12 @@ static void  _fillWhiteARGB(const GLubyte* __restrict__ input, GLubyte* __restri
     *((uint32_t*) output) = ~0;
 }
 
+static void _fillBlackARGB(const GLubyte* __restrict__ input,
+                           GLubyte* __restrict__ output) {
+    _GL_UNUSED(input);
+    *((uint32_t*)output) = 0;
+}
+
 static void _fillZero2f(const GLubyte* __restrict__ input, GLubyte* __restrict__ out) {
     _GL_UNUSED(input);
     memset(out, 0, sizeof(float) * 2);
@@ -459,6 +465,7 @@ typedef void (*ReadPositionFunc)(const GLubyte*, GLubyte*);
 typedef void (*ReadDiffuseFunc)(const GLubyte*, GLubyte*);
 typedef void (*ReadUVFunc)(const GLubyte*, GLubyte*);
 typedef void (*ReadNormalFunc)(const GLubyte*, GLubyte*);
+typedef void (*ReadSecondaryColorFunc)(const GLubyte*, GLubyte*);
 
 ReadPositionFunc calcReadDiffuseFunc() {
     if((ENABLED_VERTEX_ATTRIBUTES & DIFFUSE_ENABLED_FLAG) != DIFFUSE_ENABLED_FLAG) {
@@ -488,6 +495,50 @@ ReadPositionFunc calcReadDiffuseFunc() {
             return (ATTRIB_POINTERS.colour.size == 3) ? _readVertexData3uiARGB:
                    (ATTRIB_POINTERS.colour.size == 4) ? _readVertexData4uiARGB:
                     _readVertexData4uiRevARGB;
+    }
+}
+
+ReadPositionFunc calcReadSecondaryColorFunc() {
+    /* Although glSecondaryColorPointer only accepts '3' as the size, we might
+     * allow 4 in future if we use oargb for something else other than light
+     * direction */
+
+    if((ENABLED_VERTEX_ATTRIBUTES & SECONDARY_COLOR_ENABLED_FLAG) !=
+       SECONDARY_ENABLED_FLAG) {
+        /* Just fill the whole thing black if the attribute is disabled */
+        return _fillBlackARGB;
+    }
+
+    switch(ATTRIB_POINTERS.secondary_color.type) {
+        default:
+        case GL_DOUBLE:
+        case GL_FLOAT:
+            return (ATTRIB_POINTERS.secondary_color.size == 3)
+                       ? _readVertexData3fARGB
+                   : (ATTRIB_POINTERS.secondary_color.size == 4)
+                       ? _readVertexData4fARGB
+                       : _readVertexData4fRevARGB;
+        case GL_BYTE:
+        case GL_UNSIGNED_BYTE:
+            return (ATTRIB_POINTERS.secondary_color.size == 3)
+                       ? _readVertexData3ubARGB
+                   : (ATTRIB_POINTERS.secondary_color.size == 4)
+                       ? _readVertexData4ubARGB
+                       : _readVertexData4ubRevARGB;
+        case GL_SHORT:
+        case GL_UNSIGNED_SHORT:
+            return (ATTRIB_POINTERS.secondary_color.size == 3)
+                       ? _readVertexData3usARGB
+                   : (ATTRIB_POINTERS.secondary_color.size == 4)
+                       ? _readVertexData4usARGB
+                       : _readVertexData4usRevARGB;
+        case GL_INT:
+        case GL_UNSIGNED_INT:
+            return (ATTRIB_POINTERS.secondary_color.size == 3)
+                       ? _readVertexData3uiARGB
+                   : (ATTRIB_POINTERS.secondary_color.size == 4)
+                       ? _readVertexData4uiARGB
+                       : _readVertexData4uiRevARGB;
     }
 }
 
@@ -669,6 +720,21 @@ static void _readDiffuseData(ReadDiffuseFunc func, const GLuint first, const GLu
     }
 }
 
+static void _readSecondaryColorData(ReadSecondaryColorFunc func,
+                                    const GLuint first, const GLuint count,
+                                    Vertex* it) {
+    const GLuint cstride = ATTRIB_POINTERS.secondary_colour.stride;
+    const GLubyte* cptr =
+        ((GLubyte*)ATTRIB_POINTERS.secondary_colour.ptr) + (first * cstride);
+
+    ITERATE(count) {
+        PREFETCH(cptr + cstride);
+        func(cptr, it->oargb);
+        cptr += cstride;
+        ++it;
+    }
+}
+
 static void generateElements(
         SubmissionTarget* target, const GLsizei first, const GLuint count,
         const GLubyte* indices, const GLenum type) {
@@ -681,6 +747,7 @@ static void generateElements(
     GLubyte* bgra;
     GLubyte* st;
     GLubyte* nxyz;
+    GLubyte* oargb;
 
     Vertex* output = _glSubmissionTargetStart(target);
 
@@ -702,6 +769,10 @@ static void generateElements(
     const ReadNormalFunc normal_func = calcReadNormalFunc();
     const GLuint nstride = ATTRIB_POINTERS.normal.stride;
 
+    const ReadSecondaryColorFunc secondary_color_func =
+        calcReadSecondaryColorFunc();
+    const GLuint scstride = ATTRIB_POINTERS.secondary_color.stride;
+
     for(; i < first + count; ++i) {
         idx = IndexFunc(indices + (i * istride));
 
@@ -710,12 +781,15 @@ static void generateElements(
         bgra = (GLubyte*) ATTRIB_POINTERS.colour.ptr + (idx * dstride);
         st = (GLubyte*) ATTRIB_POINTERS.st.ptr + (idx * ststride);
         nxyz = (GLubyte*) ATTRIB_POINTERS.normal.ptr + (idx * nstride);
+        oargb =
+            (GLubyte*)ATTRIB_POINTERS.secondary_color.ptr + (idx * scstride);
 
         pos_func(xyz, (GLubyte*) output->xyz);
         uv_func(uv, (GLubyte*) output->uv);
         diffuse_func(bgra, output->bgra);
         st_func(st, (GLubyte*)output->st);
         normal_func(nxyz, (GLubyte*)output->nxyz);
+        secondary_color_func(oargb, output->oargb);
 
         output->flags = GPU_CMD_VERTEX;
         ++output;
@@ -845,12 +919,14 @@ static void generateArrays(SubmissionTarget* target, const GLsizei first, const 
     const ReadUVFunc uvfunc = calcReadUVFunc();
     const ReadNormalFunc nfunc = calcReadNormalFunc();
     const ReadUVFunc stfunc = calcReadSTFunc();
+    const ReadSecondaryColorFunc scfunc = calcReadSecondaryColorFunc();
 
     _readPositionData(pfunc, first, count, start);
     _readDiffuseData(dfunc, first, count, start);
     _readUVData(uvfunc, first, count, start);
     _readNormalData(nfunc, first, count, start);
     _readSTData(stfunc, first, count, start);
+    _readSecondaryColorData(scfunc, first, count, start);
 }
 
 static void generate(SubmissionTarget* target, const GLenum mode, const GLsizei first, const GLuint count,
@@ -1292,6 +1368,9 @@ void APIENTRY glEnableClientState(GLenum cap) {
             (ENABLED_VERTEX_ATTRIBUTES |= ST_ENABLED_FLAG):
             (ENABLED_VERTEX_ATTRIBUTES |= UV_ENABLED_FLAG);
     break;
+    case GL_SECONDARY_COLOR_ARRAY:
+        ENABLED_VERTEX_ATTRIBUTES |= SECONDARY_COLOUR_ENABLED_FLAG;
+        break;
     default:
         _glKosThrowError(GL_INVALID_ENUM, __func__);
     }
@@ -1320,6 +1399,9 @@ void APIENTRY glDisableClientState(GLenum cap) {
             (ENABLED_VERTEX_ATTRIBUTES &= ~ST_ENABLED_FLAG):
             (ENABLED_VERTEX_ATTRIBUTES &= ~UV_ENABLED_FLAG);
     break;
+    case GL_SECONDARY_COLOR_ARRAY:
+        ENABLED_VERTEX_ATTRIBUTES &= ~SECONDARY_COLOUR_ENABLED_FLAG;
+        break;
     default:
         _glKosThrowError(GL_INVALID_ENUM, __func__);
     }
