@@ -516,29 +516,27 @@ size_t alloc_count_continuous(void* pool) {
     (void) pool;
 
     size_t largest_block = 0;
-    size_t current_block = 0;
 
+    size_t free_bits = 0;
     for(size_t i = 0; i < pool_header.block_count; ++i) {
         uint8_t t = pool_header.block_usage[i];
 
-        if(!t) {
-            current_block += 2048;
-        } else {
-            for(int i = 7; i >= 0; --i) {
-                bool bitset = (t & (1 << i));
-                if(bitset) {
-                    current_block += (7 - i) * 256;
-                    if(largest_block < current_block) {
-                        largest_block = current_block;
-                        current_block = 0;
-                    }
+        for(int i = 7; i >= 0; --i) {
+            bool bitset = (t & (1 << i));
+            if(!bitset) {
+                ++free_bits;
+            } else {
+                free_bits = 0;
+                size_t free_size = free_bits * 256;
+                if(free_size > largest_block) {
+                    largest_block = free_size;
                 }
             }
         }
     }
 
-    if(largest_block < current_block) {
-        largest_block = current_block;
+    if(free_bits && (free_bits * 256) > largest_block) {
+        largest_block = (free_bits * 256);
     }
 
     return largest_block;

@@ -39,6 +39,42 @@ public:
         self->defrag_moves.push_back(std::make_pair(src, dst));
     }
 
+    void test_count_free() {
+        alloc_init(pool, POOL_SIZE);
+
+        assert_equal(alloc_count_free(pool), POOL_SIZE);
+
+        void* a1 = alloc_malloc(pool, 2048);
+        assert_equal(alloc_count_free(pool), POOL_SIZE - 2048);
+
+        void* a2 = alloc_malloc(pool, 2048);
+        assert_equal(alloc_count_free(pool), POOL_SIZE - 4096);
+
+        alloc_free(pool, a1);
+        assert_equal(alloc_count_free(pool), POOL_SIZE - 2048);
+
+        alloc_free(pool, a2);
+        assert_equal(alloc_count_free(pool), POOL_SIZE);
+    }
+
+    void test_count_contiguous() {
+        alloc_init(pool, POOL_SIZE);
+
+        assert_equal(alloc_count_continuous(pool), POOL_SIZE);
+
+        void* a1 = alloc_malloc(pool, 2048);
+        assert_equal(alloc_count_continuous(pool), POOL_SIZE - 2048);
+
+        void* a2 = alloc_malloc(pool, 2048);
+        assert_equal(alloc_count_continuous(pool), POOL_SIZE - 4096);
+
+        alloc_free(pool, a1);
+        assert_equal(alloc_count_continuous(pool), POOL_SIZE - 4096);
+
+        alloc_free(pool, a2);
+        assert_equal(alloc_count_continuous(pool), POOL_SIZE);
+    }
+    
     void test_defrag() {
         alloc_init(pool, POOL_SIZE);
 
