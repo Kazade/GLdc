@@ -2076,9 +2076,6 @@ void APIENTRY glTexSubImage2D(GLenum target, GLint level, GLint xoffset, GLint y
                               GLenum type, const GLvoid *data) {
     TRACE();
 
-    // printf("glTexSubImage2D called with: target=%d, level=%d, xoffset=%d, yoffset=%d, width=%d, height=%d, format=%d, type=%d\n",
-    //        target, level, xoffset, yoffset, width, height, format, type);
-
     gl_assert(ACTIVE_TEXTURE < MAX_GLDC_TEXTURE_UNITS);
     TextureObject* active = TEXTURE_UNITS[ACTIVE_TEXTURE];
 
@@ -2092,8 +2089,6 @@ void APIENTRY glTexSubImage2D(GLenum target, GLint level, GLint xoffset, GLint y
     GLsizei textureWidth = active->width;
     GLsizei textureHeight = active->height;
 
-    // printf("Texture dimensions: width=%d, height=%d\n", textureWidth, textureHeight);
-    // printf("Subimage dimensions: width=%d, height=%d\n", width, height);
     if (!_glTexSubImage2DValidate(target, level, xoffset, yoffset, width, height, format, type, textureWidth, textureHeight)) {
         INFO_MSG("Error: _glTexSubImage2DValidate failed\n");
         return;
@@ -2106,10 +2101,7 @@ void APIENTRY glTexSubImage2D(GLenum target, GLint level, GLint xoffset, GLint y
         active->internalFormat == GL_COLOR_INDEX8_TWID_KOS
     ) ? GL_TRUE : GL_FALSE;
 
-    // printf("isPaletted: %s\n", isPaletted ? "true" : "false");
-
     GLenum cleanInternalFormat = _cleanInternalFormat(active->internalFormat);
-    // printf("cleanInternalFormat: %d\n", cleanInternalFormat);
 
     // Determine source stride
     GLint sourceStride = _determineStride(format, type);
@@ -2118,28 +2110,21 @@ void APIENTRY glTexSubImage2D(GLenum target, GLint level, GLint xoffset, GLint y
     // Calculate destination stride (this accounts for both POT and NPOT)
     GLint destStride = _determineStrideInternal(cleanInternalFormat);
 
-    // printf("sourceStride: %d, destStride: %d, srcBytes: %u\n", sourceStride, destStride, srcBytes);
-
     // Calculate destBytes using the texture's full dimensions
     GLuint destBytes = (textureWidth * textureHeight * destStride);
 
     TextureConversionFunc conversion;
     int needs_conversion = _determineConversion(cleanInternalFormat, format, type, &conversion);
 
-    // printf("needs_conversion: %d\n", needs_conversion);
-
     // Adjust source bytes for 4bpp formats
     if (format == GL_COLOR_INDEX4_EXT || format == GL_COLOR_INDEX4_TWID_KOS) {
         srcBytes /= 2;
-        // printf("Adjusted srcBytes for 4bpp format: %u\n", srcBytes);
     }
 
     if ((needs_conversion & CONVERSION_TYPE_PACK) == CONVERSION_TYPE_PACK) {
         destBytes /= 2;
-        // printf("Adjusted destBytes for CONVERSION_TYPE_PACK: %u\n", destBytes);
     } else if (active->internalFormat == GL_COLOR_INDEX4_EXT || active->internalFormat == GL_COLOR_INDEX4_TWID_KOS) {
         destBytes /= 2;
-        // printf("Adjusted destBytes for 4bpp internal format: %u\n", destBytes);
     }
 
     if (needs_conversion < 0) {
@@ -2152,7 +2137,6 @@ void APIENTRY glTexSubImage2D(GLenum target, GLint level, GLint xoffset, GLint y
     GLubyte* targetData = active->data;
     if (needs_conversion > 0) {
         GLubyte* conversionBuffer = (GLubyte*) memalign(32, destBytes);
-       // printf("Allocated conversionBuffer of size %u at %p\n", textureWidth * textureHeight * destStride, (void*)conversionBuffer);        
 
         const GLubyte* src = data;
         GLubyte* dst = conversionBuffer;
@@ -2164,9 +2148,7 @@ void APIENTRY glTexSubImage2D(GLenum target, GLint level, GLint xoffset, GLint y
         if (xoffset != 0 || yoffset != 0 || width != textureWidth || height != textureHeight) {
             memset(conversionBuffer, 0, destBytes);
         }
-        // printf("Conversion type: %d, pack: %s\n", needs_conversion, pack ? "true" : "false");
         if (needs_conversion == CONVERSION_TYPE_CONVERT) {
-            // printf("Performing conversion\n");
             for (uint32_t y = 0; y < height; ++y) {
                 dst = conversionBuffer + ((y + yoffset) * textureWidth + xoffset) * destStride;
                 for (uint32_t x = 0; x < width; ++x) {
@@ -2176,7 +2158,6 @@ void APIENTRY glTexSubImage2D(GLenum target, GLint level, GLint xoffset, GLint y
                 }
             }
         } else if (needs_conversion == 2 || needs_conversion == 3) {
-            // printf("Performing twiddling %s\n", needs_conversion == 3 ? "with conversion" : "");
             twid_prepare_table(textureWidth, textureHeight);
 
             for (uint32_t y = yoffset; y < yoffset + height; ++y) {
@@ -2196,7 +2177,6 @@ void APIENTRY glTexSubImage2D(GLenum target, GLint level, GLint xoffset, GLint y
 
         if (pack) {
             assert(isPaletted);
-            // printf("Packing paletted texture\n");
             size_t dst_byte = 0;
             for (size_t src_byte = 0; src_byte < destBytes; ++src_byte) {
                 uint8_t v = conversionBuffer[src_byte];
@@ -2211,7 +2191,6 @@ void APIENTRY glTexSubImage2D(GLenum target, GLint level, GLint xoffset, GLint y
         }
 
         // Copy the converted data to the texture
-        // printf("Copying converted data to texture\n");
         FASTCPY(targetData, conversionBuffer, destBytes);
 
         free(conversionBuffer);
@@ -2225,7 +2204,6 @@ void APIENTRY glTexSubImage2D(GLenum target, GLint level, GLint xoffset, GLint y
     }
 
     _glGPUStateMarkDirty();
-    // printf("glTexSubImage2D completed\n");
 }
 
 GLAPI void APIENTRY glCopyTexSubImage2D(GLenum target, GLint level, GLint xoffset, GLint yoffset, GLint x, GLint y, GLsizei width, GLsizei height) {
