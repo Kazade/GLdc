@@ -296,7 +296,7 @@ static inline void block_and_offset_from_subblock(size_t sb, size_t* b, uint8_t*
     *off = (sb % 8);
 }
 
-void* alloc_malloc(void* pool, size_t size) {
+static void* alloc_malloc_internal(void* pool, size_t size, bool for_defrag) {
     DBG_MSG("Allocating: %d\n", size);
 
     size_t start_subblock, required_subblocks;
@@ -339,6 +339,11 @@ void* alloc_malloc(void* pool, size_t size) {
             pool_header.block_usage[block++] |= mask;
         }
 
+        // defrag allocations don't create new entries, they reuse old ones
+        if(for_defrag) {
+            return ret;
+        }
+
         /* Insert allocations in the list by size descending so that when we
          * defrag we can move the larger blocks before the smaller ones without
          * much effort */
@@ -378,6 +383,10 @@ void* alloc_malloc(void* pool, size_t size) {
     DBG_MSG("Alloc done\n");
 
     return ret;
+}
+
+void* alloc_malloc(void* pool, size_t size) {
+    return alloc_malloc_internal(pool, size, false);
 }
 
 static void alloc_release_blocks(struct AllocEntry* it) {
@@ -437,14 +446,14 @@ void alloc_free(void* pool, void* p) {
 
             DBG_MSG("Freed: size: %d, us: %d, sb: %d, off: %d\n", it->size, used_subblocks, block, offset);
             free(it);
-            break;
+            return;
         }
 
         last = it;
         it = it->next;
     }
 
-    DBG_MSG("Free done\n");
+    assert("Freed pointer not found, heap corruption?" && 0);
 }
 
 void alloc_run_defrag(void* pool, defrag_address_move callback, int max_iterations, void* user_data) {
@@ -461,7 +470,7 @@ void alloc_run_defrag(void* pool, defrag_address_move callback, int max_iteratio
         while(it) {
             void* potential_dest = alloc_next_available(pool, it->size);
             if(potential_dest && potential_dest < it->pointer) {
-                potential_dest = alloc_malloc(pool, it->size);
+                potential_dest = alloc_malloc_internal(pool, it->size, true);
                 memcpy(potential_dest, it->pointer, it->size);
 
                 /* Mark this block as now free, but don't fiddle with the

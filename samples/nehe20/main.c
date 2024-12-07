@@ -63,8 +63,9 @@ KOS_INIT_ROMDISK(romdisk);
 #include <GL/glu.h>	// Header File For The GLu32 Library
 #include <GL/glkos.h>
 #else
-#include <GL/gl.h>	// Header File For The OpenGL32 Library
-#include <GL/glu.h>	// Header File For The GLu32 Library
+#include <GL/gl.h> // Header File For The OpenGL32 Library
+#include <GL/glkos.h>
+#include <GL/glu.h> // Header File For The GLu32 Library
 #endif
 
 #define BOOL    int

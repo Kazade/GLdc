@@ -1,4 +1,5 @@
 #include <GL/gl.h>
+#include <GL/glkos.h>
 #include <math.h>
 #include <stdlib.h>
 
