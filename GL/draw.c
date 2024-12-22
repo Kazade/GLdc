@@ -1253,7 +1253,6 @@ GL_FORCE_INLINE GLuint calcFinalVertices(GLenum mode, GLuint count) {
 }
 
 GL_FORCE_INLINE void submitVertices(GLenum mode, GLsizei first, GLuint count, GLenum type, const GLvoid* indices) {
-
     SubmissionTarget* const target = &SUBMISSION_TARGET;
     AlignedVector* const extras = target->extras;
 
@@ -1324,7 +1323,6 @@ GL_FORCE_INLINE void submitVertices(GLenum mode, GLsizei first, GLuint count, GL
         _glMatrixLoadModelViewProjection();
     }
 
-    /* If we're FAST_PATH_ENABLED, then this will do the transform for us */
     generate(target, mode, first, count, (GLubyte*) indices, type);
 
     if(_glIsLightingEnabled()){
@@ -1468,28 +1466,25 @@ void APIENTRY glClientActiveTextureARB(GLenum texture) {
     ACTIVE_CLIENT_TEXTURE = (texture == GL_TEXTURE1_ARB) ? 1 : 0;
 }
 
-GL_FORCE_INLINE GLboolean _glComparePointers(AttribPointer* p, GLint size, GLenum type, GLsizei stride, const GLvoid* pointer) {
-    return (p->size == size && p->type == type && p->stride == stride && p->ptr == pointer);
+// Used to avoid checking and updating attribute related state unless necessary
+GL_FORCE_INLINE GLboolean _glStateUnchanged(AttribPointer* p, GLint size, GLenum type, GLsizei stride) {
+    return (p->size == size && p->type == type && p->stride == stride);
 }
 
 void APIENTRY glTexCoordPointer(GLint size, GLenum type, GLsizei stride, const GLvoid * pointer) {
     TRACE();
+
+    stride = (stride) ? stride : size * byte_size(type);
+    AttribPointer* tointer = (ACTIVE_CLIENT_TEXTURE == 0) ? &ATTRIB_POINTERS.uv : &ATTRIB_POINTERS.st;
+    tointer->ptr = pointer;
+
+    if(_glStateUnchanged(tointer, size, type, stride)) return;
 
     if(size < 1 || size > 4) {
         _glKosThrowError(GL_INVALID_VALUE, __func__);
         return;
     }
 
-    stride = (stride) ? stride : size * byte_size(type);
-
-    AttribPointer* tointer = (ACTIVE_CLIENT_TEXTURE == 0) ? &ATTRIB_POINTERS.uv : &ATTRIB_POINTERS.st;
-
-    if(_glComparePointers(tointer, size, type, stride, pointer)) {
-        // No Change
-        return;
-    }
-
-    tointer->ptr = pointer;
     tointer->stride = stride;
     tointer->type = type;
     tointer->size = size;
@@ -1497,22 +1492,19 @@ void APIENTRY glTexCoordPointer(GLint size, GLenum type, GLsizei stride, const G
     _glRecalcFastPath();
 }
 
-void APIENTRY glVertexPointer(GLint size, GLenum type,  GLsizei stride,  const GLvoid * pointer) {
+void APIENTRY glVertexPointer(GLint size, GLenum type, GLsizei stride, const GLvoid * pointer) {
     TRACE();
+
+    stride = (stride) ? stride : (size * byte_size(type));
+    ATTRIB_POINTERS.vertex.ptr = pointer;
+
+    if(_glStateUnchanged(&ATTRIB_POINTERS.vertex, size, type, stride)) return;
 
     if(size < 2 || size > 4) {
         _glKosThrowError(GL_INVALID_VALUE, __func__);
         return;
     }
 
-    stride = (stride) ? stride : (size * byte_size(ATTRIB_POINTERS.vertex.type));
-
-    if(_glComparePointers(&ATTRIB_POINTERS.vertex, size, type, stride, pointer)) {
-        // No Change
-        return;
-    }
-
-    ATTRIB_POINTERS.vertex.ptr = pointer;
     ATTRIB_POINTERS.vertex.stride = stride;
     ATTRIB_POINTERS.vertex.type = type;
     ATTRIB_POINTERS.vertex.size = size;
@@ -1523,19 +1515,16 @@ void APIENTRY glVertexPointer(GLint size, GLenum type,  GLsizei stride,  const G
 void APIENTRY glColorPointer(GLint size,  GLenum type,  GLsizei stride,  const GLvoid * pointer) {
     TRACE();
 
+    stride = (stride) ? stride : ((size == GL_BGRA) ? 4 : size) * byte_size(type);
+    ATTRIB_POINTERS.colour.ptr = pointer;
+
+    if(_glStateUnchanged(&ATTRIB_POINTERS.colour, size, type, stride)) return;
+
     if(size != 3 && size != 4 && size != GL_BGRA) {
         _glKosThrowError(GL_INVALID_VALUE, __func__);
         return;
     }
 
-    stride = (stride) ? stride : ((size == GL_BGRA) ? 4 : size) * byte_size(type);
-
-    if(_glComparePointers(&ATTRIB_POINTERS.colour, size, type, stride, pointer)) {
-        // No Change
-        return;
-    }
-
-    ATTRIB_POINTERS.colour.ptr = pointer;
     ATTRIB_POINTERS.colour.type = type;
     ATTRIB_POINTERS.colour.size = size;
     ATTRIB_POINTERS.colour.stride = stride;
@@ -1557,18 +1546,15 @@ void APIENTRY glNormalPointer(GLenum type,  GLsizei stride,  const GLvoid * poin
         0
     };
 
+    stride = (stride) ? stride : ATTRIB_POINTERS.normal.size * byte_size(type);
+    ATTRIB_POINTERS.normal.ptr = pointer;
+
+    if(_glStateUnchanged(&ATTRIB_POINTERS.normal, 3, type, stride)) return;
+
     if(_glCheckValidEnum(type, validTypes, __func__) != 0) {
         return;
     }
 
-    stride = (stride) ? stride : ATTRIB_POINTERS.normal.size * byte_size(type);
-
-    if(_glComparePointers(&ATTRIB_POINTERS.normal, 3, type, stride, pointer)) {
-        // No Change
-        return;
-    }
-
-    ATTRIB_POINTERS.normal.ptr = pointer;
     ATTRIB_POINTERS.normal.size = (type == GL_UNSIGNED_INT_2_10_10_10_REV) ? 1 : 3;
     ATTRIB_POINTERS.normal.stride = stride;
     ATTRIB_POINTERS.normal.type = type;
