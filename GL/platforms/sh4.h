@@ -69,7 +69,7 @@ GL_FORCE_INLINE void* memcpy_fast(void *dest, const void *src, size_t len) {
 
 #define MEMCPY4(dst, src, bytes) memcpy_fast(dst, src, bytes)
 
-#define MEMSET4(dst, v, size) memset4((dst), (v), (size))
+#define MEMSET4(dst, v, size) memset((dst), (v), (size))
 
 #define VEC3_NORMALIZE(x, y, z) vec3f_normalize((x), (y), (z))
 #define VEC3_LENGTH(x, y, z, l) vec3f_length((x), (y), (z), (l))
