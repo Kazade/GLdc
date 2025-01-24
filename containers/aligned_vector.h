@@ -31,7 +31,6 @@ static inline void* memalign(size_t alignment, size_t size) {
 
 
 #ifdef __DREAMCAST__
-#include <kos/string.h>
 
 AV_FORCE_INLINE void *AV_MEMCPY4(void *dest, const void *src, size_t len)
 {
