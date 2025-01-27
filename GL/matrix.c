@@ -221,9 +221,9 @@ void APIENTRY glLoadMatrixf(const GLfloat *m) {
 }
 
 /* Ortho */
-void APIENTRY glOrtho(GLfloat left, GLfloat right,
-             GLfloat bottom, GLfloat top,
-             GLfloat znear, GLfloat zfar) {
+void APIENTRY glOrtho(GLdouble left, GLdouble right,
+             GLdouble bottom, GLdouble top,
+             GLdouble znear, GLdouble zfar) {
 
     Matrix4x4 ortho __attribute__((aligned(32))) = {
         1.0f, 0.0f, 0.0f, 0.0f,
@@ -244,9 +244,9 @@ void APIENTRY glOrtho(GLfloat left, GLfloat right,
 
 
 /* Set the GL frustum */
-void APIENTRY glFrustum(GLfloat left, GLfloat right,
-               GLfloat bottom, GLfloat top,
-               GLfloat znear, GLfloat zfar) {
+void APIENTRY glFrustum(GLdouble left, GLdouble right,
+               GLdouble bottom, GLdouble top,
+               GLdouble znear, GLdouble zfar) {
 
     Matrix4x4 frustum __attribute__((aligned(32)));
     MEMSET(frustum, 0, sizeof(float) * 16);
@@ -360,7 +360,7 @@ void APIENTRY glDepthRangef(GLclampf n, GLclampf f) {
     DEPTH_RANGE_MULTIPLIER_H = (n + f) / 2.0f;
 }
 
-void APIENTRY glDepthRange(GLclampf n, GLclampf f){
+void APIENTRY glDepthRange(GLdouble n, GLdouble f){
     glDepthRangef(n,f);
 }
 
@@ -384,9 +384,9 @@ GL_FORCE_INLINE void vec3f_normalize_sh4(float *v){
     }
 }
 
-void gluLookAt(GLfloat eyex, GLfloat eyey, GLfloat eyez, GLfloat centerx,
-               GLfloat centery, GLfloat centerz, GLfloat upx, GLfloat upy,
-               GLfloat upz) {
+void gluLookAt(GLdouble eyex, GLdouble eyey, GLdouble eyez, GLdouble centerx,
+               GLdouble centery, GLdouble centerz, GLdouble upx, GLdouble upy,
+               GLdouble upz) {
     GLfloat m [16] __attribute__((aligned(32)));
     GLfloat f [3];
     GLfloat u [3];

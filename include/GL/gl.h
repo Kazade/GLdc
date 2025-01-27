@@ -446,7 +446,7 @@ __BEGIN_DECLS
 #define GLshort  short
 #define GLint    int
 #define GLfloat  float
-#define GLdouble float
+#define GLdouble double
 #define GLvoid   void
 #define GLushort unsigned short
 #define GLuint   unsigned int
@@ -454,7 +454,7 @@ __BEGIN_DECLS
 #define GLsizei  unsigned int
 #define GLfixed  const unsigned int
 #define GLclampf float
-#define GLclampd float
+#define GLclampd double
 #define GLubyte  unsigned char
 #define GLbitfield unsigned int
 #define GLboolean  unsigned char
@@ -579,12 +579,12 @@ GLAPI void APIENTRY glReadBuffer(GLenum mode);
 GLAPI void APIENTRY glDrawBuffer(GLenum mode);
 
 /* Depth Testing */
-GLAPI void APIENTRY glClearDepth(GLfloat depth);
+GLAPI void APIENTRY glClearDepth(GLdouble depth);
 GLAPI void APIENTRY glClearDepthf(GLfloat depth);
 GLAPI void APIENTRY glDepthMask(GLboolean flag);
 GLAPI void APIENTRY glDepthFunc(GLenum func);
-GLAPI void APIENTRY glDepthRange(GLclampf n, GLclampf f);
-GLAPI void APIENTRY glDepthRangef(GLclampf n, GLclampf f);
+GLAPI void APIENTRY glDepthRange(GLdouble n, GLdouble f);
+GLAPI void APIENTRY glDepthRangef(GLfloat n, GLfloat f);
 
 /* Hints */
 /* Currently Supported Capabilities:
@@ -696,9 +696,9 @@ GLAPI void APIENTRY glScalef(GLfloat x, GLfloat y, GLfloat z);
 GLAPI void APIENTRY glRotatef(GLfloat angle, GLfloat x, GLfloat  y, GLfloat z);
 #define glRotated glRotatef
 
-GLAPI void APIENTRY glOrtho(GLfloat left, GLfloat right,
-                            GLfloat bottom, GLfloat top,
-                            GLfloat znear, GLfloat zfar);
+GLAPI void APIENTRY glOrtho(GLdouble left, GLdouble right,
+                            GLdouble bottom, GLdouble top,
+                            GLdouble znear, GLdouble zfar);
 
 GLAPI void APIENTRY glViewport(GLint x, GLint y, GLsizei width, GLsizei height);
 
@@ -706,9 +706,9 @@ GLAPI void APIENTRY glScissor(GLint x, GLint y, GLsizei width, GLsizei height);
 
 GLAPI void APIENTRY glKosGetMatrix(GLenum mode, GLfloat *params);
 
-GLAPI void APIENTRY glFrustum(GLfloat left, GLfloat right,
-                              GLfloat bottom, GLfloat top,
-                              GLfloat znear, GLfloat zfar);
+GLAPI void APIENTRY glFrustum(GLdouble left, GLdouble right,
+                              GLdouble bottom, GLdouble top,
+                              GLdouble znear, GLdouble zfar);
 
 /* Fog Functions - client must enable GL_FOG for this to take effect */
 GLAPI void APIENTRY glFogi(GLenum pname, GLint param);
