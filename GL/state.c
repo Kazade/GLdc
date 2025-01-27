@@ -679,12 +679,12 @@ GLAPI void APIENTRY glClearColor(GLfloat r, GLfloat g, GLfloat b, GLfloat a) {
 
 /* Depth Testing */
 GLAPI void APIENTRY glClearDepthf(GLfloat depth) {
-    glClearDepth(depth);
-}
-
-GLAPI void APIENTRY glClearDepth(GLfloat depth) {
     /* We reverse because using invW means that farther Z == lower number */
     GPUSetClearDepth(MIN(1.0f - depth, PVR_MIN_Z));
+}
+
+GLAPI void APIENTRY glClearDepth(GLdouble depth) {
+    glClearDepthf(depth);
 }
 
 GLAPI void APIENTRY glDrawBuffer(GLenum mode) {

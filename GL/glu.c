@@ -2,8 +2,8 @@
 #include "private.h"
 
 /* Set the Perspective */
-void APIENTRY gluPerspective(GLfloat angle, GLfloat aspect,
-                    GLfloat znear, GLfloat zfar) {
+void APIENTRY gluPerspective(GLdouble angle, GLdouble aspect,
+                    GLdouble znear, GLdouble zfar) {
     GLfloat fW, fH;
 
     fH = tanf(angle * (M_PI / 360.0f)) * znear;
