@@ -199,24 +199,25 @@ static void _readVertexData4fRevARGB(const GLubyte* __restrict__ in, GLubyte* __
 
 static void _fillWithNegZVE(const GLubyte* __restrict__ input, GLubyte* __restrict__ out) {
     _GL_UNUSED(input);
-
-    typedef struct {
-        float x, y, z;
-    } V;
+    typedef struct { float x, y, z; } V;
 
     static const V NegZ = {0.0f, 0.0f, -1.0f};
 
     *((V*) out) = NegZ;
 }
 
-static void  _fillWhiteARGB(const GLubyte* __restrict__ input, GLubyte* __restrict__ output) {
+static void _fillWhiteARGB(const GLubyte* __restrict__ input, GLubyte* __restrict__ output) {
     _GL_UNUSED(input);
     *((uint32_t*) output) = ~0;
 }
 
 static void _fillZero2f(const GLubyte* __restrict__ input, GLubyte* __restrict__ out) {
     _GL_UNUSED(input);
-    memset(out, 0, sizeof(float) * 2);
+    //memset(out, 0, sizeof(float) * 2);
+    // memset does 8 byte writes - faster to manually write as uint32
+    uint32_t* dst = (uint32_t*)out;
+    dst[0] = 0;
+    dst[1] = 0;
 }
 
 static void _readVertexData3usARGB(const GLubyte* input, GLubyte* output) {
