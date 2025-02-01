@@ -346,6 +346,7 @@ typedef struct {
     GLsizei stride;  // 4
     GLint size; // 4
 } AttribPointer;
+typedef void (*ReadAttributeFunc)(const GLubyte*, GLubyte*);
 
 typedef struct {
     AttribPointer vertex; // 16
@@ -353,25 +354,29 @@ typedef struct {
     AttribPointer uv; // 48
     AttribPointer st; // 64
     AttribPointer normal; // 80
-    AttribPointer padding; // 96
+
+    ReadAttributeFunc vertex_func;
+    ReadAttributeFunc colour_func;
+    ReadAttributeFunc uv_func;
+    ReadAttributeFunc st_func;
+    ReadAttributeFunc normal_func;
 } AttribPointerList;
+
+extern GLuint ENABLED_VERTEX_ATTRIBUTES;
+extern AttribPointerList ATTRIB_POINTERS;
 
 GLboolean _glCheckValidEnum(GLint param, GLint* values, const char* func);
 
 GLuint* _glGetEnabledAttributes();
-AttribPointer* _glGetVertexAttribPointer();
-AttribPointer* _glGetDiffuseAttribPointer();
-AttribPointer* _glGetNormalAttribPointer();
-AttribPointer* _glGetUVAttribPointer();
-AttribPointer* _glGetSTAttribPointer();
-GLenum _glGetShadeModel();
 
+GLenum _glGetShadeModel();
 TextureObject* _glGetTexture0();
 TextureObject* _glGetTexture1();
 TextureObject* _glGetBoundTexture();
 
 extern GLubyte ACTIVE_TEXTURE;
 extern GLboolean TEXTURES_ENABLED[];
+extern GLubyte ACTIVE_CLIENT_TEXTURE;
 
 GLubyte _glGetActiveTexture();
 GLint _glGetTextureInternalFormat();
@@ -422,9 +427,6 @@ GLboolean _glIsColorMaterialEnabled();
 
 GLboolean _glIsNormalizeEnabled();
 
-extern AttribPointerList ATTRIB_POINTERS;
-
-extern GLuint ENABLED_VERTEX_ATTRIBUTES;
 extern GLuint FAST_PATH_ENABLED;
 
 GL_FORCE_INLINE GLuint _glIsVertexDataFastPathCompatible() {
