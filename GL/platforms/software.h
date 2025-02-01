@@ -25,7 +25,7 @@
     } while(0)
 
 #define VEC3_LENGTH(x, y, z, d) \
-    d = MATH_Fast_Sqrt((x) * (x) + (y) * (y) + (z) * (z))
+    d = sqrtf((x) * (x) + (y) * (y) + (z) * (z))
 
 #define VEC3_DOT(x1, y1, z1, x2, y2, z2, d) \
     d = (x1 * x2) + (y1 * y2) + (z1 * z2)
