@@ -8,7 +8,6 @@
 #include "private.h"
 #include "platform.h"
 
-GLuint FAST_PATH_ENABLED = GL_FALSE;
 GLubyte ACTIVE_CLIENT_TEXTURE;
 
 extern GLboolean AUTOSORT_ENABLED;
@@ -286,9 +285,9 @@ static GL_NO_INLINE void genLineLoop(Vertex* output, GLuint count) {
 }
 
 static void _readPositionData(const GLuint first, const GLuint count, Vertex* it) {
-    const ReadAttributeFunc func = ATTRIB_POINTERS.vertex_func;
-    const GLsizei vstride = ATTRIB_POINTERS.vertex.stride;
-    const GLubyte* vptr = ((GLubyte*) ATTRIB_POINTERS.vertex.ptr + (first * vstride));
+    const ReadAttributeFunc func = ATTRIB_LIST.vertex_func;
+    const GLsizei vstride = ATTRIB_LIST.vertex.stride;
+    const GLubyte* vptr = ((GLubyte*) ATTRIB_LIST.vertex.ptr + (first * vstride));
 
     float pos[3], w = 1.0f;
 
@@ -304,9 +303,9 @@ static void _readPositionData(const GLuint first, const GLuint count, Vertex* it
 }
 
 static void _readUVData(const GLuint first, const GLuint count, Vertex* it) {
-    const ReadAttributeFunc func = ATTRIB_POINTERS.uv_func;
-    const GLsizei uvstride = ATTRIB_POINTERS.uv.stride;
-    const GLubyte* uvptr = ((GLubyte*) ATTRIB_POINTERS.uv.ptr + (first * uvstride));
+    const ReadAttributeFunc func = ATTRIB_LIST.uv_func;
+    const GLsizei uvstride = ATTRIB_LIST.uv.stride;
+    const GLubyte* uvptr = ((GLubyte*) ATTRIB_LIST.uv.ptr + (first * uvstride));
 
     ITERATE(count) {
         PREFETCH(uvptr + uvstride);
@@ -318,9 +317,9 @@ static void _readUVData(const GLuint first, const GLuint count, Vertex* it) {
 }
 
 static void _readSTData(const GLuint first, const GLuint count, VertexExtra* it) {
-    const ReadAttributeFunc func = ATTRIB_POINTERS.st_func;
-    const GLsizei ststride = ATTRIB_POINTERS.st.stride;
-    const GLubyte* stptr = ((GLubyte*) ATTRIB_POINTERS.st.ptr + (first * ststride));
+    const ReadAttributeFunc func = ATTRIB_LIST.st_func;
+    const GLsizei ststride = ATTRIB_LIST.st.stride;
+    const GLubyte* stptr = ((GLubyte*) ATTRIB_LIST.st.ptr + (first * ststride));
 
     ITERATE(count) {
         PREFETCH(stptr + ststride);
@@ -331,9 +330,9 @@ static void _readSTData(const GLuint first, const GLuint count, VertexExtra* it)
 }
 
 static void _readNormalData(const GLuint first, const GLuint count, VertexExtra* it) {
-    const ReadAttributeFunc func = ATTRIB_POINTERS.normal_func;
-    const GLsizei nstride = ATTRIB_POINTERS.normal.stride;
-    const GLubyte* nptr = ((GLubyte*) ATTRIB_POINTERS.normal.ptr + (first * nstride));
+    const ReadAttributeFunc func = ATTRIB_LIST.normal_func;
+    const GLsizei nstride = ATTRIB_LIST.normal.stride;
+    const GLubyte* nptr = ((GLubyte*) ATTRIB_LIST.normal.ptr + (first * nstride));
 
     ITERATE(count) {
         func(nptr, (GLubyte*) it->nxyz);
@@ -356,9 +355,9 @@ static void _readNormalData(const GLuint first, const GLuint count, VertexExtra*
 }
 
 static void _readDiffuseData(const GLuint first, const GLuint count, Vertex* it) {
-    const ReadAttributeFunc func = ATTRIB_POINTERS.colour_func;
-    const GLuint cstride = ATTRIB_POINTERS.colour.stride;
-    const GLubyte* cptr = ((GLubyte*) ATTRIB_POINTERS.colour.ptr) + (first * cstride);
+    const ReadAttributeFunc func = ATTRIB_LIST.colour_func;
+    const GLuint cstride = ATTRIB_LIST.colour.stride;
+    const GLubyte* cptr = ((GLubyte*) ATTRIB_LIST.colour.ptr) + (first * cstride);
 
     ITERATE(count) {
         PREFETCH(cptr + cstride);
@@ -388,29 +387,29 @@ static void generateElements(
     uint32_t i = first;
     uint32_t idx = 0;
 
-    const ReadAttributeFunc pos_func = ATTRIB_POINTERS.vertex_func;
-    const GLsizei vstride = ATTRIB_POINTERS.vertex.stride;
+    const ReadAttributeFunc pos_func = ATTRIB_LIST.vertex_func;
+    const GLsizei vstride = ATTRIB_LIST.vertex.stride;
 
-    const ReadAttributeFunc uv_func = ATTRIB_POINTERS.uv_func;
-    const GLuint uvstride = ATTRIB_POINTERS.uv.stride;
+    const ReadAttributeFunc uv_func = ATTRIB_LIST.uv_func;
+    const GLuint uvstride = ATTRIB_LIST.uv.stride;
 
-    const ReadAttributeFunc st_func = ATTRIB_POINTERS.st_func;
-    const GLuint ststride = ATTRIB_POINTERS.st.stride;
+    const ReadAttributeFunc st_func = ATTRIB_LIST.st_func;
+    const GLuint ststride = ATTRIB_LIST.st.stride;
 
-    const ReadAttributeFunc diffuse_func = ATTRIB_POINTERS.colour_func;
-    const GLuint dstride = ATTRIB_POINTERS.colour.stride;
+    const ReadAttributeFunc diffuse_func = ATTRIB_LIST.colour_func;
+    const GLuint dstride = ATTRIB_LIST.colour.stride;
 
-    const ReadAttributeFunc normal_func = ATTRIB_POINTERS.normal_func;
-    const GLuint nstride = ATTRIB_POINTERS.normal.stride;
+    const ReadAttributeFunc normal_func = ATTRIB_LIST.normal_func;
+    const GLuint nstride = ATTRIB_LIST.normal.stride;
 
     for(; i < first + count; ++i) {
         idx = IndexFunc(indices + (i * istride));
 
-        xyz = (GLubyte*) ATTRIB_POINTERS.vertex.ptr + (idx * vstride);
-        uv = (GLubyte*) ATTRIB_POINTERS.uv.ptr + (idx * uvstride);
-        bgra = (GLubyte*) ATTRIB_POINTERS.colour.ptr + (idx * dstride);
-        st = (GLubyte*) ATTRIB_POINTERS.st.ptr + (idx * ststride);
-        nxyz = (GLubyte*) ATTRIB_POINTERS.normal.ptr + (idx * nstride);
+        xyz = (GLubyte*) ATTRIB_LIST.vertex.ptr + (idx * vstride);
+        uv = (GLubyte*) ATTRIB_LIST.uv.ptr + (idx * uvstride);
+        bgra = (GLubyte*) ATTRIB_LIST.colour.ptr + (idx * dstride);
+        st = (GLubyte*) ATTRIB_LIST.st.ptr + (idx * ststride);
+        nxyz = (GLubyte*) ATTRIB_LIST.normal.ptr + (idx * nstride);
 
         pos_func(xyz, (GLubyte*) pos);
         TransformVertex((const float*) pos, &w, output->xyz, &output->w);
@@ -442,21 +441,21 @@ static void generateElementsFastPath(
 
     Vertex* start = _glSubmissionTargetStart(target);
 
-    const GLuint vstride = ATTRIB_POINTERS.vertex.stride;
-    const GLuint uvstride = ATTRIB_POINTERS.uv.stride;
-    const GLuint ststride = ATTRIB_POINTERS.st.stride;
-    const GLuint dstride = ATTRIB_POINTERS.colour.stride;
-    const GLuint nstride = ATTRIB_POINTERS.normal.stride;
+    const GLuint vstride = ATTRIB_LIST.vertex.stride;
+    const GLuint uvstride = ATTRIB_LIST.uv.stride;
+    const GLuint ststride = ATTRIB_LIST.st.stride;
+    const GLuint dstride = ATTRIB_LIST.colour.stride;
+    const GLuint nstride = ATTRIB_LIST.normal.stride;
 
     const GLsizei istride = index_size(type);
     const IndexParseFunc IndexFunc = _calcParseIndexFunc(type);
 
     /* Copy the pos, uv and color directly in one go */
-    const GLubyte* pos = (ENABLED_VERTEX_ATTRIBUTES & VERTEX_ENABLED_FLAG) ? ATTRIB_POINTERS.vertex.ptr : NULL;
-    const GLubyte* uv = (ENABLED_VERTEX_ATTRIBUTES & UV_ENABLED_FLAG) ? ATTRIB_POINTERS.uv.ptr : NULL;
-    const GLubyte* col = (ENABLED_VERTEX_ATTRIBUTES & DIFFUSE_ENABLED_FLAG) ? ATTRIB_POINTERS.colour.ptr : NULL;
-    const GLubyte* st = (ENABLED_VERTEX_ATTRIBUTES & ST_ENABLED_FLAG) ? ATTRIB_POINTERS.st.ptr : NULL;
-    const GLubyte* n = (ENABLED_VERTEX_ATTRIBUTES & NORMAL_ENABLED_FLAG) ? ATTRIB_POINTERS.normal.ptr : NULL;
+    const GLubyte* pos = (ATTRIB_LIST.enabled & VERTEX_ENABLED_FLAG) ? ATTRIB_LIST.vertex.ptr : NULL;
+    const GLubyte* uv  = (ATTRIB_LIST.enabled & UV_ENABLED_FLAG) ? ATTRIB_LIST.uv.ptr : NULL;
+    const GLubyte* col = (ATTRIB_LIST.enabled & DIFFUSE_ENABLED_FLAG) ? ATTRIB_LIST.colour.ptr : NULL;
+    const GLubyte* st  = (ATTRIB_LIST.enabled & ST_ENABLED_FLAG) ? ATTRIB_LIST.st.ptr : NULL;
+    const GLubyte* n   = (ATTRIB_LIST.enabled & NORMAL_ENABLED_FLAG) ? ATTRIB_LIST.normal.ptr : NULL;
 
     VertexExtra* ve = aligned_vector_at(target->extras, 0);
     Vertex* it = start;
@@ -472,32 +471,32 @@ static void generateElementsFastPath(
 
         it->flags = GPU_CMD_VERTEX;
 
-        pos = (GLubyte*) ATTRIB_POINTERS.vertex.ptr + (idx * vstride);
+        pos = (GLubyte*) ATTRIB_LIST.vertex.ptr + (idx * vstride);
         TransformVertex((const float*) pos, &w, it->xyz, &it->w);
 
         if(uv) {
-            uv = (GLubyte*) ATTRIB_POINTERS.uv.ptr + (idx * uvstride);
+            uv = (GLubyte*) ATTRIB_LIST.uv.ptr + (idx * uvstride);
             MEMCPY4(it->uv, uv, sizeof(float) * 2);
         } else {
             *((Float2*) it->uv) = F2ZERO;
         }
 
         if(col) {
-            col = (GLubyte*) ATTRIB_POINTERS.colour.ptr + (idx * dstride);
+            col = (GLubyte*) ATTRIB_LIST.colour.ptr + (idx * dstride);
             MEMCPY4(it->bgra, col, sizeof(uint32_t));
         } else {
             *((uint32_t*) it->bgra) = ~0;
         }
 
         if(st) {
-            st = (GLubyte*) ATTRIB_POINTERS.st.ptr + (idx * ststride);
+            st = (GLubyte*) ATTRIB_LIST.st.ptr + (idx * ststride);
             MEMCPY4(ve->st, st, sizeof(float) * 2);
         } else {
             *((Float2*) ve->st) = F2ZERO;
         }
 
         if(n) {
-            n = (GLubyte*) ATTRIB_POINTERS.normal.ptr + (idx * nstride);
+            n = (GLubyte*) ATTRIB_LIST.normal.ptr + (idx * nstride);
             MEMCPY4(ve->nxyz, n, sizeof(float) * 3);
         } else {
             *((Float3*) ve->nxyz) = F3Z;
@@ -558,7 +557,7 @@ static void generate(SubmissionTarget* target, const GLenum mode, const GLsizei 
     /* Read from the client buffers and generate an array of ClipVertices */
     TRACE();
 
-    if(FAST_PATH_ENABLED) {
+    if(ATTRIB_LIST.fast_path) {
         if(indices) {
             generateElementsFastPath(target, first, count, indices, type);
         } else {
@@ -834,7 +833,8 @@ GL_FORCE_INLINE void submitVertices(GLenum mode, GLsizei first, GLuint count, GL
     TRACE();
 
     /* Do nothing if vertices aren't enabled */
-    if(!(ENABLED_VERTEX_ATTRIBUTES & VERTEX_ENABLED_FLAG)) return;
+    if(!(ATTRIB_LIST.enabled & VERTEX_ENABLED_FLAG)) return;
+    if(ATTRIB_LIST.dirty) _glUpdateAttributes();
 
     /* No vertices? Do nothing */
     if(!count) return;
@@ -924,7 +924,7 @@ GL_FORCE_INLINE void submitVertices(GLenum mode, GLsizei first, GLuint count, GL
     // TextureObject* texture1 = _glGetTexture1();
 
     // /* Multitexture implicitly disabled */
-    // if(!texture1 || ((ENABLED_VERTEX_ATTRIBUTES & ST_ENABLED_FLAG) != ST_ENABLED_FLAG)) {
+    // if(!texture1 || ((ATTRIB_LIST.enabled & ST_ENABLED_FLAG) != ST_ENABLED_FLAG)) {
     //     /* Multitexture actively disabled */
     //     return;
     // }

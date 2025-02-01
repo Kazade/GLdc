@@ -8,13 +8,8 @@
 #include "private.h"
 #include "platform.h"
 
-
-AttribPointerList ATTRIB_POINTERS;
-GLuint ENABLED_VERTEX_ATTRIBUTES = 0;
-
+AttribPointerList ATTRIB_LIST;
 static const float ONE_OVER_TWO_FIVE_FIVE = 1.0f / 255.0f;
-
-extern inline GLuint _glRecalcFastPath();
 
 GL_FORCE_INLINE GLsizei byte_size(GLenum type) {
     switch(type) {
@@ -34,6 +29,10 @@ GL_FORCE_INLINE GLsizei byte_size(GLenum type) {
 // Used to avoid checking and updating attribute related state unless necessary
 GL_FORCE_INLINE GLboolean _glStateUnchanged(AttribPointer* p, GLint size, GLenum type, GLsizei stride) {
     return (p->size == size && p->type == type && p->stride == stride);
+}
+
+GLuint* _glGetEnabledAttributes() {
+    return &ATTRIB_LIST.enabled;
 }
 
 
@@ -257,64 +256,64 @@ static void _readVertexData4uiRevARGB(const GLubyte* input, GLubyte* output) {
 }
 
 static ReadAttributeFunc calcReadDiffuseFunc() {
-    if((ENABLED_VERTEX_ATTRIBUTES & DIFFUSE_ENABLED_FLAG) != DIFFUSE_ENABLED_FLAG) {
+    if((ATTRIB_LIST.enabled & DIFFUSE_ENABLED_FLAG) != DIFFUSE_ENABLED_FLAG) {
         /* Just fill the whole thing white if the attribute is disabled */
         return _fillWhiteARGB;
     }
 
-    switch(ATTRIB_POINTERS.colour.type) {
+    switch(ATTRIB_LIST.colour.type) {
         default:
         case GL_DOUBLE:
         case GL_FLOAT:
-            return (ATTRIB_POINTERS.colour.size == 3) ? _readVertexData3fARGB:
-                   (ATTRIB_POINTERS.colour.size == 4) ? _readVertexData4fARGB:
+            return (ATTRIB_LIST.colour.size == 3) ? _readVertexData3fARGB:
+                   (ATTRIB_LIST.colour.size == 4) ? _readVertexData4fARGB:
                     _readVertexData4fRevARGB;
         case GL_BYTE:
         case GL_UNSIGNED_BYTE:
-            return (ATTRIB_POINTERS.colour.size == 3) ? _readVertexData3ubARGB:
-                   (ATTRIB_POINTERS.colour.size == 4) ? _readVertexData4ubARGB:
+            return (ATTRIB_LIST.colour.size == 3) ? _readVertexData3ubARGB:
+                   (ATTRIB_LIST.colour.size == 4) ? _readVertexData4ubARGB:
                     _readVertexData4ubRevARGB;
         case GL_SHORT:
         case GL_UNSIGNED_SHORT:
-            return (ATTRIB_POINTERS.colour.size == 3) ? _readVertexData3usARGB:
-                   (ATTRIB_POINTERS.colour.size == 4) ? _readVertexData4usARGB:
+            return (ATTRIB_LIST.colour.size == 3) ? _readVertexData3usARGB:
+                   (ATTRIB_LIST.colour.size == 4) ? _readVertexData4usARGB:
                     _readVertexData4usRevARGB;
         case GL_INT:
         case GL_UNSIGNED_INT:
-            return (ATTRIB_POINTERS.colour.size == 3) ? _readVertexData3uiARGB:
-                   (ATTRIB_POINTERS.colour.size == 4) ? _readVertexData4uiARGB:
+            return (ATTRIB_LIST.colour.size == 3) ? _readVertexData3uiARGB:
+                   (ATTRIB_LIST.colour.size == 4) ? _readVertexData4uiARGB:
                     _readVertexData4uiRevARGB;
     }
 }
 
 static ReadAttributeFunc calcReadPositionFunc() {
-    switch(ATTRIB_POINTERS.vertex.type) {
+    switch(ATTRIB_LIST.vertex.type) {
         default:
         case GL_DOUBLE:
         case GL_FLOAT:
-            return (ATTRIB_POINTERS.vertex.size == 3) ? _readVertexData3f3f:
+            return (ATTRIB_LIST.vertex.size == 3) ? _readVertexData3f3f:
                     _readVertexData2f3f;
         case GL_BYTE:
         case GL_UNSIGNED_BYTE:
-            return (ATTRIB_POINTERS.vertex.size == 3) ? _readVertexData3ub3f:
+            return (ATTRIB_LIST.vertex.size == 3) ? _readVertexData3ub3f:
                     _readVertexData2ub3f;
         case GL_SHORT:
         case GL_UNSIGNED_SHORT:
-            return (ATTRIB_POINTERS.vertex.size == 3) ? _readVertexData3us3f:
+            return (ATTRIB_LIST.vertex.size == 3) ? _readVertexData3us3f:
                     _readVertexData2us3f;
         case GL_INT:
         case GL_UNSIGNED_INT:
-            return (ATTRIB_POINTERS.vertex.size == 3) ? _readVertexData3ui3f:
+            return (ATTRIB_LIST.vertex.size == 3) ? _readVertexData3ui3f:
                     _readVertexData2ui3f;
     }
 }
 
 static ReadAttributeFunc calcReadUVFunc() {
-    if((ENABLED_VERTEX_ATTRIBUTES & UV_ENABLED_FLAG) != UV_ENABLED_FLAG) {
+    if((ATTRIB_LIST.enabled & UV_ENABLED_FLAG) != UV_ENABLED_FLAG) {
         return _fillZero2f;
     }
 
-    switch(ATTRIB_POINTERS.uv.type) {
+    switch(ATTRIB_LIST.uv.type) {
         default:
         case GL_DOUBLE:
         case GL_FLOAT:
@@ -332,11 +331,11 @@ static ReadAttributeFunc calcReadUVFunc() {
 }
 
 static ReadAttributeFunc calcReadSTFunc() {
-    if((ENABLED_VERTEX_ATTRIBUTES & ST_ENABLED_FLAG) != ST_ENABLED_FLAG) {
+    if((ATTRIB_LIST.enabled & ST_ENABLED_FLAG) != ST_ENABLED_FLAG) {
         return _fillZero2f;
     }
 
-    switch(ATTRIB_POINTERS.st.type) {
+    switch(ATTRIB_LIST.st.type) {
         default:
         case GL_DOUBLE:
         case GL_FLOAT:
@@ -354,11 +353,11 @@ static ReadAttributeFunc calcReadSTFunc() {
 }
 
 static ReadAttributeFunc calcReadNormalFunc() {
-    if((ENABLED_VERTEX_ATTRIBUTES & NORMAL_ENABLED_FLAG) != NORMAL_ENABLED_FLAG) {
+    if((ATTRIB_LIST.enabled & NORMAL_ENABLED_FLAG) != NORMAL_ENABLED_FLAG) {
         return _fillWithNegZVE;
     }
 
-    switch(ATTRIB_POINTERS.normal.type) {
+    switch(ATTRIB_LIST.normal.type) {
         default:
         case GL_DOUBLE:
         case GL_FLOAT:
@@ -387,33 +386,29 @@ void APIENTRY glEnableClientState(GLenum cap) {
 
     switch(cap) {
     case GL_VERTEX_ARRAY:
-        ENABLED_VERTEX_ATTRIBUTES |= VERTEX_ENABLED_FLAG;
-	    ATTRIB_POINTERS.vertex_func = calcReadPositionFunc();
+        ATTRIB_LIST.enabled |= VERTEX_ENABLED_FLAG;
+	    ATTRIB_LIST.dirty   |= VERTEX_ENABLED_FLAG;
         break;
     case GL_COLOR_ARRAY:
-        ENABLED_VERTEX_ATTRIBUTES |= DIFFUSE_ENABLED_FLAG;
-	    ATTRIB_POINTERS.colour_func = calcReadDiffuseFunc();
+        ATTRIB_LIST.enabled |= DIFFUSE_ENABLED_FLAG;
+	    ATTRIB_LIST.dirty   |= DIFFUSE_ENABLED_FLAG;
         break;
     case GL_NORMAL_ARRAY:
-        ENABLED_VERTEX_ATTRIBUTES |= NORMAL_ENABLED_FLAG;
-	    ATTRIB_POINTERS.normal_func = calcReadNormalFunc();
+        ATTRIB_LIST.enabled |= NORMAL_ENABLED_FLAG;
+        ATTRIB_LIST.dirty   |= NORMAL_ENABLED_FLAG;
         break;
     case GL_TEXTURE_COORD_ARRAY:
         (ACTIVE_CLIENT_TEXTURE) ?
-            (ENABLED_VERTEX_ATTRIBUTES |= ST_ENABLED_FLAG):
-            (ENABLED_VERTEX_ATTRIBUTES |= UV_ENABLED_FLAG);
+            (ATTRIB_LIST.enabled |= ST_ENABLED_FLAG):
+            (ATTRIB_LIST.enabled |= UV_ENABLED_FLAG);
 
-	    ATTRIB_POINTERS.uv_func = calcReadUVFunc();
-	    ATTRIB_POINTERS.st_func = calcReadSTFunc();
+        (ACTIVE_CLIENT_TEXTURE) ?
+            (ATTRIB_LIST.dirty   |= ST_ENABLED_FLAG):
+            (ATTRIB_LIST.dirty   |= UV_ENABLED_FLAG);
         break;
     default:
         _glKosThrowError(GL_INVALID_ENUM, __func__);
     }
-
-    /* It's possible that we called glVertexPointer and friends before
-     * calling glEnableClientState, so we should recheck to make sure
-     * everything is in the right format with this new information */
-    _glRecalcFastPath();
 }
 
 void APIENTRY glDisableClientState(GLenum cap) {
@@ -421,31 +416,29 @@ void APIENTRY glDisableClientState(GLenum cap) {
 
     switch(cap) {
     case GL_VERTEX_ARRAY:
-        ENABLED_VERTEX_ATTRIBUTES &= ~VERTEX_ENABLED_FLAG;
-	    ATTRIB_POINTERS.vertex_func = calcReadPositionFunc();
+        ATTRIB_LIST.enabled &= ~VERTEX_ENABLED_FLAG;
+	    ATTRIB_LIST.dirty   |=  VERTEX_ENABLED_FLAG;
         break;
     case GL_COLOR_ARRAY:
-        ENABLED_VERTEX_ATTRIBUTES &= ~DIFFUSE_ENABLED_FLAG;
-	    ATTRIB_POINTERS.colour_func = calcReadDiffuseFunc();
+        ATTRIB_LIST.enabled &= ~DIFFUSE_ENABLED_FLAG;
+	    ATTRIB_LIST.dirty   |=  DIFFUSE_ENABLED_FLAG;
         break;
     case GL_NORMAL_ARRAY:
-        ENABLED_VERTEX_ATTRIBUTES &= ~NORMAL_ENABLED_FLAG;
-	    ATTRIB_POINTERS.normal_func = calcReadNormalFunc();
+        ATTRIB_LIST.enabled &= ~NORMAL_ENABLED_FLAG;
+	    ATTRIB_LIST.dirty   |=  NORMAL_ENABLED_FLAG;
         break;
     case GL_TEXTURE_COORD_ARRAY:
         (ACTIVE_CLIENT_TEXTURE) ?
-            (ENABLED_VERTEX_ATTRIBUTES &= ~ST_ENABLED_FLAG):
-            (ENABLED_VERTEX_ATTRIBUTES &= ~UV_ENABLED_FLAG);
+            (ATTRIB_LIST.enabled &= ~ST_ENABLED_FLAG):
+            (ATTRIB_LIST.enabled &= ~UV_ENABLED_FLAG);
 
-	    ATTRIB_POINTERS.uv_func = calcReadUVFunc();
-	    ATTRIB_POINTERS.st_func = calcReadSTFunc();
+        (ACTIVE_CLIENT_TEXTURE) ?
+            (ATTRIB_LIST.dirty   |=  ST_ENABLED_FLAG):
+            (ATTRIB_LIST.dirty   |=  UV_ENABLED_FLAG);
         break;
     default:
         _glKosThrowError(GL_INVALID_ENUM, __func__);
     }
-
-    /* State changed, recalculate */
-    _glRecalcFastPath();
 }
 
 
@@ -453,7 +446,7 @@ void APIENTRY glTexCoordPointer(GLint size, GLenum type, GLsizei stride, const G
     TRACE();
 
     stride = (stride) ? stride : size * byte_size(type);
-    AttribPointer* tointer = (ACTIVE_CLIENT_TEXTURE == 0) ? &ATTRIB_POINTERS.uv : &ATTRIB_POINTERS.st;
+    AttribPointer* tointer = (ACTIVE_CLIENT_TEXTURE == 0) ? &ATTRIB_LIST.uv : &ATTRIB_LIST.st;
     tointer->ptr = pointer;
 
     if(_glStateUnchanged(tointer, size, type, stride)) return;
@@ -467,51 +460,49 @@ void APIENTRY glTexCoordPointer(GLint size, GLenum type, GLsizei stride, const G
     tointer->type = type;
     tointer->size = size;
 
-	ATTRIB_POINTERS.uv_func = calcReadUVFunc();
-	ATTRIB_POINTERS.st_func = calcReadSTFunc();
-    _glRecalcFastPath();
+	(ACTIVE_CLIENT_TEXTURE) ?
+        (ATTRIB_LIST.dirty |= ST_ENABLED_FLAG):
+        (ATTRIB_LIST.dirty |= UV_ENABLED_FLAG);
 }
 
 void APIENTRY glVertexPointer(GLint size, GLenum type, GLsizei stride, const GLvoid * pointer) {
     TRACE();
 
     stride = (stride) ? stride : (size * byte_size(type));
-    ATTRIB_POINTERS.vertex.ptr = pointer;
+    ATTRIB_LIST.vertex.ptr = pointer;
 
-    if(_glStateUnchanged(&ATTRIB_POINTERS.vertex, size, type, stride)) return;
+    if(_glStateUnchanged(&ATTRIB_LIST.vertex, size, type, stride)) return;
 
     if(size < 2 || size > 4) {
         _glKosThrowError(GL_INVALID_VALUE, __func__);
         return;
     }
 
-    ATTRIB_POINTERS.vertex.stride = stride;
-    ATTRIB_POINTERS.vertex.type = type;
-    ATTRIB_POINTERS.vertex.size = size;
-	ATTRIB_POINTERS.vertex_func = calcReadPositionFunc();
+    ATTRIB_LIST.vertex.stride = stride;
+    ATTRIB_LIST.vertex.type = type;
+    ATTRIB_LIST.vertex.size = size;
 
-    _glRecalcFastPath();
+	ATTRIB_LIST.dirty |= VERTEX_ENABLED_FLAG;
 }
 
 void APIENTRY glColorPointer(GLint size,  GLenum type,  GLsizei stride,  const GLvoid * pointer) {
     TRACE();
 
     stride = (stride) ? stride : ((size == GL_BGRA) ? 4 : size) * byte_size(type);
-    ATTRIB_POINTERS.colour.ptr = pointer;
+    ATTRIB_LIST.colour.ptr = pointer;
 
-    if(_glStateUnchanged(&ATTRIB_POINTERS.colour, size, type, stride)) return;
+    if(_glStateUnchanged(&ATTRIB_LIST.colour, size, type, stride)) return;
 
     if(size != 3 && size != 4 && size != GL_BGRA) {
         _glKosThrowError(GL_INVALID_VALUE, __func__);
         return;
     }
 
-    ATTRIB_POINTERS.colour.type = type;
-    ATTRIB_POINTERS.colour.size = size;
-    ATTRIB_POINTERS.colour.stride = stride;
-	ATTRIB_POINTERS.colour_func = calcReadDiffuseFunc();
+    ATTRIB_LIST.colour.type = type;
+    ATTRIB_LIST.colour.size = size;
+    ATTRIB_LIST.colour.stride = stride;
 
-    _glRecalcFastPath();
+	ATTRIB_LIST.dirty |= DIFFUSE_ENABLED_FLAG;
 }
 
 void APIENTRY glNormalPointer(GLenum type,  GLsizei stride,  const GLvoid * pointer) {
@@ -528,29 +519,102 @@ void APIENTRY glNormalPointer(GLenum type,  GLsizei stride,  const GLvoid * poin
         0
     };
 
-    stride = (stride) ? stride : ATTRIB_POINTERS.normal.size * byte_size(type);
-    ATTRIB_POINTERS.normal.ptr = pointer;
+    stride = (stride) ? stride : ATTRIB_LIST.normal.size * byte_size(type);
+    ATTRIB_LIST.normal.ptr = pointer;
 
-    if(_glStateUnchanged(&ATTRIB_POINTERS.normal, 3, type, stride)) return;
+    if(_glStateUnchanged(&ATTRIB_LIST.normal, 3, type, stride)) return;
 
     if(_glCheckValidEnum(type, validTypes, __func__) != 0) {
         return;
     }
 
-    ATTRIB_POINTERS.normal.size = (type == GL_UNSIGNED_INT_2_10_10_10_REV) ? 1 : 3;
-    ATTRIB_POINTERS.normal.stride = stride;
-    ATTRIB_POINTERS.normal.type = type;
-	ATTRIB_POINTERS.normal_func = calcReadNormalFunc();
+    ATTRIB_LIST.normal.size = (type == GL_UNSIGNED_INT_2_10_10_10_REV) ? 1 : 3;
+    ATTRIB_LIST.normal.stride = stride;
+    ATTRIB_LIST.normal.type = type;
 
-    _glRecalcFastPath();
+	ATTRIB_LIST.dirty |= NORMAL_ENABLED_FLAG;
 }
 
 
 void _glInitAttributePointers() {
     TRACE();
+    ATTRIB_LIST.dirty = ~0; // all attributes dirty
 
-    glVertexPointer(4, GL_FLOAT, 0, NULL);
+    glVertexPointer(3, GL_FLOAT, 0, NULL);
     glTexCoordPointer(2, GL_FLOAT, 0, NULL);
     glColorPointer(4, GL_FLOAT, 0, NULL);
     glNormalPointer(GL_FLOAT, 0, NULL);
+}
+
+GL_FORCE_INLINE GLuint _glIsVertexDataFastPathCompatible() {
+    /* The fast path is enabled when all enabled elements of the vertex
+     * match the output format. This means:
+     *
+     * xyz == 3f
+     * uv == 2f
+     * rgba == argb4444
+     * st == 2f
+     * normal == 3f
+     *
+     * When this happens we do inline straight copies of the enabled data
+     * and transforms for positions and normals happen while copying.
+     */
+
+    if((ATTRIB_LIST.enabled & VERTEX_ENABLED_FLAG)) {
+        if(ATTRIB_LIST.vertex.size != 3 || ATTRIB_LIST.vertex.type != GL_FLOAT) {
+            return GL_FALSE;
+        }
+    }
+
+    if((ATTRIB_LIST.enabled & UV_ENABLED_FLAG)) {
+        if(ATTRIB_LIST.uv.size != 2 || ATTRIB_LIST.uv.type != GL_FLOAT) {
+            return GL_FALSE;
+        }
+    }
+
+    if((ATTRIB_LIST.enabled & DIFFUSE_ENABLED_FLAG)) {
+        /* FIXME: Shouldn't this be a reversed format? */
+        if(ATTRIB_LIST.colour.size != GL_BGRA || ATTRIB_LIST.colour.type != GL_UNSIGNED_BYTE) {
+            return GL_FALSE;
+        }
+    }
+
+    if((ATTRIB_LIST.enabled & ST_ENABLED_FLAG)) {
+        if(ATTRIB_LIST.st.size != 2 || ATTRIB_LIST.st.type != GL_FLOAT) {
+            return GL_FALSE;
+        }
+    }
+
+    if((ATTRIB_LIST.enabled & NORMAL_ENABLED_FLAG)) {
+        if(ATTRIB_LIST.normal.size != 3 || ATTRIB_LIST.normal.type != GL_FLOAT) {
+            return GL_FALSE;
+        }
+    }
+
+    return GL_TRUE;
+}
+
+void _glUpdateAttributes() {
+    if(ATTRIB_LIST.dirty & VERTEX_ENABLED_FLAG) {
+        ATTRIB_LIST.vertex_func = calcReadPositionFunc();
+    }
+
+    if(ATTRIB_LIST.dirty & UV_ENABLED_FLAG) {
+        ATTRIB_LIST.uv_func = calcReadUVFunc();
+    }
+
+    if(ATTRIB_LIST.dirty & DIFFUSE_ENABLED_FLAG) {
+        ATTRIB_LIST.colour_func = calcReadDiffuseFunc();
+    }
+
+    if(ATTRIB_LIST.dirty & ST_ENABLED_FLAG) {
+        ATTRIB_LIST.st_func = calcReadSTFunc();
+    }
+
+    if(ATTRIB_LIST.dirty & NORMAL_ENABLED_FLAG) {
+        ATTRIB_LIST.normal_func = calcReadNormalFunc();
+    }
+
+    ATTRIB_LIST.fast_path = _glIsVertexDataFastPathCompatible();
+    ATTRIB_LIST.dirty     = 0;
 }

@@ -6,7 +6,7 @@
 MAKE_FUNC(POLYMODE)
 {
     static const float w = 1.0f;
-    if(!(ENABLED_VERTEX_ATTRIBUTES & VERTEX_ENABLED_FLAG)) {
+    if(!(ATTRIB_LIST.enabled & VERTEX_ENABLED_FLAG)) {
         /* If we don't have vertices, do nothing */
         return;
     }
@@ -29,8 +29,8 @@ MAKE_FUNC(POLYMODE)
         const int_fast32_t loop = ((min + BATCH_SIZE) > count) ? count - min : BATCH_SIZE;
         const int offset = (first + min);
 
-        stride = ATTRIB_POINTERS.uv.stride;
-        ptr = (ENABLED_VERTEX_ATTRIBUTES & UV_ENABLED_FLAG) ? ATTRIB_POINTERS.uv.ptr + ((first + min) * stride) : NULL;
+        stride = ATTRIB_LIST.uv.stride;
+        ptr = (ATTRIB_LIST.enabled & UV_ENABLED_FLAG) ? ATTRIB_LIST.uv.ptr + ((first + min) * stride) : NULL;
         it = (Vertex*) start;
 
         if(ptr) {
@@ -48,8 +48,8 @@ MAKE_FUNC(POLYMODE)
             }
         }
 
-        stride = ATTRIB_POINTERS.colour.stride;
-        ptr = (ENABLED_VERTEX_ATTRIBUTES & DIFFUSE_ENABLED_FLAG) ? ATTRIB_POINTERS.colour.ptr + (offset * stride) : NULL;
+        stride = ATTRIB_LIST.colour.stride;
+        ptr = (ATTRIB_LIST.enabled & DIFFUSE_ENABLED_FLAG) ? ATTRIB_LIST.colour.ptr + (offset * stride) : NULL;
         it = (Vertex*) start;
 
         if(ptr) {
@@ -68,8 +68,8 @@ MAKE_FUNC(POLYMODE)
             }
         }
 
-        stride = ATTRIB_POINTERS.vertex.stride;
-        ptr = ATTRIB_POINTERS.vertex.ptr + (offset * stride);
+        stride = ATTRIB_LIST.vertex.stride;
+        ptr = ATTRIB_LIST.vertex.ptr + (offset * stride);
         it = (Vertex*) start;
 
         PREFETCH(ptr);
@@ -82,8 +82,8 @@ MAKE_FUNC(POLYMODE)
 
         start = aligned_vector_at(target->extras, min);
 
-        stride = ATTRIB_POINTERS.st.stride;
-        ptr = (ENABLED_VERTEX_ATTRIBUTES & ST_ENABLED_FLAG) ? ATTRIB_POINTERS.st.ptr + (offset * stride) : NULL;
+        stride = ATTRIB_LIST.st.stride;
+        ptr = (ATTRIB_LIST.enabled & ST_ENABLED_FLAG) ? ATTRIB_LIST.st.ptr + (offset * stride) : NULL;
         ve = (VertexExtra*) start;
 
         if(ptr) {
@@ -102,8 +102,8 @@ MAKE_FUNC(POLYMODE)
             }
         }
 
-        stride = ATTRIB_POINTERS.normal.stride;
-        ptr = (ENABLED_VERTEX_ATTRIBUTES & NORMAL_ENABLED_FLAG) ? ATTRIB_POINTERS.normal.ptr + (offset * stride) : NULL;
+        stride = ATTRIB_LIST.normal.stride;
+        ptr = (ATTRIB_LIST.enabled & NORMAL_ENABLED_FLAG) ? ATTRIB_LIST.normal.ptr + (offset * stride) : NULL;
         ve = (VertexExtra*) start;
 
         if(ptr) {

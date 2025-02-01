@@ -355,6 +355,10 @@ typedef struct {
     AttribPointer st; // 64
     AttribPointer normal; // 80
 
+    GLuint enabled; // list of currently enabled/used attributes
+    GLuint dirty;   // list of attributes that need state recalculating
+    GLboolean fast_path;
+
     ReadAttributeFunc vertex_func;
     ReadAttributeFunc colour_func;
     ReadAttributeFunc uv_func;
@@ -362,12 +366,12 @@ typedef struct {
     ReadAttributeFunc normal_func;
 } AttribPointerList;
 
-extern GLuint ENABLED_VERTEX_ATTRIBUTES;
-extern AttribPointerList ATTRIB_POINTERS;
+extern AttribPointerList ATTRIB_LIST;
 
 GLboolean _glCheckValidEnum(GLint param, GLint* values, const char* func);
 
 GLuint* _glGetEnabledAttributes();
+GL_NO_INLINE void _glUpdateAttributes();
 
 GLenum _glGetShadeModel();
 TextureObject* _glGetTexture0();
@@ -426,63 +430,6 @@ void _glEnableLight(GLubyte light, GLboolean value);
 GLboolean _glIsColorMaterialEnabled();
 
 GLboolean _glIsNormalizeEnabled();
-
-extern GLuint FAST_PATH_ENABLED;
-
-GL_FORCE_INLINE GLuint _glIsVertexDataFastPathCompatible() {
-    /* The fast path is enabled when all enabled elements of the vertex
-     * match the output format. This means:
-     *
-     * xyz == 3f
-     * uv == 2f
-     * rgba == argb4444
-     * st == 2f
-     * normal == 3f
-     *
-     * When this happens we do inline straight copies of the enabled data
-     * and transforms for positions and normals happen while copying.
-     */
-
-
-
-    if((ENABLED_VERTEX_ATTRIBUTES & VERTEX_ENABLED_FLAG)) {
-        if(ATTRIB_POINTERS.vertex.size != 3 || ATTRIB_POINTERS.vertex.type != GL_FLOAT) {
-            return GL_FALSE;
-        }
-    }
-
-    if((ENABLED_VERTEX_ATTRIBUTES & UV_ENABLED_FLAG)) {
-        if(ATTRIB_POINTERS.uv.size != 2 || ATTRIB_POINTERS.uv.type != GL_FLOAT) {
-            return GL_FALSE;
-        }
-    }
-
-    if((ENABLED_VERTEX_ATTRIBUTES & DIFFUSE_ENABLED_FLAG)) {
-        /* FIXME: Shouldn't this be a reversed format? */
-        if(ATTRIB_POINTERS.colour.size != GL_BGRA || ATTRIB_POINTERS.colour.type != GL_UNSIGNED_BYTE) {
-            return GL_FALSE;
-        }
-    }
-
-    if((ENABLED_VERTEX_ATTRIBUTES & ST_ENABLED_FLAG)) {
-        if(ATTRIB_POINTERS.st.size != 2 || ATTRIB_POINTERS.st.type != GL_FLOAT) {
-            return GL_FALSE;
-        }
-    }
-
-    if((ENABLED_VERTEX_ATTRIBUTES & NORMAL_ENABLED_FLAG)) {
-        if(ATTRIB_POINTERS.normal.size != 3 || ATTRIB_POINTERS.normal.type != GL_FLOAT) {
-            return GL_FALSE;
-        }
-    }
-
-    return GL_TRUE;
-}
-
-GL_FORCE_INLINE GLuint _glRecalcFastPath() {
-    FAST_PATH_ENABLED = _glIsVertexDataFastPathCompatible();
-    return FAST_PATH_ENABLED;
-}
 
 extern GLboolean IMMEDIATE_MODE_ACTIVE;
 
