@@ -10,6 +10,19 @@
 #include "../types.h"
 #include "../private.h"
 
+#ifndef NDEBUG
+#define PERF_WARNING(msg) printf("[PERF] %s\n", msg)
+#else
+#define PERF_WARNING(msg) (void) 0
+#endif
+
+#ifndef GL_FORCE_INLINE
+#define GL_NO_INSTRUMENT inline __attribute__((no_instrument_function))
+#define GL_INLINE_DEBUG GL_NO_INSTRUMENT __attribute__((always_inline))
+#define GL_FORCE_INLINE static GL_INLINE_DEBUG
+#endif
+
+
 // ---- sh4_math.h - SH7091 Math Module ----
 //
 // This file is part of the DreamHAL project, a hardware abstraction library
@@ -44,19 +57,6 @@ GL_FORCE_INLINE float MATH_Fast_Invert(float x)
   return x;
 }
 // end of ---- sh4_math.h ----
-
-
-#ifndef NDEBUG
-#define PERF_WARNING(msg) printf("[PERF] %s\n", msg)
-#else
-#define PERF_WARNING(msg) (void) 0
-#endif
-
-#ifndef GL_FORCE_INLINE
-#define GL_NO_INSTRUMENT inline __attribute__((no_instrument_function))
-#define GL_INLINE_DEBUG GL_NO_INSTRUMENT __attribute__((always_inline))
-#define GL_FORCE_INLINE static GL_INLINE_DEBUG
-#endif
 
 #define PREFETCH(addr) __builtin_prefetch((addr))
 
