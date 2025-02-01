@@ -10,8 +10,6 @@
 #include "../types.h"
 #include "../private.h"
 
-#include "sh4_math.h"
-
 #ifndef NDEBUG
 #define PERF_WARNING(msg) printf("[PERF] %s\n", msg)
 #else
@@ -23,6 +21,42 @@
 #define GL_INLINE_DEBUG GL_NO_INSTRUMENT __attribute__((always_inline))
 #define GL_FORCE_INLINE static GL_INLINE_DEBUG
 #endif
+
+
+// ---- sh4_math.h - SH7091 Math Module ----
+//
+// This file is part of the DreamHAL project, a hardware abstraction library
+// primarily intended for use on the SH7091 found in hardware such as the SEGA
+// Dreamcast game console.
+//
+// This math module is hereby released into the public domain in the hope that it
+// may prove useful. Now go hit 60 fps! :)
+//
+// --Moopthehedgehog
+
+// 1/sqrt(x)
+GL_FORCE_INLINE float MATH_fsrra(float x)
+{
+  asm volatile ("fsrra %[one_div_sqrt]\n"
+  : [one_div_sqrt] "+f" (x) // outputs, "+" means r/w
+  : // no inputs
+  : // no clobbers
+  );
+
+  return x;
+}
+
+// 1/x = 1 / sqrt(x^2)
+GL_FORCE_INLINE float MATH_Fast_Invert(float x)
+{
+  int neg = x < 0.0f;
+
+  x = MATH_fsrra(x * x);
+
+  if (neg) x = -x;
+  return x;
+}
+// end of ---- sh4_math.h ----
 
 #define PREFETCH(addr) __builtin_prefetch((addr))
 
