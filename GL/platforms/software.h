@@ -7,9 +7,6 @@
 
 #define PREFETCH(addr) do {} while(0)
 
-#define MATH_Fast_Divide(n, d) (n / d)
-#define MATH_fmac(a, b, c) (a * b + c)
-#define MATH_Fast_Sqrt(x) sqrtf((x))
 #define MATH_fsrra(x) (1.0f / sqrtf((x)))
 #define MATH_Fast_Invert(x) (1.0f / (x))
 

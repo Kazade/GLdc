@@ -372,11 +372,12 @@ static inline void vec3f_cross(const GLfloat* v1, const GLfloat* v2, GLfloat* re
 }
 
 GL_FORCE_INLINE void vec3f_normalize_sh4(float *v){
-    float length, ilength;
+    float lengthSq, ilength;
 
-    ilength = MATH_fsrra(v[0]*v[0] + v[1]*v[1] + v[2]*v[2]);
-    length = MATH_Fast_Invert(ilength);
-    if (length)
+    lengthSq = v[0]*v[0] + v[1]*v[1] + v[2]*v[2];
+    ilength  = MATH_fsrra(lengthSq);
+
+    if (lengthSq)
     {
         v[0] *= ilength;
         v[1] *= ilength;

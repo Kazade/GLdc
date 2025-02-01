@@ -538,6 +538,6 @@ size_t alloc_count_continuous(void* pool) {
     if(free_bits && (free_bits * 256) > largest_block) {
         largest_block = (free_bits * 256);
     }
-
+printf("LARGEST: %d\n", largest_block);
     return largest_block;
 }

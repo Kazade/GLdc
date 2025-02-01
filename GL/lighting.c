@@ -58,10 +58,10 @@ void _glPrecalcLightingValues(GLuint mask) {
     if((mask & AMBIENT_MASK) || (mask & EMISSION_MASK) || (mask & SCENE_AMBIENT_MASK)) {
         GLfloat* scene_ambient = _glLightModelSceneAmbient();
 
-        material->baseColour[0] = MATH_fmac(scene_ambient[0], material->ambient[0], material->emissive[0]);
-        material->baseColour[1] = MATH_fmac(scene_ambient[1], material->ambient[1], material->emissive[1]);
-        material->baseColour[2] = MATH_fmac(scene_ambient[2], material->ambient[2], material->emissive[2]);
-        material->baseColour[3] = MATH_fmac(scene_ambient[3], material->ambient[3], material->emissive[3]);
+        material->baseColour[0] = scene_ambient[0] * material->ambient[0] + material->emissive[0];
+        material->baseColour[1] = scene_ambient[1] * material->ambient[1] + material->emissive[1];
+        material->baseColour[2] = scene_ambient[2] * material->ambient[2] + material->emissive[2];
+        material->baseColour[3] = scene_ambient[3] * material->ambient[3] + material->emissive[3];
     }
 }
 

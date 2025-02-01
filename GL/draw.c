@@ -757,9 +757,7 @@ static void _readNormalData(ReadNormalFunc func, const GLuint first, const GLuin
 
         if(_glIsNormalizeEnabled()) {
             GLfloat* n = (GLfloat*) it->nxyz;
-            float temp = n[0] * n[0];
-            temp = MATH_fmac(n[1], n[1], temp);
-            temp = MATH_fmac(n[2], n[2], temp);
+            float temp = n[0] * n[0] + n[1] * n[1] + n[2] * n[2];
 
             float ilength = MATH_fsrra(temp);
             n[0] *= ilength;
