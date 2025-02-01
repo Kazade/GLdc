@@ -31,6 +31,12 @@ GL_FORCE_INLINE GLsizei byte_size(GLenum type) {
     }
 }
 
+// Used to avoid checking and updating attribute related state unless necessary
+GL_FORCE_INLINE GLboolean _glStateUnchanged(AttribPointer* p, GLint size, GLenum type, GLsizei stride) {
+    return (p->size == size && p->type == type && p->stride == stride);
+}
+
+
 static void _readVertexData3f3f(const GLubyte* __restrict__ in, GLubyte* __restrict__ out) {
     vec3cpy(out, in);
 }
@@ -381,18 +387,24 @@ void APIENTRY glEnableClientState(GLenum cap) {
     switch(cap) {
     case GL_VERTEX_ARRAY:
         ENABLED_VERTEX_ATTRIBUTES |= VERTEX_ENABLED_FLAG;
-    break;
+	    ATTRIB_POINTERS.vertex_func = calcReadPositionFunc();
+        break;
     case GL_COLOR_ARRAY:
         ENABLED_VERTEX_ATTRIBUTES |= DIFFUSE_ENABLED_FLAG;
-    break;
+	    ATTRIB_POINTERS.colour_func = calcReadDiffuseFunc();
+        break;
     case GL_NORMAL_ARRAY:
         ENABLED_VERTEX_ATTRIBUTES |= NORMAL_ENABLED_FLAG;
-    break;
+	    ATTRIB_POINTERS.normal_func = calcReadNormalFunc();
+        break;
     case GL_TEXTURE_COORD_ARRAY:
         (ACTIVE_CLIENT_TEXTURE) ?
             (ENABLED_VERTEX_ATTRIBUTES |= ST_ENABLED_FLAG):
             (ENABLED_VERTEX_ATTRIBUTES |= UV_ENABLED_FLAG);
-    break;
+
+	    ATTRIB_POINTERS.uv_func = calcReadUVFunc();
+	    ATTRIB_POINTERS.st_func = calcReadSTFunc();
+        break;
     default:
         _glKosThrowError(GL_INVALID_ENUM, __func__);
     }
@@ -409,18 +421,24 @@ void APIENTRY glDisableClientState(GLenum cap) {
     switch(cap) {
     case GL_VERTEX_ARRAY:
         ENABLED_VERTEX_ATTRIBUTES &= ~VERTEX_ENABLED_FLAG;
-    break;
+	    ATTRIB_POINTERS.vertex_func = calcReadPositionFunc();
+        break;
     case GL_COLOR_ARRAY:
         ENABLED_VERTEX_ATTRIBUTES &= ~DIFFUSE_ENABLED_FLAG;
-    break;
+	    ATTRIB_POINTERS.colour_func = calcReadDiffuseFunc();
+        break;
     case GL_NORMAL_ARRAY:
         ENABLED_VERTEX_ATTRIBUTES &= ~NORMAL_ENABLED_FLAG;
-    break;
+	    ATTRIB_POINTERS.normal_func = calcReadNormalFunc();
+        break;
     case GL_TEXTURE_COORD_ARRAY:
         (ACTIVE_CLIENT_TEXTURE) ?
             (ENABLED_VERTEX_ATTRIBUTES &= ~ST_ENABLED_FLAG):
             (ENABLED_VERTEX_ATTRIBUTES &= ~UV_ENABLED_FLAG);
-    break;
+
+	    ATTRIB_POINTERS.uv_func = calcReadUVFunc();
+	    ATTRIB_POINTERS.st_func = calcReadSTFunc();
+        break;
     default:
         _glKosThrowError(GL_INVALID_ENUM, __func__);
     }
@@ -429,11 +447,6 @@ void APIENTRY glDisableClientState(GLenum cap) {
     _glRecalcFastPath();
 }
 
-
-// Used to avoid checking and updating attribute related state unless necessary
-GL_FORCE_INLINE GLboolean _glStateUnchanged(AttribPointer* p, GLint size, GLenum type, GLsizei stride) {
-    return (p->size == size && p->type == type && p->stride == stride);
-}
 
 void APIENTRY glTexCoordPointer(GLint size, GLenum type, GLsizei stride, const GLvoid * pointer) {
     TRACE();
@@ -535,33 +548,8 @@ void APIENTRY glNormalPointer(GLenum type,  GLsizei stride,  const GLvoid * poin
 void _glInitAttributePointers() {
     TRACE();
 
-    ATTRIB_POINTERS.vertex.ptr = NULL;
-    ATTRIB_POINTERS.vertex.stride = 0;
-    ATTRIB_POINTERS.vertex.type = GL_FLOAT;
-    ATTRIB_POINTERS.vertex.size = 4;
-	ATTRIB_POINTERS.vertex_func = calcReadPositionFunc();
-
-    ATTRIB_POINTERS.colour.ptr = NULL;
-    ATTRIB_POINTERS.colour.stride = 0;
-    ATTRIB_POINTERS.colour.type = GL_FLOAT;
-    ATTRIB_POINTERS.colour.size = 4;
-	ATTRIB_POINTERS.colour_func = calcReadDiffuseFunc();
-
-    ATTRIB_POINTERS.uv.ptr = NULL;
-    ATTRIB_POINTERS.uv.stride = 0;
-    ATTRIB_POINTERS.uv.type = GL_FLOAT;
-    ATTRIB_POINTERS.uv.size = 4;
-	ATTRIB_POINTERS.uv_func = calcReadUVFunc();
-
-    ATTRIB_POINTERS.st.ptr = NULL;
-    ATTRIB_POINTERS.st.stride = 0;
-    ATTRIB_POINTERS.st.type = GL_FLOAT;
-    ATTRIB_POINTERS.st.size = 4;
-	ATTRIB_POINTERS.st_func = calcReadSTFunc();
-
-    ATTRIB_POINTERS.normal.ptr = NULL;
-    ATTRIB_POINTERS.normal.stride = 0;
-    ATTRIB_POINTERS.normal.type = GL_FLOAT;
-    ATTRIB_POINTERS.normal.size = 3;
-	ATTRIB_POINTERS.normal_func = calcReadNormalFunc();
+    glVertexPointer(4, GL_FLOAT, 0, NULL);
+    glTexCoordPointer(2, GL_FLOAT, 0, NULL);
+    glColorPointer(4, GL_FLOAT, 0, NULL);
+    glNormalPointer(GL_FLOAT, 0, NULL);
 }
