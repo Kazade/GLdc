@@ -515,29 +515,27 @@ size_t alloc_count_free(void* pool) {
 size_t alloc_count_continuous(void* pool) {
     (void) pool;
 
-    size_t largest_block = 0;
+    size_t contiguous_free = 0;
+    size_t most_contiguous = 0;
 
-    size_t free_bits = 0;
     for(size_t i = 0; i < pool_header.block_count; ++i) {
         uint8_t t = pool_header.block_usage[i];
 
         for(int i = 7; i >= 0; --i) {
             bool bitset = (t & (1 << i));
             if(!bitset) {
-                ++free_bits;
+                ++contiguous_free;
             } else {
-                free_bits = 0;
-                size_t free_size = free_bits * 256;
-                if(free_size > largest_block) {
-                    largest_block = free_size;
+                if(contiguous_free > most_contiguous) {
+                    most_contiguous = contiguous_free;
                 }
+                contiguous_free = 0;
             }
         }
     }
 
-    if(free_bits && (free_bits * 256) > largest_block) {
-        largest_block = (free_bits * 256);
+    if(contiguous_free > most_contiguous) {
+        most_contiguous = contiguous_free;
     }
-printf("LARGEST: %d\n", largest_block);
-    return largest_block;
+    return most_contiguous * 256;
 }
