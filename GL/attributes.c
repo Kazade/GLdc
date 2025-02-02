@@ -36,12 +36,355 @@ GLuint* _glGetEnabledAttributes() {
 }
 
 
-static void _readVertexData3f3f(const GLubyte* __restrict__ in, GLubyte* __restrict__ out) {
+static void _readPosition3f3f(const GLubyte* __restrict__ in, GLubyte* __restrict__ out) {
+    const float* input = (const float*) in;
+    Vertex* it = (Vertex*) out;
+
+    float x = input[0];
+    float y = input[1];
+    float z = input[2];
+    float w = 1.0f;
+    TransformVertex(x, y, z, w, it->xyz, &it->w);
+}
+
+static void _readPosition3ub3f(const GLubyte* input, GLubyte* out) {
+    Vertex* it = (Vertex*)out;
+
+    float x = input[0] * ONE_OVER_TWO_FIVE_FIVE;
+    float y = input[1] * ONE_OVER_TWO_FIVE_FIVE;
+    float z = input[2] * ONE_OVER_TWO_FIVE_FIVE;
+    float w = 1.0f;
+    TransformVertex(x, y, z, w, it->xyz, &it->w);
+}
+
+static void _readPosition3us3f(const GLubyte* in, GLubyte* out) {
+    const GLushort* input = (const GLushort*) in;
+    Vertex* it = (Vertex*) out;
+
+    float x = input[0];
+    float y = input[1];
+    float z = input[2];
+    float w = 1.0f;
+    TransformVertex(x, y, z, w, it->xyz, &it->w);
+}
+
+static void _readPosition3ui3f(const GLubyte* in, GLubyte* out) {
+    const GLuint* input = (const GLuint*) in;
+    Vertex* it = (Vertex*) out;
+
+    float x = input[0];
+    float y = input[1];
+    float z = input[2];
+    float w = 1.0f;
+    TransformVertex(x, y, z, w, it->xyz, &it->w);
+}
+
+static void _readPosition2f3f(const GLubyte* in, GLubyte* out) {
+    const float* input = (const float*) in;
+    Vertex* it = (Vertex*) out;
+
+    float x = input[0];
+    float y = input[1];
+    float z = 0.0f;
+    float w = 1.0f;
+    TransformVertex(x, y, z, w, it->xyz, &it->w);
+}
+
+static void _readPosition2ub3f(const GLubyte* input, GLubyte* out) {
+    Vertex* it = (Vertex*) out;
+
+    float x = input[0] * ONE_OVER_TWO_FIVE_FIVE;
+    float y = input[1] * ONE_OVER_TWO_FIVE_FIVE;
+    float z = 0.0f;
+    float w = 1.0f;
+    TransformVertex(x, y, z, w, it->xyz, &it->w);
+}
+
+static void _readPosition2us3f(const GLubyte* in, GLubyte* out) {
+    const GLushort* input = (const GLushort*) in;
+    Vertex* it = (Vertex*) out;
+
+    float x = input[0];
+    float y = input[1];
+    float z = 0.0f;
+    float w = 1.0f;
+    TransformVertex(x, y, z, w, it->xyz, &it->w);
+}
+
+static void _readPosition2ui3f(const GLubyte* in, GLubyte* out) {
+    const GLuint* input = (const GLuint*) in;
+    Vertex* it = (Vertex*)out;
+
+    float x = input[0];
+    float y = input[1];
+    float z = 0.0f;
+    float w = 1.0f;
+    TransformVertex(x, y, z, w, it->xyz, &it->w);
+}
+
+static ReadAttributeFunc calcReadPositionFunc() {
+    switch(ATTRIB_LIST.vertex.type) {
+        default:
+        case GL_DOUBLE:
+        case GL_FLOAT:
+            return (ATTRIB_LIST.vertex.size == 3) ? _readPosition3f3f:
+                    _readPosition2f3f;
+        case GL_BYTE:
+        case GL_UNSIGNED_BYTE:
+            return (ATTRIB_LIST.vertex.size == 3) ? _readPosition3ub3f:
+                    _readPosition2ub3f;
+        case GL_SHORT:
+        case GL_UNSIGNED_SHORT:
+            return (ATTRIB_LIST.vertex.size == 3) ? _readPosition3us3f:
+                    _readPosition2us3f;
+        case GL_INT:
+        case GL_UNSIGNED_INT:
+            return (ATTRIB_LIST.vertex.size == 3) ? _readPosition3ui3f:
+                    _readPosition2ui3f;
+    }
+}
+
+
+static void _fillWhiteARGB(const GLubyte* __restrict__ input, GLubyte* __restrict__ output) {
+    _GL_UNUSED(input);
+    *((uint32_t*) output) = ~0;
+}
+
+static void _readColour4ubARGB(const GLubyte* input, GLubyte* output) {
+    output[R8IDX] = input[0];
+    output[G8IDX] = input[1];
+    output[B8IDX] = input[2];
+    output[A8IDX] = input[3];
+}
+
+static void _readColour4fARGB(const GLubyte* in, GLubyte* output) {
+    const float* input = (const float*) in;
+
+    output[R8IDX] = (GLubyte) clamp(input[0] * 255.0f, 0, 255);
+    output[G8IDX] = (GLubyte) clamp(input[1] * 255.0f, 0, 255);
+    output[B8IDX] = (GLubyte) clamp(input[2] * 255.0f, 0, 255);
+    output[A8IDX] = (GLubyte) clamp(input[3] * 255.0f, 0, 255);
+}
+
+static void _readColour3fARGB(const GLubyte* in, GLubyte* output) {
+    const float* input = (const float*) in;
+
+    output[R8IDX] = (GLubyte) clamp(input[0] * 255.0f, 0, 255);
+    output[G8IDX] = (GLubyte) clamp(input[1] * 255.0f, 0, 255);
+    output[B8IDX] = (GLubyte) clamp(input[2] * 255.0f, 0, 255);
+    output[A8IDX] = 255;
+}
+
+static void _readColour3ubARGB(const GLubyte* __restrict__ input, GLubyte* __restrict__ output) {
+    output[R8IDX] = input[0];
+    output[G8IDX] = input[1];
+    output[B8IDX] = input[2];
+    output[A8IDX] = 255;
+}
+
+static void _readColour4ubRevARGB(const GLubyte* __restrict__ input, GLubyte* __restrict__ output) {
+    argbcpy(output, input);
+}
+
+static void _readColour4fRevARGB(const GLubyte* __restrict__ in, GLubyte* __restrict__ output) {
+    const float* input = (const float*) in;
+
+    output[0] = (GLubyte) clamp(input[0] * 255.0f, 0, 255);
+    output[1] = (GLubyte) clamp(input[1] * 255.0f, 0, 255);
+    output[2] = (GLubyte) clamp(input[2] * 255.0f, 0, 255);
+    output[3] = (GLubyte) clamp(input[3] * 255.0f, 0, 255);
+}
+
+static void _readColour3usARGB(const GLubyte* input, GLubyte* output) {
+    _GL_UNUSED(input);
+    _GL_UNUSED(output);
+    gl_assert(0 && "Not Implemented");
+}
+
+static void _readColour3uiARGB(const GLubyte* input, GLubyte* output) {
+    _GL_UNUSED(input);
+    _GL_UNUSED(output);
+    gl_assert(0 && "Not Implemented");
+}
+
+static void _readColour4usARGB(const GLubyte* input, GLubyte* output) {
+    _GL_UNUSED(input);
+    _GL_UNUSED(output);
+    gl_assert(0 && "Not Implemented");
+}
+
+static void _readColour4uiARGB(const GLubyte* input, GLubyte* output) {
+    _GL_UNUSED(input);
+    _GL_UNUSED(output);
+    gl_assert(0 && "Not Implemented");
+}
+
+static void _readColour4usRevARGB(const GLubyte* input, GLubyte* output) {
+    _GL_UNUSED(input);
+    _GL_UNUSED(output);
+    gl_assert(0 && "Not Implemented");
+}
+
+static void _readColour4uiRevARGB(const GLubyte* input, GLubyte* output) {
+    _GL_UNUSED(input);
+    _GL_UNUSED(output);
+    gl_assert(0 && "Not Implemented");
+}
+
+static ReadAttributeFunc calcReadDiffuseFunc() {
+    if((ATTRIB_LIST.enabled & DIFFUSE_ENABLED_FLAG) != DIFFUSE_ENABLED_FLAG) {
+        /* Just fill the whole thing white if the attribute is disabled */
+        return _fillWhiteARGB;
+    }
+
+    switch(ATTRIB_LIST.colour.type) {
+        default:
+        case GL_DOUBLE:
+        case GL_FLOAT:
+            return (ATTRIB_LIST.colour.size == 3) ? _readColour3fARGB:
+                   (ATTRIB_LIST.colour.size == 4) ? _readColour4fARGB:
+                    _readColour4fRevARGB;
+        case GL_BYTE:
+        case GL_UNSIGNED_BYTE:
+            return (ATTRIB_LIST.colour.size == 3) ? _readColour3ubARGB:
+                   (ATTRIB_LIST.colour.size == 4) ? _readColour4ubARGB:
+                    _readColour4ubRevARGB;
+        case GL_SHORT:
+        case GL_UNSIGNED_SHORT:
+            return (ATTRIB_LIST.colour.size == 3) ? _readColour3usARGB:
+                   (ATTRIB_LIST.colour.size == 4) ? _readColour4usARGB:
+                    _readColour4usRevARGB;
+        case GL_INT:
+        case GL_UNSIGNED_INT:
+            return (ATTRIB_LIST.colour.size == 3) ? _readColour3uiARGB:
+                   (ATTRIB_LIST.colour.size == 4) ? _readColour4uiARGB:
+                    _readColour4uiRevARGB;
+    }
+}
+
+
+static void _fillZero2f(const GLubyte* __restrict__ input, GLubyte* __restrict__ out) {
+    _GL_UNUSED(input);
+    //memset(out, 0, sizeof(float) * 2);
+    // memset does 8 byte writes - faster to manually write as uint32
+    uint32_t* dst = (uint32_t*)out;
+    dst[0] = 0;
+    dst[1] = 0;
+}
+
+static void _readTexcoord2f2f(const GLubyte* in, GLubyte* out) {
+    vec2cpy(out, in);
+}
+
+static void _readTexcoord2ub2f(const GLubyte* input, GLubyte* out) {
+    float* output = (float*) out;
+
+    output[0] = input[0] * ONE_OVER_TWO_FIVE_FIVE;
+    output[1] = input[1] * ONE_OVER_TWO_FIVE_FIVE;
+}
+
+static void _readTexcoord2us2f(const GLubyte* in, GLubyte* out) {
+    const GLushort* input = (const GLushort*) in;
+    float* output = (float*) out;
+
+    output[0] = (float)input[0] / SHRT_MAX;
+    output[1] = (float)input[1] / SHRT_MAX;
+}
+
+static void _readTexcoord2ui2f(const GLubyte* in, GLubyte* out) {
+    const GLuint* input = (const GLuint*) in;
+    float* output = (float*) out;
+
+    output[0] = input[0];
+    output[1] = input[1];
+}
+
+static ReadAttributeFunc calcReadUVFunc() {
+    if((ATTRIB_LIST.enabled & UV_ENABLED_FLAG) != UV_ENABLED_FLAG) {
+        return _fillZero2f;
+    }
+
+    switch(ATTRIB_LIST.uv.type) {
+        default:
+        case GL_DOUBLE:
+        case GL_FLOAT:
+            return _readTexcoord2f2f;
+        case GL_BYTE:
+        case GL_UNSIGNED_BYTE:
+            return _readTexcoord2ub2f;
+        case GL_SHORT:
+        case GL_UNSIGNED_SHORT:
+            return _readTexcoord2us2f;
+        case GL_INT:
+        case GL_UNSIGNED_INT:
+            return _readTexcoord2ui2f;
+    }
+}
+
+static ReadAttributeFunc calcReadSTFunc() {
+    if((ATTRIB_LIST.enabled & ST_ENABLED_FLAG) != ST_ENABLED_FLAG) {
+        return _fillZero2f;
+    }
+
+    switch(ATTRIB_LIST.st.type) {
+        default:
+        case GL_DOUBLE:
+        case GL_FLOAT:
+            return _readTexcoord2f2f;
+        case GL_BYTE:
+        case GL_UNSIGNED_BYTE:
+            return _readTexcoord2ub2f;
+        case GL_SHORT:
+        case GL_UNSIGNED_SHORT:
+            return _readTexcoord2us2f;
+        case GL_INT:
+        case GL_UNSIGNED_INT:
+            return _readTexcoord2ui2f;
+    }
+}
+
+
+static void _fillWithNegZVE(const GLubyte* __restrict__ input, GLubyte* __restrict__ out) {
+    _GL_UNUSED(input);
+    typedef struct { float x, y, z; } V;
+
+    static const V NegZ = {0.0f, 0.0f, -1.0f};
+
+    *((V*) out) = NegZ;
+}
+
+static void _readNormal3f3f(const GLubyte* __restrict__ in, GLubyte* __restrict__ out) {
     vec3cpy(out, in);
 }
 
+static void _readNormal3ub3f(const GLubyte* input, GLubyte* out) {
+    float* output = (float*) out;
+
+    output[0] = input[0] * ONE_OVER_TWO_FIVE_FIVE;
+    output[1] = input[1] * ONE_OVER_TWO_FIVE_FIVE;
+    output[2] = input[2] * ONE_OVER_TWO_FIVE_FIVE;
+}
+
+static void _readNormal3us3f(const GLubyte* in, GLubyte* out) {
+    const GLushort* input = (const GLushort*) in;
+    float* output = (float*) out;
+
+    output[0] = input[0];
+    output[1] = input[1];
+    output[2] = input[2];
+}
+
+static void _readNormal3ui3f(const GLubyte* in, GLubyte* out) {
+    const GLuint* input = (const GLuint*) in;
+    float* output = (float*) out;
+
+    output[0] = input[0];
+    output[1] = input[1];
+    output[2] = input[2];
+}
+
 // 10:10:10:2REV format
-static void _readVertexData1i3f(const GLubyte* in, GLubyte* out) {
+static void _readNormal1i3f(const GLubyte* in, GLubyte* out) {
     static const float MULTIPLIER = 1.0f / 1023.0f;
 
     GLfloat* output = (GLfloat*) out;
@@ -63,295 +406,6 @@ static void _readVertexData1i3f(const GLubyte* in, GLubyte* out) {
     output[2] = (2.0f * (float) input.bits.z + 1.0f) * MULTIPLIER;
 }
 
-static void _readVertexData3us3f(const GLubyte* in, GLubyte* out) {
-    const GLushort* input = (const GLushort*) in;
-    float* output = (float*) out;
-
-    output[0] = input[0];
-    output[1] = input[1];
-    output[2] = input[2];
-}
-
-static void _readVertexData3ui3f(const GLubyte* in, GLubyte* out) {
-    const GLuint* input = (const GLuint*) in;
-    float* output = (float*) out;
-
-    output[0] = input[0];
-    output[1] = input[1];
-    output[2] = input[2];
-}
-
-
-static void _readVertexData3ub3f(const GLubyte* input, GLubyte* out) {
-    float* output = (float*) out;
-
-    output[0] = input[0] * ONE_OVER_TWO_FIVE_FIVE;
-    output[1] = input[1] * ONE_OVER_TWO_FIVE_FIVE;
-    output[2] = input[2] * ONE_OVER_TWO_FIVE_FIVE;
-}
-
-static void _readVertexData2f2f(const GLubyte* in, GLubyte* out) {
-    vec2cpy(out, in);
-}
-
-static void _readVertexData2f3f(const GLubyte* in, GLubyte* out) {
-    const float* input = (const float*) in;
-    float* output = (float*) out;
-
-    vec2cpy(output, input);
-    output[2] = 0.0f;
-}
-
-static void _readVertexData2ub3f(const GLubyte* input, GLubyte* out) {
-    float* output = (float*) out;
-
-    output[0] = input[0] * ONE_OVER_TWO_FIVE_FIVE;
-    output[1] = input[1] * ONE_OVER_TWO_FIVE_FIVE;
-    output[2] = 0.0f;
-}
-
-static void _readVertexData2us3f(const GLubyte* in, GLubyte* out) {
-    const GLushort* input = (const GLushort*) in;
-    float* output = (float*) out;
-
-    output[0] = input[0];
-    output[1] = input[1];
-    output[2] = 0.0f;
-}
-
-static void _readVertexData2us2f(const GLubyte* in, GLubyte* out) {
-    const GLushort* input = (const GLushort*) in;
-    float* output = (float*) out;
-
-    output[0] = (float)input[0] / SHRT_MAX;
-    output[1] = (float)input[1] / SHRT_MAX;
-}
-
-static void _readVertexData2ui2f(const GLubyte* in, GLubyte* out) {
-    const GLuint* input = (const GLuint*) in;
-    float* output = (float*) out;
-
-    output[0] = input[0];
-    output[1] = input[1];
-}
-
-static void _readVertexData2ub2f(const GLubyte* input, GLubyte* out) {
-    float* output = (float*) out;
-
-    output[0] = input[0] * ONE_OVER_TWO_FIVE_FIVE;
-    output[1] = input[1] * ONE_OVER_TWO_FIVE_FIVE;
-}
-
-static void _readVertexData2ui3f(const GLubyte* in, GLubyte* out) {
-    const GLuint* input = (const GLuint*) in;
-    float* output = (float*) out;
-
-    output[0] = input[0];
-    output[1] = input[1];
-    output[2] = 0.0f;
-}
-
-static void _readVertexData4ubARGB(const GLubyte* input, GLubyte* output) {
-    output[R8IDX] = input[0];
-    output[G8IDX] = input[1];
-    output[B8IDX] = input[2];
-    output[A8IDX] = input[3];
-}
-
-static void _readVertexData4fARGB(const GLubyte* in, GLubyte* output) {
-    const float* input = (const float*) in;
-
-    output[R8IDX] = (GLubyte) clamp(input[0] * 255.0f, 0, 255);
-    output[G8IDX] = (GLubyte) clamp(input[1] * 255.0f, 0, 255);
-    output[B8IDX] = (GLubyte) clamp(input[2] * 255.0f, 0, 255);
-    output[A8IDX] = (GLubyte) clamp(input[3] * 255.0f, 0, 255);
-}
-
-static void _readVertexData3fARGB(const GLubyte* in, GLubyte* output) {
-    const float* input = (const float*) in;
-
-    output[R8IDX] = (GLubyte) clamp(input[0] * 255.0f, 0, 255);
-    output[G8IDX] = (GLubyte) clamp(input[1] * 255.0f, 0, 255);
-    output[B8IDX] = (GLubyte) clamp(input[2] * 255.0f, 0, 255);
-    output[A8IDX] = 255;
-}
-
-static void _readVertexData3ubARGB(const GLubyte* __restrict__ input, GLubyte* __restrict__ output) {
-    output[R8IDX] = input[0];
-    output[G8IDX] = input[1];
-    output[B8IDX] = input[2];
-    output[A8IDX] = 255;
-}
-
-static void _readVertexData4ubRevARGB(const GLubyte* __restrict__ input, GLubyte* __restrict__ output) {
-    argbcpy(output, input);
-}
-
-static void _readVertexData4fRevARGB(const GLubyte* __restrict__ in, GLubyte* __restrict__ output) {
-    const float* input = (const float*) in;
-
-    output[0] = (GLubyte) clamp(input[0] * 255.0f, 0, 255);
-    output[1] = (GLubyte) clamp(input[1] * 255.0f, 0, 255);
-    output[2] = (GLubyte) clamp(input[2] * 255.0f, 0, 255);
-    output[3] = (GLubyte) clamp(input[3] * 255.0f, 0, 255);
-}
-
-static void _fillWithNegZVE(const GLubyte* __restrict__ input, GLubyte* __restrict__ out) {
-    _GL_UNUSED(input);
-    typedef struct { float x, y, z; } V;
-
-    static const V NegZ = {0.0f, 0.0f, -1.0f};
-
-    *((V*) out) = NegZ;
-}
-
-static void _fillWhiteARGB(const GLubyte* __restrict__ input, GLubyte* __restrict__ output) {
-    _GL_UNUSED(input);
-    *((uint32_t*) output) = ~0;
-}
-
-static void _fillZero2f(const GLubyte* __restrict__ input, GLubyte* __restrict__ out) {
-    _GL_UNUSED(input);
-    //memset(out, 0, sizeof(float) * 2);
-    // memset does 8 byte writes - faster to manually write as uint32
-    uint32_t* dst = (uint32_t*)out;
-    dst[0] = 0;
-    dst[1] = 0;
-}
-
-static void _readVertexData3usARGB(const GLubyte* input, GLubyte* output) {
-    _GL_UNUSED(input);
-    _GL_UNUSED(output);
-    gl_assert(0 && "Not Implemented");
-}
-
-static void _readVertexData3uiARGB(const GLubyte* input, GLubyte* output) {
-    _GL_UNUSED(input);
-    _GL_UNUSED(output);
-    gl_assert(0 && "Not Implemented");
-}
-
-static void _readVertexData4usARGB(const GLubyte* input, GLubyte* output) {
-    _GL_UNUSED(input);
-    _GL_UNUSED(output);
-    gl_assert(0 && "Not Implemented");
-}
-
-static void _readVertexData4uiARGB(const GLubyte* input, GLubyte* output) {
-    _GL_UNUSED(input);
-    _GL_UNUSED(output);
-    gl_assert(0 && "Not Implemented");
-}
-
-static void _readVertexData4usRevARGB(const GLubyte* input, GLubyte* output) {
-    _GL_UNUSED(input);
-    _GL_UNUSED(output);
-    gl_assert(0 && "Not Implemented");
-}
-
-static void _readVertexData4uiRevARGB(const GLubyte* input, GLubyte* output) {
-    _GL_UNUSED(input);
-    _GL_UNUSED(output);
-    gl_assert(0 && "Not Implemented");
-}
-
-static ReadAttributeFunc calcReadDiffuseFunc() {
-    if((ATTRIB_LIST.enabled & DIFFUSE_ENABLED_FLAG) != DIFFUSE_ENABLED_FLAG) {
-        /* Just fill the whole thing white if the attribute is disabled */
-        return _fillWhiteARGB;
-    }
-
-    switch(ATTRIB_LIST.colour.type) {
-        default:
-        case GL_DOUBLE:
-        case GL_FLOAT:
-            return (ATTRIB_LIST.colour.size == 3) ? _readVertexData3fARGB:
-                   (ATTRIB_LIST.colour.size == 4) ? _readVertexData4fARGB:
-                    _readVertexData4fRevARGB;
-        case GL_BYTE:
-        case GL_UNSIGNED_BYTE:
-            return (ATTRIB_LIST.colour.size == 3) ? _readVertexData3ubARGB:
-                   (ATTRIB_LIST.colour.size == 4) ? _readVertexData4ubARGB:
-                    _readVertexData4ubRevARGB;
-        case GL_SHORT:
-        case GL_UNSIGNED_SHORT:
-            return (ATTRIB_LIST.colour.size == 3) ? _readVertexData3usARGB:
-                   (ATTRIB_LIST.colour.size == 4) ? _readVertexData4usARGB:
-                    _readVertexData4usRevARGB;
-        case GL_INT:
-        case GL_UNSIGNED_INT:
-            return (ATTRIB_LIST.colour.size == 3) ? _readVertexData3uiARGB:
-                   (ATTRIB_LIST.colour.size == 4) ? _readVertexData4uiARGB:
-                    _readVertexData4uiRevARGB;
-    }
-}
-
-static ReadAttributeFunc calcReadPositionFunc() {
-    switch(ATTRIB_LIST.vertex.type) {
-        default:
-        case GL_DOUBLE:
-        case GL_FLOAT:
-            return (ATTRIB_LIST.vertex.size == 3) ? _readVertexData3f3f:
-                    _readVertexData2f3f;
-        case GL_BYTE:
-        case GL_UNSIGNED_BYTE:
-            return (ATTRIB_LIST.vertex.size == 3) ? _readVertexData3ub3f:
-                    _readVertexData2ub3f;
-        case GL_SHORT:
-        case GL_UNSIGNED_SHORT:
-            return (ATTRIB_LIST.vertex.size == 3) ? _readVertexData3us3f:
-                    _readVertexData2us3f;
-        case GL_INT:
-        case GL_UNSIGNED_INT:
-            return (ATTRIB_LIST.vertex.size == 3) ? _readVertexData3ui3f:
-                    _readVertexData2ui3f;
-    }
-}
-
-static ReadAttributeFunc calcReadUVFunc() {
-    if((ATTRIB_LIST.enabled & UV_ENABLED_FLAG) != UV_ENABLED_FLAG) {
-        return _fillZero2f;
-    }
-
-    switch(ATTRIB_LIST.uv.type) {
-        default:
-        case GL_DOUBLE:
-        case GL_FLOAT:
-            return _readVertexData2f2f;
-        case GL_BYTE:
-        case GL_UNSIGNED_BYTE:
-            return _readVertexData2ub2f;
-        case GL_SHORT:
-        case GL_UNSIGNED_SHORT:
-            return _readVertexData2us2f;
-        case GL_INT:
-        case GL_UNSIGNED_INT:
-            return _readVertexData2ui2f;
-    }
-}
-
-static ReadAttributeFunc calcReadSTFunc() {
-    if((ATTRIB_LIST.enabled & ST_ENABLED_FLAG) != ST_ENABLED_FLAG) {
-        return _fillZero2f;
-    }
-
-    switch(ATTRIB_LIST.st.type) {
-        default:
-        case GL_DOUBLE:
-        case GL_FLOAT:
-            return _readVertexData2f2f;
-        case GL_BYTE:
-        case GL_UNSIGNED_BYTE:
-            return _readVertexData2ub2f;
-        case GL_SHORT:
-        case GL_UNSIGNED_SHORT:
-            return _readVertexData2us2f;
-        case GL_INT:
-        case GL_UNSIGNED_INT:
-            return _readVertexData2ui2f;
-    }
-}
-
 static ReadAttributeFunc calcReadNormalFunc() {
     if((ATTRIB_LIST.enabled & NORMAL_ENABLED_FLAG) != NORMAL_ENABLED_FLAG) {
         return _fillWithNegZVE;
@@ -361,25 +415,26 @@ static ReadAttributeFunc calcReadNormalFunc() {
         default:
         case GL_DOUBLE:
         case GL_FLOAT:
-            return _readVertexData3f3f;
+            return _readNormal3f3f;
         break;
         case GL_BYTE:
         case GL_UNSIGNED_BYTE:
-            return _readVertexData3ub3f;
+            return _readNormal3ub3f;
         break;
         case GL_SHORT:
         case GL_UNSIGNED_SHORT:
-            return _readVertexData3us3f;
+            return _readNormal3us3f;
         break;
         case GL_INT:
         case GL_UNSIGNED_INT:
-            return _readVertexData3ui3f;
+            return _readNormal3ui3f;
         break;
         case GL_UNSIGNED_INT_2_10_10_10_REV:
-            return _readVertexData1i3f;
+            return _readNormal1i3f;
         break;
     }
 }
+
 
 void APIENTRY glEnableClientState(GLenum cap) {
     TRACE();

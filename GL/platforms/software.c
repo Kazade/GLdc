@@ -619,34 +619,17 @@ void TransformVec4(float* v) {
     FASTCPY(v, ret, sizeof(float) * 4);
 }
 
-void TransformVertices(Vertex* vertices, const int count) {
-    float ret[4];
-    for(int i = 0; i < count; ++i, ++vertices) {
-        ret[0] = vertices->xyz[0];
-        ret[1] = vertices->xyz[1];
-        ret[2] = vertices->xyz[2];
-        ret[3] = 1.0f;
+void TransformVertex(float x, float y, float z, float w, float* oxyz, float* ow) {
+    float vec[4], ret[4];
+    vec[0] = x;
+    vec[1] = y;
+    vec[2] = z;
+    vec[3] = w;
 
-        TransformVec4(ret);
-
-        vertices->xyz[0] = ret[0];
-        vertices->xyz[1] = ret[1];
-        vertices->xyz[2] = ret[2];
-        vertices->w = ret[3];
-    }
-}
-
-void TransformVertex(const float* xyz, const float* w, float* oxyz, float* ow) {
-    float ret[4];
-    ret[0] = xyz[0];
-    ret[1] = xyz[1];
-    ret[2] = xyz[2];
-    ret[3] = *w;
-
-    TransformVec4(ret);
+    TransformVec4NoMod(vec, ret);
 
     oxyz[0] = ret[0];
     oxyz[1] = ret[1];
     oxyz[2] = ret[2];
-    *ow = ret[3];
+    *ow     = ret[3];
 }

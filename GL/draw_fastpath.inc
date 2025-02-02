@@ -5,7 +5,6 @@
 
 MAKE_FUNC(POLYMODE)
 {
-    static const float w = 1.0f;
     if(!(ATTRIB_LIST.enabled & VERTEX_ENABLED_FLAG)) {
         /* If we don't have vertices, do nothing */
         return;
@@ -75,7 +74,7 @@ MAKE_FUNC(POLYMODE)
         PREFETCH(ptr);
         for(int_fast32_t i = 0; i < loop; ++i, ++it) {
             PREFETCH(ptr + stride);
-            TransformVertex((const float*) ptr, &w, it->xyz, &it->w);
+            TransformVertex(((float*) ptr)[0], ((float*) ptr)[1], ((float*) ptr)[2], 1.0f, it->xyz, &it->w);
             PROCESS_VERTEX_FLAGS(it, min + i);
             ptr += stride;
         }

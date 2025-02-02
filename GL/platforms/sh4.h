@@ -140,15 +140,14 @@ inline void TransformVec4(float* x) {
 
 }
 
-GL_FORCE_INLINE void TransformVertex(const float* xyz, const float* w, float* oxyz, float* ow) {
-    register float __x __asm__("fr12") = (xyz[0]);
-    register float __y __asm__("fr13") = (xyz[1]);
-    register float __z __asm__("fr14") = (xyz[2]);
-    register float __w __asm__("fr15") = (*w);
+GL_FORCE_INLINE void TransformVertex(float x, float y, float z, float w, float* oxyz, float* ow) {
+    register float __x __asm__("fr4") = x;
+    register float __y __asm__("fr5") = y;
+    register float __z __asm__("fr6") = z;
+    register float __w __asm__("fr7") = w;
 
     __asm__ __volatile__(
-        "fldi1 fr15\n"
-        "ftrv   xmtrx,fv12\n"
+        "ftrv   xmtrx,fv4\n"
         : "=f" (__x), "=f" (__y), "=f" (__z), "=f" (__w)
         : "0" (__x), "1" (__y), "2" (__z), "3" (__w)
     );
@@ -157,28 +156,6 @@ GL_FORCE_INLINE void TransformVertex(const float* xyz, const float* w, float* ox
     oxyz[1] = __y;
     oxyz[2] = __z;
     *ow = __w;
-}
-
-static inline void TransformVertices(Vertex* vertices, const int count) {
-    Vertex* it = vertices;
-    for(int i = 0; i < count; ++i, ++it) {
-        register float __x __asm__("fr12") = (it->xyz[0]);
-        register float __y __asm__("fr13") = (it->xyz[1]);
-        register float __z __asm__("fr14") = (it->xyz[2]);
-        register float __w __asm__("fr15") = (it->w);
-
-        __asm__ __volatile__(
-            "fldi1 fr15\n"
-            "ftrv   xmtrx,fv12\n"
-            : "=f" (__x), "=f" (__y), "=f" (__z), "=f" (__w)
-            : "0" (__x), "1" (__y), "2" (__z), "3" (__w)
-        );
-
-        it->xyz[0] = __x;
-        it->xyz[1] = __y;
-        it->xyz[2] = __z;
-        it->w = __w;
-    }
 }
 
 void InitGPU(_Bool autosort, _Bool fsaa);
