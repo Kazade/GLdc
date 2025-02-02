@@ -289,13 +289,10 @@ static void _readPositionData(const GLuint first, const GLuint count, Vertex* it
     const GLsizei vstride = ATTRIB_LIST.vertex.stride;
     const GLubyte* vptr = ((GLubyte*) ATTRIB_LIST.vertex.ptr + (first * vstride));
 
-    float pos[3], w = 1.0f;
-
     ITERATE(count) {
         PREFETCH(vptr + vstride);
-        func(vptr, (GLubyte*) pos);
+        func(vptr, (GLubyte*) it);
         it->flags = GPU_CMD_VERTEX;
-        TransformVertex(pos, &w, it->xyz, &it->w);
 
         vptr += vstride;
         ++it;
@@ -411,8 +408,7 @@ static void generateElements(
         st = (GLubyte*) ATTRIB_LIST.st.ptr + (idx * ststride);
         nxyz = (GLubyte*) ATTRIB_LIST.normal.ptr + (idx * nstride);
 
-        pos_func(xyz, (GLubyte*) pos);
-        TransformVertex((const float*) pos, &w, output->xyz, &output->w);
+        pos_func(xyz, (GLubyte*) output);
         uv_func(uv, (GLubyte*) output->uv);
         diffuse_func(bgra, output->bgra);
         st_func(st, (GLubyte*) ve->st);
@@ -460,8 +456,6 @@ static void generateElementsFastPath(
     VertexExtra* ve = aligned_vector_at(target->extras, 0);
     Vertex* it = start;
 
-    const float w = 1.0f;
-
     if(!pos) {
         return;
     }
@@ -472,7 +466,7 @@ static void generateElementsFastPath(
         it->flags = GPU_CMD_VERTEX;
 
         pos = (GLubyte*) ATTRIB_LIST.vertex.ptr + (idx * vstride);
-        TransformVertex((const float*) pos, &w, it->xyz, &it->w);
+        TransformVertex(((float*) pos)[0], ((float*) pos)[1], ((float*) pos)[2], 1.0f, it->xyz, &it->w);
 
         if(uv) {
             uv = (GLubyte*) ATTRIB_LIST.uv.ptr + (idx * uvstride);

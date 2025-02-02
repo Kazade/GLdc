@@ -636,12 +636,12 @@ void TransformVertices(Vertex* vertices, const int count) {
     }
 }
 
-void TransformVertex(const float* xyz, const float* w, float* oxyz, float* ow) {
+void TransformVertex(float x, float y, float z, float w, float* oxyz, float* ow) {
     float ret[4];
-    ret[0] = xyz[0];
-    ret[1] = xyz[1];
-    ret[2] = xyz[2];
-    ret[3] = *w;
+    ret[0] = x;
+    ret[1] = y;
+    ret[2] = z;
+    ret[3] = w;
 
     TransformVec4(ret);
 

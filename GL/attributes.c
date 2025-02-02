@@ -37,67 +37,89 @@ GLuint* _glGetEnabledAttributes() {
 
 
 static void _readPosition3f3f(const GLubyte* __restrict__ in, GLubyte* __restrict__ out) {
-    vec3cpy(out, in);
+    const float* input = (const float*) in;
+    Vertex* it = (Vertex*) out;
+
+    float x = input[0];
+    float y = input[1];
+    float z = input[2];
+    float w = 1.0f;
+    TransformVertex(x, y, z, w, it->xyz, &it->w);
 }
 
 static void _readPosition3ub3f(const GLubyte* input, GLubyte* out) {
-    float* output = (float*) out;
+    Vertex* it = (Vertex*)out;
 
-    output[0] = input[0] * ONE_OVER_TWO_FIVE_FIVE;
-    output[1] = input[1] * ONE_OVER_TWO_FIVE_FIVE;
-    output[2] = input[2] * ONE_OVER_TWO_FIVE_FIVE;
+    float x = input[0] * ONE_OVER_TWO_FIVE_FIVE;
+    float y = input[1] * ONE_OVER_TWO_FIVE_FIVE;
+    float z = input[2] * ONE_OVER_TWO_FIVE_FIVE;
+    float w = 1.0f;
+    TransformVertex(x, y, z, w, it->xyz, &it->w);
 }
 
 static void _readPosition3us3f(const GLubyte* in, GLubyte* out) {
     const GLushort* input = (const GLushort*) in;
-    float* output = (float*) out;
+    Vertex* it = (Vertex*) out;
 
-    output[0] = input[0];
-    output[1] = input[1];
-    output[2] = input[2];
+    float x = input[0];
+    float y = input[1];
+    float z = input[2];
+    float w = 1.0f;
+    TransformVertex(x, y, z, w, it->xyz, &it->w);
 }
 
 static void _readPosition3ui3f(const GLubyte* in, GLubyte* out) {
     const GLuint* input = (const GLuint*) in;
-    float* output = (float*) out;
+    Vertex* it = (Vertex*) out;
 
-    output[0] = input[0];
-    output[1] = input[1];
-    output[2] = input[2];
+    float x = input[0];
+    float y = input[1];
+    float z = input[2];
+    float w = 1.0f;
+    TransformVertex(x, y, z, w, it->xyz, &it->w);
 }
 
 static void _readPosition2f3f(const GLubyte* in, GLubyte* out) {
     const float* input = (const float*) in;
-    float* output = (float*) out;
+    Vertex* it = (Vertex*) out;
 
-    vec2cpy(output, input);
-    output[2] = 0.0f;
+    float x = input[0];
+    float y = input[1];
+    float z = 0.0f;
+    float w = 1.0f;
+    TransformVertex(x, y, z, w, it->xyz, &it->w);
 }
 
 static void _readPosition2ub3f(const GLubyte* input, GLubyte* out) {
-    float* output = (float*) out;
+    Vertex* it = (Vertex*) out;
 
-    output[0] = input[0] * ONE_OVER_TWO_FIVE_FIVE;
-    output[1] = input[1] * ONE_OVER_TWO_FIVE_FIVE;
-    output[2] = 0.0f;
+    float x = input[0] * ONE_OVER_TWO_FIVE_FIVE;
+    float y = input[1] * ONE_OVER_TWO_FIVE_FIVE;
+    float z = 0.0f;
+    float w = 1.0f;
+    TransformVertex(x, y, z, w, it->xyz, &it->w);
 }
 
 static void _readPosition2us3f(const GLubyte* in, GLubyte* out) {
     const GLushort* input = (const GLushort*) in;
-    float* output = (float*) out;
+    Vertex* it = (Vertex*) out;
 
-    output[0] = input[0];
-    output[1] = input[1];
-    output[2] = 0.0f;
+    float x = input[0];
+    float y = input[1];
+    float z = 0.0f;
+    float w = 1.0f;
+    TransformVertex(x, y, z, w, it->xyz, &it->w);
 }
 
 static void _readPosition2ui3f(const GLubyte* in, GLubyte* out) {
     const GLuint* input = (const GLuint*) in;
-    float* output = (float*) out;
+    Vertex* it = (Vertex*)out;
 
-    output[0] = input[0];
-    output[1] = input[1];
-    output[2] = 0.0f;
+    float x = input[0];
+    float y = input[1];
+    float z = 0.0f;
+    float w = 1.0f;
+    TransformVertex(x, y, z, w, it->xyz, &it->w);
 }
 
 static ReadAttributeFunc calcReadPositionFunc() {
