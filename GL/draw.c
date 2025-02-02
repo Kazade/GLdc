@@ -615,9 +615,13 @@ static void transform(SubmissionTarget* target) {
     TRACE();
 
     /* Perform modelview transform, storing W */
-    Vertex* vertex = _glSubmissionTargetStart(target);
+    Vertex* it = _glSubmissionTargetStart(target);
+    int count  = target->count;
 
-    TransformVertices(vertex, target->count);
+    for(int i = 0; i < count; ++i, ++it) {
+        TransformVertex(it->xyz[0], it->xyz[1], it->xyz[2], it->w, 
+                        it->xyz, &it->w);
+    }
 }
 
 static void mat_transform_normal3(const float* xyz, const float* xyzOut, const uint32_t count, const uint32_t inStride, const uint32_t outStride) {
