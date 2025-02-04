@@ -185,6 +185,15 @@ GLAPI void APIENTRY glCompressedTexImage2DARB(GLenum target,
         GLsizei imageSize,
         const GLvoid *data);
 
+GLAPI void APIENTRY glCompressedTexSubImage2DARB(GLenum target,
+        GLint level,
+        GLint xoffset,
+        GLint yoffset,
+        GLsizei width,
+        GLsizei height,
+        GLenum format,
+        GLsizei imageSize,
+        const GLvoid *data);
 
 /* Core aliases */
 #define GL_INVALID_FRAMEBUFFER_OPERATION GL_INVALID_FRAMEBUFFER_OPERATION_EXT
@@ -195,6 +204,7 @@ GLAPI void APIENTRY glCompressedTexImage2DARB(GLenum target,
 
 #define glGenerateMipmapEXT glGenerateMipmap
 #define glCompressedTexImage2D glCompressedTexImage2DARB
+#define glCompressedTexSubImage2D glCompressedTexSubImage2DARB
 
 #ifndef GL_VERSION_1_4
 #define GL_VERSION_1_4 1

@@ -165,9 +165,16 @@ void LoadGLTextures() {
 
     // 2d texture, level of detail 0 (normal), 3 components (red, green, blue), x size from image, y size from image,
     // border 0 (normal), rgb color data, unsigned byte data, and finally the data itself.
+    // Allocate texture memory (but don't upload compressed data yet)
     glCompressedTexImage2DARB(
         GL_TEXTURE_2D, 0, image1->internalFormat, image1->sizeX, image1->sizeY, 0,
-        image1->dataSize, image1->data
+        image1->dataSize, NULL  // NULL here means we are not uploading data yet
+    );
+
+    // Now use glCompressedTexSubImage2DARB to upload the compressed data to the texture
+    glCompressedTexSubImage2DARB(
+        GL_TEXTURE_2D, 0, 0, 0, image1->sizeX, image1->sizeY, 
+        image1->internalFormat, image1->dataSize, image1->data
     );
 
     free(image1);
