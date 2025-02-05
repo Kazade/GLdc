@@ -29,7 +29,7 @@ typedef struct Image {
     unsigned long sizeX;
     unsigned long sizeY;
     char 					*data;
-    GLenum 				internalFormat;
+    GLenum 				internalFormat, transferFormat, transferType;
     unsigned int	mipmapped, compressed, twiddled;
     unsigned int 	dataSize;
 } Image;

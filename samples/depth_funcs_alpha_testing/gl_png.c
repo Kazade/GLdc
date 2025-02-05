@@ -101,18 +101,23 @@ static int decode_dtex(Image* image, FILE* file) {
 		switch (format) {
 			case 0:
 				puts("Uncompressed - ARGB 1555");
-				image->internalFormat = GL_UNSIGNED_SHORT_1_5_5_5_REV_TWID_KOS;
-				//image->internalFormat = GL_UNSIGNED_SHORT_1_5_5_5_REV;
+				image->internalFormat = GL_ARGB1555_TWID_KOS;
+				image->transferFormat = GL_BGRA;
+				image->transferType   = GL_UNSIGNED_SHORT_1_5_5_5_REV_TWID_KOS;
 				return 1;
 				
 			case 1:
 				puts("Uncompressed - RGB 565");
-				image->internalFormat = GL_UNSIGNED_SHORT_5_6_5_REV;
+				image->internalFormat = GL_RGB565_TWID_KOS;
+				image->transferFormat = GL_RGB;
+				image->transferType   = GL_UNSIGNED_SHORT_5_6_5_TWID_KOS;
 				return 1;
 				
 			case 2:
 				puts("Uncompressed - ARGB 4444");
-				image->internalFormat = GL_UNSIGNED_SHORT_4_4_4_4_REV;
+				image->internalFormat = GL_ARGB4444_TWID_KOS;
+				image->transferFormat = GL_BGRA;
+				image->transferType   = GL_UNSIGNED_SHORT_4_4_4_4_REV_TWID_KOS;
 				return 1;
 		}
 	}
@@ -141,30 +146,14 @@ int dtex_to_gl_texture(texture *tex, char* filename) {
 	glGenTextures(1, &texture_id);
 	glBindTexture(GL_TEXTURE_2D, texture_id);   // 2d texture (x and y size)
 
-	GLint newFormat = GL_RGB;
-	GLint colorType = GL_RGB;
-
-	if (image.internalFormat == GL_UNSIGNED_SHORT_1_5_5_5_REV_TWID_KOS ||
-		image.internalFormat == GL_UNSIGNED_SHORT_4_4_4_4_REV){
-			 newFormat = GL_BGRA;
-			 colorType = GL_RGBA;
-			 printf("Reversing RGBA\n");
-	}
-
-	if (image.internalFormat == GL_UNSIGNED_SHORT_5_6_5_REV){
-			newFormat = GL_RGB;
-			colorType = GL_RGB;
-			printf("Reversing RGB\n");
-	}
-
 	if (image.compressed) {
 		glCompressedTexImage2D(GL_TEXTURE_2D, 0,
 			image.internalFormat, image.sizeX, image.sizeY,
 			0, image.dataSize, image.data);
 	} else {
 		glTexImage2D(GL_TEXTURE_2D, 0,
-			colorType, image.sizeX, image.sizeY, 0,
-			newFormat, image.internalFormat, image.data);
+			image.internalFormat, image.sizeX, image.sizeY, 0,
+			image.transferFormat, image.transferType, image.data);
 	}
 
 	tex->id = texture_id;
