@@ -88,7 +88,7 @@ void DrawGLScene()
     glLoadIdentity();
     glTranslated(-1 , -1, -5);
     glDepthFunc(GL_LESS);
-    glEnable(GL_DEPTH_FUNC);
+    glEnable(GL_DEPTH_TEST);
 
     for (int i = 0; i < 5; i++) {
       glTranslated(0.5, 0, -0.2);
