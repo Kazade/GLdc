@@ -38,83 +38,87 @@ static int decode_dtex(Image* image, FILE* file) {
 	fread(image->data, image->dataSize, 1, file);
 	fclose(file);
 
-	if(image->compressed) {
-		printf("Compressed - ");
-		if(image->twiddled) {
-			printf("Twiddled - ");
-			switch(format) {
-				case 0: {
-					if(image->mipmapped) {
-						image->internalFormat = GL_COMPRESSED_ARGB_1555_VQ_MIPMAP_TWID_KOS;
-					} else {
-						image->internalFormat = GL_COMPRESSED_ARGB_1555_VQ_TWID_KOS;
-					}
-				} break;
-				case 1: {
-					if(image->mipmapped) {
-						image->internalFormat = GL_COMPRESSED_RGB_565_VQ_MIPMAP_TWID_KOS;
-					} else {
-						image->internalFormat = GL_COMPRESSED_RGB_565_VQ_TWID_KOS;
-					}
-				} break;
-				case 2: {
-					if(image->mipmapped) {
-						image->internalFormat = GL_COMPRESSED_ARGB_4444_VQ_MIPMAP_TWID_KOS;
-					} else {
-						image->internalFormat = GL_COMPRESSED_ARGB_4444_VQ_TWID_KOS;
-					}
-				}
-				break;
-				default:
-					fprintf(stderr, "Invalid texture format");
-					return 0;
-			}
-		} else {
-			switch(format) {
-				case 0: {
-					if(image->mipmapped) {
-						image->internalFormat = GL_COMPRESSED_ARGB_1555_VQ_MIPMAP_KOS;
-					} else {
-						image->internalFormat = GL_COMPRESSED_ARGB_1555_VQ_KOS;
-					}
-				} break;
-				case 1: {
-					if(image->mipmapped) {
-						image->internalFormat = GL_COMPRESSED_RGB_565_VQ_MIPMAP_KOS;
-					} else {
-						image->internalFormat = GL_COMPRESSED_RGB_565_VQ_KOS;
-					}
-				} break;
-				case 2: {
-					if(image->mipmapped) {
-						image->internalFormat = GL_COMPRESSED_ARGB_4444_VQ_MIPMAP_KOS;
-					} else {
-						image->internalFormat = GL_COMPRESSED_ARGB_4444_VQ_KOS;
-					}
-				}
-				break;
-				default:
-					fprintf(stderr, "Invalid texture format");
-					return 0;
-			}
-		}
-	} else {
-		printf("Uncompressed - ");
-		//printf("Color:%u -", format);
+	if(image->compressed && image->twiddled) {
 		switch(format) {
 			case 0:
+				puts("Compressed & Twiddled - ARGB 1555");
+				if(image->mipmapped) {
+					image->internalFormat = GL_COMPRESSED_ARGB_1555_VQ_MIPMAP_TWID_KOS;
+				} else {
+					image->internalFormat = GL_COMPRESSED_ARGB_1555_VQ_TWID_KOS;
+				}
+				return 1;
+			
+			case 1:
+				puts("Compressed & Twiddled - RGB 565");
+				if(image->mipmapped) {
+					image->internalFormat = GL_COMPRESSED_RGB_565_VQ_MIPMAP_TWID_KOS;
+				} else {
+					image->internalFormat = GL_COMPRESSED_RGB_565_VQ_TWID_KOS;
+				}
+				return 1;
+			
+			case 2:
+				puts("Compressed & Twiddled - ARGB 4444");
+				if(image->mipmapped) {
+					image->internalFormat = GL_COMPRESSED_ARGB_4444_VQ_MIPMAP_TWID_KOS;
+				} else {
+					image->internalFormat = GL_COMPRESSED_ARGB_4444_VQ_TWID_KOS;
+				}
+				return 1;
+			
+		}
+	} else if (image->compressed) {
+		switch(format) {
+			case 0:
+				puts("Compressed - ARGB 1555");
+				if(image->mipmapped) {
+					image->internalFormat = GL_COMPRESSED_ARGB_1555_VQ_MIPMAP_KOS;
+				} else {
+					image->internalFormat = GL_COMPRESSED_ARGB_1555_VQ_KOS;
+				}
+				return 1;
+				
+			case 1:
+				puts("Compressed - RGB 565");
+				if(image->mipmapped) {
+					image->internalFormat = GL_COMPRESSED_RGB_565_VQ_MIPMAP_KOS;
+				} else {
+					image->internalFormat = GL_COMPRESSED_RGB_565_VQ_KOS;
+				}
+				return 1;
+				
+			case 2:
+				puts("Compressed - ARGB 4444");
+				if(image->mipmapped) {
+					image->internalFormat = GL_COMPRESSED_ARGB_4444_VQ_MIPMAP_KOS;
+				} else {
+					image->internalFormat = GL_COMPRESSED_ARGB_4444_VQ_KOS;
+				}
+				return 1;
+		}
+	} else {
+		switch (format) {
+			case 0:
+				puts("Uncompressed - ARGB 1555");
 				image->internalFormat = GL_UNSIGNED_SHORT_1_5_5_5_REV_TWID_KOS;
 				//image->internalFormat = GL_UNSIGNED_SHORT_1_5_5_5_REV;
-			break;
+				return 1;
+				
 			case 1:
+				puts("Uncompressed - RGB 565");
 				image->internalFormat = GL_UNSIGNED_SHORT_5_6_5_REV;
-			break;
+				return 1;
+				
 			case 2:
+				puts("Uncompressed - ARGB 4444");
 				image->internalFormat = GL_UNSIGNED_SHORT_4_4_4_4_REV;
-			break;
+				return 1;
 		}
 	}
-	printf("\n");
+	
+	fprintf(stderr, "Invalid texture format %u\n", header.type);
+	return 0;
 }
 
 int dtex_to_gl_texture(texture *tex, char* filename) {
