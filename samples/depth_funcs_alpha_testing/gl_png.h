@@ -30,7 +30,7 @@ typedef struct Image {
     unsigned long sizeY;
     char 					*data;
     GLenum 				internalFormat;
-    GLboolean 		mipmapped;
+    unsigned int	mipmapped, compressed, twiddled;
     unsigned int 	dataSize;
 } Image;
 
