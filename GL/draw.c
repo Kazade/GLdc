@@ -90,17 +90,6 @@ GL_FORCE_INLINE IndexParseFunc _calcParseIndexFunc(GLenum type) {
     x = __x; y = __y; z = __z; \
 }
 
-
-GL_FORCE_INLINE void transformToEyeSpace(GLfloat* point) {
-    _glMatrixLoadModelView();
-    mat_trans_single3_nodiv(point[0], point[1], point[2]);
-}
-
-GL_FORCE_INLINE void transformNormalToEyeSpace(GLfloat* normal) {
-    _glMatrixLoadNormal();
-    mat_trans_normal3(normal[0], normal[1], normal[2]);
-}
-
 GL_FORCE_INLINE PolyHeader *_glSubmissionTargetHeader(SubmissionTarget* target) {
     gl_assert(target->header_offset < aligned_vector_size(&target->output->vector));
     return aligned_vector_at(&target->output->vector, target->header_offset);
@@ -622,42 +611,22 @@ static void transform(SubmissionTarget* target) {
     }
 }
 
-static void mat_transform_normal3(const float* xyz, const float* xyzOut, const uint32_t count, const uint32_t inStride, const uint32_t outStride) {
-    const uint8_t* dataIn = (const uint8_t*) xyz;
-    uint8_t* dataOut = (uint8_t*) xyzOut;
-
+static void mat_transform_normal3(VertexExtra* extra, const uint32_t count) {
     ITERATE(count) {
-        const float* in = (const float*) dataIn;
-        float* out = (float*) dataOut;
-
-        TransformNormalNoMod(in, out);
-
-        dataIn += inStride;
-        dataOut += outStride;
+        TransformNormalNoMod(extra->nxyz, extra->nxyz);
+        extra++;
     }
 }
 
 static void light(SubmissionTarget* target) {
-
-    static AlignedVector* eye_space_data = NULL;
-
-    if(!eye_space_data) {
-        eye_space_data = (AlignedVector*) malloc(sizeof(AlignedVector));
-        aligned_vector_init(eye_space_data, sizeof(EyeSpaceData));
-    }
-
-    aligned_vector_resize(eye_space_data, target->count);
-
     /* Perform lighting calculations and manipulate the colour */
     Vertex* vertex = _glSubmissionTargetStart(target);
     VertexExtra* extra = aligned_vector_at(target->extras, 0);
-    EyeSpaceData* eye_space = (EyeSpaceData*) eye_space_data->data;
 
     _glMatrixLoadNormal();
-    mat_transform_normal3(extra->nxyz, eye_space->n, target->count, sizeof(VertexExtra), sizeof(EyeSpaceData));
+    mat_transform_normal3(extra, target->count);
 
-    EyeSpaceData* ES = aligned_vector_at(eye_space_data, 0);
-    _glPerformLighting(vertex, ES, target->count);
+    _glPerformLighting(vertex, extra, target->count);
 }
 
 GL_FORCE_INLINE int _calc_pvr_face_culling() {

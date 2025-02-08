@@ -499,14 +499,14 @@ GL_FORCE_INLINE void _glLightVertexPoint(
 #undef _PROCESS_COMPONENT
 }
 
-void _glPerformLighting(Vertex* vertices, EyeSpaceData* es, const uint32_t count) {
+void _glPerformLighting(Vertex* vertices, VertexExtra* extra, const uint32_t count) {
     GLubyte i;
     GLuint j;
 
     Material* material = _glActiveMaterial();
 
     Vertex* vertex = vertices;
-    EyeSpaceData* data = es;
+    VertexExtra* data = extra;
 
     /* Calculate the colour material function once */
     void (*updateColourMaterial)(const GLubyte*) = NULL;
@@ -529,32 +529,29 @@ void _glPerformLighting(Vertex* vertices, EyeSpaceData* es, const uint32_t count
         }
     }
 
-    /* Calculate the ambient lighting and set up colour material */
+    if(!_glEnabledLightCount()) {
+        return;
+    }
+
     for(j = 0; j < count; ++j, ++vertex, ++data) {
+        /* Calculate the ambient lighting and set up colour material */
         if(updateColourMaterial) {
             updateColourMaterial(vertex->bgra);
         }
 
         /* Copy the base colour across */
-        vec4cpy(data->finalColour, material->baseColour);
-    }
+        float finalColour[4];
+        vec4cpy(finalColour, material->baseColour);
 
-    if(!_glEnabledLightCount()) {
-        return;
-    }
-
-    vertex = vertices;
-    data = es;
-    for(j = 0; j < count; ++j, ++vertex, ++data) {
         /* Direction to vertex in eye space */
         float Vx = -vertex->xyz[0];
         float Vy = -vertex->xyz[1];
         float Vz = -vertex->xyz[2];
         VEC3_NORMALIZE(Vx, Vy, Vz);
 
-        const float Nx = data->n[0];
-        const float Ny = data->n[1];
-        const float Nz = data->n[2];
+        const float Nx = data->nxyz[0];
+        const float Ny = data->nxyz[1];
+        const float Nz = data->nxyz[2];
 
         for(i = 0; i < MAX_GLDC_LIGHTS; ++i) {
             LightSource* light = _glLightAt(i);
@@ -588,7 +585,7 @@ void _glPerformLighting(Vertex* vertices, EyeSpaceData* es, const uint32_t count
                 if(NdotH < 0.0f) NdotH = 0.0f;
 
                 _glLightVertexDirectional(
-                    data->finalColour,
+                    finalColour,
                     i, LdotN, NdotH
                 );
             } else {
@@ -627,17 +624,17 @@ void _glPerformLighting(Vertex* vertices, EyeSpaceData* es, const uint32_t count
                     if(NdotH < 0.0f) NdotH = 0.0f;
 
                     _glLightVertexPoint(
-                        data->finalColour,
+                        finalColour,
                         i, LdotN, NdotH, att
                     );
                 }
             }
         }
 
-        vertex->bgra[R8IDX] = clamp(data->finalColour[0] * 255.0f, 0, 255);
-        vertex->bgra[G8IDX] = clamp(data->finalColour[1] * 255.0f, 0, 255);
-        vertex->bgra[B8IDX] = clamp(data->finalColour[2] * 255.0f, 0, 255);
-        vertex->bgra[A8IDX] = clamp(data->finalColour[3] * 255.0f, 0, 255);
+        vertex->bgra[R8IDX] = clamp(finalColour[0] * 255.0f, 0, 255);
+        vertex->bgra[G8IDX] = clamp(finalColour[1] * 255.0f, 0, 255);
+        vertex->bgra[B8IDX] = clamp(finalColour[2] * 255.0f, 0, 255);
+        vertex->bgra[A8IDX] = clamp(finalColour[3] * 255.0f, 0, 255);
     }
 }
 

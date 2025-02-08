@@ -445,13 +445,7 @@ GL_FORCE_INLINE GLboolean _glCheckImmediateModeInactive(const char* func) {
     return GL_FALSE;
 }
 
-typedef struct {
-    float n[3]; // 12 bytes
-    float finalColour[4]; //28 bytes
-    uint32_t padding; // 32 bytes
-} EyeSpaceData;
-
-extern void _glPerformLighting(Vertex* vertices, EyeSpaceData *es, const uint32_t count);
+extern void _glPerformLighting(Vertex* vertices, VertexExtra* extra, const uint32_t count);
 
 unsigned char _glIsClippingEnabled();
 void _glEnableClipping(unsigned char v);
