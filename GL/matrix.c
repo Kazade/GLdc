@@ -39,6 +39,10 @@ Matrix4x4* _glGetModelViewMatrix() {
     return (Matrix4x4*) stack_top(&MATRIX_STACKS[0]);
 }
 
+GLenum _glGetMatrixMode() {
+    return MATRIX_MODE;
+}
+
 void _glInitMatrices() {
     init_stack(&MATRIX_STACKS[0], sizeof(Matrix4x4), 32);
     init_stack(&MATRIX_STACKS[1], sizeof(Matrix4x4), 32);

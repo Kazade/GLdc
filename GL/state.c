@@ -996,6 +996,9 @@ void APIENTRY glGetIntegerv(GLenum pname, GLint *params) {
         case GL_MAX_LIGHTS:
             *params = MAX_GLDC_LIGHTS;
         break;
+        case GL_MATRIX_MODE:
+            *params = _glGetMatrixMode();
+        break;
         case GL_TEXTURE_BINDING_2D:
             *params = (_glGetBoundTexture()) ? _glGetBoundTexture()->index : 0;
         break;
