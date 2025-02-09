@@ -10,8 +10,6 @@
 #include "../types.h"
 #include "../private.h"
 
-#include "sh4_math.h"
-
 #ifndef NDEBUG
 #define PERF_WARNING(msg) printf("[PERF] %s\n", msg)
 #else
@@ -23,6 +21,42 @@
 #define GL_INLINE_DEBUG GL_NO_INSTRUMENT __attribute__((always_inline))
 #define GL_FORCE_INLINE static GL_INLINE_DEBUG
 #endif
+
+
+// ---- sh4_math.h - SH7091 Math Module ----
+//
+// This file is part of the DreamHAL project, a hardware abstraction library
+// primarily intended for use on the SH7091 found in hardware such as the SEGA
+// Dreamcast game console.
+//
+// This math module is hereby released into the public domain in the hope that it
+// may prove useful. Now go hit 60 fps! :)
+//
+// --Moopthehedgehog
+
+// 1/sqrt(x)
+GL_FORCE_INLINE float MATH_fsrra(float x)
+{
+  asm volatile ("fsrra %[one_div_sqrt]\n"
+  : [one_div_sqrt] "+f" (x) // outputs, "+" means r/w
+  : // no inputs
+  : // no clobbers
+  );
+
+  return x;
+}
+
+// 1/x = 1 / sqrt(x^2)
+GL_FORCE_INLINE float MATH_Fast_Invert(float x)
+{
+  int neg = x < 0.0f;
+
+  x = MATH_fsrra(x * x);
+
+  if (neg) x = -x;
+  return x;
+}
+// end of ---- sh4_math.h ----
 
 #define PREFETCH(addr) __builtin_prefetch((addr))
 
@@ -69,7 +103,7 @@ GL_FORCE_INLINE void* memcpy_fast(void *dest, const void *src, size_t len) {
 
 #define MEMCPY4(dst, src, bytes) memcpy_fast(dst, src, bytes)
 
-#define MEMSET4(dst, v, size) memset4((dst), (v), (size))
+#define MEMSET4(dst, v, size) memset((dst), (v), (size))
 
 #define VEC3_NORMALIZE(x, y, z) vec3f_normalize((x), (y), (z))
 #define VEC3_LENGTH(x, y, z, l) vec3f_length((x), (y), (z), (l))
@@ -106,15 +140,14 @@ inline void TransformVec4(float* x) {
 
 }
 
-GL_FORCE_INLINE void TransformVertex(const float* xyz, const float* w, float* oxyz, float* ow) {
-    register float __x __asm__("fr12") = (xyz[0]);
-    register float __y __asm__("fr13") = (xyz[1]);
-    register float __z __asm__("fr14") = (xyz[2]);
-    register float __w __asm__("fr15") = (*w);
+GL_FORCE_INLINE void TransformVertex(float x, float y, float z, float w, float* oxyz, float* ow) {
+    register float __x __asm__("fr4") = x;
+    register float __y __asm__("fr5") = y;
+    register float __z __asm__("fr6") = z;
+    register float __w __asm__("fr7") = w;
 
     __asm__ __volatile__(
-        "fldi1 fr15\n"
-        "ftrv   xmtrx,fv12\n"
+        "ftrv   xmtrx,fv4\n"
         : "=f" (__x), "=f" (__y), "=f" (__z), "=f" (__w)
         : "0" (__x), "1" (__y), "2" (__z), "3" (__w)
     );
@@ -123,28 +156,6 @@ GL_FORCE_INLINE void TransformVertex(const float* xyz, const float* w, float* ox
     oxyz[1] = __y;
     oxyz[2] = __z;
     *ow = __w;
-}
-
-static inline void TransformVertices(Vertex* vertices, const int count) {
-    Vertex* it = vertices;
-    for(int i = 0; i < count; ++i, ++it) {
-        register float __x __asm__("fr12") = (it->xyz[0]);
-        register float __y __asm__("fr13") = (it->xyz[1]);
-        register float __z __asm__("fr14") = (it->xyz[2]);
-        register float __w __asm__("fr15") = (it->w);
-
-        __asm__ __volatile__(
-            "fldi1 fr15\n"
-            "ftrv   xmtrx,fv12\n"
-            : "=f" (__x), "=f" (__y), "=f" (__z), "=f" (__w)
-            : "0" (__x), "1" (__y), "2" (__z), "3" (__w)
-        );
-
-        it->xyz[0] = __x;
-        it->xyz[1] = __y;
-        it->xyz[2] = __z;
-        it->w = __w;
-    }
 }
 
 void InitGPU(_Bool autosort, _Bool fsaa);

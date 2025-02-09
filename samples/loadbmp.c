@@ -35,7 +35,7 @@ int ImageLoad(char *filename, Image *image) {
         return 0;
     }
     image->sizeX = sizeX;
-    printf("Width of %s: %d\n", filename, sizeX);
+    printf("Width of %s: %ld\n", filename, sizeX);
 
     // read the height
     if ((i = fread(&sizeY, 4, 1, file)) != 1) {
@@ -43,7 +43,7 @@ int ImageLoad(char *filename, Image *image) {
         return 0;
     }
     image->sizeY = sizeY;
-    printf("Height of %s: %d\n", filename, sizeY);
+    printf("Height of %s: %ld\n", filename, sizeY);
 
     // calculate the size (assuming 24 bits or 3 bytes per pixel).
     size = image->sizeX * image->sizeY * 3;

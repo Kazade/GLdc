@@ -2,11 +2,11 @@
 #include "private.h"
 
 /* Set the Perspective */
-void APIENTRY gluPerspective(GLfloat angle, GLfloat aspect,
-                    GLfloat znear, GLfloat zfar) {
-    GLfloat fW, fH;
+void APIENTRY gluPerspective(GLdouble angle, GLdouble aspect,
+                    GLdouble znear, GLdouble zfar) {
+    GLdouble fW, fH;
 
-    fH = tanf(angle * (M_PI / 360.0f)) * znear;
+    fH = tan(angle * (M_PI / 360.0)) * znear;
     fW = fH * aspect;
 
     glFrustum(-fW, fW, -fH, fH, znear, zfar);

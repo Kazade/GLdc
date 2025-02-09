@@ -75,17 +75,13 @@ void SceneListBegin(GPUList list) {
     vertex_counter = 0;
 }
 
-GL_FORCE_INLINE void _glPerspectiveDivideVertex(Vertex* vertex, const float h) {
+GL_FORCE_INLINE void _glPerspectiveDivideVertex(Vertex* vertex) {
     const float f = 1.0f / (vertex->w);
 
-    /* Convert to NDC and apply viewport */
-    vertex->xyz[0] = __builtin_fmaf(
-        VIEWPORT.hwidth, vertex->xyz[0] * f, VIEWPORT.x_plus_hwidth
-    );
-
-    vertex->xyz[1] = h - __builtin_fmaf(
-        VIEWPORT.hheight, vertex->xyz[1] * f, VIEWPORT.y_plus_hheight
-    );
+    /* Convert to screenspace */
+    /* (note that vertices have already been viewport transformed) */
+    vertex->xyz[0] = vertex->xyz[0] * f;
+    vertex->xyz[1] = vertex->xyz[1] * f;
 
     if(vertex->w == 1.0f) {
         vertex->xyz[2] = 1.0f / (1.0001f + vertex->xyz[2]);
@@ -143,8 +139,6 @@ void SceneListSubmit(Vertex* v2, int n) {
         return;
     }
 
-    const float h = GetVideoMode()->height;
-
     uint8_t visible_mask = 0;
     uint8_t counter = 0;
 
@@ -182,19 +176,19 @@ void SceneListSubmit(Vertex* v2, int n) {
         switch(visible_mask) {
         case 15: /* All visible, but final vertex in strip */
         {
-            _glPerspectiveDivideVertex(v0, h);
+            _glPerspectiveDivideVertex(v0);
             _glPushHeaderOrVertex(v0);
 
-            _glPerspectiveDivideVertex(v1, h);
+            _glPerspectiveDivideVertex(v1);
             _glPushHeaderOrVertex(v1);
 
-            _glPerspectiveDivideVertex(v2, h);
+            _glPerspectiveDivideVertex(v2);
             _glPushHeaderOrVertex(v2);
         }
         break;
         case 7:
             /* All visible, push the first vertex and move on */
-            _glPerspectiveDivideVertex(v0, h);
+            _glPerspectiveDivideVertex(v0);
             _glPushHeaderOrVertex(v0);
         break;
         case 9:
@@ -210,13 +204,13 @@ void SceneListSubmit(Vertex* v2, int n) {
             _glClipEdge(v2, v0, b);
             b->flags = GPU_CMD_VERTEX_EOL;
 
-            _glPerspectiveDivideVertex(v0, h);
+            _glPerspectiveDivideVertex(v0);
             _glPushHeaderOrVertex(v0);
 
-            _glPerspectiveDivideVertex(a, h);
+            _glPerspectiveDivideVertex(a);
             _glPushHeaderOrVertex(a);
 
-            _glPerspectiveDivideVertex(b, h);
+            _glPerspectiveDivideVertex(b);
             _glPushHeaderOrVertex(b);
         }
         break;
@@ -233,13 +227,13 @@ void SceneListSubmit(Vertex* v2, int n) {
             _glClipEdge(v2, v0, b);
             b->flags = GPU_CMD_VERTEX;
 
-            _glPerspectiveDivideVertex(v0, h);
+            _glPerspectiveDivideVertex(v0);
             _glPushHeaderOrVertex(v0);
 
-            _glPerspectiveDivideVertex(a, h);
+            _glPerspectiveDivideVertex(a);
             _glPushHeaderOrVertex(a);
 
-            _glPerspectiveDivideVertex(b, h);
+            _glPerspectiveDivideVertex(b);
             _glPushHeaderOrVertex(b);
             _glPushHeaderOrVertex(b);
         }
@@ -262,13 +256,13 @@ void SceneListSubmit(Vertex* v2, int n) {
             _glClipEdge(v1, v2, b);
             b->flags = v2->flags;
 
-            _glPerspectiveDivideVertex(a, h);
+            _glPerspectiveDivideVertex(a);
             _glPushHeaderOrVertex(a);
 
-            _glPerspectiveDivideVertex(c, h);
+            _glPerspectiveDivideVertex(c);
             _glPushHeaderOrVertex(c);
 
-            _glPerspectiveDivideVertex(b, h);
+            _glPerspectiveDivideVertex(b);
             _glPushHeaderOrVertex(b);
         }
         break;
@@ -285,19 +279,19 @@ void SceneListSubmit(Vertex* v2, int n) {
             _glClipEdge(v2, v0, b);
             b->flags = GPU_CMD_VERTEX;
 
-            _glPerspectiveDivideVertex(v0, h);
+            _glPerspectiveDivideVertex(v0);
             _glPushHeaderOrVertex(v0);
 
             _glClipEdge(v1, v2, a);
             a->flags = v2->flags;
 
-            _glPerspectiveDivideVertex(c, h);
+            _glPerspectiveDivideVertex(c);
             _glPushHeaderOrVertex(c);
 
-            _glPerspectiveDivideVertex(b, h);
+            _glPerspectiveDivideVertex(b);
             _glPushHeaderOrVertex(b);
 
-            _glPerspectiveDivideVertex(a, h);
+            _glPerspectiveDivideVertex(a);
             _glPushHeaderOrVertex(c);
             _glPushHeaderOrVertex(a);
         }
@@ -319,17 +313,17 @@ void SceneListSubmit(Vertex* v2, int n) {
             _glClipEdge(v1, v2, b);
             b->flags = GPU_CMD_VERTEX;
 
-            _glPerspectiveDivideVertex(a, h);
+            _glPerspectiveDivideVertex(a);
             _glPushHeaderOrVertex(a);
 
             if(counter % 2 == 1) {
                 _glPushHeaderOrVertex(a);
             }
 
-            _glPerspectiveDivideVertex(b, h);
+            _glPerspectiveDivideVertex(b);
             _glPushHeaderOrVertex(b);
 
-            _glPerspectiveDivideVertex(c, h);
+            _glPerspectiveDivideVertex(c);
             _glPushHeaderOrVertex(c);
         }
         break;
@@ -349,15 +343,15 @@ void SceneListSubmit(Vertex* v2, int n) {
             _glClipEdge(v1, v2, b);
             b->flags = GPU_CMD_VERTEX;
 
-            _glPerspectiveDivideVertex(v0, h);
+            _glPerspectiveDivideVertex(v0);
             _glPushHeaderOrVertex(v0);
 
-            _glPerspectiveDivideVertex(a, h);
+            _glPerspectiveDivideVertex(a);
             _glPushHeaderOrVertex(a);
 
-            _glPerspectiveDivideVertex(c, h);
+            _glPerspectiveDivideVertex(c);
             _glPushHeaderOrVertex(c);
-            _glPerspectiveDivideVertex(b, h);
+            _glPerspectiveDivideVertex(b);
             _glPushHeaderOrVertex(b);
 
             c->flags = GPU_CMD_VERTEX_EOL;
@@ -380,15 +374,15 @@ void SceneListSubmit(Vertex* v2, int n) {
             _glClipEdge(v1, v2, b);
             b->flags = GPU_CMD_VERTEX;
 
-            _glPerspectiveDivideVertex(v0, h);
+            _glPerspectiveDivideVertex(v0);
             _glPushHeaderOrVertex(v0);
 
-            _glPerspectiveDivideVertex(a, h);
+            _glPerspectiveDivideVertex(a);
             _glPushHeaderOrVertex(a);
 
-            _glPerspectiveDivideVertex(c, h);
+            _glPerspectiveDivideVertex(c);
             _glPushHeaderOrVertex(c);
-            _glPerspectiveDivideVertex(b, h);
+            _glPerspectiveDivideVertex(b);
             _glPushHeaderOrVertex(b);
             _glPushHeaderOrVertex(c);
         }
@@ -411,17 +405,17 @@ void SceneListSubmit(Vertex* v2, int n) {
             _glClipEdge(v2, v0, b);
             b->flags = GPU_CMD_VERTEX;
 
-            _glPerspectiveDivideVertex(a, h);
+            _glPerspectiveDivideVertex(a);
             _glPushHeaderOrVertex(a);
 
-            _glPerspectiveDivideVertex(c, h);
+            _glPerspectiveDivideVertex(c);
             _glPushHeaderOrVertex(c);
 
-            _glPerspectiveDivideVertex(b, h);
+            _glPerspectiveDivideVertex(b);
             _glPushHeaderOrVertex(b);
             _glPushHeaderOrVertex(c);
 
-            _glPerspectiveDivideVertex(d, h);
+            _glPerspectiveDivideVertex(d);
             _glPushHeaderOrVertex(d);
         }
         break;
@@ -625,34 +619,17 @@ void TransformVec4(float* v) {
     FASTCPY(v, ret, sizeof(float) * 4);
 }
 
-void TransformVertices(Vertex* vertices, const int count) {
-    float ret[4];
-    for(int i = 0; i < count; ++i, ++vertices) {
-        ret[0] = vertices->xyz[0];
-        ret[1] = vertices->xyz[1];
-        ret[2] = vertices->xyz[2];
-        ret[3] = 1.0f;
+void TransformVertex(float x, float y, float z, float w, float* oxyz, float* ow) {
+    float vec[4], ret[4];
+    vec[0] = x;
+    vec[1] = y;
+    vec[2] = z;
+    vec[3] = w;
 
-        TransformVec4(ret);
-
-        vertices->xyz[0] = ret[0];
-        vertices->xyz[1] = ret[1];
-        vertices->xyz[2] = ret[2];
-        vertices->w = ret[3];
-    }
-}
-
-void TransformVertex(const float* xyz, const float* w, float* oxyz, float* ow) {
-    float ret[4];
-    ret[0] = xyz[0];
-    ret[1] = xyz[1];
-    ret[2] = xyz[2];
-    ret[3] = *w;
-
-    TransformVec4(ret);
+    TransformVec4NoMod(vec, ret);
 
     oxyz[0] = ret[0];
     oxyz[1] = ret[1];
     oxyz[2] = ret[2];
-    *ow = ret[3];
+    *ow     = ret[3];
 }

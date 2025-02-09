@@ -20,9 +20,7 @@ KOS_INIT_ROMDISK(romdisk);
 #endif
 
 #include "../loadbmp.h"
-
-/* storage for one texture  */
-int texture[1];
+GLuint texture[1];
 
 // Load Bitmaps And Convert To Textures
 void LoadGLTextures() {

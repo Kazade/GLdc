@@ -11,6 +11,11 @@
 #include <stdint.h>
 #include <stdlib.h>
 
+
+#ifdef __DREAMCAST__
+#include <kos.h>
+#endif
+
 #define FPS 60
 uint32_t waittime = 1000.0f/FPS;
 uint32_t framestarttime = 0;
@@ -58,8 +63,9 @@ KOS_INIT_ROMDISK(romdisk);
 #include <GL/glu.h>	// Header File For The GLu32 Library
 #include <GL/glkos.h>
 #else
-#include <GL/gl.h>	// Header File For The OpenGL32 Library
-#include <GL/glu.h>	// Header File For The GLu32 Library
+#include <GL/gl.h> // Header File For The OpenGL32 Library
+#include <GL/glkos.h>
+#include <GL/glu.h> // Header File For The GLu32 Library
 #endif
 
 #define BOOL    int
@@ -227,8 +233,6 @@ int DrawGLScene(GLvoid)									// Here's Where We Do All The Drawing
 
 int main(int argc, char *argv[])
 {
-	BOOL	done=FALSE;								// Bool Variable To Exit Loop
-
     glKosInit();
 
     InitGL();

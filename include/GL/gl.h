@@ -55,7 +55,7 @@ __BEGIN_DECLS
 #define GL_FRONT_FACE       0x0B46
 
 /* Scissor box */
-#define GL_SCISSOR_TEST     0x0008      /* capability bit */
+#define GL_SCISSOR_TEST     0x0C11
 #define GL_SCISSOR_BOX      0x0C10
 
 /* Stencil actions */
@@ -109,7 +109,7 @@ __BEGIN_DECLS
 #define GL_SRC_ALPHA_SATURATE   0x0308
 
 /* Misc texture constants */
-#define GL_TEXTURE_2D           0x0001      /* capability bit */
+#define GL_TEXTURE_2D           0x0DE1
 #define GL_TEXTURE_WRAP_S       0x2802
 #define GL_TEXTURE_WRAP_T       0x2803
 #define GL_TEXTURE_MAG_FILTER   0x2800
@@ -204,7 +204,7 @@ __BEGIN_DECLS
 #define GL_CLIP_PLANE5      0x3005
 
 /* Fog */
-#define GL_FOG              0x0004      /* capability bit */
+#define GL_FOG              0x0B60
 #define GL_FOG_MODE         0x0B65
 #define GL_FOG_DENSITY      0x0B62
 #define GL_FOG_COLOR        0x0B66
@@ -226,7 +226,7 @@ __BEGIN_DECLS
 #define GL_FOG_HINT                     0x0C54
 
 /* Lighting constants */
-#define GL_LIGHTING     0x0b50
+#define GL_LIGHTING                       0x0b50
 
 #define GL_LIGHT0                         0x4000
 #define GL_LIGHT1                         0x4001
@@ -446,7 +446,7 @@ __BEGIN_DECLS
 #define GLshort  short
 #define GLint    int
 #define GLfloat  float
-#define GLdouble float
+#define GLdouble double
 #define GLvoid   void
 #define GLushort unsigned short
 #define GLuint   unsigned int
@@ -454,7 +454,7 @@ __BEGIN_DECLS
 #define GLsizei  unsigned int
 #define GLfixed  const unsigned int
 #define GLclampf float
-#define GLclampd float
+#define GLclampd double
 #define GLubyte  unsigned char
 #define GLbitfield unsigned int
 #define GLboolean  unsigned char
@@ -480,6 +480,16 @@ __BEGIN_DECLS
 #define GL_PACK_SKIP_ROWS                 0x0D03
 #define GL_PACK_SKIP_PIXELS               0x0D04
 #define GL_PACK_ALIGNMENT                 0x0D05
+
+#define GL_MULTISAMPLE 0x809D
+#define GL_SAMPLE_ALPHA_TO_COVERAGE 0x809E
+#define GL_SAMPLE_ALPHA_TO_ONE 0x809F
+#define GL_SAMPLE_COVERAGE 0x80A0
+#define GL_SAMPLE_BUFFERS 0x80A8
+#define GL_SAMPLES 0x80A9
+#define GL_SAMPLE_COVERAGE_VALUE 0x80AA
+#define GL_SAMPLE_COVERAGE_INVERT 0x80AB
+#define GL_MULTISAMPLE_BIT 0x20000000
 
 #define GLAPI extern
 #define APIENTRY
@@ -542,6 +552,10 @@ GLAPI GLvoid APIENTRY glRecti(GLint x1, GLint y1, GLint x2, GLint y2);
 GLAPI GLvoid APIENTRY glRectiv(const GLint *v1, const GLint *v2);
 #define glRectsv glRectiv
 
+/* Primitive configuration */
+GLAPI void APIENTRY glLineWidth(GLfloat width);
+GLAPI void APIENTRY glPointSize(GLfloat size);
+
 /* Enable / Disable Capability */
 /* Currently Supported Capabilities:
         GL_TEXTURE_2D
@@ -565,12 +579,12 @@ GLAPI void APIENTRY glReadBuffer(GLenum mode);
 GLAPI void APIENTRY glDrawBuffer(GLenum mode);
 
 /* Depth Testing */
-GLAPI void APIENTRY glClearDepth(GLfloat depth);
+GLAPI void APIENTRY glClearDepth(GLdouble depth);
 GLAPI void APIENTRY glClearDepthf(GLfloat depth);
 GLAPI void APIENTRY glDepthMask(GLboolean flag);
 GLAPI void APIENTRY glDepthFunc(GLenum func);
-GLAPI void APIENTRY glDepthRange(GLclampf n, GLclampf f);
-GLAPI void APIENTRY glDepthRangef(GLclampf n, GLclampf f);
+GLAPI void APIENTRY glDepthRange(GLdouble n, GLdouble f);
+GLAPI void APIENTRY glDepthRangef(GLfloat n, GLfloat f);
 
 /* Hints */
 /* Currently Supported Capabilities:
@@ -682,9 +696,9 @@ GLAPI void APIENTRY glScalef(GLfloat x, GLfloat y, GLfloat z);
 GLAPI void APIENTRY glRotatef(GLfloat angle, GLfloat x, GLfloat  y, GLfloat z);
 #define glRotated glRotatef
 
-GLAPI void APIENTRY glOrtho(GLfloat left, GLfloat right,
-                            GLfloat bottom, GLfloat top,
-                            GLfloat znear, GLfloat zfar);
+GLAPI void APIENTRY glOrtho(GLdouble left, GLdouble right,
+                            GLdouble bottom, GLdouble top,
+                            GLdouble znear, GLdouble zfar);
 
 GLAPI void APIENTRY glViewport(GLint x, GLint y, GLsizei width, GLsizei height);
 
@@ -692,9 +706,9 @@ GLAPI void APIENTRY glScissor(GLint x, GLint y, GLsizei width, GLsizei height);
 
 GLAPI void APIENTRY glKosGetMatrix(GLenum mode, GLfloat *params);
 
-GLAPI void APIENTRY glFrustum(GLfloat left, GLfloat right,
-                              GLfloat bottom, GLfloat top,
-                              GLfloat znear, GLfloat zfar);
+GLAPI void APIENTRY glFrustum(GLdouble left, GLdouble right,
+                              GLdouble bottom, GLdouble top,
+                              GLdouble znear, GLdouble zfar);
 
 /* Fog Functions - client must enable GL_FOG for this to take effect */
 GLAPI void APIENTRY glFogi(GLenum pname, GLint param);
@@ -732,7 +746,6 @@ GLAPI GLenum APIENTRY glGetError(void);
 
 /* Non Operational Stubs for portability */
 GLAPI void APIENTRY glAlphaFunc(GLenum func, GLclampf ref);
-GLAPI void APIENTRY glLineWidth(GLfloat width);
 GLAPI void APIENTRY glPolygonMode(GLenum face, GLenum mode);
 GLAPI void APIENTRY glPolygonOffset(GLfloat factor, GLfloat units);
 GLAPI void APIENTRY glGetTexParameterfv(GLenum target, GLenum pname, GLfloat *params);

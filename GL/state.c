@@ -3,7 +3,8 @@
 #include <stdio.h>
 
 #include "private.h"
-
+GLfloat HALF_LINE_WIDTH = 1.0f / 2.0f;
+GLfloat HALF_POINT_SIZE = 1.0f / 2.0f;
 
 static struct {
     GLboolean is_dirty;
@@ -80,9 +81,7 @@ static struct {
     .color_control = GL_SINGLE_COLOR,
     .color_material_mode = GL_AMBIENT_AND_DIFFUSE,
     .color_material_mask = AMBIENT_MASK | DIFFUSE_MASK,
-    .lights = {0},
     .enabled_light_count = 0,
-    .material = {0},
     .shade_model = GL_SMOOTH
 };
 
@@ -218,12 +217,54 @@ GLboolean _glIsNormalizeEnabled() {
     return GPUState.normalize_enabled;
 }
 
-GLenum _glGetBlendSourceFactor() {
-    return GPUState.blend_sfactor;
+GLenum _glGetGpuBlendSrcFactor() {
+    switch(GPUState.blend_sfactor) {
+    case GL_ZERO:
+        return GPU_BLEND_ZERO;
+    case GL_SRC_ALPHA:
+        return GPU_BLEND_SRCALPHA;
+    case GL_DST_COLOR:
+        return GPU_BLEND_DESTCOLOR;
+    case GL_DST_ALPHA:
+        return GPU_BLEND_DESTALPHA;
+    case GL_ONE_MINUS_DST_COLOR:
+        return GPU_BLEND_INVDESTCOLOR;
+    case GL_ONE_MINUS_SRC_ALPHA:
+        return GPU_BLEND_INVSRCALPHA;
+    case GL_ONE_MINUS_DST_ALPHA:
+        return GPU_BLEND_INVDESTALPHA;
+    case GL_ONE:
+        return GPU_BLEND_ONE;
+    default:
+        fprintf(stderr, "Invalid src blend mode: %u\n", (unsigned int)GPUState.blend_sfactor);
+        return GPU_BLEND_ONE;
+    }
 }
 
-GLenum _glGetBlendDestFactor() {
-    return GPUState.blend_dfactor;
+GLenum _glGetGpuBlendDstFactor() {
+    switch(GPUState.blend_dfactor) {
+    case GL_ZERO:
+        return GPU_BLEND_ZERO;
+    case GL_SRC_ALPHA:
+        return GPU_BLEND_SRCALPHA;
+    case GL_SRC_COLOR:
+        // actually 'src' color in PVR2 when used as dst blend factor
+        return GPU_BLEND_DESTCOLOR; 
+    case GL_DST_ALPHA:
+        return GPU_BLEND_DESTALPHA;
+    case GL_ONE_MINUS_SRC_COLOR:
+        // actually 'src' color in PVR2 when used as dst blend factor
+        return GPU_BLEND_INVDESTCOLOR; 
+    case GL_ONE_MINUS_SRC_ALPHA:
+        return GPU_BLEND_INVSRCALPHA;
+    case GL_ONE_MINUS_DST_ALPHA:
+        return GPU_BLEND_INVDESTALPHA;
+    case GL_ONE:
+        return GPU_BLEND_ONE;
+    default:
+        fprintf(stderr, "Invalid dst blend mode: %u\n", (unsigned int)GPUState.blend_dfactor);
+        return GPU_BLEND_ONE;
+    }
 }
 
 
@@ -497,9 +538,12 @@ GLAPI void APIENTRY glEnable(GLenum cap) {
         case GL_TEXTURE_TWIDDLE_KOS:
             _glSetTextureTwiddle(GL_TRUE);
         break;
-    default:
-        _glKosThrowError(GL_INVALID_VALUE, __func__);
-        break;
+        case GL_MULTISAMPLE:
+            // Not supported, but not an error
+            break;
+        default:
+            _glKosThrowError(GL_INVALID_VALUE, __func__);
+            break;
     }
 }
 
@@ -603,9 +647,12 @@ GLAPI void APIENTRY glDisable(GLenum cap) {
         case GL_TEXTURE_TWIDDLE_KOS:
             _glSetTextureTwiddle(GL_FALSE);
         break;
-    default:
-        _glKosThrowError(GL_INVALID_VALUE, __func__);
-        break;
+        case GL_MULTISAMPLE:
+            // Not supported, but not an error
+            break;
+        default:
+            _glKosThrowError(GL_INVALID_VALUE, __func__);
+            break;
     }
 }
 
@@ -632,12 +679,12 @@ GLAPI void APIENTRY glClearColor(GLfloat r, GLfloat g, GLfloat b, GLfloat a) {
 
 /* Depth Testing */
 GLAPI void APIENTRY glClearDepthf(GLfloat depth) {
-    glClearDepth(depth);
-}
-
-GLAPI void APIENTRY glClearDepth(GLfloat depth) {
     /* We reverse because using invW means that farther Z == lower number */
     GPUSetClearDepth(MIN(1.0f - depth, PVR_MIN_Z));
+}
+
+GLAPI void APIENTRY glClearDepth(GLdouble depth) {
+    glClearDepthf(depth);
 }
 
 GLAPI void APIENTRY glDrawBuffer(GLenum mode) {
@@ -727,7 +774,11 @@ GLAPI void APIENTRY glAlphaFunc(GLenum func, GLclampf ref) {
 }
 
 void glLineWidth(GLfloat width) {
-    _GL_UNUSED(width);
+    HALF_LINE_WIDTH = width / 2.0f;
+}
+
+void glPointSize(GLfloat size) {
+    HALF_POINT_SIZE = size / 2.0f;
 }
 
 void glPolygonOffset(GLfloat factor, GLfloat units) {

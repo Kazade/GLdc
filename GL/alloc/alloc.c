@@ -244,13 +244,17 @@ int alloc_init(void* pool, size_t size) {
 
     memset(pool_header.block_usage, 0, BLOCK_COUNT);
     pool_header.pool = pool;
-    pool_header.pool_size = size;
 
     intptr_t base_address = (intptr_t) pool_header.pool;
     base_address = round_up(base_address, 2048);
 
     pool_header.base_address = (uint8_t*) base_address;
     pool_header.block_count = ((p + size) - pool_header.base_address) / 2048;
+
+    /* The pool size might be less than the passed size if the memory
+     * wasn't aligned to 2048 */
+    pool_header.pool_size = pool_header.block_count * 2048;
+
     pool_header.allocations = NULL;
 
     assert(((uintptr_t) pool_header.base_address) % 2048 == 0);
@@ -292,7 +296,7 @@ static inline void block_and_offset_from_subblock(size_t sb, size_t* b, uint8_t*
     *off = (sb % 8);
 }
 
-void* alloc_malloc(void* pool, size_t size) {
+static void* alloc_malloc_internal(void* pool, size_t size, bool for_defrag) {
     DBG_MSG("Allocating: %d\n", size);
 
     size_t start_subblock, required_subblocks;
@@ -335,6 +339,11 @@ void* alloc_malloc(void* pool, size_t size) {
             pool_header.block_usage[block++] |= mask;
         }
 
+        // defrag allocations don't create new entries, they reuse old ones
+        if(for_defrag) {
+            return ret;
+        }
+
         /* Insert allocations in the list by size descending so that when we
          * defrag we can move the larger blocks before the smaller ones without
          * much effort */
@@ -374,6 +383,10 @@ void* alloc_malloc(void* pool, size_t size) {
     DBG_MSG("Alloc done\n");
 
     return ret;
+}
+
+void* alloc_malloc(void* pool, size_t size) {
+    return alloc_malloc_internal(pool, size, false);
 }
 
 static void alloc_release_blocks(struct AllocEntry* it) {
@@ -433,14 +446,14 @@ void alloc_free(void* pool, void* p) {
 
             DBG_MSG("Freed: size: %d, us: %d, sb: %d, off: %d\n", it->size, used_subblocks, block, offset);
             free(it);
-            break;
+            return;
         }
 
         last = it;
         it = it->next;
     }
 
-    DBG_MSG("Free done\n");
+    assert("Freed pointer not found, heap corruption?" && 0);
 }
 
 void alloc_run_defrag(void* pool, defrag_address_move callback, int max_iterations, void* user_data) {
@@ -456,8 +469,8 @@ void alloc_run_defrag(void* pool, defrag_address_move callback, int max_iteratio
 
         while(it) {
             void* potential_dest = alloc_next_available(pool, it->size);
-            if(potential_dest < it->pointer) {
-                potential_dest = alloc_malloc(pool, it->size);
+            if(potential_dest && potential_dest < it->pointer) {
+                potential_dest = alloc_malloc_internal(pool, it->size, true);
                 memcpy(potential_dest, it->pointer, it->size);
 
                 /* Mark this block as now free, but don't fiddle with the
@@ -490,45 +503,39 @@ static inline uint8_t count_ones(uint8_t byte) {
 size_t alloc_count_free(void* pool) {
     (void) pool;
 
-    uint8_t* it = pool_header.block_usage;
-    uint8_t* end = it + pool_header.block_count;
+    size_t total_used = 0;
 
-    size_t total_free = 0;
-
-    while(it < end) {
-        total_free += count_ones(*it) * 256;
-        ++it;
+    for(size_t i = 0; i < pool_header.block_count; ++i) {
+        total_used += count_ones(pool_header.block_usage[i]) * 256;
     }
 
-    return total_free;
+    return pool_header.pool_size - total_used;
 }
 
 size_t alloc_count_continuous(void* pool) {
     (void) pool;
 
-    size_t largest_block = 0;
+    size_t contiguous_free = 0;
+    size_t most_contiguous = 0;
 
-    uint8_t* it = pool_header.block_usage;
-    uint8_t* end = it + pool_header.block_count;
+    for(size_t i = 0; i < pool_header.block_count; ++i) {
+        uint8_t t = pool_header.block_usage[i];
 
-    size_t current_block = 0;
-    while(it < end) {
-        uint8_t t = *it++;
-        if(!t) {
-            current_block += 2048;
-        } else {
-            for(int i = 7; i >= 0; --i) {
-                bool bitset = (t & (1 << i));
-                if(bitset) {
-                    current_block += (7 - i) * 256;
-                    if(largest_block < current_block) {
-                        largest_block = current_block;
-                        current_block = 0;
-                    }
+        for(int i = 7; i >= 0; --i) {
+            bool bitset = (t & (1 << i));
+            if(!bitset) {
+                ++contiguous_free;
+            } else {
+                if(contiguous_free > most_contiguous) {
+                    most_contiguous = contiguous_free;
                 }
+                contiguous_free = 0;
             }
         }
     }
 
-    return largest_block;
+    if(contiguous_free > most_contiguous) {
+        most_contiguous = contiguous_free;
+    }
+    return most_contiguous * 256;
 }

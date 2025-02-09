@@ -25,6 +25,7 @@ extern void* memcpy4 (void *dest, const void *src, size_t count);
 #define GL_NO_INSTRUMENT inline __attribute__((no_instrument_function))
 #define GL_INLINE_DEBUG GL_NO_INSTRUMENT __attribute__((always_inline))
 #define GL_FORCE_INLINE static GL_INLINE_DEBUG
+#define GL_NO_INLINE __attribute__((noinline))
 #define _GL_UNUSED(x) (void)(x)
 
 #define _PACK4(v) ((v * 0xF) / 0xFF)
@@ -103,20 +104,6 @@ typedef struct {
     unsigned int list_type;
     AlignedVector vector;
 } PolyList;
-
-typedef struct {
-    GLint x;
-    GLint y;
-    GLint width;
-    GLint height;
-
-    float x_plus_hwidth;
-    float y_plus_hheight;
-    float hwidth;  /* width * 0.5f */
-    float hheight; /* height * 0.5f */
-} Viewport;
-
-extern Viewport VIEWPORT;
 
 typedef struct {
     /* Palette data is always stored in RAM as RGBA8888 and packed as ARGB8888
@@ -273,6 +260,12 @@ do {                 \
     memcpy_vertex(b, &c); \
 } while(0)
 
+#ifdef __DREAMCAST__
+#define fast_rsqrt(x) frsqrt(x)
+#else
+#define fast_rsqrt(x) (1.0f / __builtin_sqrtf(x))
+#endif
+
 /* ClipVertex doesn't have room for these, so we need to parse them
  * out separately. Potentially 'w' will be housed here if we support oargb */
 typedef struct {
@@ -334,6 +327,9 @@ void _glMatrixLoadModelViewProjection();
 extern GLfloat DEPTH_RANGE_MULTIPLIER_L;
 extern GLfloat DEPTH_RANGE_MULTIPLIER_H;
 
+extern GLfloat HALF_LINE_WIDTH;
+extern GLfloat HALF_POINT_SIZE;
+
 Matrix4x4* _glGetProjectionMatrix();
 Matrix4x4* _glGetModelViewMatrix();
 
@@ -350,6 +346,7 @@ typedef struct {
     GLsizei stride;  // 4
     GLint size; // 4
 } AttribPointer;
+typedef void (*ReadAttributeFunc)(const GLubyte*, GLubyte*);
 
 typedef struct {
     AttribPointer vertex; // 16
@@ -357,25 +354,33 @@ typedef struct {
     AttribPointer uv; // 48
     AttribPointer st; // 64
     AttribPointer normal; // 80
-    AttribPointer padding; // 96
+
+    GLuint enabled; // list of currently enabled/used attributes
+    GLuint dirty;   // list of attributes that need state recalculating
+    GLboolean fast_path;
+
+    ReadAttributeFunc vertex_func;
+    ReadAttributeFunc colour_func;
+    ReadAttributeFunc uv_func;
+    ReadAttributeFunc st_func;
+    ReadAttributeFunc normal_func;
 } AttribPointerList;
+
+extern AttribPointerList ATTRIB_LIST;
 
 GLboolean _glCheckValidEnum(GLint param, GLint* values, const char* func);
 
 GLuint* _glGetEnabledAttributes();
-AttribPointer* _glGetVertexAttribPointer();
-AttribPointer* _glGetDiffuseAttribPointer();
-AttribPointer* _glGetNormalAttribPointer();
-AttribPointer* _glGetUVAttribPointer();
-AttribPointer* _glGetSTAttribPointer();
-GLenum _glGetShadeModel();
+GL_NO_INLINE void _glUpdateAttributes();
 
+GLenum _glGetShadeModel();
 TextureObject* _glGetTexture0();
 TextureObject* _glGetTexture1();
 TextureObject* _glGetBoundTexture();
 
 extern GLubyte ACTIVE_TEXTURE;
 extern GLboolean TEXTURES_ENABLED[];
+extern GLubyte ACTIVE_CLIENT_TEXTURE;
 
 GLubyte _glGetActiveTexture();
 GLint _glGetTextureInternalFormat();
@@ -399,8 +404,8 @@ GLboolean _glIsFogEnabled();
 GLenum _glGetDepthFunc();
 GLenum _glGetCullFace();
 GLenum _glGetFrontFace();
-GLenum _glGetBlendSourceFactor();
-GLenum _glGetBlendDestFactor();
+GLenum _glGetGpuBlendSrcFactor();
+GLenum _glGetGpuBlendDstFactor();
 
 extern PolyList OP_LIST;
 extern PolyList PT_LIST;
@@ -426,98 +431,9 @@ GLboolean _glIsColorMaterialEnabled();
 
 GLboolean _glIsNormalizeEnabled();
 
-extern AttribPointerList ATTRIB_POINTERS;
-
-extern GLuint ENABLED_VERTEX_ATTRIBUTES;
-extern GLuint FAST_PATH_ENABLED;
-
-GL_FORCE_INLINE GLuint _glIsVertexDataFastPathCompatible() {
-    /* The fast path is enabled when all enabled elements of the vertex
-     * match the output format. This means:
-     *
-     * xyz == 3f
-     * uv == 2f
-     * rgba == argb4444
-     * st == 2f
-     * normal == 3f
-     *
-     * When this happens we do inline straight copies of the enabled data
-     * and transforms for positions and normals happen while copying.
-     */
-
-
-
-    if((ENABLED_VERTEX_ATTRIBUTES & VERTEX_ENABLED_FLAG)) {
-        if(ATTRIB_POINTERS.vertex.size != 3 || ATTRIB_POINTERS.vertex.type != GL_FLOAT) {
-            return GL_FALSE;
-        }
-    }
-
-    if((ENABLED_VERTEX_ATTRIBUTES & UV_ENABLED_FLAG)) {
-        if(ATTRIB_POINTERS.uv.size != 2 || ATTRIB_POINTERS.uv.type != GL_FLOAT) {
-            return GL_FALSE;
-        }
-    }
-
-    if((ENABLED_VERTEX_ATTRIBUTES & DIFFUSE_ENABLED_FLAG)) {
-        /* FIXME: Shouldn't this be a reversed format? */
-        if(ATTRIB_POINTERS.colour.size != GL_BGRA || ATTRIB_POINTERS.colour.type != GL_UNSIGNED_BYTE) {
-            return GL_FALSE;
-        }
-    }
-
-    if((ENABLED_VERTEX_ATTRIBUTES & ST_ENABLED_FLAG)) {
-        if(ATTRIB_POINTERS.st.size != 2 || ATTRIB_POINTERS.st.type != GL_FLOAT) {
-            return GL_FALSE;
-        }
-    }
-
-    if((ENABLED_VERTEX_ATTRIBUTES & NORMAL_ENABLED_FLAG)) {
-        if(ATTRIB_POINTERS.normal.size != 3 || ATTRIB_POINTERS.normal.type != GL_FLOAT) {
-            return GL_FALSE;
-        }
-    }
-
-    return GL_TRUE;
-}
-
-GL_FORCE_INLINE GLuint _glRecalcFastPath() {
-    FAST_PATH_ENABLED = _glIsVertexDataFastPathCompatible();
-    return FAST_PATH_ENABLED;
-}
-
 extern GLboolean IMMEDIATE_MODE_ACTIVE;
 
-extern GLenum LAST_ERROR;
-extern char ERROR_FUNCTION[64];
-
-GL_FORCE_INLINE const char* _glErrorEnumAsString(GLenum error) {
-    switch(error) {
-        case GL_INVALID_ENUM: return "GL_INVALID_ENUM";
-        case GL_OUT_OF_MEMORY: return "GL_OUT_OF_MEMORY";
-        case GL_INVALID_OPERATION: return "GL_INVALID_OPERATION";
-        case GL_INVALID_VALUE: return "GL_INVALID_VALUE";
-        default:
-            return "GL_UNKNOWN_ERROR";
-    }
-}
-
-GL_FORCE_INLINE void _glKosThrowError(GLenum error, const char *function) {
-    if(LAST_ERROR == GL_NO_ERROR) {
-        LAST_ERROR = error;
-        sprintf(ERROR_FUNCTION, "%s\n", function);
-        fprintf(stderr, "GL ERROR: %s when calling %s\n", _glErrorEnumAsString(LAST_ERROR), ERROR_FUNCTION);
-    }
-}
-
-GL_FORCE_INLINE GLubyte _glKosHasError() {
-    return (LAST_ERROR != GL_NO_ERROR) ? GL_TRUE : GL_FALSE;
-}
-
-GL_FORCE_INLINE void _glKosResetError() {
-    LAST_ERROR = GL_NO_ERROR;
-    sprintf(ERROR_FUNCTION, "\n");
-}
+GL_NO_INLINE void _glKosThrowError(GLenum error, const char *function);
 
 GL_FORCE_INLINE GLboolean _glCheckImmediateModeInactive(const char* func) {
     /* Returns 1 on error */
@@ -529,13 +445,7 @@ GL_FORCE_INLINE GLboolean _glCheckImmediateModeInactive(const char* func) {
     return GL_FALSE;
 }
 
-typedef struct {
-    float n[3]; // 12 bytes
-    float finalColour[4]; //28 bytes
-    uint32_t padding; // 32 bytes
-} EyeSpaceData;
-
-extern void _glPerformLighting(Vertex* vertices, EyeSpaceData *es, const uint32_t count);
+extern void _glPerformLighting(Vertex* vertices, VertexExtra* extra, const uint32_t count);
 
 unsigned char _glIsClippingEnabled();
 void _glEnableClipping(unsigned char v);

@@ -22,7 +22,7 @@ string(TOUPPER ${BACKEND} BACKEND_UPPER)
 add_definitions(-DBACKEND_${BACKEND_UPPER})
 
 set(CMAKE_C_STANDARD 99)
-set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD 14)
 
 include_directories(include)
 
@@ -68,6 +68,7 @@ set(
     containers/aligned_vector.c
     containers/named_array.c
     containers/stack.c
+    GL/attributes.c
     GL/draw.c
     GL/error.c
     GL/flush.c
@@ -209,6 +210,7 @@ gen_sample(scissor samples/scissor/main.c)
 gen_sample(polymark samples/polymark/main.c)
 gen_sample(cubes samples/cubes/main.cpp)
 gen_sample(zclip_test tests/zclip/main.cpp)
+gen_sample(primitive_modes samples/primitive_modes/main.c)
 
 if(PLATFORM_DREAMCAST)
     gen_sample(trimark samples/trimark/main.c)

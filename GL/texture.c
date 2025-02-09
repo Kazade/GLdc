@@ -78,15 +78,16 @@ void build_twiddle_table(int32_t w, int32_t h) {
     }
 }
 
-/* Given a 0-based texel location, and an image width/height. Return the
- * new 0-based texel location */
-GL_FORCE_INLINE uint32_t twid_location(uint32_t i, uint32_t w, uint32_t h) {
+static void twid_prepare_table(uint32_t w, uint32_t h) {
     if(TWIDDLE_TABLE.width != w || TWIDDLE_TABLE.height != h || !TWIDDLE_TABLE.table) {
         build_twiddle_table(w, h);
     }
+}
 
-    uint32_t ret = TWIDDLE_TABLE.table[i];
-    return ret;
+/* Given a 0-based texel location, returns new 0-based texel location */
+/* NOTE: twid_prepare_table must have been called beforehand for correct behaviour */
+GL_FORCE_INLINE uint32_t twid_location(uint32_t i) {
+    return TWIDDLE_TABLE.table[i];
 }
 
 
@@ -1228,55 +1229,69 @@ static int _determineConversion(GLint internalFormat, GLenum format, GLenum type
         bool twiddle;
         bool pack; // If true, each value is packed after conversion into half-bytes
     } conversions [] = {
-        {_a8_to_argb4444, GL_ARGB4444_KOS, GL_ALPHA, GL_UNSIGNED_BYTE, false, false},
-        {_rgba8888_to_argb4444, GL_ARGB4444_KOS, GL_RGBA, GL_UNSIGNED_BYTE, false, false},
-        {_rgba4444_to_argb4444, GL_ARGB4444_KOS, GL_RGBA, GL_UNSIGNED_SHORT_4_4_4_4, false, false},
-        {_rgba4444_to_argb4444, GL_ARGB4444_TWID_KOS, GL_RGBA, GL_UNSIGNED_SHORT_4_4_4_4, true, false},
-        {NULL, GL_ARGB4444_KOS, GL_BGRA, GL_UNSIGNED_SHORT_4_4_4_4_REV, false, false},
-        {NULL, GL_ARGB4444_TWID_KOS, GL_BGRA, GL_UNSIGNED_SHORT_4_4_4_4_REV_TWID_KOS, false, false},
-        {_rgba8888_to_argb4444, GL_ARGB4444_TWID_KOS, GL_RGBA, GL_UNSIGNED_BYTE, true, false},
-        {NULL, GL_ARGB1555_KOS, GL_BGRA, GL_UNSIGNED_SHORT_1_5_5_5_REV, false, false},
-        {_argb1555_to_argb4444, GL_ARGB4444_TWID_KOS, GL_BGRA, GL_UNSIGNED_SHORT_1_5_5_5_REV, true, false},
-        {NULL, GL_ARGB1555_TWID_KOS, GL_BGRA, GL_UNSIGNED_SHORT_1_5_5_5_REV_TWID_KOS, false, false},
-        {_rgba8888_to_rgb565, GL_RGB565_KOS, GL_RGBA, GL_UNSIGNED_BYTE, false, false},
-        {_r8_to_rgb565, GL_RGB565_KOS, GL_RED, GL_UNSIGNED_BYTE, false, false},
-        {_rgb888_to_rgb565, GL_RGB565_KOS, GL_RGB, GL_UNSIGNED_BYTE, false, false},
-        {_rgba8888_to_rgb565, GL_RGB565_KOS, GL_RGBA, GL_UNSIGNED_BYTE, false, false},
-        {_r8_to_rgb565, GL_RGB565_KOS, GL_RED, GL_UNSIGNED_BYTE, false, false},
-        {NULL, GL_RGB565_KOS, GL_RGB, GL_UNSIGNED_SHORT_5_6_5, false, false},
-        {NULL, GL_RGB565_TWID_KOS, GL_RGB, GL_UNSIGNED_SHORT_5_6_5_TWID_KOS, false, false},
-        {NULL, GL_RGB565_TWID_KOS, GL_RGB, GL_UNSIGNED_SHORT_5_6_5, true, false},
-        {_rgb888_to_rgb565, GL_RGB565_TWID_KOS, GL_RGB, GL_UNSIGNED_BYTE, true, false},
-        {NULL, GL_COLOR_INDEX8_EXT, GL_COLOR_INDEX, GL_UNSIGNED_BYTE, false, false},
-        {NULL, GL_COLOR_INDEX8_EXT, GL_COLOR_INDEX, GL_BYTE, false, false},
-        {NULL, GL_COLOR_INDEX8_TWID_KOS, GL_COLOR_INDEX, GL_UNSIGNED_BYTE, true, false},
-        {NULL, GL_COLOR_INDEX8_TWID_KOS, GL_COLOR_INDEX, GL_BYTE, true, false},
-        {NULL, GL_COLOR_INDEX4_EXT, GL_COLOR_INDEX, GL_UNSIGNED_BYTE, false, true},
-        {NULL, GL_COLOR_INDEX4_EXT, GL_COLOR_INDEX, GL_BYTE, false, true},
+        {_rgba8888_to_argb4444, GL_ARGB4444_KOS,      GL_RGBA,  GL_UNSIGNED_BYTE, false, false},
+        {_rgba8888_to_argb4444, GL_ARGB4444_TWID_KOS, GL_RGBA,  GL_UNSIGNED_BYTE,  true, false},
+        {_a8_to_argb4444,       GL_ARGB4444_KOS,      GL_ALPHA, GL_UNSIGNED_BYTE, false, false},
+        {_a8_to_argb4444,       GL_ARGB4444_TWID_KOS, GL_ALPHA, GL_UNSIGNED_BYTE,  true, false},
 
-        {NULL, GL_COLOR_INDEX4_EXT, GL_COLOR_INDEX4_EXT, GL_UNSIGNED_BYTE, false, false},
-        {NULL, GL_COLOR_INDEX4_EXT, GL_COLOR_INDEX4_EXT, GL_BYTE, false, false},
-        {NULL, GL_COLOR_INDEX4_TWID_KOS, GL_COLOR_INDEX, GL_UNSIGNED_BYTE, true, true},
-        {NULL, GL_COLOR_INDEX4_TWID_KOS, GL_COLOR_INDEX, GL_BYTE, true, true},
+        {_rgba4444_to_argb4444, GL_ARGB4444_KOS,      GL_RGBA,  GL_UNSIGNED_SHORT_4_4_4_4,              false, false},
+        {_rgba4444_to_argb4444, GL_ARGB4444_TWID_KOS, GL_RGBA,  GL_UNSIGNED_SHORT_4_4_4_4,               true, false},
+        {NULL,                  GL_ARGB4444_KOS,      GL_BGRA,  GL_UNSIGNED_SHORT_4_4_4_4_REV,          false, false},
+        {NULL,                  GL_ARGB4444_TWID_KOS, GL_BGRA,  GL_UNSIGNED_SHORT_4_4_4_4_REV,           true, false},
 
-        {NULL, GL_COLOR_INDEX4_TWID_KOS, GL_COLOR_INDEX4_EXT, GL_UNSIGNED_BYTE, true, false},
-        {NULL, GL_COLOR_INDEX4_TWID_KOS, GL_COLOR_INDEX4_EXT, GL_BYTE, true, false},
+        {NULL,                  GL_ARGB4444_TWID_KOS, GL_BGRA,  GL_UNSIGNED_SHORT_4_4_4_4_REV_TWID_KOS, false, false},
 
-        {NULL, GL_COLOR_INDEX8_EXT, GL_COLOR_INDEX8_EXT, GL_UNSIGNED_BYTE, false, false},
-        {NULL, GL_COLOR_INDEX8_EXT, GL_COLOR_INDEX8_EXT, GL_BYTE, false, false},
+        {_argb1555_to_argb4444, GL_ARGB4444_KOS,      GL_BGRA,  GL_UNSIGNED_SHORT_1_5_5_5_REV,          false, false},
+        {_argb1555_to_argb4444, GL_ARGB4444_TWID_KOS, GL_BGRA,  GL_UNSIGNED_SHORT_1_5_5_5_REV,           true, false},
+
+        {NULL,                  GL_ARGB1555_KOS,      GL_BGRA,  GL_UNSIGNED_SHORT_1_5_5_5_REV,          false, false},
+        {NULL,                  GL_ARGB1555_TWID_KOS, GL_BGRA,  GL_UNSIGNED_SHORT_1_5_5_5_REV,           true, false},
+
+        {NULL,                  GL_ARGB1555_TWID_KOS, GL_BGRA,  GL_UNSIGNED_SHORT_1_5_5_5_REV_TWID_KOS, false, false},
+
+        {_r8_to_rgb565,         GL_RGB565_KOS,        GL_RED,   GL_UNSIGNED_BYTE, false, false},
+        {_r8_to_rgb565,         GL_RGB565_TWID_KOS,   GL_RED,   GL_UNSIGNED_BYTE,  true, false},
+        {_rgb888_to_rgb565,     GL_RGB565_KOS,        GL_RGB,   GL_UNSIGNED_BYTE, false, false},
+        {_rgb888_to_rgb565,     GL_RGB565_TWID_KOS,   GL_RGB,   GL_UNSIGNED_BYTE,  true, false},
+        {_rgba8888_to_rgb565,   GL_RGB565_KOS,        GL_RGBA,  GL_UNSIGNED_BYTE, false, false},
+        {_rgba8888_to_rgb565,   GL_RGB565_TWID_KOS,   GL_RGBA,  GL_UNSIGNED_BYTE,  true, false},
+
+        {NULL,                  GL_RGB565_KOS,        GL_RGB,   GL_UNSIGNED_SHORT_5_6_5,          false, false},
+        {NULL,                  GL_RGB565_TWID_KOS,   GL_RGB,   GL_UNSIGNED_SHORT_5_6_5,           true, false},
+        {NULL,                  GL_RGB565_TWID_KOS,   GL_RGB,   GL_UNSIGNED_SHORT_5_6_5_TWID_KOS, false, false},
+
+        {NULL, GL_COLOR_INDEX8_EXT,      GL_COLOR_INDEX,      GL_UNSIGNED_BYTE, false, false},
+        {NULL, GL_COLOR_INDEX8_EXT,      GL_COLOR_INDEX,      GL_BYTE,          false, false},
+        {NULL, GL_COLOR_INDEX8_TWID_KOS, GL_COLOR_INDEX,      GL_UNSIGNED_BYTE,  true, false},
+        {NULL, GL_COLOR_INDEX8_TWID_KOS, GL_COLOR_INDEX,      GL_BYTE,           true, false},
+
+        {NULL, GL_COLOR_INDEX8_EXT,      GL_COLOR_INDEX8_EXT, GL_UNSIGNED_BYTE, false, false},
+        {NULL, GL_COLOR_INDEX8_EXT,      GL_COLOR_INDEX8_EXT, GL_BYTE,          false, false},
+        {NULL, GL_COLOR_INDEX8_TWID_KOS, GL_COLOR_INDEX8_EXT, GL_UNSIGNED_BYTE,  true, false},
+        {NULL, GL_COLOR_INDEX8_TWID_KOS, GL_COLOR_INDEX8_EXT, GL_BYTE,           true, false},
+
         {NULL, GL_COLOR_INDEX8_TWID_KOS, GL_COLOR_INDEX8_TWID_KOS, GL_UNSIGNED_BYTE, false, false},
-        {NULL, GL_COLOR_INDEX8_TWID_KOS, GL_COLOR_INDEX8_TWID_KOS, GL_BYTE, false, false},
-        {NULL, GL_COLOR_INDEX8_TWID_KOS, GL_COLOR_INDEX8_EXT, GL_UNSIGNED_BYTE, true, false},
-        {NULL, GL_COLOR_INDEX8_TWID_KOS, GL_COLOR_INDEX8_EXT, GL_BYTE, true, false},
+        {NULL, GL_COLOR_INDEX8_TWID_KOS, GL_COLOR_INDEX8_TWID_KOS, GL_BYTE,          false, false},
 
-        {NULL, GL_RGBA8, GL_RGBA, GL_UNSIGNED_BYTE, false, false},
-        {NULL, GL_RGBA8, GL_RGBA, GL_BYTE, false, false},
-        {_rgb888_to_rgba8888, GL_RGBA8, GL_RGB, GL_UNSIGNED_BYTE, false, false},
-        {_rgb888_to_rgba8888, GL_RGBA8, GL_RGB, GL_BYTE, false, false},
-        {_rgb888_to_argb4444, GL_RGBA4, GL_RGB, GL_UNSIGNED_BYTE, false, false},
-        {_rgb888_to_argb4444, GL_RGBA4, GL_RGB, GL_BYTE, false, false},
+        {NULL, GL_COLOR_INDEX4_EXT,      GL_COLOR_INDEX,      GL_UNSIGNED_BYTE, false,  true},
+        {NULL, GL_COLOR_INDEX4_EXT,      GL_COLOR_INDEX,      GL_BYTE,          false,  true},
+        {NULL, GL_COLOR_INDEX4_TWID_KOS, GL_COLOR_INDEX,      GL_UNSIGNED_BYTE,  true,  true},
+        {NULL, GL_COLOR_INDEX4_TWID_KOS, GL_COLOR_INDEX,      GL_BYTE,           true,  true},
+
+        {NULL, GL_COLOR_INDEX4_EXT,      GL_COLOR_INDEX4_EXT, GL_UNSIGNED_BYTE, false, false},
+        {NULL, GL_COLOR_INDEX4_EXT,      GL_COLOR_INDEX4_EXT, GL_BYTE,          false, false},
+        {NULL, GL_COLOR_INDEX4_TWID_KOS, GL_COLOR_INDEX4_EXT, GL_UNSIGNED_BYTE,  true, false},
+        {NULL, GL_COLOR_INDEX4_TWID_KOS, GL_COLOR_INDEX4_EXT, GL_BYTE,           true, false},
+
+        {NULL,                  GL_RGBA8, GL_RGBA, GL_UNSIGNED_BYTE, false, false},
+        {NULL,                  GL_RGBA8, GL_RGBA, GL_BYTE,          false, false},
+        {_rgb888_to_rgba8888,   GL_RGBA8, GL_RGB,  GL_UNSIGNED_BYTE, false, false},
+        {_rgb888_to_rgba8888,   GL_RGBA8, GL_RGB,  GL_BYTE,          false, false},
+
+        {_rgb888_to_argb4444,   GL_RGBA4, GL_RGB,  GL_UNSIGNED_BYTE, false, false},
+        {_rgb888_to_argb4444,   GL_RGBA4, GL_RGB,  GL_BYTE,          false, false},
         {_rgba8888_to_argb4444, GL_RGBA4, GL_RGBA, GL_UNSIGNED_BYTE, false, false},
-        {_rgba8888_to_argb4444, GL_RGBA4, GL_RGBA, GL_BYTE, false, false},
+        {_rgba8888_to_argb4444, GL_RGBA4, GL_RGBA, GL_BYTE,          false, false},
     };
 
     for(size_t i = 0; i < sizeof(conversions) / sizeof(struct Entry); ++i) {
@@ -1465,6 +1480,79 @@ static bool _glTexImage2DValidate(GLenum target, GLint level, GLint internalForm
     return true;
 }
 
+static bool _glTexSubImage2DValidate(GLenum target, GLint level, GLint xoffset, GLint yoffset,
+                                     GLsizei width, GLsizei height, GLenum format, GLenum type,
+                                     GLsizei textureWidth, GLsizei textureHeight) {
+    if (target != GL_TEXTURE_2D) {
+        INFO_MSG("Invalid target. Only GL_TEXTURE_2D is supported.");
+        _glKosThrowError(GL_INVALID_ENUM, __func__);
+        return false;
+    }
+
+    if (width > 1024 || height > 1024) {
+        INFO_MSG("Invalid subimage size. Maximum 1024x1024.");
+        _glKosThrowError(GL_INVALID_VALUE, __func__);
+        return false;
+    }
+
+    // Ensure format is valid
+    GLint validFormats[] = {
+        GL_ALPHA,
+        GL_LUMINANCE,
+        GL_INTENSITY,
+        GL_LUMINANCE_ALPHA,
+        GL_RED,
+        GL_RGB,
+        GL_RGBA,
+        GL_BGRA,
+        GL_COLOR_INDEX,
+        GL_COLOR_INDEX4_EXT,  /* Extension, for glCompressedTexImage pass-thru */
+        GL_COLOR_INDEX8_EXT,   /* Extension, for glCompressedTexImage pass-thru */
+        GL_COLOR_INDEX4_TWID_KOS,  /* Extension, for glCompressedTexImage pass-thru */
+        GL_COLOR_INDEX8_TWID_KOS,   /* Extension, for glCompressedTexImage pass-thru */
+        0
+    };
+
+    if (_glCheckValidEnum(format, validFormats, __func__) != 0) {
+        return false;
+    }
+
+    // Validate type
+    if (format != GL_COLOR_INDEX4_EXT && format != GL_COLOR_INDEX4_TWID_KOS) {
+        /* Use determineStride to see if type is valid */
+        if (_determineStride(GL_RGBA, type) == -1) {
+            INFO_MSG("Invalid pixel data type.");
+            _glKosThrowError(GL_INVALID_ENUM, __func__);
+            return false;
+        }
+    }
+
+    // Validate offsets and dimensions using the underlying texture size
+    if (xoffset < 0 || yoffset < 0 || 
+        (xoffset + width) > textureWidth || 
+        (yoffset + height) > textureHeight) {
+        INFO_MSG("Subimage exceeds the dimensions of the texture.");
+        _glKosThrowError(GL_INVALID_VALUE, __func__);
+        return false;
+    }
+
+    if (level < 0) {
+        INFO_MSG("Invalid mipmap level.");
+        _glKosThrowError(GL_INVALID_VALUE, __func__);
+        return false;
+    }
+
+    // Ensure no border (since glTexSubImage2D doesn't allow it)
+    GLint border = 0; // No border allowed
+    if (border != 0) {
+        INFO_MSG("Border must be zero for glTexSubImage2D.");
+        _glKosThrowError(GL_INVALID_VALUE, __func__);
+        return false;
+    }
+
+    return true;
+}
+
 static inline GLboolean is4BPPFormat(GLenum format) {
     return format == GL_COLOR_INDEX4_EXT || format == GL_COLOR_INDEX4_TWID_KOS;
 }
@@ -1620,8 +1708,10 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
             if(is4BPPFormat(internalFormat) && is4BPPFormat(format)) {
                 // Special case twiddling. We have to unpack each src value
                 // and repack into the right place
+                twid_prepare_table(width, height);
+
                 for(uint32_t i = 0; i < (width * height); ++i) {
-                    uint32_t newLocation = twid_location(i, width, height);
+                    uint32_t newLocation = twid_location(i);
 
                     assert(newLocation < (width * height));
                     assert((newLocation / 2) < destBytes);
@@ -1641,8 +1731,10 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
                     }
                 }
             } else {
+                twid_prepare_table(width, height);
+
                 for(uint32_t i = 0; i < (width * height); ++i) {
-                    uint32_t newLocation = twid_location(i, width, height);
+                    uint32_t newLocation = twid_location(i);
                     dst = conversionBuffer + (destStride * newLocation);
 
                     for(int j = 0; j < destStride; ++j)
@@ -1653,8 +1745,10 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
             }
         } else if(needs_conversion == 3) {
             // Convert + twiddle
+            twid_prepare_table(width, height);
+
             for(uint32_t i = 0; i < (width * height); ++i) {
-                uint32_t newLocation = twid_location(i, width, height);
+                uint32_t newLocation = twid_location(i);
                 dst = conversionBuffer + (destStride * newLocation);
                 src = data + (sourceStride * i);
                 conversion(src, dst);
@@ -1977,19 +2071,139 @@ GLAPI void APIENTRY glGetColorTableParameterfvEXT(GLenum target, GLenum pname, G
     _glKosThrowError(GL_INVALID_OPERATION, __func__);
 }
 
-GLAPI void APIENTRY glTexSubImage2D(
-    GLenum target, GLint level, GLint xoffset, GLint yoffset,
-    GLsizei width, GLsizei height, GLenum format, GLenum type, const GLvoid *pixels) {
-    _GL_UNUSED(target);
-    _GL_UNUSED(level);
-    _GL_UNUSED(xoffset);
-    _GL_UNUSED(yoffset);
-    _GL_UNUSED(width);
-    _GL_UNUSED(height);
-    _GL_UNUSED(format);
-    _GL_UNUSED(type);
-    _GL_UNUSED(pixels);
-    gl_assert(0 && "Not Implemented");
+void APIENTRY glTexSubImage2D(GLenum target, GLint level, GLint xoffset, GLint yoffset,
+                              GLsizei width, GLsizei height, GLenum format,
+                              GLenum type, const GLvoid *data) {
+    TRACE();
+
+    gl_assert(ACTIVE_TEXTURE < MAX_GLDC_TEXTURE_UNITS);
+    TextureObject* active = TEXTURE_UNITS[ACTIVE_TEXTURE];
+
+    if (!active || !active->data) {
+        INFO_MSG("Called glTexSubImage2D on unbound or uninitialized texture");
+        _glKosThrowError(GL_INVALID_OPERATION, __func__);
+        return;
+    }
+
+    // Retrieve the dimensions of the currently bound texture
+    GLsizei textureWidth = active->width;
+    GLsizei textureHeight = active->height;
+
+    if (!_glTexSubImage2DValidate(target, level, xoffset, yoffset, width, height, format, type, textureWidth, textureHeight)) {
+        INFO_MSG("Error: _glTexSubImage2DValidate failed\n");
+        return;
+    }
+
+    GLboolean isPaletted = (
+        active->internalFormat == GL_COLOR_INDEX8_EXT ||
+        active->internalFormat == GL_COLOR_INDEX4_EXT ||
+        active->internalFormat == GL_COLOR_INDEX4_TWID_KOS ||
+        active->internalFormat == GL_COLOR_INDEX8_TWID_KOS
+    ) ? GL_TRUE : GL_FALSE;
+
+    GLenum cleanInternalFormat = _cleanInternalFormat(active->internalFormat);
+
+    // Determine source stride
+    GLint sourceStride = _determineStride(format, type);
+    GLuint srcBytes = (width * height * sourceStride);
+
+    // Calculate destination stride (this accounts for both POT and NPOT)
+    GLint destStride = _determineStrideInternal(cleanInternalFormat);
+
+    // Calculate destBytes using the texture's full dimensions
+    GLuint destBytes = (textureWidth * textureHeight * destStride);
+
+    TextureConversionFunc conversion;
+    int needs_conversion = _determineConversion(cleanInternalFormat, format, type, &conversion);
+
+    // Adjust source bytes for 4bpp formats
+    if (format == GL_COLOR_INDEX4_EXT || format == GL_COLOR_INDEX4_TWID_KOS) {
+        srcBytes /= 2;
+    }
+
+    if ((needs_conversion & CONVERSION_TYPE_PACK) == CONVERSION_TYPE_PACK) {
+        destBytes /= 2;
+    } else if (active->internalFormat == GL_COLOR_INDEX4_EXT || active->internalFormat == GL_COLOR_INDEX4_TWID_KOS) {
+        destBytes /= 2;
+    }
+
+    if (needs_conversion < 0) {
+        _glKosThrowError(GL_INVALID_VALUE, __func__);
+        INFO_MSG("Couldn't find necessary texture conversion\n");
+        return;
+    }
+
+    // Calculate the starting point for the subregion in the texture data
+    GLubyte* targetData = active->data;
+    if (needs_conversion > 0) {
+        GLubyte* conversionBuffer = (GLubyte*) memalign(32, destBytes);
+
+        const GLubyte* src = data;
+        GLubyte* dst = conversionBuffer;
+
+        bool pack = (needs_conversion & CONVERSION_TYPE_PACK) == CONVERSION_TYPE_PACK;
+        needs_conversion &= ~CONVERSION_TYPE_PACK;
+
+        // Only initialize the buffer with zeros if it's a partial update
+        if (xoffset != 0 || yoffset != 0 || width != textureWidth || height != textureHeight) {
+            memset(conversionBuffer, 0, destBytes);
+        }
+        if (needs_conversion == CONVERSION_TYPE_CONVERT) {
+            for (uint32_t y = 0; y < height; ++y) {
+                dst = conversionBuffer + ((y + yoffset) * textureWidth + xoffset) * destStride;
+                for (uint32_t x = 0; x < width; ++x) {
+                    conversion(src, dst);
+                    dst += destStride;
+                    src += sourceStride;
+                }
+            }
+        } else if (needs_conversion == 2 || needs_conversion == 3) {
+            twid_prepare_table(textureWidth, textureHeight);
+
+            for (uint32_t y = yoffset; y < yoffset + height; ++y) {
+                for (uint32_t x = xoffset; x < xoffset + width; ++x) {
+                    uint32_t srcIndex = (y - yoffset) * width + (x - xoffset);
+                    uint32_t newLocation = twid_location(y * textureWidth + x);
+                    dst = conversionBuffer + (destStride * newLocation);
+
+                    if (needs_conversion == 3) {
+                        conversion(src + srcIndex * sourceStride, dst);
+                    } else {
+                        memcpy(dst, src + srcIndex * sourceStride, destStride);
+                    }
+                }
+            }
+        }
+
+        if (pack) {
+            assert(isPaletted);
+            size_t dst_byte = 0;
+            for (size_t src_byte = 0; src_byte < destBytes; ++src_byte) {
+                uint8_t v = conversionBuffer[src_byte];
+
+                if (src_byte % 2 == 0) {
+                    conversionBuffer[dst_byte] = (conversionBuffer[dst_byte] & 0xF) | ((v & 0xF) << 4);
+                } else {
+                    conversionBuffer[dst_byte] = (conversionBuffer[dst_byte] & 0xF0) | (v & 0xF);
+                    dst_byte++;
+                }
+            }
+        }
+
+        // Copy the converted data to the texture
+        FASTCPY(targetData, conversionBuffer, destBytes);
+
+        free(conversionBuffer);
+    } else {
+        // No conversion necessary, we can update data directly
+        for (GLsizei y = 0; y < height; ++y) {
+            GLsizei srcRowWidth = width * sourceStride;
+            GLubyte* destRow = targetData + ((y + yoffset) * textureWidth + xoffset) * destStride;
+            FASTCPY(destRow, (GLubyte*)data + y * srcRowWidth, srcRowWidth);
+        }
+    }
+
+    _glGPUStateMarkDirty();
 }
 
 GLAPI void APIENTRY glCopyTexSubImage2D(GLenum target, GLint level, GLint xoffset, GLint yoffset, GLint x, GLint y, GLsizei width, GLsizei height) {

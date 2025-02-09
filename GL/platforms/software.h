@@ -7,9 +7,6 @@
 
 #define PREFETCH(addr) do {} while(0)
 
-#define MATH_Fast_Divide(n, d) (n / d)
-#define MATH_fmac(a, b, c) (a * b + c)
-#define MATH_Fast_Sqrt(x) sqrtf((x))
 #define MATH_fsrra(x) (1.0f / sqrtf((x)))
 #define MATH_Fast_Invert(x) (1.0f / (x))
 
@@ -28,7 +25,7 @@
     } while(0)
 
 #define VEC3_LENGTH(x, y, z, d) \
-    d = MATH_Fast_Sqrt((x) * (x) + (y) * (y) + (z) * (z))
+    d = sqrtf((x) * (x) + (y) * (y) + (z) * (z))
 
 #define VEC3_DOT(x1, y1, z1, x2, y2, z2, d) \
     d = (x1 * x2) + (y1 * y2) + (z1 * z2)
@@ -52,8 +49,7 @@ static inline void TransformNormalNoMod(const float* xIn, float* xOut) {
     (void) xOut;
 }
 
-void TransformVertices(Vertex* vertices, const int count);
-void TransformVertex(const float* xyz, const float* w, float* oxyz, float* ow);
+void TransformVertex(float x, float y, float z, float w, float* oxyz, float* ow);
 
 void InitGPU(_Bool autosort, _Bool fsaa);
 
