@@ -332,6 +332,7 @@ extern GLfloat HALF_POINT_SIZE;
 
 Matrix4x4* _glGetProjectionMatrix();
 Matrix4x4* _glGetModelViewMatrix();
+GLenum _glGetMatrixMode();
 
 void _glWipeTextureOnFramebuffers(GLuint texture);
 
