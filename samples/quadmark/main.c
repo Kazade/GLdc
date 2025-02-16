@@ -7,7 +7,7 @@
    (c)2002 Dan Potter, Paul Boese
 */
 
-#ifdef __DREAMCAST__
+#ifdef _arch_dreamcast
 #include <kos.h>
 #include "../profiler.h"
 #endif
@@ -27,7 +27,7 @@ int phase = PHASE_HALVE;
 float avgfps = -1;
 
 void running_stats() {
-#ifdef __DREAMCAST__
+#ifdef _arch_dreamcast
     pvr_stats_t stats;
     pvr_get_stats(&stats);
 
@@ -39,7 +39,7 @@ void running_stats() {
 }
 
 void stats() {
-#ifdef __DREAMCAST__
+#ifdef _arch_dreamcast
     pvr_stats_t stats;
 
     pvr_get_stats(&stats);
@@ -50,7 +50,7 @@ void stats() {
 
 
 int check_start() {
-#ifdef __DREAMCAST__
+#ifdef _arch_dreamcast
     maple_device_t *cont;
     cont_state_t *state;
 

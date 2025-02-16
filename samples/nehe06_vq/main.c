@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#ifdef __DREAMCAST__
+#ifdef _arch_dreamcast
 #include <kos.h>
 #endif
 
@@ -10,7 +10,7 @@
 #include "GL/glkos.h"
 #include "GL/glext.h"
 
-#ifdef __DREAMCAST__
+#ifdef _arch_dreamcast
 extern uint8 romdisk[];
 KOS_INIT_ROMDISK(romdisk);
 #define IMG_PATH "/rd/NeHe.tex"
@@ -215,7 +215,7 @@ void ReSizeGLScene(int Width, int Height)
 }
 
 int check_start() {
-#ifdef __DREAMCAST__
+#ifdef _arch_dreamcast
     maple_device_t *cont;
     cont_state_t *state;
 

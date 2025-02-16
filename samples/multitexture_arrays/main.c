@@ -11,7 +11,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 
-#ifdef __DREAMCAST__
+#ifdef _arch_dreamcast
 #include <kos.h>
 #endif
 
@@ -20,7 +20,7 @@
 #include "GL/glkos.h"
 #include "GL/glext.h"
 
-#ifdef __DREAMCAST__
+#ifdef _arch_dreamcast
 extern uint8_t romdisk[];
 KOS_INIT_ROMDISK(romdisk);
 #define IMAGE1_FILENAME "/rd/wp001vq.pvr"
@@ -48,7 +48,7 @@ GLfloat TEXCOORD_ARRAY[4 * 2] = { 0, 0,
 GLuint ARGB_ARRAY[4] = { 0xFFFF0000, 0xFF0000FF, 0xFF00FF00, 0xFFFFFF00 };
 
 int check_start() {
-#ifdef __DREAMCAST__
+#ifdef _arch_dreamcast
     maple_device_t *cont;
     cont_state_t *state;
 

@@ -538,7 +538,7 @@ GLubyte _glInitTextures() {
     ALLOC_SIZE = vram_free - PVR_MEM_BUFFER_SIZE; /* Take all but 64kb VRAM */
     ALLOC_BASE = GPUMemoryAlloc(ALLOC_SIZE);
 
-#ifdef __DREAMCAST__
+#ifdef _arch_dreamcast
     /* Ensure memory is aligned */
     gl_assert((uintptr_t) ALLOC_BASE % 32 == 0);
 #endif

@@ -4,7 +4,7 @@
 #include <stdio.h>
 #include <math.h>
 
-#ifdef __DREAMCAST__
+#ifdef _arch_dreamcast
 #include <kos.h>
 #endif
 
@@ -12,7 +12,7 @@
 #include "GL/glu.h"
 #include "GL/glkos.h"
 
-#ifdef __DREAMCAST__
+#ifdef _arch_dreamcast
 extern uint8 romdisk[];
 KOS_INIT_ROMDISK(romdisk);
 #define IMAGE_FILENAME "/rd/flag1.bmp"
@@ -120,7 +120,7 @@ void ReSizeGLScene(int Width, int Height)
 }
 
 int check_start() {
-#ifdef __DREAMCAST__
+#ifdef _arch_dreamcast
     maple_device_t *cont;
     cont_state_t *state;
 

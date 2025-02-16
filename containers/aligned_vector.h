@@ -30,7 +30,7 @@ static inline void* memalign(size_t alignment, size_t size) {
 #define AV_NO_INLINE __attribute__((noinline))
 
 
-#ifdef __DREAMCAST__
+#ifdef _arch_dreamcast
 
 AV_FORCE_INLINE void *AV_MEMCPY4(void *dest, const void *src, size_t len)
 {

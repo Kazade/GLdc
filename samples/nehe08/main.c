@@ -8,7 +8,7 @@
    (c)2000 Jeff Molofee
 */
 
-#ifdef __DREAMCAST__
+#ifdef _arch_dreamcast
 #include <kos.h>
 #endif
 #include <GL/gl.h>
@@ -26,7 +26,7 @@
    blending.
 */
 
-#ifdef __DREAMCAST__
+#ifdef _arch_dreamcast
 extern uint8 romdisk[];
 KOS_INIT_ROMDISK(romdisk);
 #define IMG_PATH "/rd/glass.pvr"
@@ -163,7 +163,7 @@ void DrawGLScene(void) {
 }
 
 int ReadController(void) {
-#ifdef __DREAMCAST__
+#ifdef _arch_dreamcast
     maple_device_t *cont;
     cont_state_t *state;
 

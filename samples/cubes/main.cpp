@@ -3,7 +3,7 @@
 #include <stdlib.h>
 #include <time.h>
 
-#ifdef __DREAMCAST__
+#ifdef _arch_dreamcast
 #include <kos.h>
 float avgfps = -1;
 #endif
@@ -123,7 +123,7 @@ float lutScaleFactors[MAX_CUBES];
 
 void debugLog(const char* msg) 
 {
-#ifdef __DREAMCAST__
+#ifdef _arch_dreamcast
 	dbglog(DBG_KDEBUG, "%s\n", msg);
 #else
 	printf("%s\n", msg);
@@ -133,7 +133,7 @@ void debugLog(const char* msg)
 
 void runningStats() 
 {
-#ifdef __DREAMCAST__
+#ifdef _arch_dreamcast
 	pvr_stats_t stats;
 	pvr_get_stats(&stats);
 
@@ -147,7 +147,7 @@ void runningStats()
 
 void avgStats() 
 {
-#ifdef __DREAMCAST__
+#ifdef _arch_dreamcast
 	dbglog(DBG_DEBUG, "Average frame rate: ~%f fps\n", avgfps);
 #endif
 }
@@ -155,7 +155,7 @@ void avgStats()
 
 void stats() 
 {
-#ifdef __DREAMCAST__
+#ifdef _arch_dreamcast
 	pvr_stats_t stats;
 
 	pvr_get_stats(&stats);
@@ -345,7 +345,7 @@ void updateLogic()
 
 void updateInput()
 {
-#ifdef __DREAMCAST__
+#ifdef _arch_dreamcast
 	static uint8_t prevButtons = 0;
 	maple_device_t* cont;
 	cont_state_t* state;
@@ -383,7 +383,7 @@ void updateInput()
 
 void swapBuffers()
 {
-#ifdef __DREAMCAST__
+#ifdef _arch_dreamcast
 	glKosSwapBuffers();
 #endif
 }

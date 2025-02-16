@@ -4,7 +4,7 @@ typedef enum
     true
 } bool;
 
-#ifdef __DREAMCAST__
+#ifdef _arch_dreamcast
 #include <kos.h>
 #endif
 
@@ -100,7 +100,7 @@ void drawPolygon()
 int frames = 0;
 int check_input()
 {
-#ifdef __DREAMCAST__
+#ifdef _arch_dreamcast
     maple_device_t *cont;
     cont_state_t *state;
 

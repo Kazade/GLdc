@@ -224,7 +224,7 @@ GL_FORCE_INLINE float clamp(float d, float min, float max) {
 }
 
 GL_FORCE_INLINE void memcpy_vertex(Vertex *dest, const Vertex *src) {
-#ifdef __DREAMCAST__
+#ifdef _arch_dreamcast
     _Complex float double_scratch;
 
     asm volatile (
@@ -260,7 +260,7 @@ do {                 \
     memcpy_vertex(b, &c); \
 } while(0)
 
-#ifdef __DREAMCAST__
+#ifdef _arch_dreamcast
 #define fast_rsqrt(x) frsqrt(x)
 #else
 #define fast_rsqrt(x) (1.0f / __builtin_sqrtf(x))

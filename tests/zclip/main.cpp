@@ -122,7 +122,7 @@ void memcpy_vertex(Vertex* dst, Vertex* src) {
 
 /* Zclipping is so difficult to get right, that self sample tests all the cases of clipping and makes sure that things work as expected */
 
-#ifdef __DREAMCAST__
+#ifdef _arch_dreamcast
 static volatile int *pvrdmacfg = (int*)0xA05F6888;
 static volatile int *qacr = (int*)0xFF000038;
 #else

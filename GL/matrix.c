@@ -181,7 +181,7 @@ void APIENTRY glRotatef(GLfloat angle, GLfloat x, GLfloat  y, GLfloat z) {
         0.0f, 0.0f, 0.0f, 1.0f
     };
 
-#ifdef __DREAMCAST__
+#ifdef _arch_dreamcast
     float s, c;
     fsincos(angle, &s, &c);
 #else

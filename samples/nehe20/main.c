@@ -12,7 +12,7 @@
 #include <stdlib.h>
 
 
-#ifdef __DREAMCAST__
+#ifdef _arch_dreamcast
 #include <kos.h>
 #endif
 
@@ -21,7 +21,7 @@ uint32_t waittime = 1000.0f/FPS;
 uint32_t framestarttime = 0;
 int32_t delaytime;
 
-#ifdef __DREAMCAST__
+#ifdef _arch_dreamcast
 extern uint8_t romdisk[];
 KOS_INIT_ROMDISK(romdisk);
 #define IMG_LOGO_PATH   "/rd/logo.bmp"
@@ -57,7 +57,7 @@ KOS_INIT_ROMDISK(romdisk);
 #if defined(__APPLE__) && defined(__MACH__)
 #include <OpenGL/gl.h>	// Header File For The OpenGL32 Library
 #include <OpenGL/glu.h>	// Header File For The GLu32 Library
-#elif defined(__DREAMCAST__)
+#elif defined(_arch_dreamcast)
 #include <kos.h>
 #include <GL/gl.h>	// Header File For The OpenGL32 Library
 #include <GL/glu.h>	// Header File For The GLu32 Library
@@ -238,7 +238,7 @@ int main(int argc, char *argv[])
     InitGL();
     ReSizeGLScene(640, 480);
 
-#ifdef __DREAMCAST__
+#ifdef _arch_dreamcast
 	maple_device_t* cont = maple_enum_type(0, MAPLE_FUNC_CONTROLLER);
 	assert(cont);
 #endif
@@ -246,7 +246,7 @@ int main(int argc, char *argv[])
     while(1) {
         DrawGLScene();
 
-#ifdef __DREAMCAST__
+#ifdef _arch_dreamcast
 		cont_state_t* state = (cont_state_t *)maple_dev_status(cont);
 
 		if((state->buttons & CONT_A) && !sp) {
