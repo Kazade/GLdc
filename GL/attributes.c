@@ -246,12 +246,12 @@ static void _readColour4dRevARGB(const GLubyte* __restrict__ in, GLubyte* __rest
 
 #define DEF_READ_COLOUR_4_ARGB_INT(prefix, intype, max) \
     DEF_READ_COLOUR_N_ARGB_INT(prefix, intype, max,  \
-        ((GLubyte)clamp((float)input[2] / (float)max * 255.0f, 0, 255)), \
+        ((GLubyte)clamp((float)input[3] / (float)max * 255.0f, 0, 255)), \
         R8IDX, G8IDX, B8IDX, A8IDX)
 
 #define DEF_READ_COLOUR_4_REV_ARGB_INT(prefix, intype, max) \
     DEF_READ_COLOUR_N_ARGB_INT(prefix##Rev, intype, max,  \
-        ((GLubyte)clamp((float)input[2] / (float)max * 255.0f, 0, 255)), \
+        ((GLubyte)clamp((float)input[3] / (float)max * 255.0f, 0, 255)), \
         0, 1, 2, 3)
 
 DEF_READ_COLOUR_3_ARGB_INT(3us, GLushort, UINT16_MAX)
