@@ -8,13 +8,12 @@
    (c)2000 Jeff Molofee
 */
 
-#include <kos.h>
-
 #include <GL/glkos.h>
 #include <GL/gl.h>
 #include <GL/glu.h>
 
 #ifdef __DREAMCAST__
+#include <kos.h>
 extern uint8 romdisk[];
 KOS_INIT_ROMDISK(romdisk);
 #define IMG_PATH "/rd/glass.pvr"
