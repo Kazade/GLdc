@@ -8,6 +8,7 @@
    (c)2000 Jeff Molofee
 */
 
+#include <stdio.h>
 #include <GL/glkos.h>
 #include <GL/gl.h>
 #include <GL/glu.h>
@@ -126,8 +127,6 @@ void draw_gl(void) {
 }
 
 int main(int argc, char **argv) {
-    maple_device_t *cont;
-    cont_state_t *state;
     GLboolean xp = GL_FALSE;
     GLboolean yp = GL_FALSE;
 
@@ -172,6 +171,9 @@ int main(int argc, char **argv) {
 
     while(1) {
 #ifdef __DREAMCAST__
+        maple_device_t *cont;
+        cont_state_t *state;
+
         cont = maple_enum_type(0, MAPLE_FUNC_CONTROLLER);
 
         /* Check key status */
