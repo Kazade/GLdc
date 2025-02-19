@@ -124,7 +124,6 @@ void APIENTRY glFogiv(GLenum pname, const GLint* params) {
             GLfloat color[] = {
                 (GLfloat)params[0] / (GLfloat)INT_MAX,
                 (GLfloat)params[1] / (GLfloat)INT_MAX,
-
                 (GLfloat)params[2] / (GLfloat)INT_MAX,
                 (GLfloat)params[3] / (GLfloat)INT_MAX,
             };

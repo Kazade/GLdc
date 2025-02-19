@@ -171,6 +171,7 @@ int main(int argc, char **argv) {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 
     while(1) {
+#ifdef __DREAMCAST__
         cont = maple_enum_type(0, MAPLE_FUNC_CONTROLLER);
 
         /* Check key status */
@@ -221,6 +222,7 @@ int main(int argc, char **argv) {
 
         if(state->dpad_right)
             yspeed += 0.1f;
+#endif
 
         /* Switch fog off/on */
         if(fog) {
