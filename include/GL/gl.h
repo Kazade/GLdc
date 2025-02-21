@@ -69,10 +69,12 @@ __BEGIN_DECLS
 #define GL_MODELVIEW        0x1700
 #define GL_PROJECTION       0x1701
 #define GL_TEXTURE          0x1702
+#define GL_COLOR            0x1703 /* NOTE: Not the usual value */
 
 #define GL_MODELVIEW_MATRIX   0x0BA6
 #define GL_PROJECTION_MATRIX  0x0BA7
 #define GL_TEXTURE_MATRIX     0x0BA8
+#define GL_COLOR_MATRIX       0x80B1
 
 /* Depth buffer */
 #define GL_NEVER              0x0200

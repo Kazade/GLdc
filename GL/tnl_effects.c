@@ -76,6 +76,7 @@ static void textureEffect(SubmissionTarget* target) {
     Matrix4x4* m = _glGetTextureMatrix();
     UploadMatrix4x4(m);
     float coords[4];
+    float* ptr = (float*)m;
 
     Vertex* it     = _glSubmissionTargetStart(target);
     uint32_t count = target->count;
@@ -90,7 +91,7 @@ static void textureEffect(SubmissionTarget* target) {
 
 void _glTnlUpdateTextureMatrix(void) {
     Matrix4x4* m = _glGetTextureMatrix();
-    TNL_TEXTURE  = _glIsIdentity(m);
+    TNL_TEXTURE  = !_glIsIdentity(m);
     updateEffects();
 }
 
@@ -115,7 +116,7 @@ static void colorEffect(SubmissionTarget* target) {
 
 void _glTnlUpdateColorMatrix(void) {
     Matrix4x4* m = _glGetColorMatrix();
-    TNL_COLOR    = _glIsIdentity(m);
+    TNL_COLOR    = !_glIsIdentity(m);
     updateEffects();
 }
 

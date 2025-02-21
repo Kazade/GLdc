@@ -40,11 +40,11 @@ Matrix4x4* _glGetProjectionMatrix() {
 }
 
 Matrix4x4* _glGetTextureMatrix() {
-    return (Matrix4x4*) stack_top(&MATRIX_STACKS[2]);
+    return (Matrix4x4*) stack_top(MATRIX_STACKS + (GL_TEXTURE & 0xF));
 }
 
 Matrix4x4* _glGetColorMatrix() {
-    return (Matrix4x4*) stack_top(&MATRIX_STACKS[3]);
+    return (Matrix4x4*) stack_top(MATRIX_STACKS + (GL_COLOR & 0xF));
 }
 
 GLenum _glGetMatrixMode() {
@@ -459,10 +459,6 @@ void gluLookAt(GLdouble eyex, GLdouble eyey, GLdouble eyez, GLdouble centerx,
     MultiplyMatrix4x4((const Matrix4x4*) &trn);
     MultiplyMatrix4x4(stack_top(MATRIX_STACKS + (GL_MODELVIEW & 0xF)));
     DownloadMatrix4x4(stack_top(MATRIX_STACKS + (GL_MODELVIEW & 0xF)));
-}
-
-void _glMatrixLoadTexture() {
-    UploadMatrix4x4((const Matrix4x4*) stack_top(MATRIX_STACKS + (GL_TEXTURE & 0xF)));
 }
 
 void _glMatrixLoadModelView() {

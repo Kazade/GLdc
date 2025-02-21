@@ -321,7 +321,6 @@ void _glInitSubmissionTarget();
 void _glMatrixLoadNormal();
 void _glMatrixLoadModelView();
 void _glMatrixLoadProjection();
-void _glMatrixLoadTexture();
 void _glMatrixLoadModelViewProjection();
 
 extern GLfloat DEPTH_RANGE_MULTIPLIER_L;
