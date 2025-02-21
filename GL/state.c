@@ -473,6 +473,7 @@ GLAPI void APIENTRY glEnable(GLenum cap) {
             if(GPUState.lighting_enabled != GL_TRUE) {
                 GPUState.lighting_enabled = GL_TRUE;
                 GPUState.is_dirty = GL_TRUE;
+                _glTnlUpdateLighting();
             }
         } break;
         case GL_FOG:
@@ -584,6 +585,7 @@ GLAPI void APIENTRY glDisable(GLenum cap) {
             if(GPUState.lighting_enabled != GL_FALSE) {
                 GPUState.lighting_enabled = GL_FALSE;
                 GPUState.is_dirty = GL_TRUE;
+                _glTnlUpdateLighting();
             }
         } break;
         case GL_FOG:

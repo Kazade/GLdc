@@ -485,6 +485,17 @@ void _glGPUStateMarkDirty();
 #define SCENE_AMBIENT_MASK 16
 
 
+#define TNL_EFFECT_NONE       0x00
+#define TNL_EFFECT_VIEW_SPACE 0x01
+typedef void (*TnlEffect)(SubmissionTarget* target);
+
+void _glTnlAddEffect(GLint flags, TnlEffect func);
+void _glTnlRemoveEffect(TnlEffect func);
+void _glTnlLoadMatrix(void);
+void _glTnlApplyEffects(SubmissionTarget* target);
+
+void _glTnlUpdateLighting(void);
+
 /* This is from KOS pvr_buffers.c */
 #define PVR_MIN_Z 0.0001f
 

@@ -598,37 +598,6 @@ static void generate(SubmissionTarget* target, const GLenum mode, const GLsizei 
     }
 }
 
-static void transform(SubmissionTarget* target) {
-    TRACE();
-
-    /* Perform modelview transform, storing W */
-    Vertex* it = _glSubmissionTargetStart(target);
-    int count  = target->count;
-
-    for(int i = 0; i < count; ++i, ++it) {
-        TransformVertex(it->xyz[0], it->xyz[1], it->xyz[2], it->w, 
-                        it->xyz, &it->w);
-    }
-}
-
-static void mat_transform_normal3(VertexExtra* extra, const uint32_t count) {
-    ITERATE(count) {
-        TransformNormalNoMod(extra->nxyz, extra->nxyz);
-        extra++;
-    }
-}
-
-static void light(SubmissionTarget* target) {
-    /* Perform lighting calculations and manipulate the colour */
-    Vertex* vertex = _glSubmissionTargetStart(target);
-    VertexExtra* extra = aligned_vector_at(target->extras, 0);
-
-    _glMatrixLoadNormal();
-    mat_transform_normal3(extra, target->count);
-
-    _glPerformLighting(vertex, extra, target->count);
-}
-
 GL_FORCE_INLINE int _calc_pvr_face_culling() {
     if(!_glIsCullingEnabled()) {
         return GPU_CULLING_SMALL;
@@ -850,28 +819,11 @@ GL_FORCE_INLINE void submitVertices(GLenum mode, GLsizei first, GLuint count, GL
         _glGPUStateMarkClean();
     }
 
-    /* If we're lighting, then we need to do some work in
-     * eye-space, so we only transform vertices by the modelview
-     * matrix, and then later multiply by projection.
-     *
-     * If we're not doing lighting though we can optimise by taking
-     * vertices straight to clip-space */
-
-    if(_glIsLightingEnabled()) {
-        _glMatrixLoadModelView();
-    } else {
-        _glMatrixLoadModelViewProjection();
-    }
+    _glTnlLoadMatrix();
 
     generate(target, mode, first, count, (GLubyte*) indices, type);
 
-    if(_glIsLightingEnabled()){
-        light(target);
-
-        /* OK eye-space work done, now move into clip space */
-        _glMatrixLoadProjection();
-        transform(target);
-    }
+    _glTnlApplyEffects(target);
 
     // /*
     //    Now, if multitexturing is enabled, we want to send exactly the same vertices again, except:

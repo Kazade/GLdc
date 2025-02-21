@@ -80,6 +80,7 @@ set(
     GL/matrix.c
     GL/state.c
     GL/texture.c
+    GL/tnl_effects.c
     GL/util.c
     GL/alloc/alloc.c
     ${CMAKE_CURRENT_BINARY_DIR}/version.c
