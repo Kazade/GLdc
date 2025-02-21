@@ -31,26 +31,40 @@ static const Matrix4x4 __attribute__((aligned(32))) IDENTITY = {
 
 GLfloat NEAR_PLANE_DISTANCE = 0.0f;
 
+Matrix4x4* _glGetModelViewMatrix() {
+    return (Matrix4x4*) stack_top(&MATRIX_STACKS[0]);
+}
+
 Matrix4x4* _glGetProjectionMatrix() {
     return (Matrix4x4*) stack_top(&MATRIX_STACKS[1]);
 }
 
-Matrix4x4* _glGetModelViewMatrix() {
-    return (Matrix4x4*) stack_top(&MATRIX_STACKS[0]);
+Matrix4x4* _glGetTextureMatrix() {
+    return (Matrix4x4*) stack_top(&MATRIX_STACKS[2]);
+}
+
+Matrix4x4* _glGetColorMatrix() {
+    return (Matrix4x4*) stack_top(&MATRIX_STACKS[3]);
 }
 
 GLenum _glGetMatrixMode() {
     return MATRIX_MODE;
 }
 
+GLboolean _glIsIdentity(const Matrix4x4* m) {
+    return memcmp(m, IDENTITY, sizeof(Matrix4x4)) == 0;
+}
+
 void _glInitMatrices() {
     init_stack(&MATRIX_STACKS[0], sizeof(Matrix4x4), 32);
     init_stack(&MATRIX_STACKS[1], sizeof(Matrix4x4), 32);
     init_stack(&MATRIX_STACKS[2], sizeof(Matrix4x4), 32);
+    init_stack(&MATRIX_STACKS[3], sizeof(Matrix4x4), 32);
 
     stack_push(&MATRIX_STACKS[0], IDENTITY);
     stack_push(&MATRIX_STACKS[1], IDENTITY);
     stack_push(&MATRIX_STACKS[2], IDENTITY);
+    stack_push(&MATRIX_STACKS[3], IDENTITY);
 
     MEMCPY4(NORMAL_MATRIX, IDENTITY, sizeof(Matrix4x4));
 

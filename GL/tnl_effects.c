@@ -8,54 +8,14 @@
 #include "private.h"
 #include "platform.h"
 
-#define MAX_TNL_EFFECTS 3
-#define TNL_EFFECT_NONE       0x00
-#define TNL_EFFECT_VIEW_SPACE 0x01
-
-typedef void (*TnlEffect)(SubmissionTarget* target);
-static struct tnl_effect {
-    GLint flags;
-    TnlEffect func;
-} TNL_EFFECTS[MAX_TNL_EFFECTS];
-
-static int TNL_COUNT;
-static GLboolean TNL_VIEW;
+#define TNL_FX_LIGHTING 0x01
+#define TNL_FX_TEXTURE  0x02
+#define TNL_FX_COLOR    0x04
+static int TNL_EFFECTS;
 
 #define ITERATE(count) \
     GLuint i = count; \
     while(i--)
-
-static void updateEffectList(void) {
-     TNL_VIEW = GL_FALSE;
-
-     ITERATE(TNL_COUNT) {
-          if (TNL_EFFECTS[i].flags == TNL_EFFECT_VIEW_SPACE) TNL_VIEW = true;
-     }
-}
-
-static void _glTnlAddEffect(GLint flags, TnlEffect func) {
-     if (TNL_COUNT == MAX_TNL_EFFECTS) return;
-     
-     TNL_EFFECTS[TNL_COUNT].flags = flags;
-     TNL_EFFECTS[TNL_COUNT].func  = func;
-
-     TNL_COUNT++;
-     updateEffectList();
-}
-
-static void _glTnlRemoveEffect(TnlEffect func) {
-     int i, j;
-
-     for (i = TNL_COUNT - 1; i >= 0; i--) {
-         if (TNL_EFFECTS[i].func != func) continue;
-
-         for(j = i; j < TNL_COUNT - 1; j++) {
-             TNL_EFFECTS[j] = TNL_EFFECTS[j + 1];
-         }
-         TNL_COUNT--;
-     }
-     updateEffectList();
-}
 
 void _glTnlLoadMatrix(void) {
     /* If we're lighting, then we need to do some work in
@@ -65,7 +25,7 @@ void _glTnlLoadMatrix(void) {
      * If we're not doing lighting though we can optimise by taking
      * vertices straight to clip-space */
 
-    if(TNL_VIEW) {
+    if(TNL_EFFECTS & TNL_FX_LIGHTING) {
         _glMatrixLoadModelView();
     } else {
         _glMatrixLoadModelViewProjection();
@@ -84,21 +44,6 @@ static void transformVertices(SubmissionTarget* target) {
                         it->xyz, &it->w);
         it++;
     }
-}
-
-void _glTnlApplyEffects(SubmissionTarget* target) {
-    if (!TNL_COUNT) return;
-
-    struct tnl_effect* e = TNL_EFFECTS;
-    ITERATE(TNL_COUNT) {
-         e->func(target);
-         e++;
-    }
-
-    if (!TNL_VIEW) return;
-    /* OK eye-space work done, now move into clip space */
-    _glMatrixLoadProjection();
-    transformVertices(target);
 }
 
 
@@ -122,8 +67,21 @@ static void lightingEffect(SubmissionTarget* target) {
 
 void _glTnlUpdateLighting(void) {
     if (_glIsLightingEnabled()) {
-         _glTnlAddEffect(TNL_EFFECT_VIEW_SPACE, lightingEffect);
+         TNL_EFFECTS |= TNL_FX_LIGHTING;
     } else {
-         _glTnlRemoveEffect(lightingEffect);
+         TNL_EFFECTS &= ~TNL_FX_LIGHTING;
+    }
+}
+
+void _glTnlApplyEffects(SubmissionTarget* target) {
+    if (!TNL_EFFECTS) return;
+
+    if (TNL_EFFECTS & TNL_FX_LIGHTING)
+        lightingEffect(target);
+
+    if (TNL_EFFECTS & TNL_FX_LIGHTING) {
+        /* OK eye-space work done, now move into clip space */
+        _glMatrixLoadProjection();
+        transformVertices(target);
     }
 }
