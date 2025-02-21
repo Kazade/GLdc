@@ -19,7 +19,7 @@ static Matrix4x4 __attribute__((aligned(32))) VIEWPORT_MATRIX;
 static Matrix4x4 __attribute__((aligned(32))) PROJECTION_MATRIX;
 
 static GLenum MATRIX_MODE = GL_MODELVIEW;
-static GLubyte MATRIX_IDX = 0;
+static Stack* MATRIX_CUR;
 static GLboolean NORMAL_DIRTY, PROJECTION_DIRTY;
 
 static const Matrix4x4 __attribute__((aligned(32))) IDENTITY = {
@@ -53,6 +53,8 @@ void _glInitMatrices() {
     stack_push(&MATRIX_STACKS[2], IDENTITY);
 
     MEMCPY4(NORMAL_MATRIX, IDENTITY, sizeof(Matrix4x4));
+
+    MATRIX_CUR = MATRIX_STACKS + (GL_MODELVIEW & 0xF);
 
     const VideoMode* vid_mode = GetVideoMode();
 
@@ -121,30 +123,30 @@ static void OnMatrixChanged() {
 
 void APIENTRY glMatrixMode(GLenum mode) {
     MATRIX_MODE = mode;
-    MATRIX_IDX = mode & 0xF;
+    MATRIX_CUR  = MATRIX_STACKS + (mode & 0xF);
 }
 
 void APIENTRY glPushMatrix() {
-    void* top = stack_top(MATRIX_STACKS + MATRIX_IDX);
+    void* top = stack_top(MATRIX_CUR);
     assert(top);
-    void* ret = stack_push(MATRIX_STACKS + MATRIX_IDX, top);
+    void* ret = stack_push(MATRIX_CUR, top);
     (void) ret;
     assert(ret);
     OnMatrixChanged();
 }
 
 void APIENTRY glPopMatrix() {
-    stack_pop(MATRIX_STACKS + MATRIX_IDX);
+    stack_pop(MATRIX_CUR);
     OnMatrixChanged();
 }
 
 void APIENTRY glLoadIdentity() {
-    stack_replace(MATRIX_STACKS + MATRIX_IDX, IDENTITY);
+    stack_replace(MATRIX_CUR, IDENTITY);
     OnMatrixChanged();
 }
 
 void GL_FORCE_INLINE _glMultMatrix(const Matrix4x4* mat) {
-    void* top = stack_top(MATRIX_STACKS + MATRIX_IDX);
+    void* top = stack_top(MATRIX_CUR);
 
     UploadMatrix4x4(top);
     MultiplyMatrix4x4(mat);
@@ -220,7 +222,7 @@ void APIENTRY glLoadMatrixf(const GLfloat *m) {
     static Matrix4x4 __attribute__((aligned(32))) TEMP;
 
     memcpy(TEMP, m, sizeof(float) * 16);
-    stack_replace(MATRIX_STACKS + MATRIX_IDX, TEMP);
+    stack_replace(MATRIX_CUR, TEMP);
     OnMatrixChanged();
 }
 
@@ -309,7 +311,7 @@ void glLoadTransposeMatrixf(const GLfloat *m) {
     TEMP[M14] = m[11];
     TEMP[M15] = m[15];
 
-    stack_replace(MATRIX_STACKS + MATRIX_IDX, TEMP);
+    stack_replace(MATRIX_CUR, TEMP);
     OnMatrixChanged();
 }
 

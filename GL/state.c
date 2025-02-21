@@ -978,6 +978,7 @@ void APIENTRY glGetFloatv(GLenum pname, GLfloat* params) {
         case GL_MODELVIEW_MATRIX:
             MEMCPY4(params, _glGetModelViewMatrix(), sizeof(float) * 16);
         break;
+
         case GL_POLYGON_OFFSET_FACTOR:
             *params = GPUState.offset_factor;
         break;
