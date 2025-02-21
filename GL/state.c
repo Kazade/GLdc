@@ -428,7 +428,6 @@ void _glInitContext() {
     glDisable(GL_DEPTH_TEST);
     glDisable(GL_TEXTURE_2D);
     glDisable(GL_FOG);
-    glDisable(GL_LIGHTING);
 
     GLubyte i;
     for(i = 0; i < MAX_GLDC_LIGHTS; ++i) {
@@ -472,7 +471,6 @@ GLAPI void APIENTRY glEnable(GLenum cap) {
         case GL_LIGHTING: {
             if(GPUState.lighting_enabled != GL_TRUE) {
                 GPUState.lighting_enabled = GL_TRUE;
-                GPUState.is_dirty = GL_TRUE;
                 _glTnlUpdateLighting();
             }
         } break;
@@ -584,7 +582,6 @@ GLAPI void APIENTRY glDisable(GLenum cap) {
         case GL_LIGHTING: {
             if(GPUState.lighting_enabled != GL_FALSE) {
                 GPUState.lighting_enabled = GL_FALSE;
-                GPUState.is_dirty = GL_TRUE;
                 _glTnlUpdateLighting();
             }
         } break;

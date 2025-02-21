@@ -9,7 +9,10 @@
 #include "platform.h"
 
 #define MAX_TNL_EFFECTS 3
+#define TNL_EFFECT_NONE       0x00
+#define TNL_EFFECT_VIEW_SPACE 0x01
 
+typedef void (*TnlEffect)(SubmissionTarget* target);
 static struct tnl_effect {
     GLint flags;
     TnlEffect func;
@@ -30,7 +33,7 @@ static void updateEffectList(void) {
      }
 }
 
-void _glTnlAddEffect(GLint flags, TnlEffect func) {
+static void _glTnlAddEffect(GLint flags, TnlEffect func) {
      if (TNL_COUNT == MAX_TNL_EFFECTS) return;
      
      TNL_EFFECTS[TNL_COUNT].flags = flags;
@@ -40,7 +43,7 @@ void _glTnlAddEffect(GLint flags, TnlEffect func) {
      updateEffectList();
 }
 
-void _glTnlRemoveEffect(TnlEffect func) {
+static void _glTnlRemoveEffect(TnlEffect func) {
      int i, j;
 
      for (i = TNL_COUNT - 1; i >= 0; i--) {
