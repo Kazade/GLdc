@@ -492,6 +492,8 @@ void _glTnlLoadMatrix(void);
 void _glTnlApplyEffects(SubmissionTarget* target);
 
 void _glTnlUpdateLighting(void);
+void _glTnlUpdateTextureMatrix(void);
+void _glTnlUpdateColorMatrix(void);
 
 /* This is from KOS pvr_buffers.c */
 #define PVR_MIN_Z 0.0001f

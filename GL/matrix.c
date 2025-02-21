@@ -130,8 +130,20 @@ static void UpdateNormalMatrix() {
 }
 
 static void OnMatrixChanged() {
-    if(MATRIX_MODE == GL_MODELVIEW)  NORMAL_DIRTY = true;
-    if(MATRIX_MODE == GL_PROJECTION) PROJECTION_DIRTY = true;
+    switch (MATRIX_MODE) {
+    case GL_MODELVIEW:
+         NORMAL_DIRTY = true;
+         return;
+    case GL_PROJECTION:
+         PROJECTION_DIRTY = true;
+         return;
+    case GL_TEXTURE:
+         _glTnlUpdateTextureMatrix();
+         return;
+    case GL_COLOR:
+         _glTnlUpdateColorMatrix();
+         return;
+    }
 }
 
 
