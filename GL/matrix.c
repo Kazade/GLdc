@@ -209,11 +209,11 @@ void APIENTRY glRotatef(GLfloat angle, GLfloat x, GLfloat  y, GLfloat z) {
         0.0f, 0.0f, 0.0f, 1.0f
     };
 
-    float r = DEG2RAD * angle;
 #ifdef __DREAMCAST__
     float s, c;
-    fsincos(r, &s, &c);
+    fsincos(angle, &s, &c);
 #else
+    float r = DEG2RAD * angle;
     float c = cosf(r);
     float s = sinf(r);
 #endif
