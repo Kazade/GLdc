@@ -5,6 +5,8 @@
 
 #include "../types.h"
 
+#define __restrict
+
 #define PREFETCH(addr) do {} while(0)
 
 #define MATH_fsrra(x) (1.0f / sqrtf((x)))
