@@ -26,6 +26,7 @@ static void sample_init() {
 	SDL_Init(SDL_INIT_EVERYTHING);
 	win_handle = SDL_CreateWindow("Shapes", 0, 0, 640, 480, SDL_WINDOW_OPENGL);
 	SDL_GL_CreateContext(win_handle);
+	SDL_GL_SetSwapInterval(1);
 #else
     glKosInit();
 #endif
@@ -71,6 +72,8 @@ int main(int argc, char *argv[]) {
 		texData[i + 3] = 0xFF;
 	}
 
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, IMG_SIZE, IMG_SIZE, 0, GL_RGBA, GL_UNSIGNED_BYTE, texData);
     float time = 0.0f;
 
@@ -95,7 +98,7 @@ int main(int argc, char *argv[]) {
         glLoadIdentity();
 
         glMatrixMode(GL_TEXTURE);
-        glRotatef(time * 1000, 1, 0, 0);
+        glRotatef(time * 100, 1, 0, 0);
         DrawQuad(1.7f, 0.1f);
         glLoadIdentity();
 
@@ -120,7 +123,7 @@ int main(int argc, char *argv[]) {
         glLoadIdentity();
 
         glMatrixMode(GL_COLOR);
-        glRotatef(time * 1000, 1, 0, 0);
+        glRotatef(time * 100, 1, 0, 0);
         DrawQuad(0.1f, 0.5f);
         glLoadIdentity();
 

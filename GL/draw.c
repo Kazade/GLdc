@@ -367,7 +367,6 @@ static void generateElements(
     Vertex* output = _glSubmissionTargetStart(target);
     VertexExtra* ve = aligned_vector_at(target->extras, 0);
 
-    float pos[3], w = 1.0f;
     uint32_t i = first;
     uint32_t idx = 0;
 

@@ -301,7 +301,7 @@ static ReadAttributeFunc calcReadDiffuseFunc(void) {
 static void _fillZero2f(const GLubyte* __restrict__ input, GLubyte* __restrict__ out) {
     _GL_UNUSED(input);
     //memset(out, 0, sizeof(float) * 2);
-    // memset does 8 byte writes - faster to manually write as uint32
+    // memset does 8 individual byte writes - faster to manually write as uint32
     uint32_t* dst = (uint32_t*)out;
     dst[0] = 0;
     dst[1] = 0;
