@@ -906,6 +906,55 @@ void APIENTRY glCompressedTexImage2DARB(GLenum target,
     _glGPUStateMarkDirty();
 }
 
+void APIENTRY glCompressedTexSubImage2DARB(GLenum target,
+                                           GLint level,
+                                           GLint xoffset,
+                                           GLint yoffset,
+                                           GLsizei width,
+                                           GLsizei height,
+                                           GLenum format,
+                                           GLsizei imageSize,
+                                           const GLvoid *data) {
+    TRACE();
+
+    if (target != GL_TEXTURE_2D) {
+        _glKosThrowError(GL_INVALID_ENUM, __func__);
+        return;
+    }
+
+    if (xoffset < 0 || yoffset < 0 || width <= 0 || height <= 0) {
+        _glKosThrowError(GL_INVALID_VALUE, __func__);
+        return;
+    }
+
+    gl_assert(ACTIVE_TEXTURE < MAX_GLDC_TEXTURE_UNITS);
+    TextureObject* active = TEXTURE_UNITS[ACTIVE_TEXTURE];
+
+    if (!active) {
+        _glKosThrowError(GL_INVALID_OPERATION, __func__);
+        return;
+    }
+
+    GLuint original_id = active->index;
+
+    // Ensure that we're modifying the correct texture
+    if (active->index != original_id) {
+        _glKosThrowError(GL_INVALID_OPERATION, __func__);
+        return;
+    }
+
+    // Copy raw compressed texture data into the texture buffer.
+    GLubyte* targetData = active->data;
+    GLubyte* src = (GLubyte*)data;
+
+    // Copy the compressed data directly to the texture
+    if (data) {
+        FASTCPY(targetData + (yoffset * active->width + xoffset), src, imageSize);
+    }
+
+    _glGPUStateMarkDirty();
+}
+
 /**
  * Takes an internal format, and returns a GL format matching how we'd store
  * it internally, so it'll return one of the following:
