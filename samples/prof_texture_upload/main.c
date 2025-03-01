@@ -2,7 +2,7 @@
 #include <time.h>
 #include <stdio.h>
 
-#ifdef __DREAMCAST__
+#ifdef _arch_dreamcast
 #include <kos.h>
 #include "../profiler.h"
 #endif
@@ -35,7 +35,7 @@ int main(int argc, char* argv[]) {
 
     fprintf(stderr, "Starting test run...\n");
 
-#ifdef __DREAMCAST__
+#ifdef _arch_dreamcast
 #if PROFILE
     profiler_init("/pc/gmon.out");
     profiler_start();
@@ -51,7 +51,7 @@ int main(int argc, char* argv[]) {
         end = time(NULL);
     }
 
-#ifdef __DREAMCAST__
+#ifdef _arch_dreamcast
 #if PROFILE
     profiler_stop();
     profiler_clean_up();

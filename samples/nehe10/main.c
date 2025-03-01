@@ -8,7 +8,7 @@
    (c)2000 Jeff Molofee
 */
 
-#ifdef __DREAMCAST__
+#ifdef _arch_dreamcast
 #include <kos.h>
 #else
 #include <SDL.h>
@@ -25,7 +25,7 @@
 
 #include "../loadbmp.h"
 
-#ifdef __DREAMCAST__
+#ifdef _arch_dreamcast
 extern uint8 romdisk[];
 KOS_INIT_ROMDISK(romdisk);
 #define IMG_PATH "/rd/brick.bmp"
@@ -88,7 +88,7 @@ void SetupWorld()
 	int numtriangles;
 	FILE *filein;
 	char oneline[255];
-#ifdef __DREAMCAST__
+#ifdef _arch_dreamcast
 	filein = fopen("/rd/world.txt", "rt");				// File To Load World Data From
 #else
     filein = fopen("../samples/nehe10/romdisk/world.txt", "rt");
@@ -248,7 +248,7 @@ int ReadController(void) {
     bool right = false;
 
 
-#ifdef __DREAMCAST__
+#ifdef _arch_dreamcast
     maple_device_t *cont;
     cont_state_t *state;
 

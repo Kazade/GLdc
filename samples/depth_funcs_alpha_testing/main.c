@@ -1,4 +1,4 @@
-#ifdef __DREAMCAST__
+#ifdef _arch_dreamcast
 #include <kos.h>
 #endif
 
@@ -9,7 +9,7 @@
 
 //$KOS_BASE/utils/texconv/texconv  --in disk.png --format ARGB4444 --preview disk_preview.png --out disk.dtex
 
-#ifdef __DREAMCAST__
+#ifdef _arch_dreamcast
 extern uint8_t romdisk[];
 KOS_INIT_ROMDISK(romdisk);
 #define IMAGE_FILENAME "/rd/disk_1555.dtex"
@@ -105,7 +105,7 @@ void DrawGLScene()
 }
 
 int check_start() {
-#ifdef __DREAMCAST__
+#ifdef _arch_dreamcast
     maple_device_t *cont;
     cont_state_t *state;
 

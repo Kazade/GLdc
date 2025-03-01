@@ -4,7 +4,7 @@
 #include <stdint.h>
 #include <assert.h>
 
-#ifdef __DREAMCAST__
+#ifdef _arch_dreamcast
 #include <kos.h>
 #endif
 
@@ -16,7 +16,7 @@
 /* using 4bpp textures from BMP files instead of 8bpp from PCX files */
 #define USE_16C_PALETTE
 
-#ifdef __DREAMCAST__
+#ifdef _arch_dreamcast
     #include <kos.h>
     extern uint8 romdisk[];
     KOS_INIT_ROMDISK(romdisk);
@@ -507,7 +507,7 @@ void ReSizeGLScene(int Width, int Height)
 }
 
 int check_start() {
-#ifdef __DREAMCAST__
+#ifdef _arch_dreamcast
     maple_device_t *cont;
     cont_state_t *state;
 

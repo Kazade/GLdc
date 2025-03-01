@@ -445,7 +445,7 @@ static inline void CompilePolyHeader(PolyHeader *dst, const PolyContext *src) {
     dst->d3 = dst->d4 = 0xffffffff;
 }
 
-#if defined(__DREAMCAST__) || defined(__NAOMI__)
+#ifdef _arch_dreamcast
 #include "platforms/sh4.h"
 #else
 #include "platforms/software.h"

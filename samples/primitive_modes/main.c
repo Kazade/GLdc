@@ -3,7 +3,7 @@
 #include <math.h>
 #include <stdlib.h>
 
-#ifndef __DREAMCAST__
+#ifndef _arch_dreamcast
 #include <SDL2/SDL.h>
 static SDL_Window* win_handle;
 #else
@@ -119,7 +119,7 @@ static void DrawTriFan(float y) {
 }
 
 static void sample_init() {
-#ifndef __DREAMCAST__
+#ifndef _arch_dreamcast
 	SDL_Init(SDL_INIT_EVERYTHING);
 	win_handle = SDL_CreateWindow("Shapes", 0, 0, 640, 480, SDL_WINDOW_OPENGL);
 	SDL_GL_CreateContext(win_handle);
@@ -129,7 +129,7 @@ static void sample_init() {
 }
 
 static int sample_should_exit() {
-#ifndef __DREAMCAST__
+#ifndef _arch_dreamcast
     SDL_Event event;
     while (SDL_PollEvent(&event)) {
         if(event.type == SDL_QUIT) return 1;
