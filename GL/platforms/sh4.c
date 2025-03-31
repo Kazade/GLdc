@@ -282,10 +282,10 @@ void SceneListSubmit(Vertex* vertices, int n) {
             case THIRD_VISIBLE:
                 memcpy_vertex(c, v2);
 
-                _glClipEdge(v2, v0, a);
+                _glClipEdge(v1, v2, a);
                 a->flags = GPU_CMD_VERTEX;
 
-                _glClipEdge(v1, v2, b);
+                _glClipEdge(v2, v0, b);
                 b->flags = GPU_CMD_VERTEX;
 
                 _glPerspectiveDivideVertex(a, 3);
