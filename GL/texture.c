@@ -44,19 +44,27 @@ static struct TwiddleTable {
     int32_t* table;
 } TWIDDLE_TABLE = {0, 0, NULL};
 
-int32_t twiddle_recurse(int32_t* table, int32_t stride, int32_t x, int32_t y, int32_t block_size, int32_t idx) {
-    int32_t prev_idx = idx;
-    if(block_size == 1) {
-        table[y * stride + x] = idx++;
-    } else {
-        block_size = block_size >> 1;
-        idx += twiddle_recurse(table, stride, x, y, block_size, idx);
-        idx += twiddle_recurse(table, stride, x, y + block_size, block_size, idx);
-        idx += twiddle_recurse(table, stride, x + block_size, y, block_size, idx);
-        idx += twiddle_recurse(table, stride, x + block_size, y + block_size, block_size, idx);
-    }
+static void calc_twiddle_factors(uint32_t w, uint32_t h, uint32_t* maskX, uint32_t* maskY) {
+    *maskX = 0;
+    *maskY = 0;
+    int shift = 0;
 
-    return (idx - prev_idx);
+    for (; w > 1 || h > 1; w >>= 1, h >>= 1) {
+        if (w > 1 && h > 1) {
+            // Add interleaved X and Y bits
+            *maskX += 0x02 << shift;
+            *maskY += 0x01 << shift;
+            shift  += 2;
+        } else if (w > 1) {
+            // Add a linear X bit
+            *maskX += 0x01 << shift;
+            shift  += 1;		
+        } else if (h > 1) {
+            // Add a linear Y bit
+            *maskY += 0x01 << shift;
+            shift  += 1;
+        }
+    }
 }
 
 void build_twiddle_table(int32_t w, int32_t h) {
@@ -66,15 +74,16 @@ void build_twiddle_table(int32_t w, int32_t h) {
     TWIDDLE_TABLE.height = h;
 
     int32_t idx = 0;
+    uint32_t idxX = 0, idxY = 0, maskX, maskY;
+    calc_twiddle_factors(w, h, &maskX, &maskY);
 
-    if(w < h) {
-        for(int32_t i = 0; i < h; i += w) {
-            idx += twiddle_recurse(TWIDDLE_TABLE.table, w, 0, i, w, idx);
+    for (int32_t y = 0; y < h; y++) {
+        idxX = 0;		
+        for (int32_t x = 0; x < w; x++) {
+            TWIDDLE_TABLE.table[idx++] = idxX | idxY;
+            idxX = (idxX - maskX) & maskX;
         }
-    } else {
-        for(int32_t i = 0; i < w; i += h) {
-            idx += twiddle_recurse(TWIDDLE_TABLE.table, w, i, 0, h, idx);
-        }
+        idxY = (idxY - maskY) & maskY;
     }
 }
 
