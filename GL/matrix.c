@@ -19,7 +19,7 @@ static Matrix4x4 __attribute__((aligned(32))) VIEWPORT_MATRIX;
 static Matrix4x4 __attribute__((aligned(32))) PROJECTION_MATRIX;
 
 static GLenum MATRIX_MODE = GL_MODELVIEW;
-static GLubyte MATRIX_IDX = 0;
+static Stack* MATRIX_CUR;
 static GLboolean NORMAL_DIRTY, PROJECTION_DIRTY;
 
 static const Matrix4x4 __attribute__((aligned(32))) IDENTITY = {
@@ -31,28 +31,44 @@ static const Matrix4x4 __attribute__((aligned(32))) IDENTITY = {
 
 GLfloat NEAR_PLANE_DISTANCE = 0.0f;
 
+Matrix4x4* _glGetModelViewMatrix() {
+    return (Matrix4x4*) stack_top(&MATRIX_STACKS[0]);
+}
+
 Matrix4x4* _glGetProjectionMatrix() {
     return (Matrix4x4*) stack_top(&MATRIX_STACKS[1]);
 }
 
-Matrix4x4* _glGetModelViewMatrix() {
-    return (Matrix4x4*) stack_top(&MATRIX_STACKS[0]);
+Matrix4x4* _glGetTextureMatrix() {
+    return (Matrix4x4*) stack_top(MATRIX_STACKS + (GL_TEXTURE & 0xF));
+}
+
+Matrix4x4* _glGetColorMatrix() {
+    return (Matrix4x4*) stack_top(MATRIX_STACKS + (GL_COLOR & 0xF));
 }
 
 GLenum _glGetMatrixMode() {
     return MATRIX_MODE;
 }
 
+GLboolean _glIsIdentity(const Matrix4x4* m) {
+    return memcmp(m, IDENTITY, sizeof(Matrix4x4)) == 0;
+}
+
 void _glInitMatrices() {
     init_stack(&MATRIX_STACKS[0], sizeof(Matrix4x4), 32);
     init_stack(&MATRIX_STACKS[1], sizeof(Matrix4x4), 32);
     init_stack(&MATRIX_STACKS[2], sizeof(Matrix4x4), 32);
+    init_stack(&MATRIX_STACKS[3], sizeof(Matrix4x4), 32);
 
     stack_push(&MATRIX_STACKS[0], IDENTITY);
     stack_push(&MATRIX_STACKS[1], IDENTITY);
     stack_push(&MATRIX_STACKS[2], IDENTITY);
+    stack_push(&MATRIX_STACKS[3], IDENTITY);
 
     MEMCPY4(NORMAL_MATRIX, IDENTITY, sizeof(Matrix4x4));
+
+    MATRIX_CUR = MATRIX_STACKS + (GL_MODELVIEW & 0xF);
 
     const VideoMode* vid_mode = GetVideoMode();
 
@@ -114,37 +130,49 @@ static void UpdateNormalMatrix() {
 }
 
 static void OnMatrixChanged() {
-    if(MATRIX_MODE == GL_MODELVIEW)  NORMAL_DIRTY = true;
-    if(MATRIX_MODE == GL_PROJECTION) PROJECTION_DIRTY = true;
+    switch (MATRIX_MODE) {
+    case GL_MODELVIEW:
+         NORMAL_DIRTY = true;
+         return;
+    case GL_PROJECTION:
+         PROJECTION_DIRTY = true;
+         return;
+    case GL_TEXTURE:
+         _glTnlUpdateTextureMatrix();
+         return;
+    case GL_COLOR:
+         _glTnlUpdateColorMatrix();
+         return;
+    }
 }
 
 
 void APIENTRY glMatrixMode(GLenum mode) {
     MATRIX_MODE = mode;
-    MATRIX_IDX = mode & 0xF;
+    MATRIX_CUR  = MATRIX_STACKS + (mode & 0xF);
 }
 
 void APIENTRY glPushMatrix() {
-    void* top = stack_top(MATRIX_STACKS + MATRIX_IDX);
+    void* top = stack_top(MATRIX_CUR);
     assert(top);
-    void* ret = stack_push(MATRIX_STACKS + MATRIX_IDX, top);
+    void* ret = stack_push(MATRIX_CUR, top);
     (void) ret;
     assert(ret);
     OnMatrixChanged();
 }
 
 void APIENTRY glPopMatrix() {
-    stack_pop(MATRIX_STACKS + MATRIX_IDX);
+    stack_pop(MATRIX_CUR);
     OnMatrixChanged();
 }
 
 void APIENTRY glLoadIdentity() {
-    stack_replace(MATRIX_STACKS + MATRIX_IDX, IDENTITY);
+    stack_replace(MATRIX_CUR, IDENTITY);
     OnMatrixChanged();
 }
 
 void GL_FORCE_INLINE _glMultMatrix(const Matrix4x4* mat) {
-    void* top = stack_top(MATRIX_STACKS + MATRIX_IDX);
+    void* top = stack_top(MATRIX_CUR);
 
     UploadMatrix4x4(top);
     MultiplyMatrix4x4(mat);
@@ -220,7 +248,7 @@ void APIENTRY glLoadMatrixf(const GLfloat *m) {
     static Matrix4x4 __attribute__((aligned(32))) TEMP;
 
     memcpy(TEMP, m, sizeof(float) * 16);
-    stack_replace(MATRIX_STACKS + MATRIX_IDX, TEMP);
+    stack_replace(MATRIX_CUR, TEMP);
     OnMatrixChanged();
 }
 
@@ -309,7 +337,7 @@ void glLoadTransposeMatrixf(const GLfloat *m) {
     TEMP[M14] = m[11];
     TEMP[M15] = m[15];
 
-    stack_replace(MATRIX_STACKS + MATRIX_IDX, TEMP);
+    stack_replace(MATRIX_CUR, TEMP);
     OnMatrixChanged();
 }
 
@@ -431,10 +459,6 @@ void gluLookAt(GLdouble eyex, GLdouble eyey, GLdouble eyez, GLdouble centerx,
     MultiplyMatrix4x4((const Matrix4x4*) &trn);
     MultiplyMatrix4x4(stack_top(MATRIX_STACKS + (GL_MODELVIEW & 0xF)));
     DownloadMatrix4x4(stack_top(MATRIX_STACKS + (GL_MODELVIEW & 0xF)));
-}
-
-void _glMatrixLoadTexture() {
-    UploadMatrix4x4((const Matrix4x4*) stack_top(MATRIX_STACKS + (GL_TEXTURE & 0xF)));
 }
 
 void _glMatrixLoadModelView() {

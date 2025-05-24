@@ -428,7 +428,6 @@ void _glInitContext() {
     glDisable(GL_DEPTH_TEST);
     glDisable(GL_TEXTURE_2D);
     glDisable(GL_FOG);
-    glDisable(GL_LIGHTING);
 
     GLubyte i;
     for(i = 0; i < MAX_GLDC_LIGHTS; ++i) {
@@ -472,7 +471,7 @@ GLAPI void APIENTRY glEnable(GLenum cap) {
         case GL_LIGHTING: {
             if(GPUState.lighting_enabled != GL_TRUE) {
                 GPUState.lighting_enabled = GL_TRUE;
-                GPUState.is_dirty = GL_TRUE;
+                _glTnlUpdateLighting();
             }
         } break;
         case GL_FOG:
@@ -583,7 +582,7 @@ GLAPI void APIENTRY glDisable(GLenum cap) {
         case GL_LIGHTING: {
             if(GPUState.lighting_enabled != GL_FALSE) {
                 GPUState.lighting_enabled = GL_FALSE;
-                GPUState.is_dirty = GL_TRUE;
+                _glTnlUpdateLighting();
             }
         } break;
         case GL_FOG:
@@ -979,6 +978,13 @@ void APIENTRY glGetFloatv(GLenum pname, GLfloat* params) {
         case GL_MODELVIEW_MATRIX:
             MEMCPY4(params, _glGetModelViewMatrix(), sizeof(float) * 16);
         break;
+        case GL_TEXTURE_MATRIX:
+            MEMCPY4(params, _glGetTextureMatrix(), sizeof(float) * 16);
+        break;
+        case GL_COLOR_MATRIX:
+            MEMCPY4(params, _glGetColorMatrix(), sizeof(float) * 16);
+        break;
+
         case GL_POLYGON_OFFSET_FACTOR:
             *params = GPUState.offset_factor;
         break;

@@ -1477,14 +1477,14 @@ static bool _glTexImage2DValidate(GLenum target, GLint level, GLint internalForm
     if(format != GL_COLOR_INDEX4_EXT && format != GL_COLOR_INDEX4_TWID_KOS) {
         /* Abuse determineStride to see if type is valid */
         if(_determineStride(GL_RGBA, type) == -1) {
-            INFO_MSG("");
+            INFO_MSG("Unsupported type");
             _glKosThrowError(GL_INVALID_ENUM, __func__);
             return false;
         }
     }
 
     if(_cleanInternalFormat(internalFormat) == -1) {
-        INFO_MSG("");
+        INFO_MSG("Unsupported internal format");
         _glKosThrowError(GL_INVALID_VALUE, __func__);
         return false;
     }
@@ -1494,7 +1494,7 @@ static bool _glTexImage2DValidate(GLenum target, GLint level, GLint internalForm
     if(level == 0){
         if((w < 8 || (w & -w) != w)) {
             /* Width is not a power of two. Must be!*/
-            INFO_MSG("");
+            INFO_MSG("Unsupported width");
             _glKosThrowError(GL_INVALID_VALUE, __func__);
             return false;
         }
@@ -1502,7 +1502,7 @@ static bool _glTexImage2DValidate(GLenum target, GLint level, GLint internalForm
 
         if((h < 8 || (h & -h) != h)) {
             /* height is not a power of two. Must be!*/
-            INFO_MSG("");
+            INFO_MSG("Unsupported height");
             _glKosThrowError(GL_INVALID_VALUE, __func__);
             return false;
         }
@@ -1517,7 +1517,7 @@ static bool _glTexImage2DValidate(GLenum target, GLint level, GLint internalForm
     }
 
     if(level < 0) {
-        INFO_MSG("");
+        INFO_MSG("Level must be >= 0");
         _glKosThrowError(GL_INVALID_VALUE, __func__);
         return false;
     }
@@ -1530,7 +1530,7 @@ static bool _glTexImage2DValidate(GLenum target, GLint level, GLint internalForm
     }
 
     if(border) {
-        INFO_MSG("");
+        INFO_MSG("Border not allowed");
         _glKosThrowError(GL_INVALID_VALUE, __func__);
         return false;
     }

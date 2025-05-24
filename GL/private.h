@@ -321,7 +321,6 @@ void _glInitSubmissionTarget();
 void _glMatrixLoadNormal();
 void _glMatrixLoadModelView();
 void _glMatrixLoadProjection();
-void _glMatrixLoadTexture();
 void _glMatrixLoadModelViewProjection();
 
 extern GLfloat DEPTH_RANGE_MULTIPLIER_L;
@@ -332,7 +331,10 @@ extern GLfloat HALF_POINT_SIZE;
 
 Matrix4x4* _glGetProjectionMatrix();
 Matrix4x4* _glGetModelViewMatrix();
+Matrix4x4* _glGetTextureMatrix();
+Matrix4x4* _glGetColorMatrix();
 GLenum _glGetMatrixMode();
+GLboolean _glIsIdentity(const Matrix4x4* m);
 
 void _glWipeTextureOnFramebuffers(GLuint texture);
 
@@ -484,6 +486,13 @@ void _glGPUStateMarkDirty();
 #define SPECULAR_MASK 8
 #define SCENE_AMBIENT_MASK 16
 
+
+void _glTnlLoadMatrix(void);
+void _glTnlApplyEffects(SubmissionTarget* target);
+
+void _glTnlUpdateLighting(void);
+void _glTnlUpdateTextureMatrix(void);
+void _glTnlUpdateColorMatrix(void);
 
 /* This is from KOS pvr_buffers.c */
 #define PVR_MIN_Z 0.0001f
