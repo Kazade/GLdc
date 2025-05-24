@@ -205,10 +205,41 @@ static void _readColour3ubARGB(const GLubyte* __restrict__ input, GLubyte* __res
     }
 
 DEF_READ_COLOUR_4_ARGB_FP(4f, float)
-DEF_READ_COLOUR_4_ARGB_FP(4d, double)
 
 DEF_READ_COLOUR_3_ARGB_FP(3f, float)
-DEF_READ_COLOUR_3_ARGB_FP(3d, double)
+
+
+
+static void _readColour4dARGB(const GLubyte* __restrict__ in, GLubyte* __restrict__ out) {
+    const double* input = (const double*) in;
+    
+    // Convert to float first  
+    float r = (float)input[0];
+    float g = (float)input[1];
+    float b = (float)input[2]; 
+    float a = (float)input[3];
+    
+    out[R8IDX] = (GLubyte) clamp(r * 255.0f, 0, 255);
+    out[G8IDX] = (GLubyte) clamp(g * 255.0f, 0, 255);
+    out[B8IDX] = (GLubyte) clamp(b * 255.0f, 0, 255);
+    out[A8IDX] = (GLubyte) clamp(a * 255.0f, 0, 255);
+}
+
+static void _readColour3dARGB(const GLubyte* __restrict__ in, GLubyte* __restrict__ out) {
+    const double* input = (const double*) in;
+    
+    // Convert to float first  
+    float r = (float)input[0];
+    float g = (float)input[1];
+    float b = (float)input[2];
+    
+    out[R8IDX] = (GLubyte) clamp(r * 255.0f, 0, 255);
+    out[G8IDX] = (GLubyte) clamp(g * 255.0f, 0, 255);
+    out[B8IDX] = (GLubyte) clamp(b * 255.0f, 0, 255);
+    out[A8IDX] = 255;
+}
+
+
 
 static void _readColour4ubRevARGB(const GLubyte* __restrict__ input, GLubyte* __restrict__ output) {
     argbcpy(output, input);
@@ -226,10 +257,16 @@ static void _readColour4fRevARGB(const GLubyte* __restrict__ in, GLubyte* __rest
 static void _readColour4dRevARGB(const GLubyte* __restrict__ in, GLubyte* __restrict__ output) {
     const double* input = (const double*) in;
 
-    output[0] = (GLubyte) clamp(input[0] * 255.0f, 0, 255);
-    output[1] = (GLubyte) clamp(input[1] * 255.0f, 0, 255);
-    output[2] = (GLubyte) clamp(input[2] * 255.0f, 0, 255);
-    output[3] = (GLubyte) clamp(input[3] * 255.0f, 0, 255);
+    // Convert to float first  
+    float r = (float)input[0];
+    float g = (float)input[1];
+    float b = (float)input[2];
+    float a = (float)input[3];
+
+    output[0] = (GLubyte) clamp(r * 255.0f, 0, 255);
+    output[1] = (GLubyte) clamp(g * 255.0f, 0, 255);
+    output[2] = (GLubyte) clamp(b * 255.0f, 0, 255);
+    output[3] = (GLubyte) clamp(a * 255.0f, 0, 255);
 }
 
 #define DEF_READ_COLOUR_N_ARGB_INT(prefix, intype, max, alpha, i0, i1, i2, i3) \
