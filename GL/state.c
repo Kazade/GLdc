@@ -390,7 +390,7 @@ void _glUpdatePVRTextureContext(PolyContext *context, GLshort textureUnit) {
         }
 
         context->txr.env = tx1->env;
-        context->txr.uv_flip = GPU_UVFLIP_NONE;
+        context->txr.uv_flip = tx1->uv_flip;
         context->txr.uv_clamp = tx1->uv_clamp;
     }
 }

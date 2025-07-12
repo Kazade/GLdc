@@ -153,7 +153,9 @@ typedef struct {
     //50
     GLenum internalFormat;
     //54
-    GLubyte padding[10];  // Pad to 64-bytes
+    GLubyte uv_flip;
+    // 55
+    GLubyte padding[9];  // Pad to 64-bytes
 } __attribute__((aligned(32))) TextureObject;
 
 typedef struct {

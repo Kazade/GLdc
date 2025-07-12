@@ -17,6 +17,9 @@
 #define CLAMP_U (1<<1)
 #define CLAMP_V (1<<0)
 
+#define MIRROR_U (1<<1)
+#define MIRROR_V (1<<0)
+
 static TextureObject* TEXTURE_UNITS[MAX_GLDC_TEXTURE_UNITS] = {NULL, NULL};
 static NamedArray TEXTURE_OBJECTS;
 GLubyte ACTIVE_TEXTURE = 0;
@@ -505,6 +508,7 @@ static void _glInitializeTextureObject(TextureObject* txr, unsigned int id) {
     txr->width = txr->height = 0;
     txr->mipmap = 0;
     txr->uv_clamp = 0;
+    txr->uv_flip = 0;
     txr->env = GPU_TXRENV_MODULATEALPHA;
     txr->data = NULL;
     txr->mipmapCount = 0;
@@ -1899,6 +1903,10 @@ void APIENTRY glTexParameteri(GLenum target, GLenum pname, GLint param) {
                     case GL_REPEAT:
                         active->uv_clamp &= ~CLAMP_U;
                         break;
+
+                    case GL_MIRRORED_REPEAT:
+                        active->uv_flip |= MIRROR_U;
+                        break;
                 }
 
                 break;
@@ -1912,6 +1920,10 @@ void APIENTRY glTexParameteri(GLenum target, GLenum pname, GLint param) {
 
                     case GL_REPEAT:
                         active->uv_clamp &= ~CLAMP_V;
+                        break;
+
+                    case GL_MIRRORED_REPEAT:
+                        active->uv_flip |= MIRROR_V;
                         break;
                 }
 
