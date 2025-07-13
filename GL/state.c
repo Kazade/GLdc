@@ -390,8 +390,10 @@ void _glUpdatePVRTextureContext(PolyContext *context, GLshort textureUnit) {
         }
 
         context->txr.env = tx1->env;
-        context->txr.uv_flip = GPU_UVFLIP_NONE;
-        context->txr.uv_clamp = tx1->uv_clamp;
+        // extract mirror setting from bits 2 and 3 of uv_wrap by shifting out the clamp bits and masking
+        context->txr.uv_flip = (tx1->uv_wrap >> 2) & 3;
+        // extract clamp setting from bits 0 and 1 of uv_wrap by masking
+        context->txr.uv_clamp = tx1->uv_wrap & 3;
     }
 }
 

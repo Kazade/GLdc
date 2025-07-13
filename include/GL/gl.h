@@ -116,6 +116,7 @@ __BEGIN_DECLS
 #define GL_TEXTURE_WRAP_T       0x2803
 #define GL_TEXTURE_MAG_FILTER   0x2800
 #define GL_TEXTURE_MIN_FILTER   0x2801
+#define GL_MIRRORED_REPEAT      0x2902
 #define GL_REPEAT               0x2901
 #define GL_CLAMP                0x2900
 

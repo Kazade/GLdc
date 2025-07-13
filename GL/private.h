@@ -138,7 +138,7 @@ typedef struct {
     GLubyte mipmap_bias;
     GLubyte  env;
     GLubyte mipmapCount; /* The number of mipmap levels */
-    GLubyte  uv_clamp;
+    GLubyte  uv_wrap; /* clamp and flip settings for u and v */
     //40
     /* Mipmap textures have a different
      * offset for the base level when supplying the data, this
