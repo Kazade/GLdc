@@ -14,11 +14,12 @@
  * issues with the allocator */
 #define PVR_MEM_BUFFER_SIZE (64 * 1024)
 
+/* Clamp settings go in lower bits of uv_wrap
+ * Mirror settings go in upper bits */
+#define MIRROR_U (1<<3)
+#define MIRROR_V (1<<2)
 #define CLAMP_U (1<<1)
 #define CLAMP_V (1<<0)
-
-#define MIRROR_U (1<<1)
-#define MIRROR_V (1<<0)
 
 static TextureObject* TEXTURE_UNITS[MAX_GLDC_TEXTURE_UNITS] = {NULL, NULL};
 static NamedArray TEXTURE_OBJECTS;
@@ -507,8 +508,7 @@ static void _glInitializeTextureObject(TextureObject* txr, unsigned int id) {
     txr->index = id;
     txr->width = txr->height = 0;
     txr->mipmap = 0;
-    txr->uv_clamp = 0;
-    txr->uv_flip = 0;
+    txr->uv_wrap = 0;
     txr->env = GPU_TXRENV_MODULATEALPHA;
     txr->data = NULL;
     txr->mipmapCount = 0;
@@ -1897,15 +1897,15 @@ void APIENTRY glTexParameteri(GLenum target, GLenum pname, GLint param) {
                 switch(param) {
                     case GL_CLAMP_TO_EDGE:
                     case GL_CLAMP:
-                        active->uv_clamp |= CLAMP_U;
+                        active->uv_wrap |= CLAMP_U;
                         break;
 
                     case GL_REPEAT:
-                        active->uv_clamp &= ~CLAMP_U;
+                        active->uv_wrap &= ~CLAMP_U;
                         break;
 
                     case GL_MIRRORED_REPEAT:
-                        active->uv_flip |= MIRROR_U;
+                        active->uv_wrap |= MIRROR_U;
                         break;
                 }
 
@@ -1915,15 +1915,15 @@ void APIENTRY glTexParameteri(GLenum target, GLenum pname, GLint param) {
                 switch(param) {
                     case GL_CLAMP_TO_EDGE:
                     case GL_CLAMP:
-                        active->uv_clamp |= CLAMP_V;
+                        active->uv_wrap |= CLAMP_V;
                         break;
 
                     case GL_REPEAT:
-                        active->uv_clamp &= ~CLAMP_V;
+                        active->uv_wrap &= ~CLAMP_V;
                         break;
 
                     case GL_MIRRORED_REPEAT:
-                        active->uv_flip |= MIRROR_V;
+                        active->uv_wrap |= MIRROR_V;
                         break;
                 }
 
