@@ -96,7 +96,7 @@ static inline void _glPushHeaderOrVertex(Vertex* v, size_t count)  {
 static inline void _glClipEdge(const Vertex* const v1, const Vertex* const v2, Vertex* vout) {
     const float d0 = v1->w + v1->xyz[2];
     const float d1 = v2->w + v2->xyz[2];
-    const float t = (fabs(d0) * (1.0f / sqrtf((d1 - d0) * (d1 - d0))));
+    const float t = (fabsf(d0) * (1.0f / sqrtf((d1 - d0) * (d1 - d0))));
     const float invt = 1.0f - t;
 
     vout->xyz[0] = invt * v1->xyz[0] + t * v2->xyz[0];
