@@ -1905,7 +1905,6 @@ void APIENTRY glTexParameteri(GLenum target, GLenum pname, GLint param) {
                         break;
 
                     case GL_MIRRORED_REPEAT:
-                        active->uv_wrap &= ~CLAMP_U;
                         active->uv_wrap |= MIRROR_U;
                         break;
                 }
@@ -1924,7 +1923,6 @@ void APIENTRY glTexParameteri(GLenum target, GLenum pname, GLint param) {
                         break;
 
                     case GL_MIRRORED_REPEAT:
-                        active->uv_wrap &= ~CLAMP_V;
                         active->uv_wrap |= MIRROR_V;
                         break;
                 }
