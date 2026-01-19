@@ -759,6 +759,28 @@ GL_FORCE_INLINE GLuint calcFinalVertices(GLenum mode, GLuint count) {
     return count;
 }
 
+
+static void applyPolygonOffset(SubmissionTarget* target) {
+    if(!_glIsPolygonOffsetEnabled()) {
+        return;
+    }
+
+    GLfloat factor = _glGetPolygonOffsetFactor();
+    GLfloat units = _glGetPolygonOffsetUnits();
+    
+    /* Offset applied to w component. After perspective divide, depth = 1/w.
+     * Negative offset = smaller w = larger 1/w = wins depth test (GEQUAL).
+     * PVR_MIN_Z scale factor tuned for PVR depth precision. */
+    GLfloat offset = (factor + units) * PVR_MIN_Z;
+
+    Vertex* v = _glSubmissionTargetStart(target);
+    uint32_t i = target->count;
+    
+    while(i--) {
+        v->w += offset;  /* negative offset makes w smaller */
+        v++;
+    }
+}
 GL_FORCE_INLINE void submitVertices(GLenum mode, GLsizei first, GLuint count, GLenum type, const GLvoid* indices) {
     SubmissionTarget* const target = &SUBMISSION_TARGET;
     AlignedVector* const extras = target->extras;
@@ -821,6 +843,7 @@ GL_FORCE_INLINE void submitVertices(GLenum mode, GLsizei first, GLuint count, GL
     _glTnlLoadMatrix();
 
     generate(target, mode, first, count, (GLubyte*) indices, type);
+    applyPolygonOffset(target);
 
     _glTnlApplyEffects(target);
 

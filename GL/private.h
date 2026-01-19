@@ -473,6 +473,11 @@ GLfloat* _glGetLightModelSceneAmbient();
 LightSource* _glLightAt(GLuint i);
 GLboolean _glNearZClippingEnabled();
 
+GLboolean _glIsPolygonOffsetEnabled();
+GLfloat _glGetPolygonOffsetFactor();
+GLfloat _glGetPolygonOffsetUnits();
+
+
 GLboolean _glGPUStateIsDirty();
 void _glGPUStateMarkClean();
 void _glGPUStateMarkDirty();
