@@ -1,7 +1,5 @@
 #include <float.h>
 
-#include <dc/sq.h>
-
 #include "../platform.h"
 #include "sh4.h"
 

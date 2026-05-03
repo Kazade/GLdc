@@ -442,7 +442,7 @@ GLfloat* _glGetLightModelSceneAmbient();
 LightSource* _glLightAt(GLuint i);
 
 #define MAX_GLDC_TEXTURE_UNITS 2
-#define MAX_GLDC_LIGHTS 8
+#define MAX_GLDC_LIGHTS 4
 
 #define AMBIENT_MASK 1
 #define DIFFUSE_MASK 2
