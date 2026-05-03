@@ -761,7 +761,7 @@ GL_FORCE_INLINE GLuint _glIsVertexDataFastPathCompatible(void) {
      *
      * xyz == 3f
      * uv == 2f
-     * rgba == argb4444
+     * rgba == 4f
      * st == 2f
      * normal == 3f
      *
@@ -783,13 +783,13 @@ GL_FORCE_INLINE GLuint _glIsVertexDataFastPathCompatible(void) {
 
     if((ATTRIB_LIST.enabled & COLOR_ENABLED_FLAG)) {
         /* FIXME: Shouldn't this be a reversed format? */
-        if(ATTRIB_LIST.colour.size != GL_BGRA || ATTRIB_LIST.colour.type != GL_UNSIGNED_BYTE) {
+        if(ATTRIB_LIST.colour.size != 4 || ATTRIB_LIST.colour.type != GL_FLOAT) {
             return GL_FALSE;
         }
     }
 
     if((ATTRIB_LIST.enabled & S_COLOR_ENABLED_FLAG)) {
-        if(ATTRIB_LIST.s_color.size != GL_BGRA || ATTRIB_LIST.s_color.type != GL_UNSIGNED_BYTE) {
+        if(ATTRIB_LIST.s_color.size != 4 || ATTRIB_LIST.s_color.type != GL_FLOAT) {
             return GL_FALSE;
         }
     }
