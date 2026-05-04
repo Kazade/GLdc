@@ -348,22 +348,23 @@ public:
         Vertex* v2 = vertex_at(&OP_LIST, 3);   /* blue  */
 
         /* v0 = red */
-        assert_close(v0->argb[R8IDX], 1.0f, 0.001f);
-        assert_close(v0->argb[G8IDX], 0.0f, 0.001f);
-        assert_close(v0->argb[B8IDX], 0.0f, 0.001f);
-        assert_close(v0->argb[A8IDX], 1.0f, 0.001f);
+        fprintf(stderr, "%f %f %f %f\n", v0->argb[0], v0->argb[1], v0->argb[2], v0->argb[3]);
+        assert_close(v0->argb[0], 1.0f, 0.001f);
+        assert_close(v0->argb[1], 0.0f, 0.001f);
+        assert_close(v0->argb[2], 0.0f, 0.001f);
+        assert_close(v0->argb[3], 1.0f, 0.001f);
 
         /* v1 = green */
-        assert_close(v1->argb[R8IDX], 0.0f, 0.001f);
-        assert_close(v1->argb[G8IDX], 1.0f, 0.001f);
-        assert_close(v1->argb[B8IDX], 0.0f, 0.001f);
-        assert_close(v1->argb[A8IDX], 1.0f, 0.001f);
+        assert_close(v1->argb[0], 0.0f, 0.001f);
+        assert_close(v1->argb[1], 1.0f, 0.001f);
+        assert_close(v1->argb[2], 0.0f, 0.001f);
+        assert_close(v1->argb[3], 1.0f, 0.001f);
 
         /* v2 = blue */
-        assert_close(v2->argb[R8IDX], 0.0f, 0.001f);
-        assert_close(v2->argb[G8IDX], 0.0f, 0.001f);
-        assert_close(v2->argb[B8IDX], 1.0f, 0.001f);
-        assert_close(v2->argb[A8IDX], 1.0f, 0.001f);
+        assert_close(v2->argb[0], 0.0f, 0.001f);
+        assert_close(v2->argb[1], 0.0f, 0.001f);
+        assert_close(v2->argb[2], 1.0f, 0.001f);
+        assert_close(v2->argb[3], 1.0f, 0.001f);
     }
 
     /* Same test as above but using GL_UNSIGNED_BYTE colours (RGBA order). */
@@ -472,10 +473,10 @@ public:
         glDisableClientState(GL_VERTEX_ARRAY);
 
         Vertex* v0 = vertex_at(&OP_LIST, 1);
-        assert_close(v0->argb[R8IDX], 0.2f, 0.001f);
-        assert_close(v0->argb[G8IDX], 0.4f, 0.001f);
-        assert_close(v0->argb[B8IDX], 0.6f, 0.001f);
-        assert_close(v0->argb[A8IDX], 1.0f, 0.001f);
+        assert_close(v0->argb[0], 0.2f, 0.001f);
+        assert_close(v0->argb[1], 0.4f, 0.001f);
+        assert_close(v0->argb[2], 0.6f, 0.001f);
+        assert_close(v0->argb[3], 1.0f, 0.001f);
     }
 
     /* Blending enabled must route geometry to TR_LIST, not OP_LIST. */
