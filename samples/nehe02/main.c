@@ -65,11 +65,13 @@ void DrawGLScene()
     glTranslatef(-3.0f, 1.5f, -10.0f);		// Move Left 1.5 Units And Into The Screen 6.0
 
     // draw a triangle
+    glColor3f(1.0f, 0.0f, 0.0f);
     glBegin(GL_TRIANGLES);				// start drawing a polygon
         glVertex3f( 0.0f, 1.0f, 0.0f);		// Top
         glVertex3f( 1.0f,-1.0f, 0.0f);		// Bottom Right
         glVertex3f(-1.0f,-1.0f, 0.0f);		// Bottom Left
     glEnd();					// we're done with the polygon
+    glColor3f(1.0f, 1.0f, 1.0f);
 
     glTranslatef(3.0f, 0.0f, 0.0f);		        // Move Right 3 Units
 

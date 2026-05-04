@@ -140,13 +140,10 @@ GL_FORCE_INLINE void _glClipEdge(const Vertex* v1, const Vertex* v2, Vertex* vou
 
     vout->w = invt * v1->w + t * v2->w;
 
-    const float m = 255 * t;
-    const float n = 255 - m;
-
-    vout->bgra[0] = (v1->bgra[0] * n + v2->bgra[0] * m) * o;
-    vout->bgra[1] = (v1->bgra[1] * n + v2->bgra[1] * m) * o;
-    vout->bgra[2] = (v1->bgra[2] * n + v2->bgra[2] * m) * o;
-    vout->bgra[3] = (v1->bgra[3] * n + v2->bgra[3] * m) * o;
+    vout->argb[0] = invt * v1->argb[0] + t * v2->argb[0];
+    vout->argb[1] = invt * v1->argb[1] + t * v2->argb[1];
+    vout->argb[2] = invt * v1->argb[2] + t * v2->argb[2];
+    vout->argb[3] = invt * v1->argb[3] + t * v2->argb[3];
 }
 
 void SceneListSubmit(Vertex* v2, int n) {
@@ -476,19 +473,19 @@ void SceneListFinish() {
 
             SDL_Vertex sv0 = {
                 {v0->xyz[0], v0->xyz[1]},
-                {v0->bgra[2], v0->bgra[1], v0->bgra[0], v0->bgra[3]},
+                {v0->argb[2], v0->argb[1], v0->argb[0], v0->argb[3]},
                 {v0->uv[0], v0->uv[1]}
             };
 
             SDL_Vertex sv1 = {
                 {v1->xyz[0], v1->xyz[1]},
-                {v1->bgra[2], v1->bgra[1], v1->bgra[0], v1->bgra[3]},
+                {v1->argb[2], v1->argb[1], v1->argb[0], v1->argb[3]},
                 {v1->uv[0], v1->uv[1]}
             };
 
             SDL_Vertex sv2 = {
                 {v2->xyz[0], v2->xyz[1]},
-                {v2->bgra[2], v2->bgra[1], v2->bgra[0], v2->bgra[3]},
+                {v2->argb[2], v2->argb[1], v2->argb[0], v2->argb[3]},
                 {v2->uv[0], v2->uv[1]}
             };
 

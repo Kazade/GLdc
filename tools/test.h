@@ -26,6 +26,7 @@
 #include <algorithm>
 #include <fstream>
 #include <memory>
+#include <cstdint>
 
 #define assert_equal(expected, actual) _assert_equal((expected), (actual), __FILE__, __LINE__)
 #define assert_not_equal(expected, actual) _assert_not_equal((expected), (actual), __FILE__, __LINE__)

@@ -10,23 +10,14 @@
 #include <string.h>
 #include <stdio.h>
 
+#include "state.h"
 #include "private.h"
 
 GLboolean IMMEDIATE_MODE_ACTIVE = GL_FALSE;
 static GLenum ACTIVE_POLYGON_MODE = GL_TRIANGLES;
 
-static GLfloat __attribute__((aligned(32))) NORMAL[3] = {0.0f, 0.0f, 1.0f};
-static GLubyte __attribute__((aligned(32))) COLOR[4] = {255, 255, 255, 255}; /* ARGB order for speed */
-static GLfloat __attribute__((aligned(32))) UV_COORD[2] = {0.0f, 0.0f};
-static GLfloat __attribute__((aligned(32))) ST_COORD[2] = {0.0f, 0.0f};
-
 static AlignedVector VERTICES;
 static AttribPointerList IM_ATTRIBS;
-
-/* We store the list of attributes that have been "enabled" by a call to
-  glColor, glNormal, glTexCoord etc. otherwise we already have defaults that
-  can be applied faster */
-static GLuint IM_ENABLED_VERTEX_ATTRIBUTES = 0;
 
 typedef struct __attribute__((aligned(32))) {
     GLfloat x;
@@ -36,11 +27,11 @@ typedef struct __attribute__((aligned(32))) {
     GLfloat v;
     GLfloat s;
     GLfloat t;
-    GLubyte bgra[4];
+    GLfloat argb[4];
     GLfloat nx;
     GLfloat ny;
     GLfloat nz;
-    GLuint padding[5];
+    GLuint padding[2];
 } IMVertex;
 
 
@@ -54,22 +45,22 @@ void _glInitImmediateMode(GLuint initial_size) {
     IM_ATTRIBS.vertex.type = GL_FLOAT;
     IM_ATTRIBS.vertex.stride = sizeof(IMVertex);
 
-    IM_ATTRIBS.uv.ptr = IM_ATTRIBS.vertex.ptr + (sizeof(GLfloat) * 3);
+    IM_ATTRIBS.uv.ptr = IM_ATTRIBS.vertex.ptr + offsetof(IMVertex, u);
     IM_ATTRIBS.uv.stride = sizeof(IMVertex);
     IM_ATTRIBS.uv.type = GL_FLOAT;
     IM_ATTRIBS.uv.size = 2;
 
-    IM_ATTRIBS.st.ptr = IM_ATTRIBS.vertex.ptr + (sizeof(GLfloat) * 5);
+    IM_ATTRIBS.st.ptr = IM_ATTRIBS.vertex.ptr + offsetof(IMVertex, s);
     IM_ATTRIBS.st.stride = sizeof(IMVertex);
     IM_ATTRIBS.st.type = GL_FLOAT;
     IM_ATTRIBS.st.size = 2;
 
-    IM_ATTRIBS.colour.ptr = IM_ATTRIBS.vertex.ptr + (sizeof(GLfloat) * 7);
-    IM_ATTRIBS.colour.size = GL_BGRA;  /* Flipped color order */
-    IM_ATTRIBS.colour.type = GL_UNSIGNED_BYTE;
+    IM_ATTRIBS.colour.ptr = IM_ATTRIBS.vertex.ptr + offsetof(IMVertex, argb);
+    IM_ATTRIBS.colour.size = 4;
+    IM_ATTRIBS.colour.type = GL_FLOAT;
     IM_ATTRIBS.colour.stride = sizeof(IMVertex);
 
-    IM_ATTRIBS.normal.ptr = IM_ATTRIBS.vertex.ptr + (sizeof(GLfloat) * 7) + sizeof(uint32_t);
+    IM_ATTRIBS.normal.ptr = IM_ATTRIBS.vertex.ptr + offsetof(IMVertex, nx);
     IM_ATTRIBS.normal.stride = sizeof(IMVertex);
     IM_ATTRIBS.normal.type = GL_FLOAT;
     IM_ATTRIBS.normal.size = 3;
@@ -86,16 +77,9 @@ void APIENTRY glBegin(GLenum mode) {
 }
 
 void APIENTRY glColor4f(GLfloat r, GLfloat g, GLfloat b, GLfloat a) {
-    IM_ATTRIBS.enabled |= DIFFUSE_ENABLED_FLAG;
+    IM_ATTRIBS.enabled |= COLOR_ENABLED_FLAG;
 
-    COLOR[A8IDX] = (GLubyte)(a * 255.0f);
-    COLOR[R8IDX] = (GLubyte)(r * 255.0f);
-    COLOR[G8IDX] = (GLubyte)(g * 255.0f);
-    COLOR[B8IDX] = (GLubyte)(b * 255.0f);
-}
-
-void APIENTRY glColor4ub(GLubyte r, GLubyte  g, GLubyte b, GLubyte a) {
-    IM_ATTRIBS.enabled |= DIFFUSE_ENABLED_FLAG;
+    float* COLOR = _glCurrentColor();
 
     COLOR[A8IDX] = a;
     COLOR[R8IDX] = r;
@@ -103,58 +87,88 @@ void APIENTRY glColor4ub(GLubyte r, GLubyte  g, GLubyte b, GLubyte a) {
     COLOR[B8IDX] = b;
 }
 
-void APIENTRY glColor4ubv(const GLubyte *v) {
-    IM_ATTRIBS.enabled |= DIFFUSE_ENABLED_FLAG;
+void APIENTRY glColor4ub(GLubyte r, GLubyte  g, GLubyte b, GLubyte a) {
+    IM_ATTRIBS.enabled |= COLOR_ENABLED_FLAG;
 
-    COLOR[A8IDX] = v[3];
-    COLOR[R8IDX] = v[0];
-    COLOR[G8IDX] = v[1];
-    COLOR[B8IDX] = v[2];
+    const float m = 1.0f / 255.0f;
+
+    float* COLOR = _glCurrentColor();
+    COLOR[A8IDX] = ((float)a) * m;
+    COLOR[R8IDX] = ((float)r) * m;
+    COLOR[G8IDX] = ((float)g) * m;
+    COLOR[B8IDX] = ((float)b) * m;
+}
+
+void APIENTRY glColor4ubv(const GLubyte *v) {
+    IM_ATTRIBS.enabled |= COLOR_ENABLED_FLAG;
+
+    const float m = 1.0f / 255.0f;
+
+    float* COLOR = _glCurrentColor();
+
+    COLOR[R8IDX] = ((float) v[0]) * m;
+    COLOR[G8IDX] = ((float) v[1]) * m;
+    COLOR[B8IDX] = ((float) v[2]) * m;
+    COLOR[A8IDX] = ((float) v[3]) * m;
 }
 
 void APIENTRY glColor4fv(const GLfloat* v) {
-    IM_ATTRIBS.enabled |= DIFFUSE_ENABLED_FLAG;
+    IM_ATTRIBS.enabled |= COLOR_ENABLED_FLAG;
 
-    COLOR[B8IDX] = (GLubyte)(v[2] * 255);
-    COLOR[G8IDX] = (GLubyte)(v[1] * 255);
-    COLOR[R8IDX] = (GLubyte)(v[0] * 255);
-    COLOR[A8IDX] = (GLubyte)(v[3] * 255);
-}
+    float* COLOR = _glCurrentColor();
 
-void APIENTRY glColor3f(GLfloat r, GLfloat g, GLfloat b) {
-    IM_ATTRIBS.enabled |= DIFFUSE_ENABLED_FLAG;
-
-    COLOR[B8IDX] = (GLubyte)(b * 255.0f);
-    COLOR[G8IDX] = (GLubyte)(g * 255.0f);
-    COLOR[R8IDX] = (GLubyte)(r * 255.0f);
-    COLOR[A8IDX] = 255;
-}
-
-void APIENTRY glColor3ub(GLubyte red, GLubyte green, GLubyte blue) {
-    IM_ATTRIBS.enabled |= DIFFUSE_ENABLED_FLAG;
-
-    COLOR[A8IDX] = 255;
-    COLOR[R8IDX] = red;
-    COLOR[G8IDX] = green;
-    COLOR[B8IDX] = blue;
-}
-
-void APIENTRY glColor3ubv(const GLubyte *v) {
-    IM_ATTRIBS.enabled |= DIFFUSE_ENABLED_FLAG;
-
-    COLOR[A8IDX] = 255;
     COLOR[R8IDX] = v[0];
     COLOR[G8IDX] = v[1];
     COLOR[B8IDX] = v[2];
+    COLOR[A8IDX] = v[3];
+}
+
+void APIENTRY glColor3f(GLfloat r, GLfloat g, GLfloat b) {
+    IM_ATTRIBS.enabled |= COLOR_ENABLED_FLAG;
+
+    float* COLOR = _glCurrentColor();
+
+    COLOR[B8IDX] = b;
+    COLOR[G8IDX] = g;
+    COLOR[R8IDX] = r;
+    COLOR[A8IDX] = 1.0f;
+}
+
+void APIENTRY glColor3ub(GLubyte red, GLubyte green, GLubyte blue) {
+    IM_ATTRIBS.enabled |= COLOR_ENABLED_FLAG;
+
+    const float m = 1.0f / 255.0f;
+
+    float* COLOR = _glCurrentColor();
+
+    COLOR[A8IDX] = 1.0f;
+    COLOR[R8IDX] = ((float) red) * m;
+    COLOR[G8IDX] = ((float) green) * m;
+    COLOR[B8IDX] = ((float) blue) * m;
+}
+
+void APIENTRY glColor3ubv(const GLubyte *v) {
+    IM_ATTRIBS.enabled |= COLOR_ENABLED_FLAG;
+
+    const float m = 1.0f / 255.0f;
+
+    float* COLOR = _glCurrentColor();
+
+    COLOR[A8IDX] = 1.0f;
+    COLOR[R8IDX] = ((float) v[0]) * m;
+    COLOR[G8IDX] = ((float) v[1]) * m;
+    COLOR[B8IDX] = ((float) v[2]) * m;
 }
 
 void APIENTRY glColor3fv(const GLfloat* v) {
-    IM_ATTRIBS.enabled |= DIFFUSE_ENABLED_FLAG;
+    IM_ATTRIBS.enabled |= COLOR_ENABLED_FLAG;
 
-    COLOR[A8IDX] = 255;
-    COLOR[R8IDX] = (GLubyte)(v[0] * 255);
-    COLOR[G8IDX] = (GLubyte)(v[1] * 255);
-    COLOR[B8IDX] = (GLubyte)(v[2] * 255);
+    float* COLOR = _glCurrentColor();
+
+    COLOR[A8IDX] = 1.0f;
+    COLOR[R8IDX] = v[0];
+    COLOR[G8IDX] = v[1];
+    COLOR[B8IDX] = v[2];
 }
 
 typedef union punned {
@@ -170,6 +184,11 @@ void APIENTRY glVertex3f(GLfloat x, GLfloat y, GLfloat z) {
 
     IMVertex* vert = aligned_vector_extend(&VERTICES, 1);
 
+    float* COLOR = _glCurrentColor();
+    float* UV_COORD = _glCurrentTexCoord0();
+    float* ST_COORD = _glCurrentTexCoord1();
+    float* NORMAL = _glCurrentNormal();
+
     punned_t dest = { .flt = &vert->x };
     *(dest.flt++) = x;
     *(dest.flt++) = y;
@@ -178,7 +197,10 @@ void APIENTRY glVertex3f(GLfloat x, GLfloat y, GLfloat z) {
     *(dest.flt++) = UV_COORD[1];
     *(dest.flt++) = ST_COORD[0];
     *(dest.flt++) = ST_COORD[1];
-    *(dest.u32++) = *((uint32_t*)(void*) COLOR);
+    *(dest.flt++) = COLOR[0];
+    *(dest.flt++) = COLOR[1];
+    *(dest.flt++) = COLOR[2];
+    *(dest.flt++) = COLOR[3];
     *(dest.flt++) = NORMAL[0];
     *(dest.flt++) = NORMAL[1];
     *(dest.flt++) = NORMAL[2];
@@ -206,6 +228,9 @@ void APIENTRY glVertex4fv(const GLfloat* v) {
 }
 
 void APIENTRY glMultiTexCoord2fARB(GLenum target, GLfloat s, GLfloat t) {
+    float* UV_COORD = _glCurrentTexCoord0();
+    float* ST_COORD = _glCurrentTexCoord1();
+
     if(target == GL_TEXTURE0) {
         IM_ATTRIBS.enabled |= UV_ENABLED_FLAG;
         UV_COORD[0] = s;
@@ -222,6 +247,8 @@ void APIENTRY glMultiTexCoord2fARB(GLenum target, GLfloat s, GLfloat t) {
 
 void APIENTRY glTexCoord1f(GLfloat u) {
     IM_ATTRIBS.enabled |= UV_ENABLED_FLAG;
+    float* UV_COORD = _glCurrentTexCoord0();
+
     UV_COORD[0] = u;
     UV_COORD[1] = 0.0f;
 }
@@ -232,6 +259,8 @@ void APIENTRY glTexCoord1fv(const GLfloat* v) {
 
 void APIENTRY glTexCoord2f(GLfloat u, GLfloat v) {
     IM_ATTRIBS.enabled |= UV_ENABLED_FLAG;
+    float* UV_COORD = _glCurrentTexCoord0();
+
     UV_COORD[0] = u;
     UV_COORD[1] = v;
 }
@@ -242,6 +271,8 @@ void APIENTRY glTexCoord2fv(const GLfloat* v) {
 
 void APIENTRY glNormal3f(GLfloat x, GLfloat y, GLfloat z) {
     IM_ATTRIBS.enabled |= NORMAL_ENABLED_FLAG;
+    float* NORMAL = _glCurrentNormal();
+
     NORMAL[0] = x;
     NORMAL[1] = y;
     NORMAL[2] = z;
@@ -256,15 +287,15 @@ void APIENTRY glEnd() {
 
     /* Resizing could've invalidated the pointers */
     IM_ATTRIBS.vertex.ptr = VERTICES.data;
-    IM_ATTRIBS.uv.ptr     = IM_ATTRIBS.vertex.ptr + 12;
-    IM_ATTRIBS.st.ptr     = IM_ATTRIBS.uv.ptr + 8;
-    IM_ATTRIBS.colour.ptr = IM_ATTRIBS.st.ptr + 8;
-    IM_ATTRIBS.normal.ptr = IM_ATTRIBS.colour.ptr + 4;
+    IM_ATTRIBS.uv.ptr     = IM_ATTRIBS.vertex.ptr + offsetof(IMVertex, u);
+    IM_ATTRIBS.st.ptr     = IM_ATTRIBS.vertex.ptr + offsetof(IMVertex, s);
+    IM_ATTRIBS.colour.ptr = IM_ATTRIBS.vertex.ptr + offsetof(IMVertex, argb);
+    IM_ATTRIBS.normal.ptr = IM_ATTRIBS.vertex.ptr + offsetof(IMVertex, nx);
 
     /* Redirect attrib state */
     AttribPointerList stashed_state = ATTRIB_LIST;
     ATTRIB_LIST = IM_ATTRIBS;
-    
+
     glDrawArrays(ACTIVE_POLYGON_MODE, 0, aligned_vector_header(&VERTICES)->size);
 
     ATTRIB_LIST = stashed_state;

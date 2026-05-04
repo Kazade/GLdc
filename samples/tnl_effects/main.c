@@ -22,7 +22,7 @@ static void DrawQuad(float x, float y) {
 }
 
 static void sample_init() {
-#ifdef SDL2_BUILD
+#ifndef __DREAMCAST__
 	SDL_Init(SDL_INIT_EVERYTHING);
 	win_handle = SDL_CreateWindow("Shapes", 0, 0, 640, 480, SDL_WINDOW_OPENGL);
 	SDL_GL_CreateContext(win_handle);
@@ -54,7 +54,7 @@ static int sample_should_exit() {
 int main(int argc, char *argv[]) {
     sample_init();
 	glClearColor(0.2f, 0.2f, 0.2f, 1);
-	glViewport(0, 0, 640, 480);    
+	glViewport(0, 0, 640, 480);
     glEnable(GL_TEXTURE_2D);
 
     GLint tex;
@@ -127,7 +127,7 @@ int main(int argc, char *argv[]) {
         DrawQuad(0.1f, 0.5f);
         glLoadIdentity();
 
-#ifdef SDL2_BUILD
+#ifndef __DREAMCAST__
 		SDL_GL_SwapWindow(win_handle);
 #else
 		glKosSwapBuffers();

@@ -245,6 +245,7 @@ typedef struct {
     uint32_t d2;
     uint32_t d3;
     uint32_t d4;
+    uint8_t padding[32];
 } PolyHeader;
 
 enum GPUCommand {
@@ -371,6 +372,9 @@ static inline int DimensionFlag(const int w) {
     }
 }
 
+static uint8_t* DEFAULT_TEXTURE = NULL;
+extern void* GPUMemoryAlloc(size_t size);
+
 /* Compile a polygon context into a polygon header */
 static inline void CompilePolyHeader(PolyHeader *dst, const PolyContext *src) {
     uint32_t  txr_base;
@@ -381,7 +385,12 @@ static inline void CompilePolyHeader(PolyHeader *dst, const PolyContext *src) {
     /* The base values for CMD */
     dst->cmd = GPU_CMD_POLYHDR;
 
-    dst->cmd |= src->txr.enable << 3;
+    /* Big hack! This enables texturing no matter what. If we disable texturing then
+     * we lose offset color and the vertex format changes meaning we have to manipulate
+     * it differently which is painful. However, if we always keep texturing enabled and bind
+     * a white modulated texture - then everything works the same (with a potential perf hit in the non textured case)
+     */
+    dst->cmd |= 1 << 3; // Enable texturing
 
     /* Or in the list type, shading type, color and UV formats */
     dst->cmd |= (src->list_type << GPU_TA_CMD_TYPE_SHIFT) & GPU_TA_CMD_TYPE_MASK;
@@ -397,7 +406,7 @@ static inline void CompilePolyHeader(PolyHeader *dst, const PolyContext *src) {
     dst->mode1  = (src->depth.comparison << GPU_TA_PM1_DEPTHCMP_SHIFT) & GPU_TA_PM1_DEPTHCMP_MASK;
     dst->mode1 |= (src->gen.culling << GPU_TA_PM1_CULLING_SHIFT) & GPU_TA_PM1_CULLING_MASK;
     dst->mode1 |= (src->depth.write << GPU_TA_PM1_DEPTHWRITE_SHIFT) & GPU_TA_PM1_DEPTHWRITE_MASK;
-    dst->mode1 |= (src->txr.enable << GPU_TA_PM1_TXRENABLE_SHIFT) & GPU_TA_PM1_TXRENABLE_MASK;
+    dst->mode1 |= (1 << GPU_TA_PM1_TXRENABLE_SHIFT) & GPU_TA_PM1_TXRENABLE_MASK;
 
     /* Polygon mode 2 */
     dst->mode2  = (src->blend.src << GPU_TA_PM2_SRCBLEND_SHIFT) & GPU_TA_PM2_SRCBLEND_MASK;
@@ -409,7 +418,21 @@ static inline void CompilePolyHeader(PolyHeader *dst, const PolyContext *src) {
     dst->mode2 |= (src->gen.alpha << GPU_TA_PM2_ALPHA_SHIFT) & GPU_TA_PM2_ALPHA_MASK;
 
     if(src->txr.enable == GPU_TEXTURE_DISABLE) {
-        dst->mode3 = 0;
+        /* Texturing was disabled so we simulate it with a white texture */
+        if(!DEFAULT_TEXTURE) {
+            DEFAULT_TEXTURE = (uint8_t*) GPUMemoryAlloc(8 * 8 * 2);
+            for(int i = 0; i < 8 * 8 * 2; ++i) {
+                DEFAULT_TEXTURE[i] = 0xff;
+            }
+        }
+        dst->mode2 |= (DimensionFlag(8) << GPU_TA_PM2_USIZE_SHIFT) & GPU_TA_PM2_USIZE_MASK;
+        dst->mode2 |= (DimensionFlag(8) << GPU_TA_PM2_VSIZE_SHIFT) & GPU_TA_PM2_VSIZE_MASK;
+        dst->mode2 |= (GPU_TXRENV_MODULATE << GPU_TA_PM2_TXRENV_SHIFT) & GPU_TA_PM2_TXRENV_MASK;
+        dst->mode3 |= (GPU_TXRFMT_RGB565 << GPU_TA_PM3_TXRFMT_SHIFT) & GPU_TA_PM3_TXRFMT_MASK;
+        /* Convert the texture address */
+        txr_base = (uint32_t) DEFAULT_TEXTURE;
+        txr_base = (txr_base & 0x00fffff8) >> 3;
+        dst->mode3 |= txr_base;
     }
     else {
         dst->mode2 |= (src->txr.alpha << GPU_TA_PM2_TXRALPHA_SHIFT) & GPU_TA_PM2_TXRALPHA_MASK;

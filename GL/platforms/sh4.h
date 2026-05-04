@@ -166,12 +166,9 @@ static inline size_t GPUMemoryAvailable() {
     return pvr_mem_available();
 }
 
-static inline void* GPUMemoryAlloc(size_t size) {
-    return pvr_mem_malloc(size);
-}
-
+void* GPUMemoryAlloc(size_t size);
 static inline void GPUSetPaletteFormat(GPUPaletteFormat format) {
-    pvr_set_pal_format(format);
+    pvr_set_pal_format((pvr_palfmt_t) format);
 }
 
 static inline void GPUSetPaletteEntry(uint32_t idx, uint32_t value) {

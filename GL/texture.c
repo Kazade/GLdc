@@ -42,12 +42,6 @@ static GLboolean TEXTURE_TWIDDLE_ENABLED = GL_FALSE;
 static void* ALLOC_BASE = NULL;
 static size_t ALLOC_SIZE = 0;
 
-static struct TwiddleTable {
-    int32_t width;
-    int32_t height;
-    int32_t* table;
-} TWIDDLE_TABLE = {0, 0, NULL};
-
 static void calc_twiddle_factors(uint32_t w, uint32_t h, uint32_t* maskX, uint32_t* maskY) {
     *maskX = 0;
     *maskY = 0;
@@ -71,36 +65,30 @@ static void calc_twiddle_factors(uint32_t w, uint32_t h, uint32_t* maskX, uint32
     }
 }
 
-void build_twiddle_table(int32_t w, int32_t h) {
-    free(TWIDDLE_TABLE.table);
-    TWIDDLE_TABLE.table = (int32_t*) malloc(w * h * sizeof(int32_t));
-    TWIDDLE_TABLE.width = w;
-    TWIDDLE_TABLE.height = h;
+/* Given a texel at (x, y), returns the twiddled linear index.
+   maskX and maskY must be computed via calc_twiddle_factors(w, h, &maskX, &maskY).
 
-    int32_t idx = 0;
-    uint32_t idxX = 0, idxY = 0, maskX, maskY;
-    calc_twiddle_factors(w, h, &maskX, &maskY);
+   The masks encode which bit positions in the result belong to X and Y.
+   Bit n of x goes into the nth set bit of maskX; bit n of y goes into the
+   nth set bit of maskY. */
+static inline uint32_t twid_compute_index(uint32_t x, uint32_t y, uint32_t maskX, uint32_t maskY) {
+    uint32_t result = 0;
+    uint32_t tx = x, ty = y;
 
-    for (int32_t y = 0; y < h; y++) {
-        idxX = 0;
-        for (int32_t x = 0; x < w; x++) {
-            TWIDDLE_TABLE.table[idx++] = idxX | idxY;
-            idxX = (idxX - maskX) & maskX;
+    /* Walk through each bit position, placing x/y bits into mask positions */
+    for (uint32_t bit = 0; (1u << bit) <= (maskX | maskY); bit++) {
+        uint32_t pos = 1u << bit;
+        if (maskX & pos) {
+            result |= (tx & 1) << bit;
+            tx >>= 1;
         }
-        idxY = (idxY - maskY) & maskY;
+        if (maskY & pos) {
+            result |= (ty & 1) << bit;
+            ty >>= 1;
+        }
     }
-}
 
-static void twid_prepare_table(uint32_t w, uint32_t h) {
-    if(TWIDDLE_TABLE.width != w || TWIDDLE_TABLE.height != h || !TWIDDLE_TABLE.table) {
-        build_twiddle_table(w, h);
-    }
-}
-
-/* Given a 0-based texel location, returns new 0-based texel location */
-/* NOTE: twid_prepare_table must have been called beforehand for correct behaviour */
-GL_FORCE_INLINE uint32_t twid_location(uint32_t i) {
-    return TWIDDLE_TABLE.table[i];
+    return result;
 }
 
 
@@ -1444,9 +1432,25 @@ void _glAllocateSpaceForMipmaps(TextureObject* active) {
     active->baseDataOffset = _glGetMipmapDataOffset(active, 0);
 }
 
+static bool _glValidTextureSize(GLuint size) {
+    switch(size) {
+        case 8:
+        case 16:
+        case 32:
+        case 64:
+        case 128:
+        case 256:
+        case 512:
+        case 1024:
+            return true;
+        default:
+            return false;
+    }
+}
+
 static bool _glTexImage2DValidate(GLenum target, GLint level, GLint internalFormat, GLsizei width, GLsizei height, GLint border, GLenum format, GLenum type) {
     if(target != GL_TEXTURE_2D) {
-        INFO_MSG("");
+        INFO_MSG("Target unsupported");
         _glKosThrowError(GL_INVALID_ENUM, __func__);
         return false;
     }
@@ -1475,6 +1479,8 @@ static bool _glTexImage2DValidate(GLenum target, GLint level, GLint internalForm
     };
 
     if(_glCheckValidEnum(format, validFormats, __func__) != 0) {
+        INFO_MSG("Invalid format");
+        _glKosThrowError(GL_INVALID_ENUM, __func__);
         return false;
     }
 
@@ -1496,7 +1502,7 @@ static bool _glTexImage2DValidate(GLenum target, GLint level, GLint internalForm
     GLuint w = width;
     GLuint h = height;
     if(level == 0){
-        if((w < 8 || (w & -w) != w)) {
+        if(!_glValidTextureSize(w)) {
             /* Width is not a power of two. Must be!*/
             INFO_MSG("Unsupported width");
             _glKosThrowError(GL_INVALID_VALUE, __func__);
@@ -1504,7 +1510,7 @@ static bool _glTexImage2DValidate(GLenum target, GLint level, GLint internalForm
         }
 
 
-        if((h < 8 || (h & -h) != h)) {
+        if(!_glValidTextureSize(h)) {
             /* height is not a power of two. Must be!*/
             INFO_MSG("Unsupported height");
             _glKosThrowError(GL_INVALID_VALUE, __func__);
@@ -1669,8 +1675,8 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
      */
     GLint destStride = _determineStrideInternal(cleanInternalFormat);
     GLint sourceStride = _determineStride(format, type);
-    GLuint srcBytes = (width * height * sourceStride);
-    GLuint destBytes = (width * height * destStride);
+    GLuint srcBytes = ((GLuint)width * (GLuint)height * (GLuint)sourceStride);
+    GLuint destBytes = ((GLuint)width * (GLuint)height * (GLuint)destStride);
 
     TextureConversionFunc conversion = NULL;
     int needs_conversion = _determineConversion(cleanInternalFormat, format, type, &conversion);
@@ -1751,94 +1757,88 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
             return;
         }
 
-        GLubyte* conversionBuffer = (GLubyte*) memalign(32, srcBytes);
-        const GLubyte* src = data;
-        GLubyte* dst = conversionBuffer;
-
         bool pack = (needs_conversion & CONVERSION_TYPE_PACK) == CONVERSION_TYPE_PACK;
         needs_conversion &= ~CONVERSION_TYPE_PACK;
 
-        if(needs_conversion == CONVERSION_TYPE_CONVERT) {
-            // Convert
-            for(uint32_t i = 0; i < (width * height); ++i) {
-                conversion(src, dst);
-                dst += destStride;
-                src += sourceStride;
-            }
-        } else if(needs_conversion == 2) {
-            // Twiddle
-            if(is4BPPFormat(internalFormat) && is4BPPFormat(format)) {
-                // Special case twiddling. We have to unpack each src value
-                // and repack into the right place
-                twid_prepare_table(width, height);
+        if(needs_conversion == 0 && !pack) {
+            /* No conversion or packing needed - direct copy to VRAM */
+            FASTCPY(targetData, data, destBytes);
+        } else if(is4BPPFormat(internalFormat) && is4BPPFormat(format)) {
+            /* 4BPP special case: unpack each nibble, twiddle, repack directly to VRAM */
+            uint32_t maskX, maskY;
+            calc_twiddle_factors(width, height, &maskX, &maskY);
 
-                for(uint32_t i = 0; i < (width * height); ++i) {
-                    uint32_t newLocation = twid_location(i);
-
-                    assert(newLocation < (width * height));
-                    assert((newLocation / 2) < destBytes);
-                    assert((i / 2) < srcBytes);
-
-                    // This is the src/dest byte, but we need to figure
-                    // out which half based on the odd/even of i
-                    src = &((uint8_t*) data)[i / 2];
-                    dst = &conversionBuffer[newLocation / 2];
-
-                    uint8_t src_value = (i % 2) == 0 ? (*src >> 4) : (*src & 0xF);
-
-                    if(newLocation % 2 == 1) {
-                        *dst = (*dst & 0xF) | (src_value << 4);
-                    } else {
-                        *dst = (*dst & 0xF0) | (src_value & 0xF);
-                    }
-                }
-            } else {
-                twid_prepare_table(width, height);
-
-                for(uint32_t i = 0; i < (width * height); ++i) {
-                    uint32_t newLocation = twid_location(i);
-                    dst = conversionBuffer + (destStride * newLocation);
-
-                    for(int j = 0; j < destStride; ++j)
-                        *dst++ = *(src + j);
-
-                    src += sourceStride;
-                }
-            }
-        } else if(needs_conversion == 3) {
-            // Convert + twiddle
-            twid_prepare_table(width, height);
+            /* Clear destination buffer since we do read-modify-write on nibbles */
+            MEMSET4(targetData, 0x0, destBytes);
 
             for(uint32_t i = 0; i < (width * height); ++i) {
-                uint32_t newLocation = twid_location(i);
-                dst = conversionBuffer + (destStride * newLocation);
-                src = data + (sourceStride * i);
-                conversion(src, dst);
+                uint32_t x = i % width;
+                uint32_t y = i / width;
+                uint32_t dstIndex = twid_compute_index(x, y, maskX, maskY);
+
+                assert(dstIndex < (width * height));
+                assert((dstIndex / 2) < destBytes);
+                assert((i / 2) < srcBytes);
+
+                const uint8_t* src_byte = &((uint8_t*) data)[i / 2];
+                uint8_t src_value = (i % 2) == 0 ? (*src_byte >> 4) : (*src_byte & 0xF);
+
+                uint8_t* dst_byte = &targetData[dstIndex / 2];
+                if(dstIndex % 2 == 1) {
+                    *dst_byte = (*dst_byte & 0xF) | (src_value << 4);
+                } else {
+                    *dst_byte = (*dst_byte & 0xF0) | (src_value & 0xF);
+                }
             }
         } else if(pack) {
-            FASTCPY(conversionBuffer, data, srcBytes);
-        }
-
-        if(pack) {
+            /* Pack case for 8bpp paletted textures: repack nibbles directly to VRAM */
             assert(isPaletted);
             size_t dst_byte = 0;
             for(size_t src_byte = 0; src_byte < srcBytes; ++src_byte) {
-                uint8_t v = conversionBuffer[src_byte];
+                uint8_t v = ((uint8_t*) data)[src_byte];
 
-                if(src_byte % 1 == 0) {
-                    conversionBuffer[dst_byte] = (conversionBuffer[dst_byte] & 0xF) | ((v & 0xF0) << 4);
+                if(src_byte % 2 == 0) {
+                    targetData[dst_byte] = (targetData[dst_byte] & 0xF) | ((v & 0xF0) << 4);
                 } else {
-                    conversionBuffer[dst_byte] = (conversionBuffer[dst_byte] & 0xF0) | (v & 0xF);
+                    targetData[dst_byte] = (targetData[dst_byte] & 0xF0) | (v & 0xF);
                 }
 
-                if(src_byte % 1 == 0) {
+                if(src_byte % 2 == 0) {
                     dst_byte++;
                 }
             }
-        }
+        } else {
+            /* General case: iterate source texels, compute destination, convert/write directly */
+            uint32_t maskX, maskY;
+            bool twiddle = (needs_conversion & CONVERSION_TYPE_TWIDDLE) != 0;
+            bool convert = (needs_conversion & CONVERSION_TYPE_CONVERT) != 0;
 
-        FASTCPY(targetData, conversionBuffer, destBytes);
-        free(conversionBuffer);
+            if(twiddle) {
+                calc_twiddle_factors(width, height, &maskX, &maskY);
+            }
+
+            for(uint32_t i = 0; i < (width * height); ++i) {
+                const GLubyte* src = data + (sourceStride * i);
+                GLubyte* dst;
+
+                if(twiddle) {
+                    uint32_t x = i % width;
+                    uint32_t y = i / width;
+                    uint32_t newLocation = twid_compute_index(x, y, maskX, maskY);
+                    dst = targetData + (destStride * newLocation);
+                } else {
+                    dst = targetData + (destStride * i);
+                }
+
+                if(convert) {
+                    conversion(src, dst);
+                } else {
+                    for(int j = 0; j < destStride; ++j) {
+                        dst[j] = src[j];
+                    }
+                }
+            }
+        }
     } else {
         /* No conversion necessary, we can just upload data directly */
         gl_assert(targetData);
@@ -2228,12 +2228,13 @@ void APIENTRY glTexSubImage2D(GLenum target, GLint level, GLint xoffset, GLint y
                 }
             }
         } else if (needs_conversion == 2 || needs_conversion == 3) {
-            twid_prepare_table(textureWidth, textureHeight);
+            uint32_t maskX, maskY;
+            calc_twiddle_factors(textureWidth, textureHeight, &maskX, &maskY);
 
             for (uint32_t y = yoffset; y < yoffset + height; ++y) {
                 for (uint32_t x = xoffset; x < xoffset + width; ++x) {
                     uint32_t srcIndex = (y - yoffset) * width + (x - xoffset);
-                    uint32_t newLocation = twid_location(y * textureWidth + x);
+                    uint32_t newLocation = twid_compute_index(x, y, maskX, maskY);
                     dst = conversionBuffer + (destStride * newLocation);
 
                     if (needs_conversion == 3) {

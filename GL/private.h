@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include <stdio.h>
 
+#include "state.h"
 #include "gl_assert.h"
 #include "platform.h"
 #include "types.h"
@@ -19,15 +20,6 @@
 #define MAX_GLDC_PALETTE_SLOTS 4
 #define MAX_GLDC_SHARED_PALETTES (MAX_GLDC_PALETTE_SLOTS*MAX_GLDC_4BPP_PALETTE_SLOTS)
 
-
-extern void* memcpy4 (void *dest, const void *src, size_t count);
-
-#define GL_NO_INSTRUMENT inline __attribute__((no_instrument_function))
-#define GL_INLINE_DEBUG GL_NO_INSTRUMENT __attribute__((always_inline))
-#define GL_FORCE_INLINE static GL_INLINE_DEBUG
-#define GL_NO_INLINE __attribute__((noinline))
-#define _GL_UNUSED(x) (void)(x)
-
 #define _PACK4(v) ((v * 0xF) / 0xFF)
 #define PACK_ARGB4444(a,r,g,b) (_PACK4(a) << 12) | (_PACK4(r) << 8) | (_PACK4(g) << 4) | (_PACK4(b))
 #define PACK_ARGB8888(a,r,g,b) ( ((a & 0xFF) << 24) | ((r & 0xFF) << 16) | ((g & 0xFF) << 8) | (b & 0xFF) )
@@ -37,41 +29,26 @@ extern void* memcpy4 (void *dest, const void *src, size_t count);
 #define PACK_RGB565(r,g,b) \
     ((((GLushort)r & 0xf8) << 8) | (((GLushort) g & 0xfc) << 3) | ((GLushort) b >> 3))
 
+extern void* memcpy4 (void *dest, const void *src, size_t count);
+
+#define GL_NO_INSTRUMENT inline __attribute__((no_instrument_function))
+#define GL_INLINE_DEBUG GL_NO_INSTRUMENT __attribute__((always_inline))
+#define GL_FORCE_INLINE static GL_INLINE_DEBUG
+#define GL_NO_INLINE __attribute__((noinline))
+#define _GL_UNUSED(x) (void)(x)
+
 #define TRACE_ENABLED 0
 #define TRACE() if(TRACE_ENABLED) {fprintf(stderr, "%s\n", __func__);} (void) 0
 
 #define VERTEX_ENABLED_FLAG     (1 << 0)
 #define UV_ENABLED_FLAG         (1 << 1)
 #define ST_ENABLED_FLAG         (1 << 2)
-#define DIFFUSE_ENABLED_FLAG    (1 << 3)
+#define COLOR_ENABLED_FLAG    (1 << 3)
 #define NORMAL_ENABLED_FLAG     (1 << 4)
+#define S_COLOR_ENABLED_FLAG    (1 << 5)
 
 #define MAX_TEXTURE_SIZE 1024
 
-
-/* This gives us an easy way to switch
- * internal matrix order if necessary */
-
-#define TRANSPOSE 0
-
-#if TRANSPOSE
-#define M0 0
-#define M1 4
-#define M2 8
-#define M3 12
-#define M4 1
-#define M5 5
-#define M6 9
-#define M7 13
-#define M8 2
-#define M9 6
-#define M10 10
-#define M11 14
-#define M12 3
-#define M13 7
-#define M14 11
-#define M15 15
-#else
 #define M0 0
 #define M1 1
 #define M2 2
@@ -88,7 +65,6 @@ extern void* memcpy4 (void *dest, const void *src, size_t count);
 #define M13 13
 #define M14 14
 #define M15 15
-#endif
 
 
 typedef struct {
@@ -174,6 +150,7 @@ typedef struct {
     GLfloat position[4];
     GLfloat spot_direction[3];
     GLfloat spot_cutoff;
+    GLfloat spot_cutoff_cos;  /* Precomputed cos(spot_cutoff) for fast comparison */
     GLfloat constant_attenuation;
     GLfloat linear_attenuation;
     GLfloat quadratic_attenuation;
@@ -192,11 +169,6 @@ typedef struct {
     GLfloat diffuseMaterial[4];
     GLfloat specularMaterial[4];
 } LightSource;
-
-
-#define argbcpy(dst, src) \
-    *((GLuint*) dst) = *((const GLuint*) src) \
-
 
 typedef struct {
     float xy[2];
@@ -224,32 +196,32 @@ GL_FORCE_INLINE float clamp(float d, float min, float max) {
 }
 
 GL_FORCE_INLINE void memcpy_vertex(Vertex *dest, const Vertex *src) {
-#ifdef _arch_dreamcast
-    _Complex float double_scratch;
+// #ifdef _arch_dreamcast
+//     _Complex float double_scratch;
 
-    asm volatile (
-        "fschg\n\t"
-        "clrs\n\t"
-        ".align 2\n\t"
-        "fmov.d @%[in]+, %[scratch]\n\t"
-        "fmov.d %[scratch], @%[out]\n\t"
-        "fmov.d @%[in]+, %[scratch]\n\t"
-        "add #8, %[out]\n\t"
-        "fmov.d %[scratch], @%[out]\n\t"
-        "fmov.d @%[in]+, %[scratch]\n\t"
-        "add #8, %[out]\n\t"
-        "fmov.d %[scratch], @%[out]\n\t"
-        "fmov.d @%[in], %[scratch]\n\t"
-        "add #8, %[out]\n\t"
-        "fmov.d %[scratch], @%[out]\n\t"
-        "fschg\n"
-        : [in] "+&r" ((uint32_t) src), [scratch] "=&d" (double_scratch), [out] "+&r" ((uint32_t) dest)
-        :
-        : "t", "memory" // clobbers
-    );
-#else
+//     asm volatile (
+//         "fschg\n\t"
+//         "clrs\n\t"
+//         ".align 2\n\t"
+//         "fmov.d @%[in]+, %[scratch]\n\t"
+//         "fmov.d %[scratch], @%[out]\n\t"
+//         "fmov.d @%[in]+, %[scratch]\n\t"
+//         "add #8, %[out]\n\t"
+//         "fmov.d %[scratch], @%[out]\n\t"
+//         "fmov.d @%[in]+, %[scratch]\n\t"
+//         "add #8, %[out]\n\t"
+//         "fmov.d %[scratch], @%[out]\n\t"
+//         "fmov.d @%[in], %[scratch]\n\t"
+//         "add #8, %[out]\n\t"
+//         "fmov.d %[scratch], @%[out]\n\t"
+//         "fschg\n"
+//         : [in] "+&r" ((uint32_t) src), [scratch] "=&d" (double_scratch), [out] "+&r" ((uint32_t) dest)
+//         :
+//         : "t", "memory" // clobbers
+//     );
+// #else
     *dest = *src;
-#endif
+// #endif
 }
 
 #define swapVertex(a, b)   \
@@ -282,9 +254,6 @@ typedef struct __attribute__((aligned(32))) {
     uint32_t header_offset; // The offset of the header in the output list
     uint32_t start_offset; // The offset into the output list
     uint32_t count; // The number of vertices in this output
-
-    /* Pointer to count * VertexExtra; */
-    AlignedVector* extras;
 } SubmissionTarget;
 
 Vertex* _glSubmissionTargetStart(SubmissionTarget* target);
@@ -299,12 +268,14 @@ typedef enum {
 } ClipResult;
 
 
-#define A8IDX 3
-#define R8IDX 2
-#define G8IDX 1
-#define B8IDX 0
+#define A8IDX 0
+#define R8IDX 1
+#define G8IDX 2
+#define B8IDX 3
 
+#ifndef __cplusplus
 struct SubmissionTarget;
+#endif
 
 PolyList* _glOpaquePolyList();
 PolyList* _glPunchThruPolyList();
@@ -325,9 +296,6 @@ void _glMatrixLoadModelViewProjection();
 
 extern GLfloat DEPTH_RANGE_MULTIPLIER_L;
 extern GLfloat DEPTH_RANGE_MULTIPLIER_H;
-
-extern GLfloat HALF_LINE_WIDTH;
-extern GLfloat HALF_POINT_SIZE;
 
 Matrix4x4* _glGetProjectionMatrix();
 Matrix4x4* _glGetModelViewMatrix();
@@ -354,9 +322,10 @@ typedef void (*ReadAttributeFunc)(const GLubyte*, GLubyte*);
 typedef struct {
     AttribPointer vertex; // 16
     AttribPointer colour; // 32
-    AttribPointer uv; // 48
-    AttribPointer st; // 64
-    AttribPointer normal; // 80
+    AttribPointer s_color; // 48
+    AttribPointer uv; // 64
+    AttribPointer st; // 80
+    AttribPointer normal; // 96
 
     GLuint enabled; // list of currently enabled/used attributes
     GLuint dirty;   // list of attributes that need state recalculating
@@ -364,6 +333,7 @@ typedef struct {
 
     ReadAttributeFunc vertex_func;
     ReadAttributeFunc colour_func;
+    ReadAttributeFunc s_color_func;
     ReadAttributeFunc uv_func;
     ReadAttributeFunc st_func;
     ReadAttributeFunc normal_func;
@@ -448,7 +418,7 @@ GL_FORCE_INLINE GLboolean _glCheckImmediateModeInactive(const char* func) {
     return GL_FALSE;
 }
 
-extern void _glPerformLighting(Vertex* vertices, VertexExtra* extra, const uint32_t count);
+extern void _glPerformLighting(Vertex* vertices, const uint32_t count);
 
 unsigned char _glIsClippingEnabled();
 void _glEnableClipping(unsigned char v);
@@ -461,24 +431,21 @@ void _glApplyScissor(bool force);
 void _glSetColorMaterialMask(GLenum mask);
 void _glSetColorMaterialMode(GLenum mode);
 GLenum _glColorMaterialMode();
-
+GLenum _glColorMaterialMask();
 Material* _glActiveMaterial();
 void _glSetLightModelViewerInEyeCoordinates(GLboolean v);
+GLboolean _glGetLightModelViewerInEyeCoordinates(void);
 void _glSetLightModelSceneAmbient(const GLfloat* v);
 void _glSetLightModelColorControl(GLint v);
 GLuint _glEnabledLightCount();
+LightSource** _glEnabledLightCache();
 void _glRecalcEnabledLights();
 GLfloat* _glLightModelSceneAmbient();
 GLfloat* _glGetLightModelSceneAmbient();
 LightSource* _glLightAt(GLuint i);
-GLboolean _glNearZClippingEnabled();
-
-GLboolean _glGPUStateIsDirty();
-void _glGPUStateMarkClean();
-void _glGPUStateMarkDirty();
 
 #define MAX_GLDC_TEXTURE_UNITS 2
-#define MAX_GLDC_LIGHTS 8
+#define MAX_GLDC_LIGHTS 4
 
 #define AMBIENT_MASK 1
 #define DIFFUSE_MASK 2
@@ -493,6 +460,12 @@ void _glTnlApplyEffects(SubmissionTarget* target);
 void _glTnlUpdateLighting(void);
 void _glTnlUpdateTextureMatrix(void);
 void _glTnlUpdateColorMatrix(void);
+
+uint32_t _glPackNormal(const GLfloat* nxyz);
+void _glUnpackNormal(uint32_t packed, float* nxyz);
+
+half_float_t _glPackHalfFloat(float f);
+float _glUnpackHalfFloat(half_float_t h);
 
 /* This is from KOS pvr_buffers.c */
 #define PVR_MIN_Z 0.0001f

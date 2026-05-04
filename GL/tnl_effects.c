@@ -5,6 +5,7 @@
 #include <math.h>
 #include <limits.h>
 
+#include "types.h"
 #include "private.h"
 #include "platform.h"
 
@@ -41,29 +42,31 @@ static void transformVertices(SubmissionTarget* target) {
     uint32_t count = target->count;
 
     ITERATE(count) {
-        TransformVertex(it->xyz[0], it->xyz[1], it->xyz[2], it->w, 
+        TransformVertex(it->xyz[0], it->xyz[1], it->xyz[2], it->w,
                         it->xyz, &it->w);
         it++;
     }
 }
 
 
-static void mat_transform_normal3(VertexExtra* extra, const uint32_t count) {
+static void mat_transform_normal3(Vertex* v, const uint32_t count) {
     ITERATE(count) {
-        TransformNormalNoMod(extra->nxyz, extra->nxyz);
-        extra++;
+        float nxyz[3];
+        _glUnpackNormal(v->nxyz, nxyz);
+        TransformNormalNoMod(nxyz, nxyz);
+        v->nxyz = _glPackNormal(nxyz);
+        v++;
     }
 }
 
 static void lightingEffect(SubmissionTarget* target) {
     /* Perform lighting calculations and manipulate the colour */
     Vertex* vertex = _glSubmissionTargetStart(target);
-    VertexExtra* extra = aligned_vector_at(target->extras, 0);
 
     _glMatrixLoadNormal();
-    mat_transform_normal3(extra, target->count);
+    mat_transform_normal3(vertex, target->count);
 
-    _glPerformLighting(vertex, extra, target->count);
+    _glPerformLighting(vertex, target->count);
 }
 
 void _glTnlUpdateLighting(void) {
@@ -76,7 +79,6 @@ static void textureEffect(SubmissionTarget* target) {
     Matrix4x4* m = _glGetTextureMatrix();
     UploadMatrix4x4(m);
     float coords[4];
-    float* ptr = (float*)m;
 
     Vertex* it     = _glSubmissionTargetStart(target);
     uint32_t count = target->count;
@@ -105,11 +107,11 @@ static void colorEffect(SubmissionTarget* target) {
     uint32_t count = target->count;
 
     ITERATE(count) {
-        TransformVertex(it->bgra[2], it->bgra[1], it->bgra[0], it->bgra[3], coords, &coords[3]);
-        it->bgra[2] = clamp(coords[0], 0, 255);
-        it->bgra[1] = clamp(coords[1], 0, 255);
-        it->bgra[0] = clamp(coords[2], 0, 255);
-        it->bgra[3] = clamp(coords[3], 0, 255);
+        TransformVertex(it->argb[2], it->argb[1], it->argb[0], it->argb[3], coords, &coords[3]);
+        it->argb[R8IDX] = coords[0];
+        it->argb[G8IDX] = coords[1];
+        it->argb[B8IDX] = coords[2];
+        it->argb[A8IDX] = coords[3];
         it++;
     }
 }

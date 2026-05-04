@@ -1,7 +1,5 @@
 #include <float.h>
 
-#include <dc/sq.h>
-
 #include "../platform.h"
 #include "sh4.h"
 
@@ -14,6 +12,9 @@
 #define likely(x)      __builtin_expect(!!(x), 1)
 #define unlikely(x)    __builtin_expect(!!(x), 0)
 
+void* GPUMemoryAlloc(size_t size) {
+    return pvr_mem_malloc(size);
+}
 
 GL_FORCE_INLINE bool glIsVertex(const float flags) {
     return flags == GPU_CMD_VERTEX_EOL || flags == GPU_CMD_VERTEX;
@@ -64,7 +65,7 @@ GL_FORCE_INLINE float _glFastInvert(float x) {
 GL_FORCE_INLINE void _glPerspectiveDivideVertex(Vertex* vertex, int count) {
     TRACE();
 
-    for(int v = 0; v < count; ++v) { 
+    for(int v = 0; v < count; ++v) {
         const float f = _glFastInvert(vertex[v].w);
 
         /* Convert to screenspace */
@@ -87,7 +88,7 @@ GL_FORCE_INLINE void _glPerspectiveDivideVertex(Vertex* vertex, int count) {
 
 static uintptr_t sq_dest_addr = 0;
 
-static inline void _glPushHeaderOrVertex(Vertex* v, size_t count)  {
+static inline void _glPushHeader(Vertex* v, size_t count)  {
     TRACE();
 
 #if CLIP_DEBUG
@@ -95,6 +96,16 @@ static inline void _glPushHeaderOrVertex(Vertex* v, size_t count)  {
 #endif
 
     sq_fast_cpy((void *)sq_dest_addr, v, count);
+}
+
+
+static inline void _glPushVertex(Vertex* v, size_t count)  {
+    TRACE();
+
+#if CLIP_DEBUG
+    fprintf(stderr, "{%f, %f, %f, %f}, // %x (%x)\n", v->xyz[0], v->xyz[1], v->xyz[2], v->w, v->flags, v);
+#endif
+    sq_fast_cpy((void *)sq_dest_addr, v, count * 2);
 }
 
 static inline void _glClipEdge(const Vertex* const v1, const Vertex* const v2, Vertex* vout) {
@@ -113,10 +124,10 @@ static inline void _glClipEdge(const Vertex* const v1, const Vertex* const v2, V
 
     vout->w = invt * v1->w + t * v2->w;
 
-    vout->bgra[0] = invt * v1->bgra[0] + t * v2->bgra[0];
-    vout->bgra[1] = invt * v1->bgra[1] + t * v2->bgra[1];
-    vout->bgra[2] = invt * v1->bgra[2] + t * v2->bgra[2];
-    vout->bgra[3] = invt * v1->bgra[3] + t * v2->bgra[3];
+    vout->argb[0] = invt * v1->argb[0] + t * v2->argb[0];
+    vout->argb[1] = invt * v1->argb[1] + t * v2->argb[1];
+    vout->argb[2] = invt * v1->argb[2] + t * v2->argb[2];
+    vout->argb[3] = invt * v1->argb[3] + t * v2->argb[3];
 }
 
 #define SPAN_SORT_CFG 0x005F8030
@@ -176,7 +187,7 @@ void SceneListSubmit(Vertex* vertices, int n) {
     do { queued_vertex = &qv; *queued_vertex = *(v); } while(0)
 
 #define SUBMIT_QUEUED_VERTEX(sflags) \
-    do { if(queued_vertex) { queued_vertex->flags = (sflags); _glPushHeaderOrVertex(queued_vertex, 1); queued_vertex = NULL; } } while(0)
+    do { if(queued_vertex) { queued_vertex->flags = (sflags); _glPushVertex(queued_vertex, 1); queued_vertex = NULL; } } while(0)
 
     int visible_mask = 0;
     sq_dest_addr = (uintptr_t)SQ_MASK_DEST(PVR_TA_INPUT);
@@ -184,7 +195,7 @@ void SceneListSubmit(Vertex* vertices, int n) {
     Vertex* v0 = vertices;
     for(int i = 0; i < n - 1; ++i, ++v0) {
         if(is_header(v0)) {
-            _glPushHeaderOrVertex(v0, 1);
+            _glPushHeader(v0, 1);
             visible_mask = 0;
             continue;
         }
@@ -210,7 +221,7 @@ void SceneListSubmit(Vertex* vertices, int n) {
 
                 _glPerspectiveDivideVertex(v0, 2);
                 v1->flags = GPU_CMD_VERTEX_EOL;
-                _glPushHeaderOrVertex(v0, 2);
+                _glPushVertex(v0, 2);
             } else {
                 // If the previous triangle wasn't all visible, and we
                 // queued a vertex - we force it to be EOL and submit
@@ -260,10 +271,10 @@ void SceneListSubmit(Vertex* vertices, int n) {
                 b->flags = GPU_CMD_VERTEX;
 
                 _glPerspectiveDivideVertex(v0, 1);
-                _glPushHeaderOrVertex(v0, 1);
+                _glPushVertex(v0, 1);
 
                 _glPerspectiveDivideVertex(a, 2);
-                _glPushHeaderOrVertex(a, 2);
+                _glPushVertex(a, 2);
 
                 QUEUE_VERTEX(b);
             break;
@@ -277,9 +288,9 @@ void SceneListSubmit(Vertex* vertices, int n) {
                 b->flags = v2->flags;
 
                 _glPerspectiveDivideVertex(a, 3);
-                _glPushHeaderOrVertex(a, 1);
+                _glPushVertex(a, 1);
 
-                _glPushHeaderOrVertex(c, 1);
+                _glPushVertex(c, 1);
 
                 QUEUE_VERTEX(b);
             break;
@@ -293,7 +304,7 @@ void SceneListSubmit(Vertex* vertices, int n) {
                 b->flags = GPU_CMD_VERTEX;
 
                 _glPerspectiveDivideVertex(a, 3);
-                _glPushHeaderOrVertex(a, 2);
+                _glPushVertex(a, 2);
 
                 QUEUE_VERTEX(c);
             break;
@@ -304,16 +315,16 @@ void SceneListSubmit(Vertex* vertices, int n) {
                 b->flags = GPU_CMD_VERTEX;
 
                 _glPerspectiveDivideVertex(v0, 1);
-                _glPushHeaderOrVertex(v0, 1);
+                _glPushVertex(v0, 1);
 
                 _glClipEdge(v1, v2, a);
                 a->flags = v2->flags;
 
                 _glPerspectiveDivideVertex(a, 3);
 
-                _glPushHeaderOrVertex(c, 1);
+                _glPushVertex(c, 1);
 
-                _glPushHeaderOrVertex(b, 2);
+                _glPushVertex(b, 2);
 
                 QUEUE_VERTEX(a);
             break;
@@ -328,11 +339,9 @@ void SceneListSubmit(Vertex* vertices, int n) {
                 b->flags = GPU_CMD_VERTEX;
 
                 _glPerspectiveDivideVertex(a, 4);
-                _glPushHeaderOrVertex(a, 1);
-
-                _glPushHeaderOrVertex(c, 1);
-
-                _glPushHeaderOrVertex(b, 2);
+                _glPushVertex(a, 1);
+                _glPushVertex(c, 1);
+                _glPushVertex(b, 2);
 
                 QUEUE_VERTEX(d);
             break;
@@ -347,15 +356,15 @@ void SceneListSubmit(Vertex* vertices, int n) {
                 b->flags = GPU_CMD_VERTEX;
 
                 _glPerspectiveDivideVertex(v0, 1);
-                _glPushHeaderOrVertex(v0, 1);
+                _glPushVertex(v0, 1);
 
                 _glPerspectiveDivideVertex(a, 3);
-                _glPushHeaderOrVertex(a, 1);
+                _glPushVertex(a, 1);
 
-                _glPushHeaderOrVertex(c, 1);
+                _glPushVertex(c, 1);
 
-                _glPushHeaderOrVertex(b, 1);
-                
+                _glPushVertex(b, 1);
+
                 QUEUE_VERTEX(c);
             break;
             default:

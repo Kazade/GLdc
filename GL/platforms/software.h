@@ -32,8 +32,10 @@
 #define VEC3_DOT(x1, y1, z1, x2, y2, z2, d) \
     d = (x1 * x2) + (y1 * y2) + (z1 * z2)
 
+#ifndef __cplusplus
 struct PolyHeader;
 struct PolyContext;
+#endif
 
 void UploadMatrix4x4(const Matrix4x4* mat);
 void MultiplyMatrix4x4(const Matrix4x4* mat);

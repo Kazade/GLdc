@@ -72,8 +72,8 @@ typedef struct {
     GLfloat z;
     GLfloat u;
     GLfloat v;
-    GLubyte bgra[4];
-    GLuint padding1;
+    GLfloat argb[4];
+    GLfloat o_argb[4];
 } GLVertexKOS;
 
 GLAPI void APIENTRY glVertexPackColor3fKOS(GLVertexKOS* vertex, float r, float g, float b);
@@ -215,4 +215,3 @@ GLAPI GLvoid APIENTRY glDefragmentTextureMemory_KOS(void);
 #define GL_TEXTURE_TWIDDLE_KOS                      0xEF51
 
 __END_DECLS
-

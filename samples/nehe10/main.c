@@ -177,7 +177,7 @@ GLboolean InitGL(int width, int height)	        // We call this right after our 
 
 	glEnable(GL_TEXTURE_2D);							// Enable Texture Mapping
 	glBlendFunc(GL_SRC_ALPHA,GL_ONE);					// Set The Blending Function For Translucency
-	glClearColor(0.0f, 0.0f, 0.0f, 0.0f);				// This Will Clear The Background Color To Black
+	glClearColor(0.0f, 0.5f, 0.0f, 0.0f);				// This Will Clear The Background Color To Black
 	glClearDepth(1.0);									// Enables Clearing Of The Depth Buffer
 	glDepthFunc(GL_LESS);								// The Type Of Depth Test To Do
 	glEnable(GL_DEPTH_TEST);							// Enables Depth Testing

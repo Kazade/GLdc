@@ -5,6 +5,7 @@
 #include <math.h>
 #include <limits.h>
 
+#include "state.h"
 #include "private.h"
 #include "platform.h"
 
@@ -171,7 +172,7 @@ static GL_NO_INLINE void genTriangleFan(Vertex* output, GLuint count) {
 static GL_NO_INLINE void genPoints(Vertex* output, GLuint count) {
     Vertex* dst = output + POINTS_COUNT(count) - 1;
     Vertex* src = output + count - 1;
-    float half_size = HALF_POINT_SIZE;
+    float half_size = _glGetHalfPointSize();
 
     // Expands v to { v + (S/2,-S/2), v + (S/2,S/2), v + (-S/2,-S/2), (-S/2,S/2) }
     for (; count > 0; count--, src--) {
@@ -199,7 +200,7 @@ static GL_NO_INLINE void genPoints(Vertex* output, GLuint count) {
 static Vertex* draw_line(Vertex* dst, Vertex* v1, Vertex* v2) {
     Vertex ov1 = *v1;
     Vertex ov2 = *v2;
-    // TODO don't copy unless dst might overlap v1/v2 
+    // TODO don't copy unless dst might overlap v1/v2
 
 	// Essentially "expands" a line into a quad by
     // 1) Calculating normal of the line from v1 to v2
@@ -208,7 +209,7 @@ static Vertex* draw_line(Vertex* dst, Vertex* v1, Vertex* v2) {
     float dx = ov2.xyz[0] - ov1.xyz[0];
     float dy = ov2.xyz[1] - ov1.xyz[1];
 
-    float inverse_mag = fast_rsqrt((dx*dx) + (dy*dy)) * HALF_LINE_WIDTH;
+    float inverse_mag = fast_rsqrt((dx*dx) + (dy*dy)) * _glGetHalfLineWidth();
     float nx = -dy * inverse_mag;
     float ny =  dx * inverse_mag;
 
@@ -263,7 +264,7 @@ static GL_NO_INLINE void genLineLoop(Vertex* output, GLuint count) {
     Vertex* dst = output + LINE_LOOP_COUNT(count) - 1;
     Vertex* src = output + count - 1;
 	Vertex last = *src, first = *output;
-	
+
     // Draws line using current and prior vertex
     for (; count > 1; count--, src--) {
         dst = draw_line(dst, src, src - 1);
@@ -302,30 +303,37 @@ static void _readUVData(const GLuint first, const GLuint count, Vertex* it) {
     }
 }
 
-static void _readSTData(const GLuint first, const GLuint count, VertexExtra* it) {
+static void _readSTData(const GLuint first, const GLuint count, Vertex* it) {
     const ReadAttributeFunc func = ATTRIB_LIST.st_func;
     const GLsizei ststride = ATTRIB_LIST.st.stride;
     const GLubyte* stptr = ((GLubyte*) ATTRIB_LIST.st.ptr + (first * ststride));
 
+    float temp[2];
+
     ITERATE(count) {
         PREFETCH(stptr + ststride);
-        func(stptr, (GLubyte*) it->st);
+        func(stptr, (GLubyte*) temp);
         stptr += ststride;
+
+        it->st[0] = _glPackHalfFloat(temp[0]);
+        it->st[1] = _glPackHalfFloat(temp[1]);
+
         ++it;
     }
 }
 
-static void _readNormalData(const GLuint first, const GLuint count, VertexExtra* it) {
+static void _readNormalData(const GLuint first, const GLuint count, Vertex* it) {
     const ReadAttributeFunc func = ATTRIB_LIST.normal_func;
     const GLsizei nstride = ATTRIB_LIST.normal.stride;
     const GLubyte* nptr = ((GLubyte*) ATTRIB_LIST.normal.ptr + (first * nstride));
 
+    GLfloat n[3];
+
     ITERATE(count) {
-        func(nptr, (GLubyte*) it->nxyz);
+        func(nptr, (GLubyte*) n);
         nptr += nstride;
 
         if(_glIsNormalizeEnabled()) {
-            GLfloat* n = (GLfloat*) it->nxyz;
             float temp = n[0] * n[0] + n[1] * n[1] + n[2] * n[2];
 
             float ilength = MATH_fsrra(temp);
@@ -334,6 +342,7 @@ static void _readNormalData(const GLuint first, const GLuint count, VertexExtra*
             n[2] *= ilength;
         }
 
+        it->nxyz = _glPackNormal(n);
         ++it;
     }
 }
@@ -345,7 +354,7 @@ static void _readDiffuseData(const GLuint first, const GLuint count, Vertex* it)
 
     ITERATE(count) {
         PREFETCH(cptr + cstride);
-        func(cptr, it->bgra);
+        func(cptr, (GLubyte*) it->argb);
         cptr += cstride;
         ++it;
     }
@@ -365,7 +374,6 @@ static void generateElements(
     GLubyte* nxyz;
 
     Vertex* output = _glSubmissionTargetStart(target);
-    VertexExtra* ve = aligned_vector_at(target->extras, 0);
 
     uint32_t i = first;
     uint32_t idx = 0;
@@ -385,6 +393,8 @@ static void generateElements(
     const ReadAttributeFunc normal_func = ATTRIB_LIST.normal_func;
     const GLuint nstride = ATTRIB_LIST.normal.stride;
 
+    float temp[3];
+
     for(; i < first + count; ++i) {
         idx = IndexFunc(indices + (i * istride));
 
@@ -396,13 +406,17 @@ static void generateElements(
 
         pos_func(xyz, (GLubyte*) output);
         uv_func(uv, (GLubyte*) output->uv);
-        diffuse_func(bgra, output->bgra);
-        st_func(st, (GLubyte*) ve->st);
-        normal_func(nxyz, (GLubyte*) ve->nxyz);
+        diffuse_func(bgra, (GLubyte*) output->argb);
+        st_func(st, (GLubyte*) temp);
+
+        output->st[0] = _glPackHalfFloat(temp[0]);
+        output->st[1] = _glPackHalfFloat(temp[1]);
+
+        normal_func(nxyz, (GLubyte*) temp);
+        output->nxyz = _glPackNormal(temp);
 
         output->flags = GPU_CMD_VERTEX;
         ++output;
-        ++ve;
     }
 }
 
@@ -414,8 +428,13 @@ typedef struct {
     float u, v;
 } Float2;
 
+typedef struct {
+    float a, r, g, b;
+} Float4;
+
 static const Float3 F3Z = {0.0f, 0.0f, 1.0f};
 static const Float2 F2ZERO = {0.0f, 0.0f};
+static const Float4 F4ZERO = {0.0f, 0.0f, 0.0f, 0.0f};
 
 static void generateElementsFastPath(
         SubmissionTarget* target, const GLsizei first, const GLuint count,
@@ -435,11 +454,10 @@ static void generateElementsFastPath(
     /* Copy the pos, uv and color directly in one go */
     const GLubyte* pos = (ATTRIB_LIST.enabled & VERTEX_ENABLED_FLAG) ? ATTRIB_LIST.vertex.ptr : NULL;
     const GLubyte* uv  = (ATTRIB_LIST.enabled & UV_ENABLED_FLAG) ? ATTRIB_LIST.uv.ptr : NULL;
-    const GLubyte* col = (ATTRIB_LIST.enabled & DIFFUSE_ENABLED_FLAG) ? ATTRIB_LIST.colour.ptr : NULL;
+    const GLubyte* col = (ATTRIB_LIST.enabled & COLOR_ENABLED_FLAG) ? ATTRIB_LIST.colour.ptr : NULL;
     const GLubyte* st  = (ATTRIB_LIST.enabled & ST_ENABLED_FLAG) ? ATTRIB_LIST.st.ptr : NULL;
     const GLubyte* n   = (ATTRIB_LIST.enabled & NORMAL_ENABLED_FLAG) ? ATTRIB_LIST.normal.ptr : NULL;
 
-    VertexExtra* ve = aligned_vector_at(target->extras, 0);
     Vertex* it = start;
 
     if(!pos) {
@@ -458,32 +476,44 @@ static void generateElementsFastPath(
             uv = (GLubyte*) ATTRIB_LIST.uv.ptr + (idx * uvstride);
             MEMCPY4(it->uv, uv, sizeof(float) * 2);
         } else {
-            *((Float2*) it->uv) = F2ZERO;
+            float* uv = _glCurrentTexCoord0();
+            it->uv[0] = uv[0];
+            it->uv[1] = uv[1];
         }
 
         if(col) {
             col = (GLubyte*) ATTRIB_LIST.colour.ptr + (idx * dstride);
-            MEMCPY4(it->bgra, col, sizeof(uint32_t));
+            it->argb[0] = ((float*) col)[0];
+            it->argb[1] = ((float*) col)[1];
+            it->argb[2] = ((float*) col)[2];
+            it->argb[3] = ((float*) col)[3];
         } else {
-            *((uint32_t*) it->bgra) = ~0;
+            const float* color = _glCurrentColor();
+            it->argb[0] = color[0];
+            it->argb[1] = color[1];
+            it->argb[2] = color[2];
+            it->argb[3] = color[3];
         }
 
         if(st) {
             st = (GLubyte*) ATTRIB_LIST.st.ptr + (idx * ststride);
-            MEMCPY4(ve->st, st, sizeof(float) * 2);
+            it->st[0] = _glPackHalfFloat(st[0]);
+            it->st[1] = _glPackHalfFloat(st[1]);
         } else {
-            *((Float2*) ve->st) = F2ZERO;
+            float* ST_COORD = _glCurrentTexCoord0();
+            it->st[0] = _glPackHalfFloat(ST_COORD[0]);
+            it->st[1] = _glPackHalfFloat(ST_COORD[1]);
         }
 
         if(n) {
             n = (GLubyte*) ATTRIB_LIST.normal.ptr + (idx * nstride);
-            MEMCPY4(ve->nxyz, n, sizeof(float) * 3);
+            it->nxyz = _glPackNormal((float*) n);
         } else {
-            *((Float3*) ve->nxyz) = F3Z;
+            float* nxyz = _glCurrentNormal();
+            it->nxyz = _glPackNormal(nxyz);
         }
 
         it++;
-        ve++;
     }
 }
 
@@ -523,13 +553,12 @@ static void generateElementsFastPath(
 
 static void generateArrays(SubmissionTarget* target, const GLsizei first, const GLuint count) {
     Vertex* start = _glSubmissionTargetStart(target);
-    VertexExtra* ve = aligned_vector_at(target->extras, 0);
 
     _readPositionData(first, count, start);
     _readDiffuseData(first, count, start);
     _readUVData(first, count, start);
-    _readNormalData(first, count, ve);
-    _readSTData(first, count, ve);
+    _readNormalData(first, count, start);
+    _readSTData(first, count, start);
 }
 
 static void generate(SubmissionTarget* target, const GLenum mode, const GLsizei first, const GLuint count,
@@ -644,9 +673,9 @@ GL_FORCE_INLINE void apply_poly_header(PolyHeader* header, GLboolean multiTextur
     memset(&ctx, 0, sizeof(PolyContext));
 
     ctx.list_type = activePolyList->list_type;
-    ctx.fmt.color = GPU_CLRFMT_ARGBPACKED;
+    ctx.fmt.color = GPU_CLRFMT_4FLOATS;
     ctx.fmt.uv = GPU_UVFMT_32BIT;
-    ctx.gen.color_clamp = GPU_CLRCLAMP_DISABLE;
+    ctx.gen.color_clamp = GPU_CLRCLAMP_ENABLE;
 
     ctx.gen.culling = _calc_pvr_face_culling();
     ctx.depth.comparison = _calc_pvr_depth_test();
@@ -725,20 +754,15 @@ GL_FORCE_INLINE void apply_poly_header(PolyHeader* header, GLboolean multiTextur
 #define DEBUG_CLIPPING 0
 
 
-static AlignedVector VERTEX_EXTRAS;
 static SubmissionTarget SUBMISSION_TARGET;
 
 
 void _glInitSubmissionTarget() {
     SubmissionTarget* target = &SUBMISSION_TARGET;
 
-    target->extras = NULL;
     target->count = 0;
     target->output = NULL;
     target->header_offset = target->start_offset = 0;
-
-    aligned_vector_init(&VERTEX_EXTRAS, sizeof(VertexExtra));
-    target->extras = &VERTEX_EXTRAS;
 }
 
 GL_FORCE_INLINE GLuint calcFinalVertices(GLenum mode, GLuint count) {
@@ -761,8 +785,6 @@ GL_FORCE_INLINE GLuint calcFinalVertices(GLenum mode, GLuint count) {
 
 GL_FORCE_INLINE void submitVertices(GLenum mode, GLsizei first, GLuint count, GLenum type, const GLvoid* indices) {
     SubmissionTarget* const target = &SUBMISSION_TARGET;
-    AlignedVector* const extras = target->extras;
-
     TRACE();
 
     /* Do nothing if vertices aren't enabled */
@@ -794,7 +816,6 @@ GL_FORCE_INLINE void submitVertices(GLenum mode, GLsizei first, GLuint count, GL
 
     target->output = _glActivePolyList();
     gl_assert(target->output);
-    gl_assert(extras);
 
     uint32_t vector_size = aligned_vector_size(&target->output->vector);
 
@@ -806,9 +827,6 @@ GL_FORCE_INLINE void submitVertices(GLenum mode, GLsizei first, GLuint count, GL
 
     gl_assert(target->start_offset >= target->header_offset);
     gl_assert(target->count);
-
-    /* Make sure we have enough room for all the "extra" data */
-    aligned_vector_resize(extras, target->count);
 
     /* Make room for the vertices and header */
     aligned_vector_extend(&target->output->vector, target->count + (header_required));

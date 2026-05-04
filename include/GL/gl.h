@@ -445,6 +445,11 @@ __BEGIN_DECLS
 #define GL_POLYGON_OFFSET_LINE			0x2A02
 #define GL_POLYGON_OFFSET_FILL			0x8037
 
+#define GL_COLOR_SUM                      0x8458
+#define GL_CURRENT_SECONDARY_COLOR        0x8459
+#define GL_SECONDARY_COLOR_ARRAY_POINTER  0x845D
+#define GL_SECONDARY_COLOR_ARRAY          0x845E
+
 #define GLbyte   char
 #define GLshort  short
 #define GLint    int
@@ -661,13 +666,12 @@ GLAPI void APIENTRY glVertexPointer(GLint size, GLenum type,
 GLAPI void APIENTRY glTexCoordPointer(GLint size, GLenum type,
                                       GLsizei stride, const GLvoid *pointer);
 
-/* If a Normal Pointer is set and GL Lighting has been enabled,
-   Vertex Lighting will be used instead of glColorPointer */
-GLAPI void APIENTRY glNormalPointer(GLenum type, GLsizei stride, const GLvoid *pointer);
 
-/* Use either this OR glNormalPointer to color vertices, NOT both */
+GLAPI void APIENTRY glNormalPointer(GLenum type, GLsizei stride, const GLvoid *pointer);
 GLAPI void APIENTRY glColorPointer(GLint size, GLenum type,
                                    GLsizei stride, const GLvoid *pointer);
+
+GLAPI void APIENTRY glSecondaryColorPointer(GLint size, GLenum type, GLsizei stride, const GLvoid* pointer);
 
 /* Array Data Submission */
 GLAPI void APIENTRY glDrawArrays(GLenum mode, GLint first, GLsizei count);

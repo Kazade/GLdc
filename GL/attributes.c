@@ -169,126 +169,141 @@ static ReadAttributeFunc calcReadPositionFunc(void) {
 
 static void _fillWhiteARGB(const GLubyte* __restrict__ input, GLubyte* __restrict__ output) {
     _GL_UNUSED(input);
-    *((uint32_t*) output) = ~0;
+    float* o = (float*) output;
+    o[0] = 1.0f;
+    o[1] = 1.0f;
+    o[2] = 1.0f;
+    o[3] = 1.0f;
 }
 
 static void _readColour4ubARGB(const GLubyte* input, GLubyte* output) {
-    output[R8IDX] = input[0];
-    output[G8IDX] = input[1];
-    output[B8IDX] = input[2];
-    output[A8IDX] = input[3];
+    float* o = (float*) output;
+    const float f = 1.0f / 255.0f;
+    o[R8IDX] = ((float)input[0]) * f;
+    o[G8IDX] = ((float)input[1]) * f;
+    o[B8IDX] = ((float)input[2]) * f;
+    o[A8IDX] = ((float)input[3]) * f;
 }
 
 static void _readColour3ubARGB(const GLubyte* __restrict__ input, GLubyte* __restrict__ output) {
-    output[R8IDX] = input[0];
-    output[G8IDX] = input[1];
-    output[B8IDX] = input[2];
-    output[A8IDX] = 255;
+    float* o = (float*) output;
+    const float f = 1.0f / 255.0f;
+    o[R8IDX] = ((float)input[0]) * f;
+    o[G8IDX] = ((float)input[1]) * f;
+    o[B8IDX] = ((float)input[2]) * f;
+    o[A8IDX] = 1.0f;
 }
 
 #define DEF_READ_COLOUR_4_ARGB_FP(prefix, intype) \
     static void _readColour##prefix##ARGB(const GLubyte* __restrict in, GLubyte* __restrict out) { \
         const intype* input = (const intype*) in; \
-        out[R8IDX] = (GLubyte) clamp(input[0] * 255.0f, 0, 255); \
-        out[G8IDX] = (GLubyte) clamp(input[1] * 255.0f, 0, 255); \
-        out[B8IDX] = (GLubyte) clamp(input[2] * 255.0f, 0, 255); \
-        out[A8IDX] = (GLubyte) clamp(input[3] * 255.0f, 0, 255); \
+        float* o = (float*) out; \
+        o[R8IDX] = input[0]; \
+        o[G8IDX] = input[1]; \
+        o[B8IDX] = input[2]; \
+        o[A8IDX] = input[3]; \
     }
 
 #define DEF_READ_COLOUR_3_ARGB_FP(prefix, intype) \
     static void _readColour##prefix##ARGB(const GLubyte* __restrict in, GLubyte* __restrict out) { \
         const intype* input = (const intype*) in; \
-        out[R8IDX] = (GLubyte) clamp(input[0] * 255.0f, 0, 255); \
-        out[G8IDX] = (GLubyte) clamp(input[1] * 255.0f, 0, 255); \
-        out[B8IDX] = (GLubyte) clamp(input[2] * 255.0f, 0, 255); \
-        out[A8IDX] = 255; \
+        float* o = (float*) out; \
+        o[R8IDX] = input[0]; \
+        o[G8IDX] = input[1]; \
+        o[B8IDX] = input[2]; \
+        o[A8IDX] = 1.0f; \
     }
 
 DEF_READ_COLOUR_4_ARGB_FP(4f, float)
-
 DEF_READ_COLOUR_3_ARGB_FP(3f, float)
 
 
 
 static void _readColour4dARGB(const GLubyte* __restrict__ in, GLubyte* __restrict__ out) {
     const double* input = (const double*) in;
-    
-    // Convert to float first  
+    float* o = (float*) out;
+    // Convert to float first
     float r = (float)input[0];
     float g = (float)input[1];
-    float b = (float)input[2]; 
+    float b = (float)input[2];
     float a = (float)input[3];
-    
-    out[R8IDX] = (GLubyte) clamp(r * 255.0f, 0, 255);
-    out[G8IDX] = (GLubyte) clamp(g * 255.0f, 0, 255);
-    out[B8IDX] = (GLubyte) clamp(b * 255.0f, 0, 255);
-    out[A8IDX] = (GLubyte) clamp(a * 255.0f, 0, 255);
+
+    o[R8IDX] = r;
+    o[G8IDX] = g;
+    o[B8IDX] = b;
+    o[A8IDX] = a;
 }
 
 static void _readColour3dARGB(const GLubyte* __restrict__ in, GLubyte* __restrict__ out) {
     const double* input = (const double*) in;
-    
-    // Convert to float first  
+    float* o = (float*) out;
+    // Convert to float first
     float r = (float)input[0];
     float g = (float)input[1];
     float b = (float)input[2];
-    
-    out[R8IDX] = (GLubyte) clamp(r * 255.0f, 0, 255);
-    out[G8IDX] = (GLubyte) clamp(g * 255.0f, 0, 255);
-    out[B8IDX] = (GLubyte) clamp(b * 255.0f, 0, 255);
-    out[A8IDX] = 255;
+
+    o[R8IDX] = r;
+    o[G8IDX] = g;
+    o[B8IDX] = b;
+    o[A8IDX] = 1.0f;
 }
 
 
-
 static void _readColour4ubRevARGB(const GLubyte* __restrict__ input, GLubyte* __restrict__ output) {
-    argbcpy(output, input);
+    const float f = 1.0f / 255.0f;
+    float* o = (float*) output;
+    o[0] = ((float) input[3]) * f;
+    o[1] = ((float) input[2]) * f;
+    o[2] = ((float) input[1]) * f;
+    o[3] = ((float) input[0]) * f;
 }
 
 static void _readColour4fRevARGB(const GLubyte* __restrict__ in, GLubyte* __restrict__ output) {
     const float* input = (const float*) in;
 
-    output[0] = (GLubyte) clamp(input[0] * 255.0f, 0, 255);
-    output[1] = (GLubyte) clamp(input[1] * 255.0f, 0, 255);
-    output[2] = (GLubyte) clamp(input[2] * 255.0f, 0, 255);
-    output[3] = (GLubyte) clamp(input[3] * 255.0f, 0, 255);
+    output[0] = input[3];
+    output[1] = input[2];
+    output[2] = input[1];
+    output[3] = input[0];
 }
 
 static void _readColour4dRevARGB(const GLubyte* __restrict__ in, GLubyte* __restrict__ output) {
     const double* input = (const double*) in;
+    float* o = (float*) output;
 
-    // Convert to float first  
+    // Convert to float first
     float r = (float)input[0];
     float g = (float)input[1];
     float b = (float)input[2];
     float a = (float)input[3];
 
-    output[0] = (GLubyte) clamp(r * 255.0f, 0, 255);
-    output[1] = (GLubyte) clamp(g * 255.0f, 0, 255);
-    output[2] = (GLubyte) clamp(b * 255.0f, 0, 255);
-    output[3] = (GLubyte) clamp(a * 255.0f, 0, 255);
+    o[0] = r;
+    o[1] = g;
+    o[2] = b;
+    o[3] = a;
 }
 
 #define DEF_READ_COLOUR_N_ARGB_INT(prefix, intype, max, alpha, i0, i1, i2, i3) \
     static void _readColour##prefix##ARGB(const GLubyte* __restrict in, GLubyte* __restrict out) { \
         const intype* input = (const intype*) in; \
-        out[i0] = (GLubyte) clamp((float)input[0] / (float)max * 255.0f, 0, 255); \
-        out[i1] = (GLubyte) clamp((float)input[1] / (float)max * 255.0f, 0, 255); \
-        out[i2] = (GLubyte) clamp((float)input[2] / (float)max * 255.0f, 0, 255); \
-        out[i3] = alpha; \
+        float* output = ((float*)out); \
+        output[i0] = (float)input[0] / (float)max; \
+        output[i1] = (float)input[1] / (float)max; \
+        output[i2] = (float)input[2] / (float)max; \
+        output[i3] = alpha; \
     }
 
 #define DEF_READ_COLOUR_3_ARGB_INT(prefix, intype, max) \
-    DEF_READ_COLOUR_N_ARGB_INT(prefix, intype, max, 255, R8IDX, G8IDX, B8IDX, A8IDX)
+    DEF_READ_COLOUR_N_ARGB_INT(prefix, intype, max, 1.0f, R8IDX, G8IDX, B8IDX, A8IDX)
 
 #define DEF_READ_COLOUR_4_ARGB_INT(prefix, intype, max) \
     DEF_READ_COLOUR_N_ARGB_INT(prefix, intype, max,  \
-        ((GLubyte)clamp((float)input[3] / (float)max * 255.0f, 0, 255)), \
+        ((float)input[3] / (float)max), \
         R8IDX, G8IDX, B8IDX, A8IDX)
 
 #define DEF_READ_COLOUR_4_REV_ARGB_INT(prefix, intype, max) \
     DEF_READ_COLOUR_N_ARGB_INT(prefix##Rev, intype, max,  \
-        ((GLubyte)clamp((float)input[3] / (float)max * 255.0f, 0, 255)), \
+        ((float)input[3] / (float)max), \
         0, 1, 2, 3)
 
 DEF_READ_COLOUR_3_ARGB_INT(3us, GLushort, UINT16_MAX)
@@ -301,7 +316,7 @@ DEF_READ_COLOUR_4_REV_ARGB_INT(4us, GLushort, UINT16_MAX)
 DEF_READ_COLOUR_4_REV_ARGB_INT(4ui, GLuint, UINT32_MAX)
 
 static ReadAttributeFunc calcReadDiffuseFunc(void) {
-    if((ATTRIB_LIST.enabled & DIFFUSE_ENABLED_FLAG) != DIFFUSE_ENABLED_FLAG) {
+    if((ATTRIB_LIST.enabled & COLOR_ENABLED_FLAG) != COLOR_ENABLED_FLAG) {
         /* Just fill the whole thing white if the attribute is disabled */
         return _fillWhiteARGB;
     }
@@ -334,6 +349,39 @@ static ReadAttributeFunc calcReadDiffuseFunc(void) {
     }
 }
 
+static ReadAttributeFunc calcReadSecondaryFunc(void) {
+    if((ATTRIB_LIST.enabled & S_COLOR_ENABLED_FLAG) != S_COLOR_ENABLED_FLAG) {
+        /* Just fill the whole thing white if the attribute is disabled */
+        return _fillWhiteARGB;
+    }
+
+    switch(ATTRIB_LIST.s_color.type) {
+        case GL_DOUBLE:
+            return (ATTRIB_LIST.s_color.size == 3) ? _readColour3dARGB:
+                   (ATTRIB_LIST.s_color.size == 4) ? _readColour4dARGB:
+                    _readColour4dRevARGB;
+        default:
+        case GL_FLOAT:
+            return (ATTRIB_LIST.s_color.size == 3) ? _readColour3fARGB:
+                   (ATTRIB_LIST.s_color.size == 4) ? _readColour4fARGB:
+                    _readColour4fRevARGB;
+        case GL_BYTE:
+        case GL_UNSIGNED_BYTE:
+            return (ATTRIB_LIST.s_color.size == 3) ? _readColour3ubARGB:
+                   (ATTRIB_LIST.s_color.size == 4) ? _readColour4ubARGB:
+                    _readColour4ubRevARGB;
+        case GL_SHORT:
+        case GL_UNSIGNED_SHORT:
+            return (ATTRIB_LIST.s_color.size == 3) ? _readColour3usARGB:
+                   (ATTRIB_LIST.s_color.size == 4) ? _readColour4usARGB:
+                    _readColour4usRevARGB;
+        case GL_INT:
+        case GL_UNSIGNED_INT:
+            return (ATTRIB_LIST.s_color.size == 3) ? _readColour3uiARGB:
+                   (ATTRIB_LIST.s_color.size == 4) ? _readColour4uiARGB:
+                    _readColour4uiRevARGB;
+    }
+}
 
 static void _fillZero2f(const GLubyte* __restrict__ input, GLubyte* __restrict__ out) {
     _GL_UNUSED(input);
@@ -531,8 +579,8 @@ void APIENTRY glEnableClientState(GLenum cap) {
 	    ATTRIB_LIST.dirty   |= VERTEX_ENABLED_FLAG;
         break;
     case GL_COLOR_ARRAY:
-        ATTRIB_LIST.enabled |= DIFFUSE_ENABLED_FLAG;
-	    ATTRIB_LIST.dirty   |= DIFFUSE_ENABLED_FLAG;
+        ATTRIB_LIST.enabled |= COLOR_ENABLED_FLAG;
+	    ATTRIB_LIST.dirty   |= COLOR_ENABLED_FLAG;
         break;
     case GL_NORMAL_ARRAY:
         ATTRIB_LIST.enabled |= NORMAL_ENABLED_FLAG;
@@ -561,8 +609,8 @@ void APIENTRY glDisableClientState(GLenum cap) {
 	    ATTRIB_LIST.dirty   |=  VERTEX_ENABLED_FLAG;
         break;
     case GL_COLOR_ARRAY:
-        ATTRIB_LIST.enabled &= ~DIFFUSE_ENABLED_FLAG;
-	    ATTRIB_LIST.dirty   |=  DIFFUSE_ENABLED_FLAG;
+        ATTRIB_LIST.enabled &= ~COLOR_ENABLED_FLAG;
+	    ATTRIB_LIST.dirty   |=  COLOR_ENABLED_FLAG;
         break;
     case GL_NORMAL_ARRAY:
         ATTRIB_LIST.enabled &= ~NORMAL_ENABLED_FLAG;
@@ -643,7 +691,27 @@ void APIENTRY glColorPointer(GLint size,  GLenum type,  GLsizei stride,  const G
     ATTRIB_LIST.colour.size = size;
     ATTRIB_LIST.colour.stride = stride;
 
-	ATTRIB_LIST.dirty |= DIFFUSE_ENABLED_FLAG;
+	ATTRIB_LIST.dirty |= COLOR_ENABLED_FLAG;
+}
+
+void APIENTRY glSecondaryColorPointer(GLint size,  GLenum type,  GLsizei stride,  const GLvoid * pointer) {
+    TRACE();
+
+    stride = (stride) ? stride : ((size == GL_BGRA) ? 4 : size) * byte_size(type);
+    ATTRIB_LIST.s_color.ptr = pointer;
+
+    if(_glStateUnchanged(&ATTRIB_LIST.s_color, size, type, stride)) return;
+
+    if(size != 3 && size != 4 && size != GL_BGRA) {
+        _glKosThrowError(GL_INVALID_VALUE, __func__);
+        return;
+    }
+
+    ATTRIB_LIST.s_color.type = type;
+    ATTRIB_LIST.s_color.size = size;
+    ATTRIB_LIST.s_color.stride = stride;
+
+	ATTRIB_LIST.dirty |= S_COLOR_ENABLED_FLAG;
 }
 
 void APIENTRY glNormalPointer(GLenum type,  GLsizei stride,  const GLvoid * pointer) {
@@ -693,7 +761,7 @@ GL_FORCE_INLINE GLuint _glIsVertexDataFastPathCompatible(void) {
      *
      * xyz == 3f
      * uv == 2f
-     * rgba == argb4444
+     * rgba == 4f
      * st == 2f
      * normal == 3f
      *
@@ -713,9 +781,15 @@ GL_FORCE_INLINE GLuint _glIsVertexDataFastPathCompatible(void) {
         }
     }
 
-    if((ATTRIB_LIST.enabled & DIFFUSE_ENABLED_FLAG)) {
+    if((ATTRIB_LIST.enabled & COLOR_ENABLED_FLAG)) {
         /* FIXME: Shouldn't this be a reversed format? */
-        if(ATTRIB_LIST.colour.size != GL_BGRA || ATTRIB_LIST.colour.type != GL_UNSIGNED_BYTE) {
+        if(ATTRIB_LIST.colour.size != 4 || ATTRIB_LIST.colour.type != GL_FLOAT) {
+            return GL_FALSE;
+        }
+    }
+
+    if((ATTRIB_LIST.enabled & S_COLOR_ENABLED_FLAG)) {
+        if(ATTRIB_LIST.s_color.size != 4 || ATTRIB_LIST.s_color.type != GL_FLOAT) {
             return GL_FALSE;
         }
     }
@@ -744,8 +818,12 @@ void _glUpdateAttributes(void) {
         ATTRIB_LIST.uv_func = calcReadUVFunc();
     }
 
-    if(ATTRIB_LIST.dirty & DIFFUSE_ENABLED_FLAG) {
+    if(ATTRIB_LIST.dirty & COLOR_ENABLED_FLAG) {
         ATTRIB_LIST.colour_func = calcReadDiffuseFunc();
+    }
+
+    if(ATTRIB_LIST.dirty & S_COLOR_ENABLED_FLAG) {
+        ATTRIB_LIST.s_color_func = calcReadSecondaryFunc();
     }
 
     if(ATTRIB_LIST.dirty & ST_ENABLED_FLAG) {
