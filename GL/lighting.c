@@ -12,6 +12,16 @@
  * multiplier ends up less than this value */
 #define ATTENUATION_THRESHOLD 100.0f
 
+/* Fast normal unpacking constants: 1/127.5 and -1.0 */
+#define NORMAL_SCALE 0.00784313725f
+#define NORMAL_OFFSET -1.0f
+
+/* Maximum light range for early-out optimization */
+#define MAX_LIGHT_RANGE 10.0f
+
+/* PI constant for spotlight calculations */
+#define GL_PI 3.14159265358979323846f
+
 
 void _glPrecalcLightingValues(GLuint mask) {
     /* Pre-calculate lighting values */
@@ -102,6 +112,7 @@ void _glInitLights() {
 
         light->spot_exponent = 0.0f;
         light->spot_cutoff = 180.0f;
+        light->spot_cutoff_cos = -1.0f;  /* cos(180°) = -1.0 */
 
         light->constant_attenuation = 1.0f;
         light->linear_attenuation = 0.0f;
@@ -245,8 +256,22 @@ void APIENTRY glLightf(GLenum light, GLenum pname, GLfloat param) {
         case GL_SPOT_EXPONENT:
             l->spot_exponent = param;
         break;
-        case GL_SPOT_CUTOFF:
-            l->spot_cutoff = param;
+        case GL_SPOT_CUTOFF: {
+            /* Validate spot_cutoff per GL spec: [0, 90] or 180 */
+            if(param >= 0.0f && param <= 90.0f) {
+                l->spot_cutoff = param;
+                l->spot_cutoff_cos = cosf(param * GL_PI / 180.0f);
+            } else if(param == 180.0f) {
+                l->spot_cutoff = 180.0f;
+                l->spot_cutoff_cos = -1.0f;
+            } else {
+                _glKosThrowError(GL_INVALID_VALUE, __func__);
+                return;
+            }
+        }
+        break;
+        case GL_SPOT_DIRECTION:
+            /* spot_direction is assumed to be in eye space */
         break;
     default:
         _glKosThrowError(GL_INVALID_ENUM, __func__);
@@ -438,186 +463,313 @@ GL_FORCE_INLINE float faster_pow(const float x, const float p) {
     return faster_pow2(p * faster_log2(x));
 }
 
-GL_FORCE_INLINE void _glLightVertexDirectional(
-    float* final, uint8_t lid,
-    float LdotN, float NdotH) {
-
-    Material* material = _glActiveMaterial();
-    LightSource* light = _glLightAt(lid);
-
-    float FI = (material->exponent) ?
-        faster_pow((LdotN != 0.0f) * NdotH, material->exponent) : 1.0f;
-
-#define _PROCESS_COMPONENT(X) \
-    final[X] += (LdotN * light->diffuseMaterial[X] + light->ambientMaterial[X]) \
-        + (FI * light->specularMaterial[X]); \
-
-    _PROCESS_COMPONENT(0);
-    _PROCESS_COMPONENT(1);
-    _PROCESS_COMPONENT(2);
-
-#undef _PROCESS_COMPONENT
+/* Compute the specular term based on NdotH and material shininess */
+GL_FORCE_INLINE float computeSpecular(float NdotH, GLfloat exponent) {
+    if(exponent > 0.0f) {
+        return faster_pow(NdotH, exponent);
+    }
+    /* When shininess is 0, specular is 1.0 if NdotH > 0, otherwise 0.0 */
+    return (NdotH > 0.0f) ? 1.0f : 0.0f;
 }
 
-GL_FORCE_INLINE void _glLightVertexPoint(
-    float* final, uint8_t lid,
-    float LdotN, float NdotH, float att) {
+/* Apply lighting contribution to the final colour */
+#define _PROCESS_LIGHTING_COMPONENT(final, X, LdotN, NdotH, FI, light, isPoint, att) \
+    do { \
+        float diffuseAmbient = LdotN * (light)->diffuseMaterial[X] + (light)->ambientMaterial[X]; \
+        float specular = FI * (light)->specularMaterial[X]; \
+        if(isPoint) { \
+            (final)[X] += (diffuseAmbient + specular) * (att); \
+        } else { \
+            (final)[X] += diffuseAmbient + specular; \
+        } \
+    } while(0)
 
-    Material* material = _glActiveMaterial();
-    LightSource* light = _glLightAt(lid);
+/* Process directional light contribution */
+GL_FORCE_INLINE void accumulateDirectionalLight(
+    float* finalColour,
+    LightSource* light,
+    float LdotN,
+    float NdotH,
+    GLfloat exponent
+) {
+    float FI = computeSpecular(NdotH, exponent);
 
-    float FI = (material->exponent) ?
-        faster_pow((LdotN != 0.0f) * NdotH, material->exponent) : 1.0f;
-
-#define _PROCESS_COMPONENT(X) \
-    final[X] += ((LdotN * light->diffuseMaterial[X] + light->ambientMaterial[X]) \
-        + (FI * light->specularMaterial[X])) * att; \
-
-    _PROCESS_COMPONENT(0);
-    _PROCESS_COMPONENT(1);
-    _PROCESS_COMPONENT(2);
-
-#undef _PROCESS_COMPONENT
+    _PROCESS_LIGHTING_COMPONENT(finalColour, 0, LdotN, NdotH, FI, light, 0, 0);
+    _PROCESS_LIGHTING_COMPONENT(finalColour, 1, LdotN, NdotH, FI, light, 0, 0);
+    _PROCESS_LIGHTING_COMPONENT(finalColour, 2, LdotN, NdotH, FI, light, 0, 0);
 }
 
-void _glPerformLighting(Vertex* vertices, const uint32_t count) {
-    GLubyte i;
-    GLuint j;
+/* Process point/spot light contribution */
+GL_FORCE_INLINE void accumulatePointLight(
+    float* finalColour,
+    LightSource* light,
+    float LdotN,
+    float NdotH,
+    GLfloat exponent,
+    float attenuation
+) {
+    float FI = computeSpecular(NdotH, exponent);
 
-    Material* material = _glActiveMaterial();
+    _PROCESS_LIGHTING_COMPONENT(finalColour, 0, LdotN, NdotH, FI, light, 1, attenuation);
+    _PROCESS_LIGHTING_COMPONENT(finalColour, 1, LdotN, NdotH, FI, light, 1, attenuation);
+    _PROCESS_LIGHTING_COMPONENT(finalColour, 2, LdotN, NdotH, FI, light, 1, attenuation);
+}
 
-    Vertex* vertex = vertices;
+#undef _PROCESS_LIGHTING_COMPONENT
 
-    /* Calculate the colour material function once */
-    void (*updateColourMaterial)(const GLfloat*) = NULL;
+/* Compute spotlight factor based on angle between light direction and spot direction.
+ * Returns 1.0 for non-spotlights (spot_cutoff == 180). */
+GL_FORCE_INLINE float computeSpotFactor(
+    const LightSource* light,
+    float Lx, float Ly, float Lz
+) {
+    /* Not a spotlight if cutoff is 180 (full sphere) */
+    if(light->spot_cutoff >= 179.0f) {
+        return 1.0f;
+    }
 
-    if(_glIsColorMaterialEnabled()) {
-        GLenum mode = _glColorMaterialMode();
-        switch(mode) {
-            case GL_AMBIENT:
-                updateColourMaterial = _glUpdateColourMaterialA;
-            break;
-            case GL_DIFFUSE:
-                updateColourMaterial = _glUpdateColourMaterialD;
-            break;
-            case GL_EMISSION:
-                updateColourMaterial = _glUpdateColourMaterialE;
-            break;
-            case GL_AMBIENT_AND_DIFFUSE:
-                updateColourMaterial = _glUpdateColourMaterialAD;
-            break;
+    /* Compute -L · spot_direction (L points FROM vertex TO light,
+     * spot_direction points FROM light outward, so we negate L) */
+    float spotDot = -(
+        Lx * light->spot_direction[0] +
+        Ly * light->spot_direction[1] +
+        Lz * light->spot_direction[2]
+    );
+
+    /* GL spec: spot is active when -L·spot_direction >= cos(spot_cutoff) */
+    if(spotDot < light->spot_cutoff_cos) {
+        return 0.0f;
+    }
+
+    /* spot_factor = (-L · spot_direction)^spot_exponent */
+    if(light->spot_exponent > 0.0f) {
+        return faster_pow(spotDot, light->spot_exponent);
+    }
+
+    return 1.0f;
+}
+
+/* Unpack normal from packed 24-bit format (8-bit X, Y, Z components) */
+GL_FORCE_INLINE void unpackNormal(uint32_t packed, float* outNx, float* outNy, float* outNz) {
+    *outNx = ((packed >> 16) & 0xFF) * NORMAL_SCALE + NORMAL_OFFSET;
+    *outNy = ((packed >> 8) & 0xFF) * NORMAL_SCALE + NORMAL_OFFSET;
+    *outNz = (packed & 0xFF) * NORMAL_SCALE + NORMAL_OFFSET;
+}
+
+/* Compute view vector based on LOCAL_VIEWER setting */
+GL_FORCE_INLINE void computeViewVector(
+    const Vertex* vertex,
+    GLboolean localViewer,
+    float* outVx, float* outVy, float* outVz
+) {
+    if(localViewer) {
+        /* Local viewer: V = -vertex position (normalized) */
+        *outVx = -vertex->xyz[0];
+        *outVy = -vertex->xyz[1];
+        *outVz = -vertex->xyz[2];
+        VEC3_NORMALIZE(*outVx, *outVy, *outVz);
+    } else {
+        /* Infinite viewer: V = (0, 0, 1) - looking down -Z axis */
+        *outVx = 0.0f;
+        *outVy = 0.0f;
+        *outVz = 1.0f;
+    }
+}
+
+/* Compute light direction vector L from vertex to light source.
+ * Returns 1 if directional (no normalization needed), 0 if point/spot. */
+GL_FORCE_INLINE int computeLightVector(
+    const LightSource* light,
+    const Vertex* vertex,
+    float* outLx, float* outLy, float* outLz
+) {
+    if(light->isDirectional) {
+        /* Directional lights: position is a direction vector (w=0).
+         * L = -light->position (direction from vertex to light at infinity) */
+        *outLx = -light->position[0];
+        *outLy = -light->position[1];
+        *outLz = -light->position[2];
+        
+        /* Ensure normalized (should already be if set up correctly) */
+        float lenSq = (*outLx)*(*outLx) + (*outLy)*(*outLy) + (*outLz)*(*outLz);
+        if(lenSq > 0.0f && lenSq != 1.0f) {
+            float invLen = MATH_fsrra(lenSq);
+            *outLx *= invLen;
+            *outLy *= invLen;
+            *outLz *= invLen;
+        }
+        return 1; /* Directional */
+    } else {
+        /* Point/spot light: L = light position - vertex position */
+        *outLx = light->position[0] - vertex->xyz[0];
+        *outLy = light->position[1] - vertex->xyz[1];
+        *outLz = light->position[2] - vertex->xyz[2];
+        return 0; /* Point/spot */
+    }
+}
+
+/* Process a single vertex through the lighting pipeline */
+GL_FORCE_INLINE void _glProcessVertex(
+    Vertex* vertex,
+    float* finalColour,
+    const Material* material,
+    LightSource** enabledLights,
+    const GLuint enabledCount,
+    void (*colorMaterialFunc)(const float*),
+    GLboolean localViewer
+) {
+    /* Update color material if function provided */
+    if(colorMaterialFunc) {
+        colorMaterialFunc(vertex->argb);
+    }
+
+    /* Prefetch next vertex while processing current */
+#ifdef _arch_dreamcast
+    PREFETCH(vertex + 1);
+#endif
+
+    /* Unpack normal */
+    float Nx, Ny, Nz;
+    unpackNormal(vertex->nxyz, &Nx, &Ny, &Nz);
+
+    /* Compute view vector */
+    float Vx, Vy, Vz;
+    computeViewVector(vertex, localViewer, &Vx, &Vy, &Vz);
+
+    /* Copy base colour */
+    vec4cpy(finalColour, material->baseColour);
+
+    const GLfloat exponent = material->exponent;
+
+    /* Light loop */
+    for(GLubyte li = 0; li < enabledCount; ++li) {
+        LightSource* light = enabledLights[li];
+
+        /* Compute light direction */
+        float Lx, Ly, Lz;
+        int isDirectional = computeLightVector(light, vertex, &Lx, &Ly, &Lz);
+
+        if(isDirectional) {
+            /* Directional light: no attenuation */
+            /* Half-vector: H = (L + V) / |L + V| */
+            float Hx = Lx + Vx;
+            float Hy = Ly + Vy;
+            float Hz = Lz + Vz;
+            VEC3_NORMALIZE(Hx, Hy, Hz);
+
+            float LdotN, NdotH;
+            VEC3_DOT(Nx, Ny, Nz, Lx, Ly, Lz, LdotN);
+            VEC3_DOT(Nx, Ny, Nz, Hx, Hy, Hz, NdotH);
+
+            /* Clamp to zero */
+            if(LdotN < 0.0f) LdotN = 0.0f;
+            if(NdotH < 0.0f) NdotH = 0.0f;
+
+            accumulateDirectionalLight(finalColour, light, LdotN, NdotH, exponent);
+        } else {
+            /* Point/spot light: compute distance */
+            float D;
+            VEC3_LENGTH(Lx, Ly, Lz, D);
+
+            /* Early-out: skip distant lights */
+            if(D > MAX_LIGHT_RANGE) {
+                continue;
+            }
+
+            /* Compute spotlight factor */
+            float spotFactor = computeSpotFactor(light, Lx, Ly, Lz);
+            if(spotFactor <= 0.0f) {
+                continue;
+            }
+
+            /* Compute combined attenuation with spotlight */
+            float att = light->constant_attenuation +
+                       light->linear_attenuation * D +
+                       light->quadratic_attenuation * D * D;
+            float combinedAtt = att / spotFactor;
+
+            if(combinedAtt < ATTENUATION_THRESHOLD) {
+                combinedAtt = MATH_Fast_Invert(combinedAtt);
+
+                /* Normalize L for dot products */
+                VEC3_NORMALIZE(Lx, Ly, Lz);
+
+                /* Half-vector: H = (L + V) / |L + V| */
+                float Hx = Lx + Vx;
+                float Hy = Ly + Vy;
+                float Hz = Lz + Vz;
+                VEC3_NORMALIZE(Hx, Hy, Hz);
+
+                float LdotN, NdotH;
+                VEC3_DOT(Nx, Ny, Nz, Lx, Ly, Lz, LdotN);
+                VEC3_DOT(Nx, Ny, Nz, Hx, Hy, Hz, NdotH);
+
+                /* Clamp to zero */
+                if(LdotN < 0.0f) LdotN = 0.0f;
+                if(NdotH < 0.0f) NdotH = 0.0f;
+
+                accumulatePointLight(finalColour, light, LdotN, NdotH, exponent, combinedAtt);
+            }
         }
     }
 
+    /* Write final colour */
+    vertex->argb[R8IDX] = finalColour[0];
+    vertex->argb[G8IDX] = finalColour[1];
+    vertex->argb[B8IDX] = finalColour[2];
+    vertex->argb[A8IDX] = finalColour[3];
+}
+
+void _glPerformLighting(Vertex* vertices, const uint32_t count) {
     if(!_glEnabledLightCount()) {
         return;
     }
 
-    for(j = 0; j < count; ++j, ++vertex) {
-        /* Calculate the ambient lighting and set up colour material */
-        if(updateColourMaterial) {
-            updateColourMaterial(vertex->argb);
+    const Material* material = _glActiveMaterial();
+    LightSource** enabledLights = _glEnabledLightCache();
+    const GLuint enabledCount = _glEnabledLightCount();
+
+    /* Reuse finalColour outside the vertex loop */
+    float finalColour[4];
+
+    /* Read LOCAL_VIEWER setting once */
+    GLboolean localViewer = _glGetLightModelViewerInEyeCoordinates();
+
+    /* Select the appropriate color material function */
+    void (*colorMaterialFunc)(const float*) = NULL;
+    if(_glIsColorMaterialEnabled()) {
+        GLenum mode = _glColorMaterialMode();
+        switch(mode) {
+            case GL_AMBIENT:
+                colorMaterialFunc = _glUpdateColourMaterialA;
+            break;
+            case GL_DIFFUSE:
+                colorMaterialFunc = _glUpdateColourMaterialD;
+            break;
+            case GL_EMISSION:
+                colorMaterialFunc = _glUpdateColourMaterialE;
+            break;
+            case GL_AMBIENT_AND_DIFFUSE:
+                colorMaterialFunc = _glUpdateColourMaterialAD;
+            break;
+            default:
+                /* No color material update for specular or other modes */
+            break;
         }
+    }
 
-        /* Copy the base colour across */
-        float finalColour[4];
-        vec4cpy(finalColour, material->baseColour);
-
-        /* Direction to vertex in eye space */
-        float Vx = -vertex->xyz[0];
-        float Vy = -vertex->xyz[1];
-        float Vz = -vertex->xyz[2];
-        VEC3_NORMALIZE(Vx, Vy, Vz);
-
-        float nxyz[3];
-        _glUnpackNormal(vertex->nxyz, nxyz);
-
-        const float Nx = nxyz[0];
-        const float Ny = nxyz[1];
-        const float Nz = nxyz[2];
-
-        for(i = 0; i < MAX_GLDC_LIGHTS; ++i) {
-            LightSource* light = _glLightAt(i);
-
-            if(!light->isEnabled) {
-                continue;
-            }
-
-            float Lx = light->position[0] - vertex->xyz[0];
-            float Ly = light->position[1] - vertex->xyz[1];
-            float Lz = light->position[2] - vertex->xyz[2];
-
-            if(light->isDirectional) {
-                float Hx = (Lx + 0);
-                float Hy = (Ly + 0);
-                float Hz = (Lz + 1);
-
-                VEC3_NORMALIZE(Lx, Ly, Lz);
-                VEC3_NORMALIZE(Hx, Hy, Hz);
-
-                float LdotN, NdotH;
-                VEC3_DOT(
-                    Nx, Ny, Nz, Lx, Ly, Lz, LdotN
-                );
-
-                VEC3_DOT(
-                    Nx, Ny, Nz, Hx, Hy, Hz, NdotH
-                );
-
-                if(LdotN < 0.0f) LdotN = 0.0f;
-                if(NdotH < 0.0f) NdotH = 0.0f;
-
-                _glLightVertexDirectional(
-                    finalColour,
-                    i, LdotN, NdotH
-                );
-            } else {
-                float D;
-                VEC3_LENGTH(Lx, Ly, Lz, D);
-
-                float att = (
-                    light->constant_attenuation + (
-                        light->linear_attenuation * D
-                    ) + (light->quadratic_attenuation * D * D)
-                );
-
-                /* Anything over the attenuation threshold will
-                 * be a tiny value after inversion (< 0.01f) so
-                 * let's just skip the lighting at that point */
-                if(att < ATTENUATION_THRESHOLD) {
-                    att = MATH_Fast_Invert(att);
-
-                    float Hx = (Lx + Vx);
-                    float Hy = (Ly + Vy);
-                    float Hz = (Lz + Vz);
-
-                    VEC3_NORMALIZE(Lx, Ly, Lz);
-                    VEC3_NORMALIZE(Hx, Hy, Hz);
-
-                    float LdotN, NdotH;
-                    VEC3_DOT(
-                        Nx, Ny, Nz, Lx, Ly, Lz, LdotN
-                    );
-
-                    VEC3_DOT(
-                        Nx, Ny, Nz, Hx, Hy, Hz, NdotH
-                    );
-
-                    if(LdotN < 0.0f) LdotN = 0.0f;
-                    if(NdotH < 0.0f) NdotH = 0.0f;
-
-                    _glLightVertexPoint(
-                        finalColour,
-                        i, LdotN, NdotH, att
-                    );
-                }
-            }
-        }
-
-        vertex->argb[R8IDX] = finalColour[0];
-        vertex->argb[G8IDX] = finalColour[1];
-        vertex->argb[B8IDX] = finalColour[2];
-        vertex->argb[A8IDX] = finalColour[3];
+    /* Process all vertices */
+    Vertex* vertex = vertices;
+    for(uint32_t j = 0; j < count; ++j, ++vertex) {
+        _glProcessVertex(
+            vertex,
+            finalColour,
+            material,
+            enabledLights,
+            enabledCount,
+            colorMaterialFunc,
+            localViewer
+        );
     }
 }
 

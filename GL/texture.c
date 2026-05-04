@@ -1432,6 +1432,22 @@ void _glAllocateSpaceForMipmaps(TextureObject* active) {
     active->baseDataOffset = _glGetMipmapDataOffset(active, 0);
 }
 
+static bool _glValidTextureSize(GLuint size) {
+    switch(size) {
+        case 8:
+        case 16:
+        case 32:
+        case 64:
+        case 128:
+        case 256:
+        case 512:
+        case 1024:
+            return true;
+        default:
+            return false;
+    }
+}
+
 static bool _glTexImage2DValidate(GLenum target, GLint level, GLint internalFormat, GLsizei width, GLsizei height, GLint border, GLenum format, GLenum type) {
     if(target != GL_TEXTURE_2D) {
         INFO_MSG("Target unsupported");
@@ -1463,6 +1479,8 @@ static bool _glTexImage2DValidate(GLenum target, GLint level, GLint internalForm
     };
 
     if(_glCheckValidEnum(format, validFormats, __func__) != 0) {
+        INFO_MSG("Invalid format");
+        _glKosThrowError(GL_INVALID_ENUM, __func__);
         return false;
     }
 
@@ -1484,7 +1502,7 @@ static bool _glTexImage2DValidate(GLenum target, GLint level, GLint internalForm
     GLuint w = width;
     GLuint h = height;
     if(level == 0){
-        if((w < 8 || (w & -w) != w)) {
+        if(!_glValidTextureSize(w)) {
             /* Width is not a power of two. Must be!*/
             INFO_MSG("Unsupported width");
             _glKosThrowError(GL_INVALID_VALUE, __func__);
@@ -1492,7 +1510,7 @@ static bool _glTexImage2DValidate(GLenum target, GLint level, GLint internalForm
         }
 
 
-        if((h < 8 || (h & -h) != h)) {
+        if(!_glValidTextureSize(h)) {
             /* height is not a power of two. Must be!*/
             INFO_MSG("Unsupported height");
             _glKosThrowError(GL_INVALID_VALUE, __func__);

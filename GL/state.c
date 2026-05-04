@@ -50,6 +50,11 @@ static struct {
 
     LightSource lights[MAX_GLDC_LIGHTS];
     GLuint enabled_light_count;
+    
+    /* Cache of enabled light pointers to avoid pointer chasing in inner loop.
+     * This is rebuilt when lights are enabled/disabled, not per-frame. */
+    LightSource* enabled_light_cache[MAX_GLDC_LIGHTS];
+    
     Material material;
 
     GLenum shade_model;
@@ -205,13 +210,22 @@ void _glRecalcEnabledLights() {
     GPUState.enabled_light_count = 0;
     for(GLubyte i = 0; i < MAX_GLDC_LIGHTS; ++i) {
         if(_glLightAt(i)->isEnabled) {
+            GPUState.enabled_light_cache[GPUState.enabled_light_count] = _glLightAt(i);
             GPUState.enabled_light_count++;
         }
     }
 }
 
+LightSource** _glEnabledLightCache() {
+    return GPUState.enabled_light_cache;
+}
+
 void _glSetLightModelViewerInEyeCoordinates(GLboolean v) {
     GPUState.viewer_in_eye_coords = v;
+}
+
+GLboolean _glGetLightModelViewerInEyeCoordinates(void) {
+    return GPUState.viewer_in_eye_coords;
 }
 
 void _glSetLightModelSceneAmbient(const GLfloat* v) {

@@ -150,6 +150,7 @@ typedef struct {
     GLfloat position[4];
     GLfloat spot_direction[3];
     GLfloat spot_cutoff;
+    GLfloat spot_cutoff_cos;  /* Precomputed cos(spot_cutoff) for fast comparison */
     GLfloat constant_attenuation;
     GLfloat linear_attenuation;
     GLfloat quadratic_attenuation;
@@ -433,9 +434,11 @@ GLenum _glColorMaterialMode();
 GLenum _glColorMaterialMask();
 Material* _glActiveMaterial();
 void _glSetLightModelViewerInEyeCoordinates(GLboolean v);
+GLboolean _glGetLightModelViewerInEyeCoordinates(void);
 void _glSetLightModelSceneAmbient(const GLfloat* v);
 void _glSetLightModelColorControl(GLint v);
 GLuint _glEnabledLightCount();
+LightSource** _glEnabledLightCache();
 void _glRecalcEnabledLights();
 GLfloat* _glLightModelSceneAmbient();
 GLfloat* _glGetLightModelSceneAmbient();
