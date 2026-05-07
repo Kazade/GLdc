@@ -382,7 +382,10 @@ void APIENTRY glColorMaterial(GLenum face, GLenum mode) {
 
 void _glUpdateColourMaterialA(const float* colour) {
     Material* material = _glActiveMaterial();
-    vec4cpy(material->ambient, colour);
+    material->ambient[0] = colour[R8IDX];
+    material->ambient[1] = colour[G8IDX];
+    material->ambient[2] = colour[B8IDX];
+    material->ambient[3] = colour[A8IDX];
     GLenum mask = _glColorMaterialMask();
     _glPrecalcLightingValues(mask);
 }
@@ -390,7 +393,10 @@ void _glUpdateColourMaterialA(const float* colour) {
 void _glUpdateColourMaterialD(const float* colour) {
     Material* material = _glActiveMaterial();
 
-    vec4cpy(material->diffuse, colour);
+    material->diffuse[0] = colour[R8IDX];
+    material->diffuse[1] = colour[G8IDX];
+    material->diffuse[2] = colour[B8IDX];
+    material->diffuse[3] = colour[A8IDX];
 
     GLenum mask = _glColorMaterialMask();
     _glPrecalcLightingValues(mask);
@@ -398,7 +404,10 @@ void _glUpdateColourMaterialD(const float* colour) {
 
 void _glUpdateColourMaterialE(const float* colour) {
     Material* material = _glActiveMaterial();
-    vec4cpy(material->emissive, colour);
+    material->emissive[0] = colour[R8IDX];
+    material->emissive[1] = colour[G8IDX];
+    material->emissive[2] = colour[B8IDX];
+    material->emissive[3] = colour[A8IDX];
 
     GLenum mask = _glColorMaterialMask();
     _glPrecalcLightingValues(mask);
@@ -407,8 +416,15 @@ void _glUpdateColourMaterialE(const float* colour) {
 void _glUpdateColourMaterialAD(const float* colour) {
     Material* material = _glActiveMaterial();
 
-    vec4cpy(material->ambient, colour);
-    vec4cpy(material->diffuse, colour);
+    material->ambient[0] = colour[R8IDX];
+    material->ambient[1] = colour[G8IDX];
+    material->ambient[2] = colour[B8IDX];
+    material->ambient[3] = colour[A8IDX];
+
+    material->diffuse[0] = colour[R8IDX];
+    material->diffuse[1] = colour[G8IDX];
+    material->diffuse[2] = colour[B8IDX];
+    material->diffuse[3] = colour[A8IDX];
 
     GLenum mask = _glColorMaterialMask();
     _glPrecalcLightingValues(mask);

@@ -176,6 +176,16 @@ static void _fillWhiteARGB(const GLubyte* __restrict__ input, GLubyte* __restric
     o[3] = 1.0f;
 }
 
+static void _fillCurrentColorARGB(const GLubyte* __restrict__ input, GLubyte* __restrict__ output) {
+    _GL_UNUSED(input);
+    const float* color = _glCurrentColor();
+    float* o = (float*)output;
+    o[A8IDX] = color[A8IDX];
+    o[R8IDX] = color[R8IDX];
+    o[G8IDX] = color[G8IDX];
+    o[B8IDX] = color[B8IDX];
+}
+
 static void _readColour4ubARGB(const GLubyte* input, GLubyte* output) {
     float* o = (float*) output;
     const float f = 1.0f / 255.0f;
@@ -317,8 +327,8 @@ DEF_READ_COLOUR_4_REV_ARGB_INT(4ui, GLuint, UINT32_MAX)
 
 static ReadAttributeFunc calcReadDiffuseFunc(void) {
     if((ATTRIB_LIST.enabled & COLOR_ENABLED_FLAG) != COLOR_ENABLED_FLAG) {
-        /* Just fill the whole thing white if the attribute is disabled */
-        return _fillWhiteARGB;
+        /* non-fast path: use the shared current color when the client color array is disabled */
+        return _fillCurrentColorARGB;
     }
 
     switch(ATTRIB_LIST.colour.type) {
@@ -782,8 +792,7 @@ GL_FORCE_INLINE GLuint _glIsVertexDataFastPathCompatible(void) {
     }
 
     if((ATTRIB_LIST.enabled & COLOR_ENABLED_FLAG)) {
-        /* FIXME: Shouldn't this be a reversed format? */
-        if(ATTRIB_LIST.colour.size != 4 || ATTRIB_LIST.colour.type != GL_FLOAT) {
+        if(ATTRIB_LIST.colour.size != 4 || (ATTRIB_LIST.colour.type != GL_FLOAT && ATTRIB_LIST.colour.type != GL_UNSIGNED_BYTE)) {
             return GL_FALSE;
         }
     }

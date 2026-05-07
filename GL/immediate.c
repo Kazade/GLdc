@@ -197,10 +197,10 @@ void APIENTRY glVertex3f(GLfloat x, GLfloat y, GLfloat z) {
     *(dest.flt++) = UV_COORD[1];
     *(dest.flt++) = ST_COORD[0];
     *(dest.flt++) = ST_COORD[1];
-    *(dest.flt++) = COLOR[0];
-    *(dest.flt++) = COLOR[1];
-    *(dest.flt++) = COLOR[2];
-    *(dest.flt++) = COLOR[3];
+    *(dest.flt++) = COLOR[R8IDX];
+    *(dest.flt++) = COLOR[G8IDX];
+    *(dest.flt++) = COLOR[B8IDX];
+    *(dest.flt++) = COLOR[A8IDX];
     *(dest.flt++) = NORMAL[0];
     *(dest.flt++) = NORMAL[1];
     *(dest.flt++) = NORMAL[2];

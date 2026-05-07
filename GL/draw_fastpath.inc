@@ -55,20 +55,28 @@ MAKE_FUNC(POLYMODE)
             PREFETCH(ptr);
             for(int_fast32_t i = 0; i < loop; ++i, ++it) {
                 PREFETCH(ptr + stride);
-                it->argb[0] = ((float*) ptr)[0];
-                it->argb[1] = ((float*) ptr)[1];
-                it->argb[2] = ((float*) ptr)[2];
-                it->argb[3] = ((float*) ptr)[3];
+                if(ATTRIB_LIST.colour.type == GL_UNSIGNED_BYTE) {
+                    const float f = 1.0f / 255.0f;
+                    it->argb[R8IDX] = ((float)ptr[0]) * f;
+                    it->argb[G8IDX] = ((float)ptr[1]) * f;
+                    it->argb[B8IDX] = ((float)ptr[2]) * f;
+                    it->argb[A8IDX] = ((float)ptr[3]) * f;
+                } else {
+                    it->argb[R8IDX] = ((float*) ptr)[0];
+                    it->argb[G8IDX] = ((float*) ptr)[1];
+                    it->argb[B8IDX] = ((float*) ptr)[2];
+                    it->argb[A8IDX] = ((float*) ptr)[3];
+                }
 
                 ptr += stride;
             }
         } else {
             float* color = _glCurrentColor();
             for(int_fast32_t i = 0; i < loop; ++i, ++it) {
-                it->argb[0] = color[0];
-                it->argb[1] = color[1];
-                it->argb[2] = color[2];
-                it->argb[3] = color[3];
+                it->argb[A8IDX] = color[A8IDX];
+                it->argb[R8IDX] = color[R8IDX];
+                it->argb[G8IDX] = color[G8IDX];
+                it->argb[B8IDX] = color[B8IDX];
             }
         }
 

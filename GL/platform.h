@@ -427,7 +427,7 @@ static inline void CompilePolyHeader(PolyHeader *dst, const PolyContext *src) {
         }
         dst->mode2 |= (DimensionFlag(8) << GPU_TA_PM2_USIZE_SHIFT) & GPU_TA_PM2_USIZE_MASK;
         dst->mode2 |= (DimensionFlag(8) << GPU_TA_PM2_VSIZE_SHIFT) & GPU_TA_PM2_VSIZE_MASK;
-        dst->mode2 |= (GPU_TXRENV_MODULATE << GPU_TA_PM2_TXRENV_SHIFT) & GPU_TA_PM2_TXRENV_MASK;
+        dst->mode2 |= (GPU_TXRENV_MODULATEALPHA << GPU_TA_PM2_TXRENV_SHIFT) & GPU_TA_PM2_TXRENV_MASK;
         dst->mode3 |= (GPU_TXRFMT_RGB565 << GPU_TA_PM3_TXRFMT_SHIFT) & GPU_TA_PM3_TXRFMT_MASK;
         /* Convert the texture address */
         txr_base = (uint32_t) DEFAULT_TEXTURE;
