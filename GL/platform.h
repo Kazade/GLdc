@@ -418,6 +418,7 @@ static inline void CompilePolyHeader(PolyHeader *dst, const PolyContext *src) {
     dst->mode2 |= (src->gen.alpha << GPU_TA_PM2_ALPHA_SHIFT) & GPU_TA_PM2_ALPHA_MASK;
 
     if(src->txr.enable == GPU_TEXTURE_DISABLE) {
+        dst->mode3 = 0;
         /* Texturing was disabled so we simulate it with a white texture */
         if(!DEFAULT_TEXTURE) {
             DEFAULT_TEXTURE = (uint8_t*) GPUMemoryAlloc(8 * 8 * 2);
