@@ -379,6 +379,8 @@ GLenum _glGetCullFace();
 GLenum _glGetFrontFace();
 GLenum _glGetGpuBlendSrcFactor();
 GLenum _glGetGpuBlendDstFactor();
+GLint _glGetUnpackRowLength();
+GLint _glGetUnpackAlignment();
 
 extern PolyList OP_LIST;
 extern PolyList PT_LIST;
