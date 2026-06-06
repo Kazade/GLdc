@@ -66,6 +66,9 @@ static struct {
 
     GLfloat half_point_size;
     GLfloat half_line_width;
+
+    GLint unpack_row_length;
+    GLint unpack_alignment;
 } GPUState = {
     .is_dirty = GL_TRUE,
     .depth_func = GL_LESS,
@@ -102,6 +105,8 @@ static struct {
     .current_tex_coord1 = {0.0f, 0.0f},
     .half_point_size = 0.5f,
     .half_line_width = 0.5f,
+    .unpack_row_length = 0,
+    .unpack_alignment = 4,
 };
 
 float* _glCurrentColor() {
@@ -139,6 +144,14 @@ void _glGPUStateMarkDirty() {
 
 GLboolean _glGPUStateIsDirty() {
     return GPUState.is_dirty;
+}
+
+GLint _glGetUnpackRowLength() {
+    return GPUState.unpack_row_length;
+}
+
+GLint _glGetUnpackAlignment() {
+    return GPUState.unpack_alignment;
 }
 
 Material* _glActiveMaterial() {
@@ -873,8 +886,25 @@ void glColorMask(GLboolean red, GLboolean green, GLboolean blue, GLboolean alpha
 }
 
 void glPixelStorei(GLenum pname, GLint param) {
-    _GL_UNUSED(pname);
-    _GL_UNUSED(param);
+    switch(pname) {
+        case GL_UNPACK_ROW_LENGTH:
+            if(param < 0) {
+                _glKosThrowError(GL_INVALID_VALUE, __func__);
+                return;
+            }
+            GPUState.unpack_row_length = param;
+        break;
+        case GL_UNPACK_ALIGNMENT:
+            if(param != 1 && param != 2 && param != 4 && param != 8) {
+                _glKosThrowError(GL_INVALID_VALUE, __func__);
+                return;
+            }
+            GPUState.unpack_alignment = param;
+        break;
+        default:
+            _glKosThrowError(GL_INVALID_ENUM, __func__);
+        break;
+    }
 }
 
 
@@ -1117,6 +1147,12 @@ void APIENTRY glGetIntegerv(GLenum pname, GLint *params) {
         break;
         case GL_TEXTURE_INTERNAL_FORMAT_KOS:
             *params = _glGetTextureInternalFormat();
+        break;
+        case GL_UNPACK_ROW_LENGTH:
+            *params = GPUState.unpack_row_length;
+        break;
+        case GL_UNPACK_ALIGNMENT:
+            *params = GPUState.unpack_alignment;
         break;
 
     default:
