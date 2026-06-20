@@ -214,4 +214,13 @@ GLAPI GLvoid APIENTRY glDefragmentTextureMemory_KOS(void);
 /* If enabled, will twiddle texture uploads where possible */
 #define GL_TEXTURE_TWIDDLE_KOS                      0xEF51
 
+/*
+ * CUSTOM EXTENSION GL_KOS_texture_stride
+ *
+ * Allows explicitly opting a texture into the Dreamcast PVR's non-twiddled
+ * x32 strided texture mode. Pass GL_TEXTURE_STRIDE_KOS to glTexParameteri
+ * before glTexImage2D. The stride is specified in pixels.
+ */
+#define GL_TEXTURE_STRIDE_KOS                       0xEF52
+
 __END_DECLS

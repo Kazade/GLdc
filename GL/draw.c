@@ -751,6 +751,25 @@ GL_FORCE_INLINE void apply_poly_header(PolyHeader* header, GLboolean multiTextur
     */
 }
 
+GL_FORCE_INLINE void apply_strided_texture_uv_scale(SubmissionTarget* target) {
+    TextureObject* texture = _glGetTexture0();
+
+    if(!texture || !texture->isStrided || !texture->pvrWidth || !texture->pvrHeight) {
+        return;
+    }
+
+    const float uScale = (float) texture->logicalWidth / (float) texture->pvrWidth;
+    const float vScale = (float) texture->logicalHeight / (float) texture->pvrHeight;
+    Vertex* it = _glSubmissionTargetStart(target);
+    Vertex* end = _glSubmissionTargetEnd(target);
+
+    while(it < end) {
+        it->uv[0] *= uScale;
+        it->uv[1] *= vScale;
+        ++it;
+    }
+}
+
 #define DEBUG_CLIPPING 0
 
 
@@ -841,6 +860,8 @@ GL_FORCE_INLINE void submitVertices(GLenum mode, GLsizei first, GLuint count, GL
     generate(target, mode, first, count, (GLubyte*) indices, type);
 
     _glTnlApplyEffects(target);
+
+    apply_strided_texture_uv_scale(target);
 
     // /*
     //    Now, if multitexturing is enabled, we want to send exactly the same vertices again, except:
