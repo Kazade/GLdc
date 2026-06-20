@@ -1757,6 +1757,15 @@ static inline GLboolean is4BPPFormat(GLenum format) {
     return format == GL_COLOR_INDEX4_EXT || format == GL_COLOR_INDEX4_TWID_KOS;
 }
 
+static GLuint _glGetUnpackRowPitch(GLsizei width, GLint sourceStride, GLenum format) {
+    GLint rowLength = _glGetUnpackRowLength();
+    GLint unpackAlignment = _glGetUnpackAlignment();
+    GLuint rowPixels = (rowLength > 0) ? (GLuint) rowLength : (GLuint) width;
+    GLuint rowBytes = is4BPPFormat(format) ? ((rowPixels + 1) / 2) : (rowPixels * (GLuint) sourceStride);
+
+    return (rowBytes + (GLuint) unpackAlignment - 1) & ~((GLuint) unpackAlignment - 1);
+}
+
 void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
                            GLsizei width, GLsizei height, GLint border,
                            GLenum format, GLenum type, const GLvoid *data) {
@@ -2344,7 +2353,15 @@ void APIENTRY glTexSubImage2D(GLenum target, GLint level, GLint xoffset, GLint y
 
     // Determine source stride
     GLint sourceStride = _determineStride(format, type);
-    GLuint srcBytes = (width * height * sourceStride);
+    if (sourceStride < 0) {
+        INFO_MSG("Stride was not detected\n");
+        _glKosThrowError(GL_INVALID_OPERATION, __func__);
+        return;
+    }
+
+    GLuint sourceRowWidth = is4BPPFormat(format) ? (((GLuint) width + 1) / 2) : ((GLuint) width * (GLuint) sourceStride);
+    GLuint sourcePitch = _glGetUnpackRowPitch(width, sourceStride, format);
+    GLuint srcBytes = height ? (sourcePitch * ((GLuint) height - 1) + sourceRowWidth) : 0;
 
     // Calculate destination stride (this accounts for both POT and NPOT)
     GLint destStride = _determineStrideInternal(cleanInternalFormat);
@@ -2389,6 +2406,7 @@ void APIENTRY glTexSubImage2D(GLenum target, GLint level, GLint xoffset, GLint y
         }
         if (needs_conversion == CONVERSION_TYPE_CONVERT) {
             for (uint32_t y = 0; y < height; ++y) {
+                src = (const GLubyte*) data + (y * sourcePitch);
                 dst = conversionBuffer + ((y + yoffset) * texturePitch + xoffset) * destStride;
                 for (uint32_t x = 0; x < width; ++x) {
                     conversion(src, dst);
@@ -2402,21 +2420,24 @@ void APIENTRY glTexSubImage2D(GLenum target, GLint level, GLint xoffset, GLint y
 
             for (uint32_t y = yoffset; y < yoffset + height; ++y) {
                 for (uint32_t x = xoffset; x < xoffset + width; ++x) {
-                    uint32_t srcIndex = (y - yoffset) * width + (x - xoffset);
                     uint32_t newLocation = twid_compute_index(x, y, maskX, maskY);
                     dst = conversionBuffer + (destStride * newLocation);
+                    src = (const GLubyte*) data + ((y - yoffset) * sourcePitch) + ((x - xoffset) * sourceStride);
 
                     if (needs_conversion == 3) {
-                        conversion(src + srcIndex * sourceStride, dst);
+                        conversion(src, dst);
                     } else {
-                        memcpy(dst, src + srcIndex * sourceStride, destStride);
+                        memcpy(dst, src, destStride);
                     }
                 }
             }
         }
 
         if (pack) {
-            assert(isPaletted);
+            assert(active->internalFormat == GL_COLOR_INDEX8_EXT ||
+                   active->internalFormat == GL_COLOR_INDEX4_EXT ||
+                   active->internalFormat == GL_COLOR_INDEX4_TWID_KOS ||
+                   active->internalFormat == GL_COLOR_INDEX8_TWID_KOS);
             size_t dst_byte = 0;
             for (size_t src_byte = 0; src_byte < destBytes; ++src_byte) {
                 uint8_t v = conversionBuffer[src_byte];
@@ -2436,10 +2457,19 @@ void APIENTRY glTexSubImage2D(GLenum target, GLint level, GLint xoffset, GLint y
         free(conversionBuffer);
     } else {
         // No conversion necessary, we can update data directly
+        if (xoffset == 0 &&
+            yoffset == 0 &&
+            width == textureWidth &&
+            sourceStride == destStride &&
+            sourcePitch == textureWidth * destStride) {
+            FASTCPY(targetData, data, height * sourcePitch);
+            _glGPUStateMarkDirty();
+            return;
+        }
+
         for (GLsizei y = 0; y < height; ++y) {
-            GLsizei srcRowWidth = width * sourceStride;
             GLubyte* destRow = targetData + ((y + yoffset) * texturePitch + xoffset) * destStride;
-            FASTCPY(destRow, (GLubyte*)data + y * srcRowWidth, srcRowWidth);
+            FASTCPY(destRow, (GLubyte*)data + y * sourcePitch, sourceRowWidth);
         }
     }
 
