@@ -108,9 +108,10 @@ int LoadGLTextures()                                    // Load Bitmaps And Conv
 				    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 					if (loop == 0)
 					{
-						printf("Uploading strided logo texture %dx%d\n",
+						printf("Uploading NPOT logo texture %dx%d\n",
 							TextureImage[loop].sizeX, TextureImage[loop].sizeY);
-						glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_STRIDE_KOS, TextureImage[loop].sizeX);
+						glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
+						glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
 					}
 					glTexImage2D(
 						GL_TEXTURE_2D, 0, 3,

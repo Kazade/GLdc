@@ -215,12 +215,14 @@ GLAPI GLvoid APIENTRY glDefragmentTextureMemory_KOS(void);
 #define GL_TEXTURE_TWIDDLE_KOS                      0xEF51
 
 /*
- * CUSTOM EXTENSION GL_KOS_texture_stride
+ * CUSTOM EXTENSION GL_KOS_texture_non_power_of_two
  *
- * Allows explicitly opting a texture into the Dreamcast PVR's non-twiddled
- * x32 strided texture mode. Pass GL_TEXTURE_STRIDE_KOS to glTexParameteri
- * before glTexImage2D. The stride is specified in pixels.
+ * Exposes limited GL_TEXTURE_2D non-power-of-two texture support backed by
+ * the Dreamcast PVR's non-twiddled x32 strided texture mode. Texture
+ * coordinates remain normalized. This extension is clamp-only: PVR wrapping
+ * still works for normal POT textures, but strided NPOT textures upload only
+ * logical width * logical height data while the PVR header uses padded POT
+ * dimensions.
  */
-#define GL_TEXTURE_STRIDE_KOS                       0xEF52
 
 __END_DECLS
