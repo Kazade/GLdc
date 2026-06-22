@@ -1,19 +1,19 @@
+#pragma once
+
 #include "tools/test.h"
+#include "tools/gl_test.h"
 
 #include <stdint.h>
 #include <GL/gl.h>
 #include <GL/glkos.h>
 
 
-class TexImage2DTests : public test::TestCase {
+class TexImage2DTests : public GLTestCase {
 public:
     uint8_t image_data[8 * 8 * 4] = {0};
 
     void set_up() {
-        GLdcConfig config;
-        glKosInitConfig(&config);
-        config.texture_twiddle = false;
-        glKosInitEx(&config);
+        GLTestCase::set_up();
 
         /* Init image data so each texel RGBA value matches the
          * position in the array */
@@ -23,10 +23,6 @@ public:
             image_data[i + 2] = i;
             image_data[i + 3] = i;
         }
-    }
-
-    void tear_down() {
-        glKosShutdown();
     }
 
     void test_rgb_to_rgb565() {

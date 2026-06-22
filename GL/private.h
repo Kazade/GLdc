@@ -16,6 +16,12 @@
 #include "../containers/aligned_vector.h"
 #include "../containers/named_array.h"
 
+#ifdef __cplusplus
+/* Ensure the helper functions declared below keep C linkage when this header
+ * is pulled into the C++ test harness, so they link against the C library. */
+extern "C" {
+#endif
+
 #define MAX_GLDC_4BPP_PALETTE_SLOTS 16
 #define MAX_GLDC_PALETTE_SLOTS 4
 #define MAX_GLDC_SHARED_PALETTES (MAX_GLDC_PALETTE_SLOTS*MAX_GLDC_4BPP_PALETTE_SLOTS)
@@ -475,5 +481,9 @@ float _glUnpackHalfFloat(half_float_t h);
 #define MIN(a,b) (((a)<(b))?(a):(b))
 #define MAX(a,b) (((a)>(b))?(a):(b))
 #define CLAMP( X, _MIN, _MAX )  ( (X)<(_MIN) ? (_MIN) : ((X)>(_MAX) ? (_MAX) : (X)) )
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif // PRIVATE_H

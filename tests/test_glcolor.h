@@ -1,6 +1,7 @@
 #pragma once
 
 #include "tools/test.h"
+#include "tools/gl_test.h"
 
 #include <stdint.h>
 #include <GL/gl.h>
@@ -21,21 +22,11 @@
  *   index 2 = green  (G8IDX)
  *   index 3 = blue   (B8IDX)
  * =========================================================================*/
-class GlColorTests : public test::TestCase {
+class GlColorTests : public GLTestCase {
 public:
-    void set_up() {
-        GLdcConfig config;
-        glKosInitConfig(&config);
-        config.texture_twiddle = false;
-        glKosInitEx(&config);
-        /* _glInitContext does not reset current_color, so do it explicitly
-         * here so every test starts from a known white default. */
-        glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-    }
-
-    void tear_down() {
-        glKosShutdown();
-    }
+    /* GLTestCase::set_up() initialises the GPU once and resets the current
+     * colour to white, which is the known-good starting state these tests
+     * expect. */
 
     /* After set_up the current colour must be white (1,1,1,1). */
     void test_default_color_is_white() {
@@ -211,20 +202,9 @@ public:
  * pointer, that stride=0 triggers the automatic stride calculation, and
  * that invalid size arguments raise GL_INVALID_VALUE.
  * =========================================================================*/
-class GlColorPointerTests : public test::TestCase {
+class GlColorPointerTests : public GLTestCase {
 public:
-    void set_up() {
-        GLdcConfig config;
-        glKosInitConfig(&config);
-        config.texture_twiddle = false;
-        glKosInitEx(&config);
-        /* Reset enabled flags – _glInitAttributePointers does not do this. */
-        ATTRIB_LIST.enabled = 0;
-    }
-
-    void tear_down() {
-        glKosShutdown();
-    }
+    /* GLTestCase::set_up() already clears ATTRIB_LIST.enabled. */
 
     /* size=4, GL_FLOAT: stride auto-calculated to 4*4=16. */
     void test_colorpointer_size4_float_stores_metadata() {
@@ -352,19 +332,8 @@ public:
  * Mirrors GlColorPointerTests for the secondary (offset) colour pointer
  * stored in ATTRIB_LIST.s_color.
  * =========================================================================*/
-class GlSecondaryColorPointerTests : public test::TestCase {
+class GlSecondaryColorPointerTests : public GLTestCase {
 public:
-    void set_up() {
-        GLdcConfig config;
-        glKosInitConfig(&config);
-        config.texture_twiddle = false;
-        glKosInitEx(&config);
-        ATTRIB_LIST.enabled = 0;
-    }
-
-    void tear_down() {
-        glKosShutdown();
-    }
 
     /* size=4, GL_FLOAT: basic happy path. */
     void test_secondary_colorpointer_size4_float_stores_metadata() {
@@ -460,20 +429,8 @@ public:
  * appropriate flag bits in ATTRIB_LIST.enabled are set or cleared, that the
  * dirty flag is updated, and that invalid enumerants raise GL_INVALID_ENUM.
  * =========================================================================*/
-class GlClientStateTests : public test::TestCase {
+class GlClientStateTests : public GLTestCase {
 public:
-    void set_up() {
-        GLdcConfig config;
-        glKosInitConfig(&config);
-        config.texture_twiddle = false;
-        glKosInitEx(&config);
-        /* Clear all enabled flags for a clean baseline. */
-        ATTRIB_LIST.enabled = 0;
-    }
-
-    void tear_down() {
-        glKosShutdown();
-    }
 
     /* Enabling GL_COLOR_ARRAY must set COLOR_ENABLED_FLAG. */
     void test_enable_color_array_sets_flag() {
