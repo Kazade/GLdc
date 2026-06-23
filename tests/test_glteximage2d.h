@@ -29,6 +29,13 @@ public:
         }
     }
 
+    void set_clamp_wrap() {
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        assert_equal(glGetError(), GL_NO_ERROR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        assert_equal(glGetError(), GL_NO_ERROR);
+    }
+
     void test_rgb_to_rgb565() {
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 8, 8, 0, GL_RGB, GL_UNSIGNED_BYTE, image_data);
         assert_equal(glGetError(), GL_NO_ERROR);
