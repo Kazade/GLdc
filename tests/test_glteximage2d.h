@@ -145,12 +145,14 @@ public:
     }
 
     void test_pot_texture_repeat_wrap_unchanged() {
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-        assert_equal(glGetError(), GL_NO_ERROR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 8, 8, 0,
+                    GL_RGB, GL_UNSIGNED_BYTE, image_data);
         assert_equal(glGetError(), GL_NO_ERROR);
 
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 8, 8, 0, GL_RGB, GL_UNSIGNED_BYTE, image_data);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+        assert_equal(glGetError(), GL_NO_ERROR);
+
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
         assert_equal(glGetError(), GL_NO_ERROR);
     }
 
