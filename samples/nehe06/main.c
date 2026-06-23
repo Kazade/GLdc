@@ -13,8 +13,6 @@
 #include "GL/glkos.h"
 
 #ifdef _arch_dreamcast
-extern uint8_t romdisk[];
-KOS_INIT_ROMDISK(romdisk);
 #define IMAGE_FILENAME "/rd/NeHe.bmp"
 #else
 #define IMAGE_FILENAME "../samples/nehe06/romdisk/NeHe.bmp"

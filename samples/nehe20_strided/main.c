@@ -22,8 +22,6 @@ uint32_t framestarttime = 0;
 int32_t delaytime;
 
 #ifdef _arch_dreamcast
-extern uint8_t romdisk[];
-KOS_INIT_ROMDISK(romdisk);
 #define IMG_LOGO_PATH   "/rd/logo.bmp"
 #define IMG_MASK1_PATH  "/rd/mask1.bmp"
 #define IMG_IMAGE1_PATH "/rd/image1.bmp"

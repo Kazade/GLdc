@@ -13,8 +13,6 @@
 #include "GL/glext.h"
 
 #ifdef _arch_dreamcast
-extern uint8 romdisk[];
-KOS_INIT_ROMDISK(romdisk);
 // /opt/toolchains/dc/kos/utils/pvrtex/pvrtex -i romdisk/NeHe.bmp -f rgb565 -c -o romdisk/NeHe.dt
 #define IMG_PATH "/rd/NeHe.dt"
 #else

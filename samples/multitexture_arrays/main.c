@@ -21,8 +21,6 @@
 #include "GL/glext.h"
 
 #ifdef _arch_dreamcast
-extern uint8_t romdisk[];
-KOS_INIT_ROMDISK(romdisk);
 #define IMAGE1_FILENAME "/rd/wp001vq.pvr"
 #define IMAGE2_FILENAME "/rd/FlareWS_256.pvr"
 #else

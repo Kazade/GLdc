@@ -18,8 +18,6 @@
 
 #ifdef _arch_dreamcast
     #include <kos.h>
-    extern uint8 romdisk[];
-    KOS_INIT_ROMDISK(romdisk);
 
     #ifdef USE_16C_PALETTE
         #define IMG_PATH       "/rd/NeHe.bmp"
