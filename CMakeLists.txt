@@ -61,6 +61,7 @@ set_target_properties(GL PROPERTIES
     COMPILE_DEFINITIONS -DBACKEND_${BACKEND_UPPER}
     C_STANDARD 99
     INTERPROCEDURAL_OPTIMIZATION ${FLTO_SUPPORTED}
+    PUBLIC_HEADER "include/GL/gl.h;include/GL/glext.h;include/GL/glu.h;include/GL/glkos.h"
 )
 
 target_include_directories(GL PUBLIC ${CMAKE_SOURCE_DIR}/include)
@@ -99,6 +100,14 @@ else()
         GL/platforms/software/parameter_equation.c
     )
 endif()
+
+include(GNUInstallDirs)
+
+install(TARGETS GL
+    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/GL
+)
 
 function(gen_sample sample)
     add_executable(${sample} ${ARGN})
