@@ -1,6 +1,7 @@
 #pragma once
 
 #include "tools/test.h"
+#include "tools/gl_test.h"
 
 #include <stdint.h>
 #include <GL/gl.h>
@@ -32,22 +33,10 @@
 /* =========================================================================
  * PVRVertexSubmissionTests
  * =========================================================================*/
-class PVRVertexSubmissionTests : public test::TestCase {
+class PVRVertexSubmissionTests : public GLTestCase {
 public:
-    void set_up() {
-        GLdcConfig config;
-        glKosInitConfig(&config);
-        config.texture_twiddle = false;
-        glKosInitEx(&config);
-
-        /* Explicit clean slate for colour and client-state. */
-        glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-        ATTRIB_LIST.enabled = 0;
-    }
-
-    void tear_down() {
-        glKosShutdown();
-    }
+    /* GLTestCase::set_up() gives a clean slate: GPU initialised once, colour
+     * reset to white and all client-state arrays disabled. */
 
     /* Convenience: cast element i of a list to Vertex*. */
     static Vertex* vertex_at(PolyList* list, uint32_t i) {
