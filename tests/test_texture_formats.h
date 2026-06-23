@@ -188,6 +188,11 @@ public:
     /* ------------------------------------------------- glTexSubImage2D */
 
     void test_subimage_updates_only_target_region() {
+        /* The 2-wide RGB sub-image below is tightly packed (6 bytes/row), so it
+         * does not satisfy the default GL_UNPACK_ALIGNMENT of 4 (which would pad
+         * each row to 8 bytes). Tell GL the rows are tightly packed. */
+        glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+
         /* Start with an all-black 16x16 RGB565 texture. */
         std::vector<uint8_t> img(16 * 16 * 3, 0);
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 16, 16, 0, GL_RGB, GL_UNSIGNED_BYTE, img.data());

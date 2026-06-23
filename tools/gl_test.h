@@ -78,6 +78,10 @@ public:
         glDepthFunc(GL_LESS);
         glShadeModel(GL_SMOOTH);
 
+        /* Restore the spec default so a test that changes pixel-store state
+         * doesn't leak into the next (we no longer re-init per test). */
+        glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
+
         glBindTexture(GL_TEXTURE_2D, 0);
 
         glMatrixMode(GL_PROJECTION); glLoadIdentity();
