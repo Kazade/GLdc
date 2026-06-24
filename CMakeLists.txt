@@ -45,7 +45,6 @@ add_library(GL STATIC
     GL/flush.c
     GL/fog.c
     GL/framebuffer.c
-    GL/glu.c
     GL/immediate.c
     GL/lighting.c
     GL/matrix.c
@@ -61,10 +60,18 @@ set_target_properties(GL PROPERTIES
     COMPILE_DEFINITIONS -DBACKEND_${BACKEND_UPPER}
     C_STANDARD 99
     INTERPROCEDURAL_OPTIMIZATION ${FLTO_SUPPORTED}
-    PUBLIC_HEADER "include/GL/gl.h;include/GL/glext.h;include/GL/glu.h;include/GL/glkos.h"
+    PUBLIC_HEADER "include/GL/gl.h;include/GL/glext.h;include/GL/glkos.h"
 )
 
 target_include_directories(GL PUBLIC ${CMAKE_SOURCE_DIR}/include)
+
+add_library(GLU STATIC GL/glu.c)
+
+set_target_properties(GLU PROPERTIES
+    PUBLIC_HEADER include/GL/glu.h
+)
+
+target_link_libraries(GLU PUBLIC GL)
 
 if(NOT PLATFORM_DREAMCAST)
     target_compile_options(GL PUBLIC -m32)
@@ -103,7 +110,7 @@ endif()
 
 include(GNUInstallDirs)
 
-install(TARGETS GL
+install(TARGETS GL GLU
     ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
     PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/GL
@@ -111,7 +118,7 @@ install(TARGETS GL
 
 function(gen_sample sample)
     add_executable(${sample} ${ARGN})
-    target_link_libraries(${sample} PRIVATE m GL)
+target_link_libraries(${sample} PRIVATE m GL GLU)
     set_target_properties(${sample} PROPERTIES
         C_STANDARD 99
         CXX_STANDARD 14
