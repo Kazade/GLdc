@@ -1,7 +1,14 @@
-cmake_minimum_required(VERSION 3.9)
+cmake_minimum_required(VERSION 3.17)
 project(GLdc)
 
 set(CMAKE_VERBOSE_MAKEFILE ON)
+
+if (NOT CMAKE_BUILD_TYPE)
+    set(CMAKE_BUILD_TYPE RelWithDebInfo CACHE STRING "Type of build" FORCE)
+    set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS
+        Debug Release RelWithDebInfo MinSizeRel
+    )
+endif()
 
 # Options to control optional targets
 option(BUILD_SAMPLES "Build example/sample programs" ON)
@@ -17,58 +24,18 @@ endif()
 include(CheckIPOSupported)
 check_ipo_supported(RESULT FLTO_SUPPORTED OUTPUT FLTO_ERROR)
 
+if(PLATFORM_DREAMCAST)
+    include(kallistios)
+endif()
+
 # List of possible backends
 set_property(CACHE BACKEND PROPERTY STRINGS kospvr software)
 
 message("\nCompiling using backend: ${BACKEND}\n")
 
 string(TOUPPER ${BACKEND} BACKEND_UPPER)
-add_definitions(-DBACKEND_${BACKEND_UPPER})
 
-set(CMAKE_C_STANDARD 99)
-set(CMAKE_CXX_STANDARD 14)
-
-include_directories(include)
-
-if(NOT PLATFORM_DREAMCAST)
-    set(FIND_LIBRARY_USE_LIB32_PATHS true)
-    set(FIND_LIBRARY_USE_LIB64_PATHS false)
-else()
-    include(CheckCCompilerFlag)
-    check_c_compiler_flag("-mfsrra" COMPILER_HAS_FSRRA)
-    check_c_compiler_flag("-mfsca"  COMPILER_HAS_FSCA)
-    if(COMPILER_HAS_FSRRA)
-        set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -mfsrra")
-        set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -mfsrra")
-
-        set(CMAKE_C_FLAGS_RELWITHDEBINFO "${CMAKE_C_FLAGS_RELWITHDEBINFO} -mfsrra")
-        set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO} -mfsrra")
-    endif()
-    if(COMPILER_HAS_FSCA)
-        set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -mfsca")
-        set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -mfsca")
-
-        set(CMAKE_C_FLAGS_RELWITHDEBINFO "${CMAKE_C_FLAGS_RELWITHDEBINFO} -mfsca")
-        set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO} -mfsca")
-    endif()
-    set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -ffp-contract=fast -ffast-math")
-    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -ffast-math")
-
-    set(CMAKE_C_FLAGS_RELWITHDEBINFO "${CMAKE_C_FLAGS_RELWITHDEBINFO} -ffp-contract=fast -ffast-math")
-    set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO} -ffast-math")
-endif()
-
-set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -O3 -fexpensive-optimizations -fomit-frame-pointer -finline-functions")
-set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -std=c++14 -O3 -g0 -s -fomit-frame-pointer -fstrict-aliasing")
-
-set(CMAKE_C_FLAGS_RELWITHDEBINFO "${CMAKE_C_FLAGS_RELWITHDEBINFO} -O3 -fexpensive-optimizations -fomit-frame-pointer -finline-functions")
-set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO} -std=c++14 -O3 -fomit-frame-pointer -fstrict-aliasing")
-
-set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -O0 -g -Wall -Wextra")
-set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -O0 -g -Wall -Wextra")
-
-set(
-    SOURCES
+add_library(GL STATIC
     containers/aligned_vector.c
     containers/named_array.c
     containers/stack.c
@@ -78,7 +45,6 @@ set(
     GL/flush.c
     GL/fog.c
     GL/framebuffer.c
-    GL/glu.c
     GL/immediate.c
     GL/lighting.c
     GL/matrix.c
@@ -90,6 +56,35 @@ set(
     ${CMAKE_CURRENT_BINARY_DIR}/version.c
 )
 
+set_target_properties(GL PROPERTIES
+    COMPILE_DEFINITIONS -DBACKEND_${BACKEND_UPPER}
+    C_STANDARD 99
+    INTERPROCEDURAL_OPTIMIZATION ${FLTO_SUPPORTED}
+    PUBLIC_HEADER "include/GL/gl.h;include/GL/glext.h;include/GL/glkos.h"
+)
+
+target_include_directories(GL PUBLIC ${CMAKE_SOURCE_DIR}/include)
+
+add_library(GLU STATIC GL/glu.c)
+
+set_target_properties(GLU PROPERTIES
+    PUBLIC_HEADER include/GL/glu.h
+)
+
+target_link_libraries(GLU PUBLIC GL)
+
+if(NOT PLATFORM_DREAMCAST)
+    target_compile_options(GL PUBLIC -m32)
+    target_link_options(GL PUBLIC -m32)
+
+    set(FIND_LIBRARY_USE_LIB32_PATHS true)
+    set(FIND_LIBRARY_USE_LIB64_PATHS false)
+elseif ("${CMAKE_BUILD_TYPE}" STREQUAL Debug)
+    target_compile_options(GL PRIVATE -Wall -Wextra)
+elseif("${CMAKE_BUILD_TYPE}" MATCHES Release|RelWithDebInfo)
+    target_compile_options(GL PRIVATE -ffast-math)
+endif()
+
 execute_process(
     COMMAND git describe --abbrev=4 --dirty --always --tags
     OUTPUT_VARIABLE GLDC_VERSION
@@ -99,48 +94,35 @@ execute_process(
 configure_file(GL/version.c.in ${CMAKE_CURRENT_BINARY_DIR}/version.c)
 
 if(PLATFORM_DREAMCAST)
-    set(SOURCES ${SOURCES} GL/platforms/sh4.c)
+    target_sources(GL PRIVATE GL/platforms/sh4.c)
 else()
     find_package(PkgConfig)
     pkg_check_modules(SDL2 REQUIRED sdl2)
+    target_link_libraries(GL PUBLIC ${SDL2_LIBRARIES})
+    target_include_directories(GL PUBLIC ${SDL2_INCLUDE_DIRS})
 
-    include_directories(${SDL2_INCLUDE_DIRS})
-    link_libraries(${SDL2_LIBRARIES})
-    set(
-        SOURCES
-        ${SOURCES}
+    target_sources(GL PRIVATE
         GL/platforms/software.c
         GL/platforms/software/edge_equation.c
         GL/platforms/software/parameter_equation.c
     )
 endif()
 
-add_library(GL STATIC ${SOURCES})
+include(GNUInstallDirs)
 
-if(FLTO_SUPPORTED)
-    set_property(TARGET GL PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
-endif()
-
-if(NOT PLATFORM_DREAMCAST)
-set_target_properties(GL PROPERTIES
-    COMPILE_OPTIONS "-m32"
-    LINK_OPTIONS "-m32"
+install(TARGETS GL GLU
+    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/GL
 )
-endif()
-
-link_libraries(m)
-include_directories(include)
-link_libraries(GL)
 
 function(gen_sample sample)
-    set(SAMPLE_SRCS ${ARGN})
-    set(GENROMFS "$ENV{KOS_BASE}/utils/genromfs/genromfs")
-    set(BIN2O $ENV{KOS_BASE}/utils/bin2o/bin2o)
-    set(ROMDISK_IMG "${CMAKE_SOURCE_DIR}/samples/${sample}/romdisk.img")
-    set(ROMDISK_O "${CMAKE_SOURCE_DIR}/samples/${sample}/romdisk.o")
-    set(ROMDISK_DIR "${CMAKE_SOURCE_DIR}/samples/${sample}/romdisk")
-
-    add_executable(${sample} ${SAMPLE_SRCS})
+    add_executable(${sample} ${ARGN})
+target_link_libraries(${sample} PRIVATE m GL GLU)
+    set_target_properties(${sample} PROPERTIES
+        C_STANDARD 99
+        CXX_STANDARD 14
+    )
 
     if(FLTO_SUPPORTED)
         # FIXME: Cubes + LTO causes an ICE
@@ -152,32 +134,10 @@ function(gen_sample sample)
     if(PLATFORM_DREAMCAST)
         if(EXISTS "${CMAKE_SOURCE_DIR}/samples/${sample}/romdisk")
             message("Generating romdisk for sample: ${sample}")
-            file(GLOB_RECURSE ROMDISK_FILES "${ROMDISK_DIR}/*")
-            add_custom_command(
-                OUTPUT ${ROMDISK_IMG}
-                COMMAND ${GENROMFS} -f ${ROMDISK_IMG} -d ${ROMDISK_DIR} -v
-                DEPENDS ${ROMDISK_FILES}
-            )
-
-            add_custom_command(
-                OUTPUT ${ROMDISK_O}
-                COMMAND ${BIN2O} romdisk.img romdisk romdisk.o
-                DEPENDS ${ROMDISK_IMG}
-                WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}/samples/${sample}"
-            )
-
-            add_custom_target(${sample}_romdisk DEPENDS ${ROMDISK_O})
-            add_dependencies(${sample} ${sample}_romdisk)
-            target_link_libraries(${sample} ${ROMDISK_O})
-
+            kos_add_romdisk(${sample} ${CMAKE_SOURCE_DIR}/samples/${sample}/romdisk ${sample})
         else()
             message("No such romdisk for sample: ${sample} at 'samples/${sample}/romdisk'")
         endif()
-    else()
-        set_target_properties(${sample} PROPERTIES
-            COMPILE_OPTIONS "-m32"
-            LINK_OPTIONS "-m32"
-        )
     endif()
 endfunction()
 

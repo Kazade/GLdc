@@ -15,8 +15,6 @@
 
 #ifdef __DREAMCAST__
 #include <kos.h>
-extern uint8 romdisk[];
-KOS_INIT_ROMDISK(romdisk);
 #define IMG_PATH "/rd/glass.pvr"
 #else
 #define IMG_PATH "../samples/nehe08/romdisk/glass.pvr"

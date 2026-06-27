@@ -14,8 +14,6 @@
 
 #ifdef _arch_dreamcast
 #include <kos.h>
-extern uint8_t romdisk[];
-KOS_INIT_ROMDISK(romdisk);
 #define IMAGE_FILENAME "/rd/NeHe.bmp"
 #else
 #define IMAGE_FILENAME "../samples/lights/romdisk/NeHe.bmp"
