@@ -41,6 +41,7 @@ static struct {
     GLboolean blend_enabled;
     GLfloat offset_factor;
     GLfloat offset_units;
+    GLenum polygon_mode;
 
     GLfloat scene_ambient[4];
     GLboolean viewer_in_eye_coords;
@@ -92,6 +93,7 @@ static struct {
     .blend_enabled = GL_FALSE,
     .offset_factor = 0.0f,
     .offset_units = 0.0f,
+    .polygon_mode = GL_FILL,
     .scene_ambient = {0.2f, 0.2f, 0.2f, 1.0f},
     .viewer_in_eye_coords = GL_TRUE,
     .color_control = GL_SINGLE_COLOR,
@@ -209,6 +211,10 @@ GLenum _glGetCullFace() {
 
 GLenum _glGetFrontFace() {
     return GPUState.front_face;
+}
+
+GLenum _glGetPolygonMode() {
+    return GPUState.polygon_mode;
 }
 
 GLboolean _glIsFogEnabled() {
@@ -809,8 +815,26 @@ GLAPI void APIENTRY glHint(GLenum target, GLenum mode) {
 
 /* Polygon Rasterization Mode */
 GLAPI void APIENTRY glPolygonMode(GLenum face, GLenum mode) {
-    _GL_UNUSED(face);
-    _GL_UNUSED(mode);
+    GLint validModes[] = {
+        GL_FILL,
+        GL_LINE,
+        GL_POINT,
+        0
+    };
+    GLint validFaces[] = {
+        GL_FRONT_AND_BACK,
+        0
+    };
+
+    if(_glCheckValidEnum(mode, validModes, __func__) != 0) {
+        return;
+    }
+
+    if(_glCheckValidEnum(face, validFaces, __func__) != 0) {
+        return;
+    }
+
+    GPUState.polygon_mode = mode;
 }
 
 /* Culling */

@@ -575,8 +575,12 @@ static void generate(SubmissionTarget* target, const GLenum mode, const GLsizei 
                     generateArraysFastPath_QUADS(target, first, count);
                     return;  // Don't need to do any more processing
                 case GL_TRIANGLES:
-                    generateArraysFastPath_TRIS(target, first, count);
-                    return; // Don't need to do any more processing
+                    if(_glGetPolygonMode() == GL_FILL) {
+                        generateArraysFastPath_TRIS(target, first, count);
+                        return; // Don't need to do any more processing
+                    }
+                    generateArraysFastPath_ALL(target, first, count);
+                    break;
                 default:
                     generateArraysFastPath_ALL(target, first, count);
             }
@@ -593,7 +597,23 @@ static void generate(SubmissionTarget* target, const GLenum mode, const GLsizei 
     // Drawing arrays
     switch(mode) {
     case GL_TRIANGLES:
-        genTriangles(it, count);
+        GLenum polygon_mode = _glGetPolygonMode();
+        if(polygon_mode == GL_POINT) {
+            genPoints(it, count);
+        } else if(polygon_mode == GL_LINE) {
+            Vertex* src = it + count - 1;
+            Vertex* dst = it + target->count - 1;
+            GLuint remaining_count = count;
+            while(remaining_count) {
+                dst = draw_line(dst, src, src - 2);
+                dst = draw_line(dst, src, src - 1);
+                dst = draw_line(dst, src - 1, src - 2);
+                src -= 3;
+                remaining_count -= 3;
+            }
+        } else {
+            genTriangles(it, count);
+        }
         break;
     case GL_QUADS:
         genQuads(it, count);
@@ -794,6 +814,14 @@ GL_FORCE_INLINE GLuint calcFinalVertices(GLenum mode, GLuint count) {
             return LINE_STRIP_COUNT(count);
         case GL_LINES:
             return LINES_COUNT(count);
+        case GL_TRIANGLES:
+            GLenum polygon_mode = _glGetPolygonMode();
+            if(polygon_mode == GL_POINT) {
+                return POINTS_COUNT(count);
+            } else if(polygon_mode == GL_LINE) {
+                return LINES_COUNT(count * 2);
+            }
+            return count;
         case GL_TRIANGLE_FAN:
             return TRIFAN_COUNT(count);
         case GL_QUAD_STRIP:
@@ -810,6 +838,9 @@ GL_FORCE_INLINE void submitVertices(GLenum mode, GLsizei first, GLuint count, GL
     if(!(ATTRIB_LIST.enabled & VERTEX_ENABLED_FLAG)) return;
     if(ATTRIB_LIST.dirty) _glUpdateAttributes();
 
+    if(mode == GL_TRIANGLES) {
+        count -= (count % 3);
+    }
     /* No vertices? Do nothing */
     if(!count) return;
 
