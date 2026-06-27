@@ -152,9 +152,11 @@ function(gen_sample sample)
     if(PLATFORM_DREAMCAST)
         if(EXISTS "${CMAKE_SOURCE_DIR}/samples/${sample}/romdisk")
             message("Generating romdisk for sample: ${sample}")
+            file(GLOB_RECURSE ROMDISK_FILES "${ROMDISK_DIR}/*")
             add_custom_command(
                 OUTPUT ${ROMDISK_IMG}
                 COMMAND ${GENROMFS} -f ${ROMDISK_IMG} -d ${ROMDISK_DIR} -v
+                DEPENDS ${ROMDISK_FILES}
             )
 
             add_custom_command(
@@ -201,12 +203,14 @@ if(BUILD_SAMPLES)
     gen_sample(nehe04 samples/nehe04/main.c)
     gen_sample(nehe05 samples/nehe05/main.c)
     gen_sample(nehe06 samples/nehe06/main.c samples/loadbmp.c)
+    gen_sample(nehe06_strided samples/nehe06_strided/main.c samples/loadbmp.c)
     gen_sample(nehe06_vq samples/nehe06_vq/main.c)
     gen_sample(nehe06_4444twid samples/nehe06_4444twid/main.c)
     gen_sample(nehe08 samples/nehe08/main.c samples/nehe08/pvr-texture.c)
     gen_sample(nehe10 samples/nehe10/main.c samples/loadbmp.c)
     gen_sample(nehe16 samples/nehe16/main.c samples/nehe16/pvr-texture.c)
     gen_sample(nehe20 samples/nehe20/main.c samples/loadbmp.c)
+    gen_sample(nehe20_strided samples/nehe20_strided/main.c samples/loadbmp.c)
     gen_sample(ortho2d samples/ortho2d/main.c)
     gen_sample(paletted samples/paletted/main.c)
     gen_sample(paletted_pcx samples/paletted_pcx/main.c)

@@ -134,8 +134,12 @@ typedef struct {
     GLboolean isPaletted;
     //50
     GLenum internalFormat;
-    //54
-    GLubyte padding[10];  // Pad to 64-bytes
+    GLushort logicalWidth;
+    GLushort logicalHeight;
+    GLushort pvrWidth;
+    GLushort pvrHeight;
+    GLushort strideWidth;
+    GLboolean isStrided;
 } __attribute__((aligned(32))) TextureObject;
 
 typedef struct {

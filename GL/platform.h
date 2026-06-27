@@ -67,8 +67,10 @@ typedef enum GPUTextureFormat {
     GPU_TXRFMT_PAL8BPP = (6 << 27),
     GPU_TXRFMT_TWIDDLED = (0 << 26),
     GPU_TXRFMT_NONTWIDDLED = (1 << 26),
-    GPU_TXRFMT_NOSTRIDE = (0 << 21),
-    GPU_TXRFMT_STRIDE = (1 << 21)
+    GPU_TXRFMT_POW2_STRIDE = (0 << 25),
+    GPU_TXRFMT_NOSTRIDE = GPU_TXRFMT_POW2_STRIDE,
+    GPU_TXRFMT_X32_STRIDE = (1 << 25),
+    GPU_TXRFMT_STRIDE = GPU_TXRFMT_X32_STRIDE
 } GPUTextureFormat;
 
 static inline uint32_t GPUPaletteSelect8BPP(uint32_t x) {
@@ -218,6 +220,10 @@ typedef struct {
         int     width;
         int     height;
         int     format;
+        int     stride_width;
+        float   uv_scale_u;
+        float   uv_scale_v;
+        int     is_strided;
         void*   base;
     } txr;
     struct {
@@ -232,6 +238,10 @@ typedef struct {
         int     width;
         int     height;
         int     format;
+        int     stride_width;
+        float   uv_scale_u;
+        float   uv_scale_v;
+        int     is_strided;
         void*   base;
     } txr2;
 } PolyContext;
@@ -245,7 +255,13 @@ typedef struct {
     uint32_t d2;
     uint32_t d3;
     uint32_t d4;
-    uint8_t padding[32];
+    struct {
+        uint32_t texture_stride;
+        float uv_scale_u;
+        float uv_scale_v;
+        uint8_t texture_is_strided;
+        uint8_t padding[19];
+    } meta;
 } PolyHeader;
 
 enum GPUCommand {
@@ -384,6 +400,10 @@ static inline void CompilePolyHeader(PolyHeader *dst, const PolyContext *src) {
 
     /* The base values for CMD */
     dst->cmd = GPU_CMD_POLYHDR;
+    dst->meta.texture_is_strided = 0;
+    dst->meta.texture_stride = 0;
+    dst->meta.uv_scale_u = 1.0f;
+    dst->meta.uv_scale_v = 1.0f;
 
     /* Big hack! This enables texturing no matter what. If we disable texturing then
      * we lose offset color and the vertex format changes meaning we have to manipulate
@@ -448,6 +468,10 @@ static inline void CompilePolyHeader(PolyHeader *dst, const PolyContext *src) {
         /* Polygon mode 3 */
         dst->mode3  = (src->txr.mipmap << GPU_TA_PM3_MIPMAP_SHIFT) & GPU_TA_PM3_MIPMAP_MASK;
         dst->mode3 |= (src->txr.format << GPU_TA_PM3_TXRFMT_SHIFT) & GPU_TA_PM3_TXRFMT_MASK;
+        dst->meta.texture_is_strided = src->txr.is_strided ? 1 : 0;
+        dst->meta.texture_stride = src->txr.stride_width;
+        dst->meta.uv_scale_u = src->txr.uv_scale_u;
+        dst->meta.uv_scale_v = src->txr.uv_scale_v;
 
         /* Convert the texture address */
         txr_base = (uint32_t) src->txr.base;

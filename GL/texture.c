@@ -42,6 +42,64 @@ static GLboolean TEXTURE_TWIDDLE_ENABLED = GL_FALSE;
 static void* ALLOC_BASE = NULL;
 static size_t ALLOC_SIZE = 0;
 
+#define GL_KOS_MAX_STRIDE_WIDTH 992
+
+static GLuint _glNextPowerOfTwo(GLuint v) {
+    if(v <= 1) {
+        return 1;
+    }
+
+    v--;
+    v |= v >> 1;
+    v |= v >> 2;
+    v |= v >> 4;
+    v |= v >> 8;
+    v |= v >> 16;
+    return v + 1;
+}
+
+static GLboolean _glIsTwiddledFormat(GLenum internalFormat) {
+    return (
+        internalFormat == GL_RGB565_TWID_KOS ||
+        internalFormat == GL_ARGB4444_TWID_KOS ||
+        internalFormat == GL_ARGB1555_TWID_KOS ||
+        internalFormat == GL_COLOR_INDEX8_TWID_KOS ||
+        internalFormat == GL_COLOR_INDEX4_TWID_KOS ||
+        internalFormat == GL_COMPRESSED_RGB_565_VQ_TWID_KOS ||
+        internalFormat == GL_COMPRESSED_ARGB_1555_VQ_TWID_KOS ||
+        internalFormat == GL_COMPRESSED_ARGB_4444_VQ_TWID_KOS ||
+        internalFormat == GL_COMPRESSED_RGB_565_VQ_MIPMAP_TWID_KOS ||
+        internalFormat == GL_COMPRESSED_ARGB_1555_VQ_MIPMAP_TWID_KOS ||
+        internalFormat == GL_COMPRESSED_ARGB_4444_VQ_MIPMAP_TWID_KOS
+    ) ? GL_TRUE : GL_FALSE;
+}
+
+static GLboolean _glIsCompressedFormat(GLenum internalFormat) {
+    return (
+        internalFormat == GL_COMPRESSED_RGB_565_VQ_KOS ||
+        internalFormat == GL_COMPRESSED_ARGB_1555_VQ_KOS ||
+        internalFormat == GL_COMPRESSED_ARGB_4444_VQ_KOS ||
+        internalFormat == GL_COMPRESSED_RGB_565_VQ_TWID_KOS ||
+        internalFormat == GL_COMPRESSED_ARGB_1555_VQ_TWID_KOS ||
+        internalFormat == GL_COMPRESSED_ARGB_4444_VQ_TWID_KOS ||
+        internalFormat == GL_COMPRESSED_RGB_565_VQ_MIPMAP_KOS ||
+        internalFormat == GL_COMPRESSED_ARGB_1555_VQ_MIPMAP_KOS ||
+        internalFormat == GL_COMPRESSED_ARGB_4444_VQ_MIPMAP_KOS ||
+        internalFormat == GL_COMPRESSED_RGB_565_VQ_MIPMAP_TWID_KOS ||
+        internalFormat == GL_COMPRESSED_ARGB_1555_VQ_MIPMAP_TWID_KOS ||
+        internalFormat == GL_COMPRESSED_ARGB_4444_VQ_MIPMAP_TWID_KOS
+    ) ? GL_TRUE : GL_FALSE;
+}
+
+static GLboolean _glIsPalettedFormat(GLenum internalFormat) {
+    return (
+        internalFormat == GL_COLOR_INDEX8_EXT ||
+        internalFormat == GL_COLOR_INDEX4_EXT ||
+        internalFormat == GL_COLOR_INDEX8_TWID_KOS ||
+        internalFormat == GL_COLOR_INDEX4_TWID_KOS
+    ) ? GL_TRUE : GL_FALSE;
+}
+
 static void calc_twiddle_factors(uint32_t w, uint32_t h, uint32_t* maskX, uint32_t* maskY) {
     *maskX = 0;
     *maskY = 0;
@@ -495,6 +553,10 @@ void _glResetSharedPalettes()
 static void _glInitializeTextureObject(TextureObject* txr, unsigned int id) {
     txr->index = id;
     txr->width = txr->height = 0;
+    txr->logicalWidth = txr->logicalHeight = 0;
+    txr->pvrWidth = txr->pvrHeight = 0;
+    txr->strideWidth = 0;
+    txr->isStrided = GL_FALSE;
     txr->mipmap = 0;
     txr->uv_wrap = 0;
     txr->env = GPU_TXRENV_MODULATEALPHA;
@@ -868,16 +930,23 @@ void APIENTRY glCompressedTexImage2DARB(GLenum target,
 
     gl_assert(ACTIVE_TEXTURE < MAX_GLDC_TEXTURE_UNITS);
     TextureObject* active = TEXTURE_UNITS[ACTIVE_TEXTURE];
-    GLuint original_id = active->index;
 
     if(!active) {
         _glKosThrowError(GL_INVALID_OPERATION, __func__);
         return;
     }
 
+    GLuint original_id = active->index;
+
     /* Set the required mipmap count */
     active->width   = width;
     active->height  = height;
+    active->logicalWidth = width;
+    active->logicalHeight = height;
+    active->pvrWidth = width;
+    active->pvrHeight = height;
+    active->strideWidth = 0;
+    active->isStrided = GL_FALSE;
     active->internalFormat = internalFormat;
     active->color   = _determinePVRFormat(internalFormat);
     active->mipmapCount = _glGetMipmapLevelCount(active);
@@ -1057,6 +1126,18 @@ static GLint _cleanInternalFormat(GLint internalFormat) {
     default:
         return -1;
     }
+}
+
+static GLint _cleanInternalFormatForTexture(GLint internalFormat, GLboolean forceNontwiddled) {
+    if(!forceNontwiddled) {
+        return _cleanInternalFormat(internalFormat);
+    }
+
+    GLboolean oldTwiddle = TEXTURE_TWIDDLE_ENABLED;
+    TEXTURE_TWIDDLE_ENABLED = GL_FALSE;
+    GLint ret = _cleanInternalFormat(internalFormat);
+    TEXTURE_TWIDDLE_ENABLED = oldTwiddle;
+    return ret;
 }
 
 static GLuint _determinePVRFormat(GLint internalFormat) {
@@ -1448,7 +1529,20 @@ static bool _glValidTextureSize(GLuint size) {
     }
 }
 
-static bool _glTexImage2DValidate(GLenum target, GLint level, GLint internalFormat, GLsizei width, GLsizei height, GLint border, GLenum format, GLenum type) {
+static GLboolean _glTextureSizeIsNPOT(GLsizei width, GLsizei height) {
+    return (!_glValidTextureSize((GLuint) width) || !_glValidTextureSize((GLuint) height)) ? GL_TRUE : GL_FALSE;
+}
+
+static GLboolean _glTextureWrapIsClamped(const TextureObject* txr) {
+    return (
+        (txr->uv_wrap & CLAMP_U) &&
+        (txr->uv_wrap & CLAMP_V) &&
+        !(txr->uv_wrap & MIRROR_U) &&
+        !(txr->uv_wrap & MIRROR_V)
+    ) ? GL_TRUE : GL_FALSE;
+}
+
+static bool _glTexImage2DValidate(const TextureObject* txr, GLenum target, GLint level, GLint internalFormat, GLint cleanInternalFormat, GLsizei width, GLsizei height, GLint border, GLenum format, GLenum type) {
     if(target != GL_TEXTURE_2D) {
         INFO_MSG("Target unsupported");
         _glKosThrowError(GL_INVALID_ENUM, __func__);
@@ -1493,16 +1587,62 @@ static bool _glTexImage2DValidate(GLenum target, GLint level, GLint internalForm
         }
     }
 
-    if(_cleanInternalFormat(internalFormat) == -1) {
+    if(cleanInternalFormat == -1) {
         INFO_MSG("Unsupported internal format");
         _glKosThrowError(GL_INVALID_VALUE, __func__);
         return false;
     }
 
+    GLboolean isStrided = _glTextureSizeIsNPOT(width, height);
+
+    if(isStrided) {
+        if(level != 0) {
+            INFO_MSG("GL_KOS_texture_non_power_of_two does not support mipmaps");
+            _glKosThrowError(GL_INVALID_VALUE, __func__);
+            return false;
+        }
+
+        if(width <= 0 || (width % 32) != 0 || width > GL_KOS_MAX_STRIDE_WIDTH) {
+            INFO_MSG("Invalid GL_KOS_texture_non_power_of_two width");
+            _glKosThrowError(GL_INVALID_VALUE, __func__);
+            return false;
+        }
+
+        if(height <= 0) {
+            INFO_MSG("Invalid GL_KOS_texture_non_power_of_two height");
+            _glKosThrowError(GL_INVALID_VALUE, __func__);
+            return false;
+        }
+
+        if(!_glTextureWrapIsClamped(txr)) {
+            INFO_MSG("GL_KOS_texture_non_power_of_two textures require clamp wrap modes");
+            _glKosThrowError(GL_INVALID_OPERATION, __func__);
+            return false;
+        }
+
+        if(_glIsTwiddledFormat(cleanInternalFormat)) {
+            INFO_MSG("GL_KOS_texture_non_power_of_two textures must use non-twiddled storage");
+            _glKosThrowError(GL_INVALID_OPERATION, __func__);
+            return false;
+        }
+
+        if(_glIsPalettedFormat(cleanInternalFormat)) {
+            INFO_MSG("GL_KOS_texture_non_power_of_two paletted textures are unsupported");
+            _glKosThrowError(GL_INVALID_OPERATION, __func__);
+            return false;
+        }
+
+        if(_glIsCompressedFormat(cleanInternalFormat)) {
+            INFO_MSG("GL_KOS_texture_non_power_of_two compressed textures are unsupported");
+            _glKosThrowError(GL_INVALID_OPERATION, __func__);
+            return false;
+        }
+    }
+
     GLuint w = width;
     GLuint h = height;
     if(level == 0){
-        if(!_glValidTextureSize(w)) {
+        if(!isStrided && !_glValidTextureSize(w)) {
             /* Width is not a power of two. Must be!*/
             INFO_MSG("Unsupported width");
             _glKosThrowError(GL_INVALID_VALUE, __func__);
@@ -1510,7 +1650,7 @@ static bool _glTexImage2DValidate(GLenum target, GLint level, GLint internalForm
         }
 
 
-        if(!_glValidTextureSize(h)) {
+        if(!isStrided && !_glValidTextureSize(h)) {
             /* height is not a power of two. Must be!*/
             INFO_MSG("Unsupported height");
             _glKosThrowError(GL_INVALID_VALUE, __func__);
@@ -1639,10 +1779,6 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
                            GLenum format, GLenum type, const GLvoid *data) {
 
     TRACE();
-    if(!_glTexImage2DValidate(target, level, internalFormat, width, height, border, format, type)) {
-        return;
-    }
-
     gl_assert(ACTIVE_TEXTURE < MAX_GLDC_TEXTURE_UNITS);
     TextureObject* active = TEXTURE_UNITS[ACTIVE_TEXTURE];
 
@@ -1652,21 +1788,34 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
         return;
     }
 
+    GLboolean useStridedNpot = _glTextureSizeIsNPOT(width, height);
+    GLenum cleanInternalFormat = _cleanInternalFormatForTexture(internalFormat, useStridedNpot);
+
+    if(!_glTexImage2DValidate(active, target, level, internalFormat, cleanInternalFormat, width, height, border, format, type)) {
+        return;
+    }
+
     GLboolean isPaletted = (
         internalFormat == GL_COLOR_INDEX8_EXT ||
         internalFormat == GL_COLOR_INDEX4_EXT ||
         internalFormat == GL_COLOR_INDEX4_TWID_KOS ||
         internalFormat == GL_COLOR_INDEX8_TWID_KOS
     ) ? GL_TRUE : GL_FALSE;
-    GLenum cleanInternalFormat = _cleanInternalFormat(internalFormat);
+
     GLuint pvrFormat = _determinePVRFormat(cleanInternalFormat);
     GLuint originalId = active->index;
+    GLboolean isStrided = useStridedNpot;
+    GLuint texturePitch = isStrided ? (GLuint) width : (GLuint) width;
+    GLuint pvrWidth = isStrided ? _glNextPowerOfTwo((GLuint) width) : (GLuint) width;
+    GLuint pvrHeight = isStrided ? _glNextPowerOfTwo((GLuint) height) : (GLuint) height;
 
     if(active->data && (level == 0)) {
         /* pre-existing texture - check if changed */
         if(active->width != width ||
            active->height != height ||
-           active->internalFormat != cleanInternalFormat) {
+           active->internalFormat != cleanInternalFormat ||
+           active->isStrided != isStrided ||
+           active->strideWidth != (isStrided ? texturePitch : 0)) {
             /* changed - free old texture memory */
             alloc_free(ALLOC_BASE, active->data);
             active->data = NULL;
@@ -1684,8 +1833,11 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
      */
     GLint destStride = _determineStrideInternal(cleanInternalFormat);
     GLint sourceStride = _determineStride(format, type);
-    GLuint srcBytes = ((GLuint)width * (GLuint)height * (GLuint)sourceStride);
-    GLuint destBytes = ((GLuint)width * (GLuint)height * (GLuint)destStride);
+    GLuint sourceRowWidth = is4BPPFormat(format) ? (((GLuint) width + 1) / 2) : ((GLuint) width * (GLuint) sourceStride);
+    GLuint sourcePitch = _glGetUnpackRowPitch(width, sourceStride, format);
+    GLuint srcBytes = height ? (sourcePitch * ((GLuint) height - 1) + sourceRowWidth) : 0;
+    GLuint texelCount = texturePitch * (GLuint)height;
+    GLuint destBytes = texelCount * (GLuint)destStride;
 
     TextureConversionFunc conversion = NULL;
     int needs_conversion = _determineConversion(cleanInternalFormat, format, type, &conversion);
@@ -1712,6 +1864,12 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
         /* need texture memory */
         active->width   = width;
         active->height  = height;
+        active->logicalWidth = width;
+        active->logicalHeight = height;
+        active->pvrWidth = pvrWidth;
+        active->pvrHeight = pvrHeight;
+        active->isStrided = isStrided;
+        active->strideWidth = isStrided ? (GLushort) texturePitch : 0;
         active->color   = pvrFormat;
         active->internalFormat = cleanInternalFormat;
         /* Set the required mipmap count */
@@ -1755,6 +1913,7 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
     gl_assert(targetData);
 
     if(!data) {
+        MEMSET4(targetData, 0x0, destBytes);
         gl_assert(active->index == originalId);
         _glGPUStateMarkDirty();
         return;
@@ -1832,24 +1991,24 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
                 calc_twiddle_factors(width, height, &maskX, &maskY);
             }
 
-            for(uint32_t i = 0; i < (width * height); ++i) {
-                const GLubyte* src = data + (sourceStride * i);
-                GLubyte* dst;
+            for(uint32_t y = 0; y < (uint32_t) height; ++y) {
+                for(uint32_t x = 0; x < (uint32_t) width; ++x) {
+                    const GLubyte* src = ((const GLubyte*) data) + (sourcePitch * y) + (sourceStride * x);
+                    GLubyte* dst;
 
-                if(twiddle) {
-                    uint32_t x = i % width;
-                    uint32_t y = i / width;
-                    uint32_t newLocation = twid_compute_index(x, y, maskX, maskY);
-                    dst = targetData + (destStride * newLocation);
-                } else {
-                    dst = targetData + (destStride * i);
-                }
+                    if(twiddle) {
+                        uint32_t newLocation = twid_compute_index(x, y, maskX, maskY);
+                        dst = targetData + (destStride * newLocation);
+                    } else {
+                        dst = targetData + ((texturePitch * y + x) * destStride);
+                    }
 
-                if(convert) {
-                    conversion(src, dst);
-                } else {
-                    for(int j = 0; j < destStride; ++j) {
-                        dst[j] = src[j];
+                    if(convert) {
+                        conversion(src, dst);
+                    } else {
+                        for(int j = 0; j < destStride; ++j) {
+                            dst[j] = src[j];
+                        }
                     }
                 }
             }
@@ -1857,11 +2016,18 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
     } else {
         /* No conversion necessary, we can just upload data directly */
         gl_assert(targetData);
-        gl_assert(data);
         gl_assert(destBytes);
 
-        /* No conversion? Just copy the data, and the pvr_format is correct */
-        FASTCPY(targetData, data, destBytes);
+        if(sourcePitch == ((GLuint) width * (GLuint) destStride) && texturePitch == (GLuint) width) {
+            /* No conversion? Just copy the data, and the pvr_format is correct */
+            FASTCPY(targetData, data, destBytes);
+        } else {
+            for(GLsizei y = 0; y < height; ++y) {
+                GLubyte* destRow = targetData + ((GLuint) y * texturePitch * (GLuint) destStride);
+                const GLubyte* srcRow = ((const GLubyte*) data) + ((GLuint) y * sourcePitch);
+                FASTCPY(destRow, srcRow, sourceRowWidth);
+            }
+        }
         gl_assert(active->index == originalId);
     }
 
@@ -1913,13 +2079,24 @@ void APIENTRY glTexParameteri(GLenum target, GLenum pname, GLint param) {
                     case GL_CLAMP_TO_EDGE:
                     case GL_CLAMP:
                         active->uv_wrap |= CLAMP_U;
+                        active->uv_wrap &= ~MIRROR_U;
                         break;
 
                     case GL_REPEAT:
+                        if(active->isStrided) {
+                            _glKosThrowError(GL_INVALID_OPERATION, __func__);
+                            return;
+                        }
                         active->uv_wrap &= ~CLAMP_U;
+                        active->uv_wrap &= ~MIRROR_U;
                         break;
 
                     case GL_MIRRORED_REPEAT:
+                        if(active->isStrided) {
+                            _glKosThrowError(GL_INVALID_OPERATION, __func__);
+                            return;
+                        }
+                        active->uv_wrap &= ~CLAMP_U;
                         active->uv_wrap |= MIRROR_U;
                         break;
                 }
@@ -1931,13 +2108,24 @@ void APIENTRY glTexParameteri(GLenum target, GLenum pname, GLint param) {
                     case GL_CLAMP_TO_EDGE:
                     case GL_CLAMP:
                         active->uv_wrap |= CLAMP_V;
+                        active->uv_wrap &= ~MIRROR_V;
                         break;
 
                     case GL_REPEAT:
+                        if(active->isStrided) {
+                            _glKosThrowError(GL_INVALID_OPERATION, __func__);
+                            return;
+                        }
                         active->uv_wrap &= ~CLAMP_V;
+                        active->uv_wrap &= ~MIRROR_V;
                         break;
 
                     case GL_MIRRORED_REPEAT:
+                        if(active->isStrided) {
+                            _glKosThrowError(GL_INVALID_OPERATION, __func__);
+                            return;
+                        }
+                        active->uv_wrap &= ~CLAMP_V;
                         active->uv_wrap |= MIRROR_V;
                         break;
                 }
@@ -2170,9 +2358,15 @@ void APIENTRY glTexSubImage2D(GLenum target, GLint level, GLint xoffset, GLint y
         return;
     }
 
+    if(active->isStrided && level != 0) {
+        _glKosThrowError(GL_INVALID_VALUE, __func__);
+        return;
+    }
+
     // Retrieve the dimensions of the currently bound texture
-    GLsizei textureWidth = active->width;
-    GLsizei textureHeight = active->height;
+    GLsizei textureWidth = active->logicalWidth ? active->logicalWidth : active->width;
+    GLsizei textureHeight = active->logicalHeight ? active->logicalHeight : active->height;
+    GLsizei texturePitch = active->isStrided ? active->strideWidth : textureWidth;
 
     if (!_glTexSubImage2DValidate(target, level, xoffset, yoffset, width, height, format, type, textureWidth, textureHeight)) {
         INFO_MSG("Error: _glTexSubImage2DValidate failed\n");
@@ -2197,7 +2391,7 @@ void APIENTRY glTexSubImage2D(GLenum target, GLint level, GLint xoffset, GLint y
     GLint destStride = _determineStrideInternal(cleanInternalFormat);
 
     // Calculate destBytes using the texture's full dimensions
-    GLuint destBytes = (textureWidth * textureHeight * destStride);
+    GLuint destBytes = (texturePitch * textureHeight * destStride);
 
     TextureConversionFunc conversion = NULL;
     int needs_conversion = _determineConversion(cleanInternalFormat, format, type, &conversion);
@@ -2237,7 +2431,7 @@ void APIENTRY glTexSubImage2D(GLenum target, GLint level, GLint xoffset, GLint y
         if (needs_conversion == CONVERSION_TYPE_CONVERT) {
             for (uint32_t y = 0; y < height; ++y) {
                 src = (const GLubyte*) data + (y * sourcePitch);
-                dst = conversionBuffer + ((y + yoffset) * textureWidth + xoffset) * destStride;
+                dst = conversionBuffer + ((y + yoffset) * texturePitch + xoffset) * destStride;
                 for (uint32_t x = 0; x < width; ++x) {
                     conversion(src, dst);
                     dst += destStride;
@@ -2298,7 +2492,7 @@ void APIENTRY glTexSubImage2D(GLenum target, GLint level, GLint xoffset, GLint y
         }
 
         for (GLsizei y = 0; y < height; ++y) {
-            GLubyte* destRow = targetData + ((y + yoffset) * textureWidth + xoffset) * destStride;
+            GLubyte* destRow = targetData + ((y + yoffset) * texturePitch + xoffset) * destStride;
             FASTCPY(destRow, (GLubyte*)data + y * sourcePitch, sourceRowWidth);
         }
     }

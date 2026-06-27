@@ -87,6 +87,7 @@ GL_FORCE_INLINE void _glPerspectiveDivideVertex(Vertex* vertex, int count) {
 }
 
 static uintptr_t sq_dest_addr = 0;
+static size_t CURRENT_TEXTURE_STRIDE = 0;
 
 static inline void _glPushHeader(Vertex* v, size_t count)  {
     TRACE();
@@ -195,6 +196,12 @@ void SceneListSubmit(Vertex* vertices, int n) {
     Vertex* v0 = vertices;
     for(int i = 0; i < n - 1; ++i, ++v0) {
         if(is_header(v0)) {
+            PolyHeader* header = (PolyHeader*) v0;
+            if(header->meta.texture_is_strided && header->meta.texture_stride != CURRENT_TEXTURE_STRIDE) {
+                pvr_txr_set_stride(header->meta.texture_stride);
+                CURRENT_TEXTURE_STRIDE = header->meta.texture_stride;
+            }
+
             _glPushHeader(v0, 1);
             visible_mask = 0;
             continue;
@@ -378,6 +385,7 @@ void SceneListSubmit(Vertex* vertices, int n) {
 }
 
 void SceneBegin() {
+    CURRENT_TEXTURE_STRIDE = 0;
     pvr_wait_ready();
     pvr_scene_begin();
 }
