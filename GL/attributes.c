@@ -792,7 +792,8 @@ GL_FORCE_INLINE GLuint _glIsVertexDataFastPathCompatible(void) {
     }
 
     if((ATTRIB_LIST.enabled & COLOR_ENABLED_FLAG)) {
-        if(ATTRIB_LIST.colour.size != 4 || (ATTRIB_LIST.colour.type != GL_FLOAT && ATTRIB_LIST.colour.type != GL_UNSIGNED_BYTE)) {
+        /* FIXME: Shouldn't this be a reversed format? */
+        if(ATTRIB_LIST.colour.size != 4 || ATTRIB_LIST.colour.type != GL_FLOAT) {
             return GL_FALSE;
         }
     }

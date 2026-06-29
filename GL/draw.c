@@ -483,18 +483,10 @@ static void generateElementsFastPath(
 
         if(col) {
             col = (GLubyte*) ATTRIB_LIST.colour.ptr + (idx * dstride);
-            if(ATTRIB_LIST.colour.type == GL_UNSIGNED_BYTE) {
-                const float f = 1.0f / 255.0f;
-                it->argb[R8IDX] = ((float)col[0]) * f;
-                it->argb[G8IDX] = ((float)col[1]) * f;
-                it->argb[B8IDX] = ((float)col[2]) * f;
-                it->argb[A8IDX] = ((float)col[3]) * f;
-            } else {
-                it->argb[R8IDX] = ((float*) col)[0];
-                it->argb[G8IDX] = ((float*) col)[1];
-                it->argb[B8IDX] = ((float*) col)[2];
-                it->argb[A8IDX] = ((float*) col)[3];
-            }
+            it->argb[R8IDX] = ((float*) col)[0];
+            it->argb[G8IDX] = ((float*) col)[1];
+            it->argb[B8IDX] = ((float*) col)[2];
+            it->argb[A8IDX] = ((float*) col)[3];
         } else {
             const float* color = _glCurrentColor();
             it->argb[A8IDX] = color[A8IDX];

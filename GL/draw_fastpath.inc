@@ -55,18 +55,10 @@ MAKE_FUNC(POLYMODE)
             PREFETCH(ptr);
             for(int_fast32_t i = 0; i < loop; ++i, ++it) {
                 PREFETCH(ptr + stride);
-                if(ATTRIB_LIST.colour.type == GL_UNSIGNED_BYTE) {
-                    const float f = 1.0f / 255.0f;
-                    it->argb[R8IDX] = ((float)ptr[0]) * f;
-                    it->argb[G8IDX] = ((float)ptr[1]) * f;
-                    it->argb[B8IDX] = ((float)ptr[2]) * f;
-                    it->argb[A8IDX] = ((float)ptr[3]) * f;
-                } else {
-                    it->argb[R8IDX] = ((float*) ptr)[0];
-                    it->argb[G8IDX] = ((float*) ptr)[1];
-                    it->argb[B8IDX] = ((float*) ptr)[2];
-                    it->argb[A8IDX] = ((float*) ptr)[3];
-                }
+                it->argb[R8IDX] = ((float*) ptr)[0];
+                it->argb[G8IDX] = ((float*) ptr)[1];
+                it->argb[B8IDX] = ((float*) ptr)[2];
+                it->argb[A8IDX] = ((float*) ptr)[3];
 
                 ptr += stride;
             }
