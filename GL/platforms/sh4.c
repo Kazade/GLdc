@@ -12,6 +12,10 @@
 #define likely(x)      __builtin_expect(!!(x), 1)
 #define unlikely(x)    __builtin_expect(!!(x), 0)
 
+GL_FORCE_INLINE void _glPVRSetTextureStride(uint32_t stride) {
+    PVR_SET(PVR_TEXTURE_MODULO, (stride / 32));
+}
+
 void* GPUMemoryAlloc(size_t size) {
     return pvr_mem_malloc(size);
 }
@@ -198,7 +202,7 @@ void SceneListSubmit(Vertex* vertices, int n) {
         if(is_header(v0)) {
             PolyHeader* header = (PolyHeader*) v0;
             if(header->meta.texture_is_strided && header->meta.texture_stride != CURRENT_TEXTURE_STRIDE) {
-                pvr_txr_set_stride(header->meta.texture_stride);
+                _glPVRSetTextureStride(header->meta.texture_stride);
                 CURRENT_TEXTURE_STRIDE = header->meta.texture_stride;
             }
 
