@@ -5,6 +5,10 @@
 #include "../include/GL/glext.h"
 #include "private.h"
 
+#define SCISSOR_APPLIED_OP 0x1u
+#define SCISSOR_APPLIED_PT 0x2u
+#define SCISSOR_APPLIED_TR 0x4u
+
 static struct {
     GLboolean is_dirty;
 
@@ -33,7 +37,7 @@ static struct {
         GLint y;
         GLsizei width;
         GLsizei height;
-        GLboolean applied;
+        unsigned int applied_lists;
     } scissor_rect;
 
     GLenum blend_sfactor;
@@ -87,7 +91,7 @@ static struct {
     .scissor_test_enabled = GL_FALSE,
     .fog_enabled = GL_FALSE,
     .depth_mask_enabled = GL_FALSE,
-    .scissor_rect = {0, 0, 640, 480, false},
+    .scissor_rect = {0, 0, 640, 480, 0},
     .blend_sfactor = GL_ONE,
     .blend_dfactor = GL_ZERO,
     .blend_enabled = GL_FALSE,
@@ -553,6 +557,7 @@ GLAPI void APIENTRY glEnable(GLenum cap) {
         case GL_SCISSOR_TEST: {
             if(GPUState.scissor_test_enabled != GL_TRUE) {
                 GPUState.scissor_test_enabled = GL_TRUE;
+                GPUState.scissor_rect.applied_lists = 0;
                 GPUState.is_dirty = GL_TRUE;
             }
         } break;
@@ -670,6 +675,7 @@ GLAPI void APIENTRY glDisable(GLenum cap) {
         case GL_SCISSOR_TEST: {
             if(GPUState.scissor_test_enabled != GL_FALSE) {
                 GPUState.scissor_test_enabled = GL_FALSE;
+                GPUState.scissor_rect.applied_lists = 0;
                 GPUState.is_dirty = GL_TRUE;
             }
         } break;
@@ -953,10 +959,8 @@ void APIENTRY glScissor(GLint x, GLint y, GLsizei width, GLsizei height) {
     GPUState.scissor_rect.y = y;
     GPUState.scissor_rect.width = width;
     GPUState.scissor_rect.height = height;
-    GPUState.scissor_rect.applied = false;
+    GPUState.scissor_rect.applied_lists = 0;
     GPUState.is_dirty = GL_TRUE; // FIXME: do we need this?
-
-    _glApplyScissor(false);
 }
 
 /* Setup the hardware user clip rectangle.
@@ -982,48 +986,88 @@ void APIENTRY glScissor(GLint x, GLint y, GLsizei width, GLsizei height) {
     at the right place, either when enabling the scissor test, or
     when the scissor test changes.
 */
+static unsigned int _glActiveScissorListBit(const PolyList* list) {
+    if(list == _glOpaquePolyList()) {
+        return SCISSOR_APPLIED_OP;
+    }
+
+    if(list == _glPunchThruPolyList()) {
+        return SCISSOR_APPLIED_PT;
+    }
+
+    return SCISSOR_APPLIED_TR;
+}
+
+void _glInvalidateScissor(void) {
+    GPUState.scissor_rect.applied_lists = 0;
+}
+
 void _glApplyScissor(bool force) {
-    /* Don't do anyting if clipping is disabled */
+    /* Don't do anything if clipping is disabled */
     if(!GPUState.scissor_test_enabled) {
         return;
     }
 
-    /* Don't apply if we already applied - nothing changed */
-    if(GPUState.scissor_rect.applied && !force) {
+    PolyList* target = _glActivePolyList();
+    unsigned int active_list_bit = _glActiveScissorListBit(target);
+
+    /* Don't apply if this list already has the current clip rectangle. */
+    if((GPUState.scissor_rect.applied_lists & active_list_bit) && !force) {
         return;
     }
 
-    PVRTileClipCommand c;
+    typedef union {
+        Vertex vertex;
+        PVRTileClipCommand clip;
+    } ScissorCommand;
 
-    GLint miny, maxx, maxy;
-
+    ScissorCommand c = {0};
     const VideoMode* vid_mode = GetVideoMode();
 
-    GLsizei scissor_width = MAX(MIN(GPUState.scissor_rect.width, vid_mode->width), 0);
-    GLsizei scissor_height = MAX(MIN(GPUState.scissor_rect.height, vid_mode->height), 0);
+    GLint x0 = GPUState.scissor_rect.x;
+    GLint y0 = GPUState.scissor_rect.y;
+    GLint x1 = x0 + GPUState.scissor_rect.width;
+    GLint y1 = y0 + GPUState.scissor_rect.height;
 
-    /* force the origin to the lower left-hand corner of the screen */
-    miny = (vid_mode->height - scissor_height) - GPUState.scissor_rect.y;
-    maxx = (scissor_width + GPUState.scissor_rect.x);
-    maxy = (scissor_height + miny);
+    /*
+     * glScissor uses OpenGL window coordinates: lower-left origin,
+     * x/y inclusive start, width/height extent. Clip to the framebuffer
+     * before converting to PVR tile coordinates.
+     */
+    x0 = CLAMP(x0, 0, vid_mode->width);
+    y0 = CLAMP(y0, 0, vid_mode->height);
+    x1 = CLAMP(x1, 0, vid_mode->width);
+    y1 = CLAMP(y1, 0, vid_mode->height);
 
-    /* load command structure while mapping screen coords to TA tiles */
-    c.flags = GPU_CMD_USERCLIP;
-    c.d1 = c.d2 = c.d3 = 0;
 
     uint16_t vw = vid_mode->width >> 5;
     uint16_t vh = vid_mode->height >> 5;
+    uint16_t max_tx = vw - 1;
+    uint16_t max_ty = vh - 1;
 
-    c.sx = CLAMP(GPUState.scissor_rect.x >> 5, 0, vw);
-    c.sy = CLAMP(miny >> 5, 0, vh);
-    c.ex = CLAMP((maxx >> 5) - 1, 0, vw);
-    c.ey = CLAMP((maxy >> 5) - 1, 0, vh);
+    /* load command structure while mapping screen coords to TA tiles */
+    c.clip.flags = GPU_CMD_USERCLIP;
+    c.clip.d1 = c.clip.d2 = c.clip.d3 = 0;
 
-    aligned_vector_push_back(&_glOpaquePolyList()->vector, &c, 1);
-    aligned_vector_push_back(&_glPunchThruPolyList()->vector, &c, 1);
-    aligned_vector_push_back(&_glTransparentPolyList()->vector, &c, 1);
+    if(x1 <= x0 || y1 <= y0) {
+        c.clip.sx = 0;
+        c.clip.sy = 0;
+        c.clip.ex = 0;
+        c.clip.ey = 0;
+    } else {
+        GLint pvr_y0 = vid_mode->height - y1;
+        GLint pvr_y1 = vid_mode->height - y0;
 
-    GPUState.scissor_rect.applied = true;
+        c.clip.sx = CLAMP(x0 >> 5, 0, max_tx);
+        c.clip.sy = CLAMP(pvr_y0 >> 5, 0, max_ty);
+        c.clip.ex = CLAMP((x1 - 1) >> 5, 0, max_tx);
+        c.clip.ey = CLAMP((pvr_y1 - 1) >> 5, 0, max_ty);
+    }
+
+    aligned_vector_push_back(&target->vector, &c.vertex, 1);
+
+    GPUState.scissor_rect.applied_lists |= active_list_bit;
+    GPUState.is_dirty = GL_TRUE;
 }
 
 void glStencilFunc(GLenum func, GLint ref, GLuint mask) {

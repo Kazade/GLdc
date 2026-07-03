@@ -390,6 +390,7 @@ static inline int DimensionFlag(const int w) {
 
 static uint8_t* DEFAULT_TEXTURE = NULL;
 extern void* GPUMemoryAlloc(size_t size);
+extern void GPUTextureLoad(const void* src, void* dst, size_t size);
 
 /* Compile a polygon context into a polygon header */
 static inline void CompilePolyHeader(PolyHeader *dst, const PolyContext *src) {
@@ -437,18 +438,23 @@ static inline void CompilePolyHeader(PolyHeader *dst, const PolyContext *src) {
     dst->mode2 |= (src->gen.color_clamp << GPU_TA_PM2_CLAMP_SHIFT) & GPU_TA_PM2_CLAMP_MASK;
     dst->mode2 |= (src->gen.alpha << GPU_TA_PM2_ALPHA_SHIFT) & GPU_TA_PM2_ALPHA_MASK;
 
+    dst->mode3 = 0;
+
     if(src->txr.enable == GPU_TEXTURE_DISABLE) {
         /* Texturing was disabled so we simulate it with a white texture */
         if(!DEFAULT_TEXTURE) {
+            uint16_t texture[8 * 8];
+
             DEFAULT_TEXTURE = (uint8_t*) GPUMemoryAlloc(8 * 8 * 2);
-            for(int i = 0; i < 8 * 8 * 2; ++i) {
-                DEFAULT_TEXTURE[i] = 0xff;
+            for(int i = 0; i < 8 * 8; ++i) {
+                texture[i] = 0xffff;
             }
+            GPUTextureLoad(texture, DEFAULT_TEXTURE, sizeof(texture));
         }
         dst->mode2 |= (DimensionFlag(8) << GPU_TA_PM2_USIZE_SHIFT) & GPU_TA_PM2_USIZE_MASK;
         dst->mode2 |= (DimensionFlag(8) << GPU_TA_PM2_VSIZE_SHIFT) & GPU_TA_PM2_VSIZE_MASK;
         dst->mode2 |= (GPU_TXRENV_MODULATE << GPU_TA_PM2_TXRENV_SHIFT) & GPU_TA_PM2_TXRENV_MASK;
-        dst->mode3 |= (GPU_TXRFMT_RGB565 << GPU_TA_PM3_TXRFMT_SHIFT) & GPU_TA_PM3_TXRFMT_MASK;
+        dst->mode3 |= ((GPU_TXRFMT_RGB565 | GPU_TXRFMT_NONTWIDDLED) << GPU_TA_PM3_TXRFMT_SHIFT) & GPU_TA_PM3_TXRFMT_MASK;
         /* Convert the texture address */
         txr_base = (uint32_t) DEFAULT_TEXTURE;
         txr_base = (txr_base & 0x00fffff8) >> 3;

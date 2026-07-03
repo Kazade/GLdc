@@ -1842,12 +1842,6 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
     TextureConversionFunc conversion = NULL;
     int needs_conversion = _determineConversion(cleanInternalFormat, format, type, &conversion);
 
-    // Hack: If we're doing a 4bpp source (via glCompressedTexture...)
-    // halve the srcBytes
-    if(format == GL_COLOR_INDEX4_EXT || format == GL_COLOR_INDEX4_TWID_KOS) {
-        srcBytes /= 2;
-    }
-
     /* If we're packing stuff, then the dest size is half what it would be */
     if((needs_conversion & CONVERSION_TYPE_PACK) == CONVERSION_TYPE_PACK) {
         destBytes /= 2;

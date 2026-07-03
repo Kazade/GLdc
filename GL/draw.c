@@ -867,8 +867,9 @@ GL_FORCE_INLINE void submitVertices(GLenum mode, GLsizei first, GLuint count, GL
     target->output = _glActivePolyList();
     gl_assert(target->output);
 
-    uint32_t vector_size = aligned_vector_size(&target->output->vector);
+    _glApplyScissor(false);
 
+    uint32_t vector_size = aligned_vector_size(&target->output->vector);
     GLboolean header_required = (vector_size == 0) || _glGPUStateIsDirty();
 
     target->count = calcFinalVertices(mode, count);

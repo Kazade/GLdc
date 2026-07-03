@@ -251,6 +251,63 @@ public:
         assert_is_not_null(t->palette);
     }
 
+    void test_packed_color_index4_upload_uses_packed_source_size() {
+        std::vector<uint8_t> img((8 * 8) / 2, 0xaa);
+
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_COLOR_INDEX4_EXT, 8, 8, 0,
+                     GL_COLOR_INDEX4_EXT, GL_UNSIGNED_BYTE, img.data());
+        assert_equal(glGetError(), GL_NO_ERROR);
+
+        TextureObject* t = _glGetBoundTexture();
+        assert_true(t->isPaletted);
+        assert_equal(t->internalFormat, GL_COLOR_INDEX4_TWID_KOS);
+        assert_equal(t->baseDataSize, (GLuint)((8 * 8) / 2));
+    }
+
+    void test_packed_color_index4_upload_respects_unpack_row_length() {
+        std::vector<uint8_t> img(((12 * 8) + 1) / 2, 0xaa);
+
+        glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+        glPixelStorei(GL_UNPACK_ROW_LENGTH, 12);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_COLOR_INDEX4_EXT, 8, 8, 0,
+                     GL_COLOR_INDEX4_EXT, GL_UNSIGNED_BYTE, img.data());
+        glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
+        glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
+        assert_equal(glGetError(), GL_NO_ERROR);
+
+        TextureObject* t = _glGetBoundTexture();
+        assert_true(t->isPaletted);
+        assert_equal(t->internalFormat, GL_COLOR_INDEX4_TWID_KOS);
+        assert_equal(t->baseDataSize, (GLuint)((8 * 8) / 2));
+    }
+
+    void test_compressed_palette4_upload_uses_packed_source_size() {
+        std::vector<uint8_t> img((16 * 3) + ((8 * 8) / 2), 0xaa);
+
+        glCompressedTexImage2DARB(GL_TEXTURE_2D, 0, GL_PALETTE4_RGB8_OES,
+                                  8, 8, 0, (GLsizei)img.size(), img.data());
+        assert_equal(glGetError(), GL_NO_ERROR);
+
+        TextureObject* t = _glGetBoundTexture();
+        assert_true(t->isPaletted);
+        assert_equal(t->internalFormat, GL_COLOR_INDEX4_TWID_KOS);
+        assert_equal(t->baseDataSize, (GLuint)((8 * 8) / 2));
+        assert_is_not_null(t->palette);
+    }
+
+    void test_color_index8_source_can_pack_to_color_index4() {
+        std::vector<uint8_t> img(8 * 8, 0x0a);
+
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_COLOR_INDEX4_EXT, 8, 8, 0,
+                     GL_COLOR_INDEX, GL_UNSIGNED_BYTE, img.data());
+        assert_equal(glGetError(), GL_NO_ERROR);
+
+        TextureObject* t = _glGetBoundTexture();
+        assert_true(t->isPaletted);
+        assert_equal(t->internalFormat, GL_COLOR_INDEX4_TWID_KOS);
+        assert_equal(t->baseDataSize, (GLuint)((8 * 8) / 2));
+    }
+
     /* ------------------------------------------------- Error handling */
 
     void test_non_power_of_two_width_raises_invalid_value() {

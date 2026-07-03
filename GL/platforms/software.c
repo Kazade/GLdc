@@ -569,6 +569,10 @@ void* GPUMemoryAlloc(size_t size) {
     }
 }
 
+void GPUTextureLoad(const void* src, void* dst, size_t size) {
+    memcpy(dst, src, size);
+}
+
 void GPUSetPaletteFormat(GPUPaletteFormat format) {
 
 }
