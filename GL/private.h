@@ -441,6 +441,7 @@ GLuint _glUsedTextureMemory();
 GLuint _glFreeContiguousTextureMemory();
 
 void _glApplyScissor(bool force);
+void _glInvalidateScissor(void);
 void _glSetColorMaterialMask(GLenum mask);
 void _glSetColorMaterialMode(GLenum mode);
 GLenum _glColorMaterialMode();

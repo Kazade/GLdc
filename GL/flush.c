@@ -141,5 +141,5 @@ void APIENTRY glKosSwapBuffers() {
     aligned_vector_clear(&PT_LIST.vector);
     aligned_vector_clear(&TR_LIST.vector);
 
-    _glApplyScissor(true);
+    _glInvalidateScissor();
 }

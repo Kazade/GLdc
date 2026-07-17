@@ -20,6 +20,10 @@ void* GPUMemoryAlloc(size_t size) {
     return pvr_mem_malloc(size);
 }
 
+void GPUTextureLoad(const void* src, void* dst, size_t size) {
+    pvr_txr_load(src, dst, size);
+}
+
 GL_FORCE_INLINE bool glIsVertex(const float flags) {
     return flags == GPU_CMD_VERTEX_EOL || flags == GPU_CMD_VERTEX;
 }
@@ -199,7 +203,15 @@ void SceneListSubmit(Vertex* vertices, int n) {
 
     Vertex* v0 = vertices;
     for(int i = 0; i < n - 1; ++i, ++v0) {
+        if(v0->flags == GPU_CMD_USERCLIP) {
+            SUBMIT_QUEUED_VERTEX(GPU_CMD_VERTEX_EOL);
+            _glPushHeader(v0, 1);
+            visible_mask = 0;
+            continue;
+        }
+
         if(is_header(v0)) {
+            SUBMIT_QUEUED_VERTEX(GPU_CMD_VERTEX_EOL);
             PolyHeader* header = (PolyHeader*) v0;
             if(header->meta.texture_is_strided && header->meta.texture_stride != CURRENT_TEXTURE_STRIDE) {
                 _glPVRSetTextureStride(header->meta.texture_stride);

@@ -6,8 +6,30 @@
 #include "GL/glu.h"
 #include "GL/glkos.h"
 
+#define SCREEN_W 640
+#define SCREEN_H 480
 
-void InitGL(int Width, int Height)
+#define SCISSOR_X 160
+#define SCISSOR_Y 128
+#define SCISSOR_W 320
+#define SCISSOR_H 224
+
+static void setup_projection(int width, int height)
+{
+    if(height == 0)
+        height = 1;
+
+    glViewport(0, 0, width, height);
+
+    glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();
+    gluPerspective(45.0f, (GLfloat)width / (GLfloat)height, 0.1f, 100.0f);
+
+    glMatrixMode(GL_MODELVIEW);
+    glLoadIdentity();
+}
+
+static void init_gl(int width, int height)
 {
     glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
     glClearDepth(1.0);
@@ -15,39 +37,20 @@ void InitGL(int Width, int Height)
     glEnable(GL_DEPTH_TEST);
     glShadeModel(GL_SMOOTH);
 
-    glMatrixMode(GL_PROJECTION);
-    glLoadIdentity();
+    setup_projection(width, height);
 
-    gluPerspective(45.0f,(GLfloat)Width/(GLfloat)Height,0.1f,100.0f);
-
-    glMatrixMode(GL_MODELVIEW);
-
-    /* We cut out a square in the middle of the viewport to render to */
     glEnable(GL_SCISSOR_TEST);
-    glScissor(160, 120, 320, 240);
+    glScissor(SCISSOR_X, SCISSOR_Y, SCISSOR_W, SCISSOR_H);
 }
 
-/* The function called when our window is resized (which shouldn't happen, because we're fullscreen) */
-void ReSizeGLScene(int Width, int Height)
+static int check_start(void)
 {
-    if (Height == 0)
-        Height = 1;
-
-    glViewport(0, 0, Width, Height);
-
-    glMatrixMode(GL_PROJECTION);
-    glLoadIdentity();
-
-    gluPerspective(45.0f,(GLfloat)Width/(GLfloat)Height,0.1f,100.0f);
-    glMatrixMode(GL_MODELVIEW);
-}
-
-int check_start() {
 #ifdef _arch_dreamcast
-    maple_device_t *cont;
+    static maple_device_t *cont;
     cont_state_t *state;
 
-    cont = maple_enum_type(0, MAPLE_FUNC_CONTROLLER);
+    if(!cont || !cont->valid)
+        cont = maple_enum_type(0, MAPLE_FUNC_CONTROLLER);
 
     if(cont) {
         state = (cont_state_t *)maple_dev_status(cont);
@@ -60,14 +63,62 @@ int check_start() {
     return 0;
 }
 
-/* The main drawing function. */
-void DrawGLScene()
+static void draw_scissor_outline(void)
 {
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    glDisable(GL_DEPTH_TEST);
+    glDisable(GL_SCISSOR_TEST);
+
+    glMatrixMode(GL_PROJECTION);
+    glPushMatrix();
+    glLoadIdentity();
+    glOrtho(0.0, SCREEN_W, SCREEN_H, 0.0, -1.0, 1.0);
+
+    glMatrixMode(GL_MODELVIEW);
+    glPushMatrix();
+    glLoadIdentity();
+
+    {
+        GLfloat x = (GLfloat)SCISSOR_X;
+        GLfloat y = (GLfloat)(SCREEN_H - SCISSOR_Y - SCISSOR_H);
+        GLfloat w = (GLfloat)SCISSOR_W;
+        GLfloat h = (GLfloat)SCISSOR_H;
+
+        glDisable(GL_TEXTURE_2D);
+        glColor4ub(255, 255, 0, 255);
+
+        glBegin(GL_LINES);
+            glVertex2f(x,     y);
+            glVertex2f(x + w, y);
+
+            glVertex2f(x + w, y);
+            glVertex2f(x + w, y + h);
+
+            glVertex2f(x + w, y + h);
+            glVertex2f(x,     y + h);
+
+            glVertex2f(x, y + h);
+            glVertex2f(x, y);
+        glEnd();
+    }
+
+    glPopMatrix();
+
+    glMatrixMode(GL_PROJECTION);
+    glPopMatrix();
+
+    glMatrixMode(GL_MODELVIEW);
+
+    glEnable(GL_DEPTH_TEST);
+    glEnable(GL_SCISSOR_TEST);
+}
+
+static void draw_scene_geometry(void)
+{
     glLoadIdentity();
 
     glTranslatef(-3.0f, 1.5f, -10.0f);
 
+    glColor4ub(255, 0, 0, 255);
     glBegin(GL_TRIANGLES);
         glVertex3f( 0.0f, 1.0f, 0.0f);
         glVertex3f( 1.0f,-1.0f, 0.0f);
@@ -76,7 +127,7 @@ void DrawGLScene()
 
     glTranslatef(3.0f, 0.0f, 0.0f);
 
-
+    glColor4ub(0, 255, 0, 255);
     glBegin(GL_QUADS);
         glVertex3f(-1.0f, 1.0f, 0.0f);
         glVertex3f( 1.0f, 1.0f, 0.0f);
@@ -86,6 +137,7 @@ void DrawGLScene()
 
     glTranslatef(3.0f, 0.0f, 0.0f);
 
+    glColor4ub(0, 0, 255, 255);
     glBegin(GL_POLYGON);
         glVertex3f(-0.0f, 1.0f, 0.0f);
         glVertex3f(-0.75f, 0.75f, 0.0f);
@@ -99,8 +151,8 @@ void DrawGLScene()
 
     glTranslatef(-6.0f, -3.0f, 0.0f);
 
-
-    glBegin(GL_POLYGON);
+    glColor4ub(255, 128, 0, 255);
+    glBegin(GL_TRIANGLES);
         glVertex3f( 0.0f, 1.0f, 0.0f);
         glVertex3f( 1.0f,-1.0f, 0.0f);
         glVertex3f(-1.0f,-1.0f, 0.0f);
@@ -108,7 +160,7 @@ void DrawGLScene()
 
     glTranslatef(3.0f, 0.0f, 0.0f);
 
-
+    glColor4ub(0, 255, 255, 255);
     glBegin(GL_POLYGON);
         glVertex3f(-1.0f, 1.0f, 0.0f);
         glVertex3f( 1.0f, 1.0f, 0.0f);
@@ -118,6 +170,7 @@ void DrawGLScene()
 
     glTranslatef(3.0f, 0.0f, 0.0f);
 
+    glColor4ub(255, 0, 255, 255);
     glBegin(GL_POLYGON);
         glVertex3f(-0.0f, 1.0f, 0.0f);
         glVertex3f(-0.75f, 0.75f, 0.0f);
@@ -128,22 +181,36 @@ void DrawGLScene()
         glVertex3f( 1.0f, 0.0f, 0.0f);
         glVertex3f( 0.75f, 0.75f, 0.0f);
     glEnd();
+}
+
+static void draw_gl_scene(void)
+{
+    glDisable(GL_SCISSOR_TEST);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+    draw_scissor_outline();
+
+    glEnable(GL_SCISSOR_TEST);
+    glScissor(SCISSOR_X, SCISSOR_Y, SCISSOR_W, SCISSOR_H);
+
+    draw_scene_geometry();
 
     glKosSwapBuffers();
 }
 
 int main(int argc, char **argv)
 {
-    glKosInit();
+    (void)argc;
+    (void)argv;
 
-    InitGL(640, 480);
-    ReSizeGLScene(640, 480);
+    glKosInit();
+    init_gl(SCREEN_W, SCREEN_H);
 
     while(1) {
         if(check_start())
             break;
 
-        DrawGLScene();
+        draw_gl_scene();
     }
 
     return 0;
