@@ -229,6 +229,24 @@ GLboolean _glIsScissorTestEnabled() {
     return GPUState.scissor_test_enabled;
 }
 
+void _glGetScissor(GLint* x, GLint* y, GLsizei* width, GLsizei* height) {
+    if(x) {
+        *x = GPUState.scissor_rect.x;
+    }
+
+    if(y) {
+        *y = GPUState.scissor_rect.y;
+    }
+
+    if(width) {
+        *width = GPUState.scissor_rect.width;
+    }
+
+    if(height) {
+        *height = GPUState.scissor_rect.height;
+    }
+}
+
 void _glRecalcEnabledLights() {
     GPUState.enabled_light_count = 0;
     for(GLubyte i = 0; i < MAX_GLDC_LIGHTS; ++i) {
@@ -1040,7 +1058,8 @@ void _glApplyScissor(bool force) {
     } ScissorCommand;
 
     ScissorCommand c = {0};
-    const VideoMode* vid_mode = GetVideoMode();
+    GLsizei target_width, target_height;
+    _glGetFramebufferRenderSize(&target_width, &target_height);
 
     GLint x0 = GPUState.scissor_rect.x;
     GLint y0 = GPUState.scissor_rect.y;
@@ -1052,14 +1071,13 @@ void _glApplyScissor(bool force) {
      * x/y inclusive start, width/height extent. Clip to the framebuffer
      * before converting to PVR tile coordinates.
      */
-    x0 = CLAMP(x0, 0, vid_mode->width);
-    y0 = CLAMP(y0, 0, vid_mode->height);
-    x1 = CLAMP(x1, 0, vid_mode->width);
-    y1 = CLAMP(y1, 0, vid_mode->height);
+    x0 = CLAMP(x0, 0, target_width);
+    y0 = CLAMP(y0, 0, target_height);
+    x1 = CLAMP(x1, 0, target_width);
+    y1 = CLAMP(y1, 0, target_height);
 
-
-    uint16_t vw = vid_mode->width >> 5;
-    uint16_t vh = vid_mode->height >> 5;
+    uint16_t vw = (target_width + 31) >> 5;
+    uint16_t vh = (target_height + 31) >> 5;
     uint16_t max_tx = vw - 1;
     uint16_t max_ty = vh - 1;
 
@@ -1073,8 +1091,8 @@ void _glApplyScissor(bool force) {
         c.clip.ex = 0;
         c.clip.ey = 0;
     } else {
-        GLint pvr_y0 = vid_mode->height - y1;
-        GLint pvr_y1 = vid_mode->height - y0;
+        GLint pvr_y0 = target_height - y1;
+        GLint pvr_y1 = target_height - y0;
 
         c.clip.sx = CLAMP(x0 >> 5, 0, max_tx);
         c.clip.sy = CLAMP(pvr_y0 >> 5, 0, max_ty);

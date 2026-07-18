@@ -332,6 +332,7 @@ Matrix4x4* _glGetColorMatrix();
 GLenum _glGetMatrixMode();
 GLboolean _glIsIdentity(const Matrix4x4* m);
 void _glGetViewport(GLint* x, GLint* y, GLsizei* width, GLsizei* height);
+void _glGetScissor(GLint* x, GLint* y, GLsizei* width, GLsizei* height);
 
 void _glWipeTextureOnFramebuffers(GLuint texture);
 void _glFramebufferMarkDirty(void);
