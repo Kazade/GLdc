@@ -79,10 +79,12 @@ if(NOT PLATFORM_DREAMCAST)
 
     set(FIND_LIBRARY_USE_LIB32_PATHS true)
     set(FIND_LIBRARY_USE_LIB64_PATHS false)
-elseif ("${CMAKE_BUILD_TYPE}" STREQUAL Debug)
-    target_compile_options(GL PRIVATE -Wall -Wextra)
-elseif("${CMAKE_BUILD_TYPE}" MATCHES Release|RelWithDebInfo)
-    target_compile_options(GL PRIVATE -ffast-math)
+else()
+    if("${CMAKE_BUILD_TYPE}" STREQUAL Debug)
+        target_compile_options(GL PRIVATE -Wall -Wextra)
+    elseif("${CMAKE_BUILD_TYPE}" MATCHES Release|RelWithDebInfo)
+        target_compile_options(GL PRIVATE -ffast-math)
+    endif()
 endif()
 
 execute_process(

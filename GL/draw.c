@@ -774,12 +774,24 @@ GL_FORCE_INLINE void apply_poly_header(PolyHeader* header, GLboolean multiTextur
 GL_FORCE_INLINE void apply_strided_texture_uv_scale(SubmissionTarget* target) {
     TextureObject* texture = _glGetTexture0();
 
-    if(!texture || !texture->isStrided || !texture->pvrWidth || !texture->pvrHeight) {
+    if(!texture) {
         return;
     }
 
-    const float uScale = (float) texture->logicalWidth / (float) texture->pvrWidth;
-    const float vScale = (float) texture->logicalHeight / (float) texture->pvrHeight;
+    const GLboolean needsScale = texture->isStrided || texture->isRTT;
+    const GLushort physicalWidth =
+        texture->pvrWidth ? texture->pvrWidth :
+        (texture->isRTT && texture->rttWidth ? texture->rttWidth : texture->width);
+    const GLushort physicalHeight =
+        texture->pvrHeight ? texture->pvrHeight :
+        (texture->isRTT && texture->rttHeight ? texture->rttHeight : texture->height);
+
+    if(!needsScale || !physicalWidth || !physicalHeight) {
+        return;
+    }
+
+    const float uScale = (float) texture->logicalWidth / (float) physicalWidth;
+    const float vScale = (float) texture->logicalHeight / (float) physicalHeight;
     Vertex* it = _glSubmissionTargetStart(target);
     Vertex* end = _glSubmissionTargetEnd(target);
 
@@ -946,6 +958,7 @@ void APIENTRY glDrawElements(GLenum mode, GLsizei count, GLenum type, const GLvo
         return;
     }
 
+    _glFramebufferMarkDirty();
     submitVertices(mode, 0, count, type, indices);
 }
 
@@ -956,6 +969,7 @@ void APIENTRY glDrawArrays(GLenum mode, GLint first, GLsizei count) {
         return;
     }
 
+    _glFramebufferMarkDirty();
     submitVertices(mode, first, count, GL_UNSIGNED_INT, NULL);
 }
 

@@ -4,10 +4,22 @@
 #include <stdlib.h>
 #include <stdbool.h>
 
+#ifdef _arch_dreamcast
+#include <kos/version.h>
+#endif
+
 #include "gl_assert.h"
 #include "types.h"
 
 #define MEMSET(dst, v, size) memset((dst), (v), (size))
+
+#ifndef GLDC_HAVE_PVR_SCENE_BEGIN_RTT
+#if defined(_arch_dreamcast) && defined(KOS_VERSION_MIN) && KOS_VERSION_MIN(2, 3, 0)
+#define GLDC_HAVE_PVR_SCENE_BEGIN_RTT 1
+#else
+#define GLDC_HAVE_PVR_SCENE_BEGIN_RTT 0
+#endif
+#endif
 
 typedef enum GPUAlpha {
     GPU_ALPHA_DISABLE = 0,
@@ -169,6 +181,8 @@ typedef struct VideoMode {
 } VideoMode;
 
 const VideoMode* GetVideoMode();
+void _glFinishQueuedScene(void);
+bool _glBeginQueuedScene(void);
 
 /* Duplication of pvr_poly_cxt_t from KOS so that we can
  * compile on non-KOS platforms for testing */
@@ -276,6 +290,9 @@ enum GPUCommand {
 typedef float Matrix4x4[16];
 
 void SceneBegin();
+#if GLDC_HAVE_PVR_SCENE_BEGIN_RTT
+int SceneBeginRTT(void* target, uint32_t render_w, uint32_t render_h, uint32_t stride_px);
+#endif
 
 void SceneListBegin(GPUList list);
 void SceneListSubmit(Vertex* v2, int n);
@@ -390,6 +407,7 @@ static inline int DimensionFlag(const int w) {
 
 static uint8_t* DEFAULT_TEXTURE = NULL;
 extern void* GPUMemoryAlloc(size_t size);
+extern void GPUWritebackMemory(void* ptr, size_t size);
 extern void GPUTextureLoad(const void* src, void* dst, size_t size);
 
 /* Compile a polygon context into a polygon header */
@@ -449,8 +467,10 @@ static inline void CompilePolyHeader(PolyHeader *dst, const PolyContext *src) {
             for(int i = 0; i < 8 * 8; ++i) {
                 texture[i] = 0xffff;
             }
+            GPUWritebackMemory(DEFAULT_TEXTURE, 8 * 8 * 2);
             GPUTextureLoad(texture, DEFAULT_TEXTURE, sizeof(texture));
         }
+        dst->mode3 = 0;
         dst->mode2 |= (DimensionFlag(8) << GPU_TA_PM2_USIZE_SHIFT) & GPU_TA_PM2_USIZE_MASK;
         dst->mode2 |= (DimensionFlag(8) << GPU_TA_PM2_VSIZE_SHIFT) & GPU_TA_PM2_VSIZE_MASK;
         dst->mode2 |= (GPU_TXRENV_MODULATE << GPU_TA_PM2_TXRENV_SHIFT) & GPU_TA_PM2_TXRENV_MASK;

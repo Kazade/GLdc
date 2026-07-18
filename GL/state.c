@@ -430,10 +430,17 @@ void _glUpdatePVRTextureContext(PolyContext *context, GLshort textureUnit) {
     }
 
     if(tx1->data) {
+        const GLushort physicalWidth =
+            tx1->pvrWidth ? tx1->pvrWidth :
+            (tx1->isRTT && tx1->rttWidth ? tx1->rttWidth : tx1->width);
+        const GLushort physicalHeight =
+            tx1->pvrHeight ? tx1->pvrHeight :
+            (tx1->isRTT && tx1->rttHeight ? tx1->rttHeight : tx1->height);
+
         context->txr.enable = GPU_TEXTURE_ENABLE;
         context->txr.filter = filter;
-        context->txr.width = tx1->pvrWidth ? tx1->pvrWidth : tx1->width;
-        context->txr.height = tx1->pvrHeight ? tx1->pvrHeight : tx1->height;
+        context->txr.width = physicalWidth;
+        context->txr.height = physicalHeight;
         context->txr.mipmap = enableMipmaps;
         context->txr.mipmap_bias = tx1->mipmap_bias;
 
@@ -446,8 +453,14 @@ void _glUpdatePVRTextureContext(PolyContext *context, GLshort textureUnit) {
         context->txr.format = tx1->color;
         context->txr.is_strided = tx1->isStrided;
         context->txr.stride_width = tx1->strideWidth;
-        context->txr.uv_scale_u = tx1->isStrided ? ((float) tx1->logicalWidth / (float) tx1->pvrWidth) : 1.0f;
-        context->txr.uv_scale_v = tx1->isStrided ? ((float) tx1->logicalHeight / (float) tx1->pvrHeight) : 1.0f;
+        context->txr.uv_scale_u =
+            (tx1->isStrided || tx1->isRTT) && physicalWidth
+                ? ((float) tx1->logicalWidth / (float) physicalWidth)
+                : 1.0f;
+        context->txr.uv_scale_v =
+            (tx1->isStrided || tx1->isRTT) && physicalHeight
+                ? ((float) tx1->logicalHeight / (float) physicalHeight)
+                : 1.0f;
 
         if(tx1->isStrided) {
             context->txr.format |= GPU_TXRFMT_X32_STRIDE;
@@ -473,7 +486,10 @@ void _glUpdatePVRTextureContext(PolyContext *context, GLshort textureUnit) {
             }
         }
 
-        context->txr.env = tx1->env;
+        context->txr.env =
+            (tx1->env == GPU_TXRENV_MODULATEALPHA &&
+             !GPUState.blend_enabled &&
+             !GPUState.alpha_test_enabled) ? GPU_TXRENV_MODULATE : tx1->env;
         // extract mirror setting from bits 2 and 3 of uv_wrap by shifting out the clamp bits and masking
         context->txr.uv_flip = (tx1->uv_wrap >> 2) & 3;
         // extract clamp setting from bits 0 and 1 of uv_wrap by masking
@@ -757,8 +773,10 @@ GLAPI void APIENTRY glDisable(GLenum cap) {
 
 /* Clear Caps */
 GLAPI void APIENTRY glClear(GLuint mode) {
+    // FBO_TRACE("GLdc: glClear mode=0x%x\n", (unsigned)mode);
     if(mode & GL_COLOR_BUFFER_BIT) {
         GPUSetBackgroundColour(CLEAR_COLOUR[0], CLEAR_COLOUR[1], CLEAR_COLOUR[2]);
+        _glFramebufferMarkDirty();
     }
 }
 
@@ -1249,7 +1267,7 @@ const GLubyte *glGetString(GLenum name) {
             return (const GLubyte*) "1.2 (partial) - GLdc 1.1";
 
         case GL_EXTENSIONS:
-            return (const GLubyte*)"GL_ARB_framebuffer_object, GL_ARB_multitexture, GL_ARB_texture_rg, GL_OES_compressed_paletted_texture, GL_EXT_paletted_texture, GL_EXT_shared_texture_palette, GL_KOS_multiple_shared_palette, GL_ARB_vertex_array_bgra, GL_ARB_vertex_type_2_10_10_10_rev, GL_KOS_texture_memory_management, GL_KOS_texture_non_power_of_two, GL_ATI_meminfo";
+            return (const GLubyte*) GLDC_FRAMEBUFFER_EXTENSIONS "GL_ARB_multitexture, GL_ARB_texture_rg, GL_OES_compressed_paletted_texture, GL_EXT_paletted_texture, GL_EXT_shared_texture_palette, GL_KOS_multiple_shared_palette, GL_ARB_vertex_array_bgra, GL_ARB_vertex_type_2_10_10_10_rev, GL_KOS_texture_memory_management, GL_KOS_texture_non_power_of_two, GL_ATI_meminfo";
     }
 
     return (const GLubyte*) "GL_KOS_ERROR: ENUM Unsupported\n";

@@ -1,4 +1,5 @@
 #include <float.h>
+#include <arch/cache.h>
 
 #include "../platform.h"
 #include "sh4.h"
@@ -18,6 +19,10 @@ GL_FORCE_INLINE void _glPVRSetTextureStride(uint32_t stride) {
 
 void* GPUMemoryAlloc(size_t size) {
     return pvr_mem_malloc(size);
+}
+
+void GPUWritebackMemory(void* ptr, size_t size) {
+    dcache_flush_range((uintptr_t)ptr, size);
 }
 
 void GPUTextureLoad(const void* src, void* dst, size_t size) {
@@ -405,6 +410,14 @@ void SceneBegin() {
     pvr_wait_ready();
     pvr_scene_begin();
 }
+
+#if GLDC_HAVE_PVR_SCENE_BEGIN_RTT
+int SceneBeginRTT(void* target, uint32_t render_w, uint32_t render_h, uint32_t stride_px) {
+    CURRENT_TEXTURE_STRIDE = 0;
+    pvr_wait_ready();
+    return pvr_scene_begin_rtt((pvr_ptr_t)target, render_w, render_h, stride_px);
+}
+#endif
 
 static pvr_dr_state_t dr_state;
 void SceneListBegin(GPUList list) {

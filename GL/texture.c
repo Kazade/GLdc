@@ -44,6 +44,8 @@ static size_t ALLOC_SIZE = 0;
 
 #define GL_KOS_MAX_STRIDE_WIDTH 992
 
+static void* alloc_malloc_and_defrag(size_t size);
+
 static GLuint _glNextPowerOfTwo(GLuint v) {
     if(v <= 1) {
         return 1;
@@ -98,6 +100,115 @@ static GLboolean _glIsPalettedFormat(GLenum internalFormat) {
         internalFormat == GL_COLOR_INDEX8_TWID_KOS ||
         internalFormat == GL_COLOR_INDEX4_TWID_KOS
     ) ? GL_TRUE : GL_FALSE;
+}
+
+GLboolean _glPromoteTextureToRTT(TextureObject* txr) {
+#ifdef _arch_dreamcast
+    if(!txr || !txr->data) {
+        return GL_FALSE;
+    }
+
+    if(txr->logicalWidth == 0 || txr->logicalHeight == 0) {
+        return GL_FALSE;
+    }
+
+    if(txr->logicalWidth > MAX_TEXTURE_SIZE ||
+       txr->logicalHeight > MAX_TEXTURE_SIZE) {
+        if(GLDC_RTT_TRACE) {
+            fprintf(stderr,
+                    "[rtt] reject tex=%u logical=%ux%u max=%u\n",
+                    txr->index,
+                    (unsigned)txr->logicalWidth,
+                    (unsigned)txr->logicalHeight,
+                    (unsigned)MAX_TEXTURE_SIZE);
+        }
+        return GL_FALSE;
+    }
+
+    const GLuint renderWidth = txr->logicalWidth;
+    const GLuint renderHeight = txr->logicalHeight;
+    const GLuint pvrWidth = _glNextPowerOfTwo(renderWidth);
+    const GLuint pvrHeight = _glNextPowerOfTwo(renderHeight);
+    const GLuint alignedRenderWidth = (renderWidth + 3u) & ~3u;
+    const GLuint rttStride =
+        (alignedRenderWidth != pvrWidth && alignedRenderWidth <= GL_KOS_MAX_STRIDE_WIDTH)
+            ? alignedRenderWidth
+            : pvrWidth;
+    const GLboolean needsStridedSampling = (rttStride != pvrWidth) ? GL_TRUE : GL_FALSE;
+
+    if(needsStridedSampling && (rttStride == 0 || rttStride > GL_KOS_MAX_STRIDE_WIDTH)) {
+        if(GLDC_RTT_TRACE) {
+            fprintf(stderr,
+                    "[rtt] reject tex=%u logical=%ux%u stride=%u\n",
+                    txr->index,
+                    (unsigned)txr->logicalWidth,
+                    (unsigned)txr->logicalHeight,
+                    (unsigned)rttStride);
+        }
+        return GL_FALSE;
+    }
+
+    if(txr->isRTT &&
+       txr->rttWidth == rttStride &&
+       txr->rttHeight == renderHeight &&
+       txr->pvrWidth == pvrWidth &&
+       txr->pvrHeight == pvrHeight &&
+       txr->isStrided == needsStridedSampling) {
+        return GL_TRUE;
+    }
+
+    const size_t physicalBytes =
+        (size_t)rttStride * (size_t)renderHeight * sizeof(GLushort);
+    const size_t logicalRowBytes = (size_t)txr->logicalWidth * sizeof(GLushort);
+    GLushort* oldData = (GLushort*)txr->data;
+    GLushort* rttData = (GLushort*)alloc_malloc_and_defrag(physicalBytes);
+
+    gl_assert(rttData);
+    if(!rttData) {
+        return GL_FALSE;
+    }
+
+    MEMSET(rttData, 0x0, physicalBytes);
+    if(oldData) {
+        for(GLushort y = 0; y < txr->logicalHeight; ++y) {
+            GLushort* dst_row = rttData + ((size_t)y * rttStride);
+            const GLushort* src_row = oldData + ((size_t)y * txr->logicalWidth);
+            memcpy(dst_row, src_row, logicalRowBytes);
+        }
+        alloc_free(ALLOC_BASE, oldData);
+    }
+
+    txr->data = rttData;
+    txr->rttWidth = (GLushort)rttStride;
+    txr->rttHeight = (GLushort)renderHeight;
+    txr->pvrWidth = (GLushort)pvrWidth;
+    txr->pvrHeight = (GLushort)pvrHeight;
+    txr->strideWidth = needsStridedSampling ? (GLushort)rttStride : 0;
+    txr->isStrided = needsStridedSampling;
+    txr->isRTT = GL_TRUE;
+    txr->dataStride = sizeof(GLushort);
+    txr->baseDataSize = (GLuint)physicalBytes;
+
+    if(GLDC_RTT_TRACE) {
+        fprintf(stderr,
+                "[rtt] promote tex=%u logical=%ux%u rtt=%ux%u pvr=%ux%u uScale=%0.6f vScale=%0.6f backing=%p\n",
+                txr->index,
+                (unsigned)txr->logicalWidth,
+                (unsigned)txr->logicalHeight,
+                (unsigned)txr->rttWidth,
+                (unsigned)txr->rttHeight,
+                (unsigned)txr->pvrWidth,
+                (unsigned)txr->pvrHeight,
+                txr->pvrWidth ? (float)txr->logicalWidth / (float)txr->pvrWidth : 1.0f,
+                txr->pvrHeight ? (float)txr->logicalHeight / (float)txr->pvrHeight : 1.0f,
+                txr->data);
+    }
+
+    return GL_TRUE;
+#else
+    _GL_UNUSED(txr);
+    return GL_FALSE;
+#endif
 }
 
 static void calc_twiddle_factors(uint32_t w, uint32_t h, uint32_t* maskX, uint32_t* maskY) {
@@ -555,8 +666,10 @@ static void _glInitializeTextureObject(TextureObject* txr, unsigned int id) {
     txr->width = txr->height = 0;
     txr->logicalWidth = txr->logicalHeight = 0;
     txr->pvrWidth = txr->pvrHeight = 0;
+    txr->rttWidth = txr->rttHeight = 0;
     txr->strideWidth = 0;
     txr->isStrided = GL_FALSE;
+    txr->isRTT = GL_FALSE;
     txr->mipmap = 0;
     txr->uv_wrap = 0;
     txr->env = GPU_TXRENV_MODULATEALPHA;
@@ -624,6 +737,10 @@ TextureObject* _glGetTexture1() {
 TextureObject* _glGetBoundTexture() {
     gl_assert(ACTIVE_TEXTURE < MAX_GLDC_TEXTURE_UNITS);
     return TEXTURE_UNITS[ACTIVE_TEXTURE];
+}
+
+TextureObject* _glGetTexture(GLuint texture) {
+    return (TextureObject*) named_array_get(&TEXTURE_OBJECTS, texture);
 }
 
 GLint _glGetTextureInternalFormat() {
@@ -945,8 +1062,11 @@ void APIENTRY glCompressedTexImage2DARB(GLenum target,
     active->logicalHeight = height;
     active->pvrWidth = width;
     active->pvrHeight = height;
+    active->rttWidth = 0;
+    active->rttHeight = 0;
     active->strideWidth = 0;
     active->isStrided = GL_FALSE;
+    active->isRTT = GL_FALSE;
     active->internalFormat = internalFormat;
     active->color   = _determinePVRFormat(internalFormat);
     active->mipmapCount = _glGetMipmapLevelCount(active);
@@ -1842,6 +1962,12 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
     TextureConversionFunc conversion = NULL;
     int needs_conversion = _determineConversion(cleanInternalFormat, format, type, &conversion);
 
+    // Hack: If we're doing a 4bpp source (via glCompressedTexture...)
+    // halve the srcBytes
+    if(format == GL_COLOR_INDEX4_EXT || format == GL_COLOR_INDEX4_TWID_KOS) {
+        srcBytes /= 2;
+    }
+
     /* If we're packing stuff, then the dest size is half what it would be */
     if((needs_conversion & CONVERSION_TYPE_PACK) == CONVERSION_TYPE_PACK) {
         destBytes /= 2;
@@ -1862,7 +1988,10 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
         active->logicalHeight = height;
         active->pvrWidth = pvrWidth;
         active->pvrHeight = pvrHeight;
+        active->rttWidth = 0;
+        active->rttHeight = 0;
         active->isStrided = isStrided;
+        active->isRTT = GL_FALSE;
         active->strideWidth = isStrided ? (GLushort) texturePitch : 0;
         active->color   = pvrFormat;
         active->internalFormat = cleanInternalFormat;

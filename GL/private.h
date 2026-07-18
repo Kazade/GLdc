@@ -9,9 +9,9 @@
 #include "platform.h"
 #include "types.h"
 
-#include "../include/GL/gl.h"
-#include "../include/GL/glext.h"
-#include "../include/GL/glkos.h"
+#include <GL/gl.h>
+#include <GL/glext.h>
+#include <GL/glkos.h>
 
 #include "../containers/aligned_vector.h"
 #include "../containers/named_array.h"
@@ -54,6 +54,21 @@ extern void* memcpy4 (void *dest, const void *src, size_t count);
 #define S_COLOR_ENABLED_FLAG    (1 << 5)
 
 #define MAX_TEXTURE_SIZE 1024
+
+#ifndef GLDC_RTT_TRACE
+#define GLDC_RTT_TRACE 0
+#endif
+
+#define GLDC_RTT_SYNC_MODE 0
+
+#define GLDC_RTT_PHYSICAL_WIDTH 1024
+#define GLDC_RTT_PHYSICAL_HEIGHT 512
+
+#if !defined(_arch_dreamcast) || GLDC_HAVE_PVR_SCENE_BEGIN_RTT
+#define GLDC_FRAMEBUFFER_EXTENSIONS "GL_EXT_framebuffer_object, GL_ARB_framebuffer_object, "
+#else
+#define GLDC_FRAMEBUFFER_EXTENSIONS ""
+#endif
 
 #define M0 0
 #define M1 1
@@ -138,8 +153,11 @@ typedef struct {
     GLushort logicalHeight;
     GLushort pvrWidth;
     GLushort pvrHeight;
+    GLushort rttWidth;
+    GLushort rttHeight;
     GLushort strideWidth;
     GLboolean isStrided;
+    GLboolean isRTT;
 } __attribute__((aligned(32))) TextureObject;
 
 typedef struct {
@@ -313,10 +331,19 @@ Matrix4x4* _glGetTextureMatrix();
 Matrix4x4* _glGetColorMatrix();
 GLenum _glGetMatrixMode();
 GLboolean _glIsIdentity(const Matrix4x4* m);
+void _glGetViewport(GLint* x, GLint* y, GLsizei* width, GLsizei* height);
 
 void _glWipeTextureOnFramebuffers(GLuint texture);
+void _glFramebufferMarkDirty(void);
+void _glFramebufferSceneClosed(void);
+GLboolean _glFramebufferBeginScene(void);
+void _glFramebufferFinishScene(void);
+void _glResolveActiveFramebuffer(void);
+void _glGetFramebufferRenderSize(GLsizei* width, GLsizei* height);
+GLboolean _glPromoteTextureToRTT(TextureObject* txr);
 
 GLubyte _glInitTextures();
+TextureObject* _glGetTexture(GLuint texture);
 
 void _glUpdatePVRTextureContext(PolyContext* context, GLshort textureUnit);
 void _glAllocateSpaceForMipmaps(TextureObject* active);
