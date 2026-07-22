@@ -12,9 +12,6 @@ typedef struct {
     GLuint texture_id;
     GLboolean is_complete;
     GLboolean dirty;
-#ifdef _arch_dreamcast
-    pvr_ptr_t resolve_target;
-#endif
 
     /* FIXME: Add OP, TR and PT lists per framebuffer */
 
@@ -118,10 +115,6 @@ static FrameBuffer* _glGetFramebuffer(GLuint id) {
     return (FrameBuffer*) named_array_get(&FRAMEBUFFERS, id);
 }
 
-static GLushort _glResolveRGB565ToARGB1555(GLushort src) {
-    return (GLushort) (0x8000 | ((src >> 1) & 0x7C00) | ((src >> 1) & 0x03E0) | (src & 0x001F));
-}
-
 static GLenum _glFramebufferStatus(FrameBuffer* fb) {
     if(!fb) {
         return GL_FRAMEBUFFER_COMPLETE_EXT;
@@ -154,123 +147,8 @@ static GLenum _glFramebufferStatus(FrameBuffer* fb) {
     return GL_FRAMEBUFFER_COMPLETE_EXT;
 }
 
-#ifdef _arch_dreamcast
-static const GLushort* _glCpuFramebufferAlias(pvr_ptr_t src_tex) {
-    uintptr_t fb_tex_addr = (uintptr_t)src_tex;
-    uintptr_t fb_offset_64 = fb_tex_addr - PVR_RAM_BASE;
-    uintptr_t fb_offset_32 = fb_offset_64 / 2;
-
-    return (const GLushort*)(PVR_RAM_BASE + fb_offset_32);
-}
-#endif
-
 static void _glResolveFramebufferToTexture(FrameBuffer* fb) {
-#ifdef _arch_dreamcast
     _GL_UNUSED(fb);
-    return;
-#else
-    if(!fb || !fb->dirty || !fb->texture_id) {
-        return;
-    }
-
-    if(_glFramebufferStatus(fb) != GL_FRAMEBUFFER_COMPLETE_EXT) {
-        return;
-    }
-
-    TextureObject* txr = _glGetTexture(fb->texture_id);
-    gl_assert(txr);
-    gl_assert(txr->data);
-
-    const VideoMode* mode = GetVideoMode();
-
-    const GLsizei srcWidth = (GLsizei)mode->width;
-    const GLsizei srcHeight = (GLsizei)mode->height;
-
-    const GLsizei dstWidth = (GLsizei)txr->width;
-    const GLsizei dstHeight = (GLsizei)txr->height;
-
-    const GLsizei srcStride = srcWidth;
-    const GLsizei dstStride =
-        txr->isStrided && txr->strideWidth
-            ? (GLsizei)txr->strideWidth
-            : dstWidth;
-
-    GLint viewportX = 0;
-    GLint viewportY = 0;
-    GLsizei viewportWidth = 0;
-    GLsizei viewportHeight = 0;
-    _glGetViewport(&viewportX, &viewportY, &viewportWidth, &viewportHeight);
-
-    GLsizei copyWidth = dstWidth;
-    GLsizei copyHeight = dstHeight;
-
-    GLint srcX = viewportX;
-    GLint srcY = srcHeight - viewportY - copyHeight;
-    GLint dstX = 0;
-    GLint dstY = 0;
-
-    if(srcX < 0) {
-        dstX = -srcX;
-        copyWidth += srcX;
-        srcX = 0;
-    }
-
-    if(srcY < 0) {
-        dstY = -srcY;
-        copyHeight += srcY;
-        srcY = 0;
-    }
-
-    if(srcX + copyWidth > srcWidth) {
-        copyWidth = srcWidth - srcX;
-    }
-
-    if(srcY + copyHeight > srcHeight) {
-        copyHeight = srcHeight - srcY;
-    }
-
-    if(dstX + copyWidth > dstWidth) {
-        copyWidth = dstWidth - dstX;
-    }
-
-    if(dstY + copyHeight > dstHeight) {
-        copyHeight = dstHeight - dstY;
-    }
-
-    if(copyWidth <= 0 || copyHeight <= 0) {
-        return;
-    }
-
-    pvr_ptr_t selected_tex = fb->resolve_target ? fb->resolve_target : pvr_get_back_buffer();
-    const GLushort* src = _glCpuFramebufferAlias(selected_tex);
-    GLushort* dst = (GLushort*)txr->data;
-
-    if(!src || !dst) {
-        return;
-    }
-
-    for(GLsizei y = 0; y < copyHeight; ++y) {
-        const GLushort* src_row = src + (((GLsizei)srcY + y) * srcStride) + srcX;
-        GLushort* dst_row = dst + (((GLsizei)dstY + y) * dstStride) + dstX;
-
-        if(txr->internalFormat == GL_RGB565_KOS) {
-            FASTCPY(dst_row, src_row, (size_t)copyWidth * sizeof(GLushort));
-        } else {
-            for(GLsizei x = 0; x < copyWidth; ++x) {
-                dst_row[x] = _glResolveRGB565ToARGB1555(src_row[x]);
-            }
-        }
-    }
-
-    GLushort* wback_start = dst + ((GLsizei)dstY * dstStride);
-
-    arch_dcache_wback_range((uintptr_t)wback_start,
-        (size_t)dstStride * (size_t)copyHeight * sizeof(GLushort));
-
-    __asm__ __volatile__("" ::: "memory");
-
-    fb->dirty = GL_FALSE;
-#endif
 }
 
 void _glInitFramebuffers() {
@@ -291,23 +169,18 @@ void _glWipeTextureOnFramebuffers(GLuint texture) {
             fb->texture_id = 0;
             fb->dirty = GL_FALSE;
             fb->is_complete = GL_FALSE;
-#ifdef _arch_dreamcast
-            fb->resolve_target = NULL;
-#endif
         }
     }
 }
 
 void _glFramebufferMarkDirty(void) {
     if(!ACTIVE_FRAMEBUFFER) {
-#ifdef _arch_dreamcast
         /*
-         * Default framebuffer rendering still uses the queued PVR lists.
+         * Default framebuffer rendering still uses the queued polygon lists.
          * Non-FBO samples must be able to start a scene from glClear/draw
          * instead of relying on a prior fake-FBO unbind.
          */
         (void)_glBeginQueuedScene();
-#endif
         return;
     }
 
@@ -358,9 +231,6 @@ void APIENTRY glGenFramebuffersEXT(GLsizei n, GLuint* framebuffers) {
         fb->is_complete = GL_FALSE;
         fb->texture_id = 0;
         fb->dirty = GL_FALSE;
-#ifdef _arch_dreamcast
-        fb->resolve_target = NULL;
-#endif
 
         *framebuffers = id;
         framebuffers++;
@@ -466,9 +336,6 @@ void APIENTRY glFramebufferTexture2DEXT(GLenum target, GLenum attachment, GLenum
 
     ACTIVE_FRAMEBUFFER->texture_id = texture;
     ACTIVE_FRAMEBUFFER->dirty = GL_FALSE;
-#ifdef _arch_dreamcast
-    ACTIVE_FRAMEBUFFER->resolve_target = NULL;
-#endif
 
     if(texture) {
         TextureObject* txr = _glGetTexture(texture);
