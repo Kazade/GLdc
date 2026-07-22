@@ -16,9 +16,6 @@
 #define NORMAL_SCALE 0.00784313725f
 #define NORMAL_OFFSET -1.0f
 
-/* Maximum light range for early-out optimization */
-#define MAX_LIGHT_RANGE 10.0f
-
 /* PI constant for spotlight calculations */
 #define GL_PI 3.14159265358979323846f
 
@@ -670,11 +667,6 @@ GL_FORCE_INLINE void _glProcessVertex(
             /* Point/spot light: compute distance */
             float D;
             VEC3_LENGTH(Lx, Ly, Lz, D);
-
-            /* Early-out: skip distant lights */
-            if(D > MAX_LIGHT_RANGE) {
-                continue;
-            }
 
             /* Compute spotlight factor */
             float spotFactor = computeSpotFactor(light, Lx, Ly, Lz);
