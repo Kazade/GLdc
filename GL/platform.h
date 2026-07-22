@@ -15,13 +15,6 @@
 
 #ifndef GLDC_HAVE_PVR_SCENE_BEGIN_RTT
 #define GLDC_HAVE_PVR_SCENE_BEGIN_RTT 0
-
-#if defined(_arch_dreamcast) && defined(KOS_VERSION_MIN)
-#if KOS_VERSION_MIN(2, 3, 0)
-#undef GLDC_HAVE_PVR_SCENE_BEGIN_RTT
-#define GLDC_HAVE_PVR_SCENE_BEGIN_RTT 1
-#endif
-#endif
 #endif
 
 typedef enum GPUAlpha {

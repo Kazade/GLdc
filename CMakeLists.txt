@@ -26,6 +26,15 @@ check_ipo_supported(RESULT FLTO_SUPPORTED OUTPUT FLTO_ERROR)
 
 if(PLATFORM_DREAMCAST)
     include(kallistios)
+
+    # KOS development snapshots can report the next release version before
+    # every API planned for that release has landed.  Detect the RTT entry
+    # point from the installed headers instead of relying on KOS_VERSION_MIN.
+    include(CheckSymbolExists)
+    set(_GLDC_TRY_COMPILE_TARGET_TYPE ${CMAKE_TRY_COMPILE_TARGET_TYPE})
+    set(CMAKE_TRY_COMPILE_TARGET_TYPE STATIC_LIBRARY)
+    check_symbol_exists(pvr_scene_begin_rtt "kos.h" GLDC_HAVE_PVR_SCENE_BEGIN_RTT)
+    set(CMAKE_TRY_COMPILE_TARGET_TYPE ${_GLDC_TRY_COMPILE_TARGET_TYPE})
 endif()
 
 # List of possible backends
@@ -64,6 +73,10 @@ set_target_properties(GL PROPERTIES
 )
 
 target_include_directories(GL PUBLIC ${CMAKE_SOURCE_DIR}/include)
+
+if(GLDC_HAVE_PVR_SCENE_BEGIN_RTT)
+    target_compile_definitions(GL PRIVATE GLDC_HAVE_PVR_SCENE_BEGIN_RTT=1)
+endif()
 
 add_library(GLU STATIC GL/glu.c)
 
