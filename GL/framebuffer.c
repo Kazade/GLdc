@@ -479,11 +479,6 @@ void APIENTRY glFramebufferTexture2DEXT(GLenum target, GLenum attachment, GLenum
 
 }
 
-GL_FORCE_INLINE GLuint A1555(GLuint v) {
-    const GLuint MASK = (1 << 15);
-    return (v & MASK) >> 8;
-}
-
 GL_FORCE_INLINE GLuint R1555(GLuint v) {
     const GLuint MASK = (31 << 10);
     return (v & MASK) >> 7;
@@ -537,23 +532,19 @@ GL_FORCE_INLINE GLuint B565(GLuint v) {
 static GL_NO_INSTRUMENT GLboolean _glCalculateAverageTexel(GLuint pvrFormat, const GLubyte* src1, const GLubyte* src2, const GLubyte* src3, const GLubyte* src4, GLubyte* t) {
     GLuint a, r, g, b;
 
-    GLubyte format = ((pvrFormat & (1 << 27)) | (pvrFormat & (1 << 26))) >> 26;
+    const GLuint format = pvrFormat & (7u << 27);
 
-    const GLubyte ARGB1555 = 0;
-    const GLubyte ARGB4444 = 1;
-    const GLubyte RGB565 = 2;
-
-    if((pvrFormat & GPU_TXRFMT_PAL8BPP) == GPU_TXRFMT_PAL8BPP) {
+    if(format == GPU_TXRFMT_PAL8BPP) {
         /* Paletted... all we can do really is just pick one of the
          * 4 texels.. unless we want to change the palette (bad) or
          * pick the closest available colour (slow, and probably bad)
          */
         *t = *src1;
-    } else if(format == RGB565) {
-        GLushort* s1 = (GLushort*) src1;
-        GLushort* s2 = (GLushort*) src2;
-        GLushort* s3 = (GLushort*) src3;
-        GLushort* s4 = (GLushort*) src4;
+    } else if(format == GPU_TXRFMT_RGB565) {
+        const GLushort* s1 = (const GLushort*) src1;
+        const GLushort* s2 = (const GLushort*) src2;
+        const GLushort* s3 = (const GLushort*) src3;
+        const GLushort* s4 = (const GLushort*) src4;
         GLushort* d1 = (GLushort*) t;
 
         r = R565(*s1) + R565(*s2) + R565(*s3) + R565(*s4);
@@ -565,11 +556,11 @@ static GL_NO_INSTRUMENT GLboolean _glCalculateAverageTexel(GLuint pvrFormat, con
         b /= 4;
 
         *d1 = PACK_RGB565(r, g, b);
-    } else if(format == ARGB4444) {
-        GLushort* s1 = (GLushort*) src1;
-        GLushort* s2 = (GLushort*) src2;
-        GLushort* s3 = (GLushort*) src3;
-        GLushort* s4 = (GLushort*) src4;
+    } else if(format == GPU_TXRFMT_ARGB4444) {
+        const GLushort* s1 = (const GLushort*) src1;
+        const GLushort* s2 = (const GLushort*) src2;
+        const GLushort* s3 = (const GLushort*) src3;
+        const GLushort* s4 = (const GLushort*) src4;
         GLushort* d1 = (GLushort*) t;
 
         a = A4444(*s1) + A4444(*s2) + A4444(*s3) + A4444(*s4);
@@ -582,27 +573,38 @@ static GL_NO_INSTRUMENT GLboolean _glCalculateAverageTexel(GLuint pvrFormat, con
         g /= 4;
         b /= 4;
 
-        *d1 = PACK_ARGB4444(a, r, g, b);
-    } else {
-        gl_assert(format == ARGB1555);
+        /* These values are already 4-bit channels; PACK_ARGB4444 expects
+         * 8-bit inputs and would quantize them a second time. */
+        *d1 = (GLushort)((a << 12) | (r << 8) | (g << 4) | b);
+    } else if(format == GPU_TXRFMT_ARGB1555) {
 
-        GLushort* s1 = (GLushort*) src1;
-        GLushort* s2 = (GLushort*) src2;
-        GLushort* s3 = (GLushort*) src3;
-        GLushort* s4 = (GLushort*) src4;
+        const GLushort* s1 = (const GLushort*) src1;
+        const GLushort* s2 = (const GLushort*) src2;
+        const GLushort* s3 = (const GLushort*) src3;
+        const GLushort* s4 = (const GLushort*) src4;
         GLushort* d1 = (GLushort*) t;
 
-        a = A1555(*s1) + A1555(*s2) + A1555(*s3) + A1555(*s4);
+        const GLuint opaqueCount =
+            ((*s1 >> 15) & 1u) +
+            ((*s2 >> 15) & 1u) +
+            ((*s3 >> 15) & 1u) +
+            ((*s4 >> 15) & 1u);
         r = R1555(*s1) + R1555(*s2) + R1555(*s3) + R1555(*s4);
         g = G1555(*s1) + G1555(*s2) + G1555(*s3) + G1555(*s4);
         b = B1555(*s1) + B1555(*s2) + B1555(*s3) + B1555(*s4);
 
-        a /= 4;
         r /= 4;
         g /= 4;
         b /= 4;
 
-        *d1 = PACK_ARGB1555((GLubyte) a, (GLubyte) r, (GLubyte) g, (GLubyte) b);
+        /* Preserve thin punch-through features when a 2x2 block is exactly
+         * half covered. A strict majority erodes one-texel fence lines when
+         * hardware LOD selection reaches the next smaller level. */
+        a = opaqueCount >= 2u ? 255u : 0u;
+        *d1 = PACK_ARGB1555(a, r, g, b);
+    } else {
+        _glKosThrowError(GL_INVALID_OPERATION, __func__);
+        return GL_FALSE;
     }
 
     return GL_TRUE;
@@ -692,12 +694,42 @@ void APIENTRY glGenerateMipmap(GLenum target) {
     GLuint prevWidth = tex->width;
     GLuint prevHeight = tex->height;
 
+    /* Keep mip generation in system RAM. Texture allocations use the PVR's
+     * 64-bit VRAM mapping on Dreamcast; ordinary CPU writes to that mapping
+     * are not a reliable texture upload mechanism on real hardware. */
+    GLubyte* baseData = (GLubyte*) malloc(tex->baseDataSize);
+    if(!baseData) {
+        _glKosThrowError(GL_OUT_OF_MEMORY, __func__);
+        return;
+    }
+    const GLubyte* currentBase = tex->baseDataOffset
+        ? _glGetMipmapLocation(tex, 0)
+        : (const GLubyte*)tex->data;
+    GPUTextureRead(currentBase, baseData, tex->baseDataSize);
+
     /* Make sure there is room for the mipmap data on the texture object */
     _glAllocateSpaceForMipmaps(tex);
+    if(!tex->data) {
+        free(baseData);
+        return;
+    }
+
+    const GLuint dataBytes = tex->baseDataOffset + tex->baseDataSize;
+    const GLuint uploadBytes = (dataBytes + 31u) & ~31u;
+    GLubyte* mipData = (GLubyte*) calloc(1, uploadBytes);
+    if(!mipData) {
+        free(baseData);
+        _glKosThrowError(GL_OUT_OF_MEMORY, __func__);
+        return;
+    }
+    memcpy(mipData + tex->baseDataOffset, baseData, tex->baseDataSize);
+    free(baseData);
 
     for(i = 1; i < _glGetMipmapLevelCount(tex); ++i) {
-        GLubyte* prevData = _glGetMipmapLocation(tex, i - 1);
-        GLubyte* thisData = _glGetMipmapLocation(tex, i);
+        const size_t prevOffset = (size_t)(_glGetMipmapLocation(tex, i - 1) - (GLubyte*)tex->data);
+        const size_t thisOffset = (size_t)(_glGetMipmapLocation(tex, i) - (GLubyte*)tex->data);
+        GLubyte* prevData = mipData + prevOffset;
+        GLubyte* thisData = mipData + thisOffset;
 
         GLuint thisWidth = (prevWidth > 1) ? prevWidth / 2 : 1;
         GLuint thisHeight = (prevHeight > 1) ? prevHeight / 2 : 1;
@@ -709,6 +741,9 @@ void APIENTRY glGenerateMipmap(GLenum target) {
         prevWidth = thisWidth;
         prevHeight = thisHeight;
     }
+
+    GPUTextureLoad(mipData, tex->data, uploadBytes);
+    free(mipData);
 
     gl_assert(_glIsMipmapComplete(tex));
 }

@@ -159,6 +159,30 @@ public:
         }
     }
 
+    void test_rgba8888_to_argb1555_packing() {
+        uint8_t img[8 * 8 * 4] = {0};
+        const uint8_t colors[4][4] = {
+            {0xFF, 0x00, 0x00, 0xFF},
+            {0x00, 0xFF, 0x00, 0x80},
+            {0x00, 0x00, 0xFF, 0x00},
+            {0x12, 0x34, 0x56, 0x01},
+        };
+        for(int i = 0; i < 4; ++i)
+            for(int c = 0; c < 4; ++c)
+                img[i * 4 + c] = colors[i][c];
+
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_ARGB1555_KOS,
+                     8, 8, 0, GL_RGBA, GL_UNSIGNED_BYTE, img);
+        assert_equal(glGetError(), GL_NO_ERROR);
+
+        const uint16_t* d = data16();
+        for(int i = 0; i < 4; ++i) {
+            const uint16_t expected = PACK_ARGB1555(
+                colors[i][3], colors[i][0], colors[i][1], colors[i][2]);
+            assert_equal(d[i], expected);
+        }
+    }
+
     void test_alpha_ubyte_to_argb4444_replicates_alpha() {
         uint8_t img[8 * 8] = {0};
         img[0] = 0xFF;

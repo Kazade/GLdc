@@ -409,6 +409,7 @@ static uint8_t* DEFAULT_TEXTURE = NULL;
 extern void* GPUMemoryAlloc(size_t size);
 extern void GPUWritebackMemory(void* ptr, size_t size);
 extern void GPUTextureLoad(const void* src, void* dst, size_t size);
+extern void GPUTextureRead(const void* src, void* dst, size_t size);
 
 /* Compile a polygon context into a polygon header */
 static inline void CompilePolyHeader(PolyHeader *dst, const PolyContext *src) {

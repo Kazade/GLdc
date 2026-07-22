@@ -29,6 +29,35 @@ void GPUTextureLoad(const void* src, void* dst, size_t size) {
     pvr_txr_load(src, dst, size);
 }
 
+void GPUTextureRead(const void* src, void* dst, size_t size) {
+    /* Texture allocations use the PVR's interleaved 64-bit address space.
+     * Read through the 32-bit VRAM window, selecting alternating banks for
+     * successive words, so CPU readback reconstructs the linear texture byte
+     * stream expected by the TA texture upload path. */
+    const uintptr_t sourceOffset = (uintptr_t)src - PVR_RAM_INT_BASE;
+    const uintptr_t bankBytes = PVR_RAM_SIZE / 2u;
+    uintptr_t sourceWord = sourceOffset / sizeof(uint32_t);
+    uint32_t* target = (uint32_t*)dst;
+
+    while(size >= sizeof(uint32_t)) {
+        const uintptr_t bank = sourceWord & 1u;
+        const uintptr_t bankOffset = (sourceWord >> 1u) * sizeof(uint32_t);
+        const volatile uint32_t* source32 =
+            (const volatile uint32_t*)(PVR_RAM_BASE + bank * bankBytes + bankOffset);
+        *target++ = *source32;
+        ++sourceWord;
+        size -= sizeof(uint32_t);
+    }
+
+    if(size) {
+        const uintptr_t bank = sourceWord & 1u;
+        const uintptr_t bankOffset = (sourceWord >> 1u) * sizeof(uint32_t);
+        const volatile uint8_t* sourceBytes =
+            (const volatile uint8_t*)(PVR_RAM_BASE + bank * bankBytes + bankOffset);
+        memcpy((uint8_t*)target, (const void*)sourceBytes, size);
+    }
+}
+
 GL_FORCE_INLINE bool glIsVertex(const float flags) {
     return flags == GPU_CMD_VERTEX_EOL || flags == GPU_CMD_VERTEX;
 }

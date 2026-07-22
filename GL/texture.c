@@ -1391,6 +1391,10 @@ GL_FORCE_INLINE void _rgba8888_to_a000(const GLubyte* source, GLubyte* dest) {
     *((GLushort*) dest) = ((source[3] & 0b11111000) << 8);
 }
 
+GL_FORCE_INLINE void _rgba8888_to_argb1555(const GLubyte* source, GLubyte* dest) {
+    *((GLushort*) dest) = PACK_ARGB1555(source[3], source[0], source[1], source[2]);
+}
+
 GL_FORCE_INLINE void _r8_to_rgb565(const GLubyte* source, GLubyte* dest) {
     *((GLushort*) dest) = (source[0] & 0b11111000) << 8;
 }
@@ -1500,6 +1504,9 @@ static int _determineConversion(GLint internalFormat, GLenum format, GLenum type
 
         {NULL,                  GL_ARGB1555_TWID_KOS, GL_BGRA,  GL_UNSIGNED_SHORT_1_5_5_5_REV_TWID_KOS, false, false},
 
+        {_rgba8888_to_argb1555, GL_ARGB1555_KOS,      GL_RGBA,  GL_UNSIGNED_BYTE, false, false},
+        {_rgba8888_to_argb1555, GL_ARGB1555_TWID_KOS, GL_RGBA,  GL_UNSIGNED_BYTE,  true, false},
+
         {_r8_to_rgb565,         GL_RGB565_KOS,        GL_RED,   GL_UNSIGNED_BYTE, false, false},
         {_r8_to_rgb565,         GL_RGB565_TWID_KOS,   GL_RED,   GL_UNSIGNED_BYTE,  true, false},
         {_rgb888_to_rgb565,     GL_RGB565_KOS,        GL_RGB,   GL_UNSIGNED_BYTE, false, false},
@@ -1606,7 +1613,7 @@ void _glAllocateSpaceForMipmaps(TextureObject* active) {
     GLubyte* temp = NULL;
     if(active->data) {
         temp = (GLubyte*) malloc(size);
-        memcpy(temp, active->data, size);
+        GPUTextureRead(active->data, temp, size);
 
         /* Free the PVR data */
         alloc_free(ALLOC_BASE, active->data);
@@ -1615,14 +1622,37 @@ void _glAllocateSpaceForMipmaps(TextureObject* active) {
 
     /* Figure out how much room to allocate for mipmaps */
     GLuint bytes = _glGetMipmapDataSize(active);
+    GLuint uploadBytes = (bytes + 31u) & ~31u;
 
-    active->data = alloc_malloc_and_defrag(bytes);
+    active->data = alloc_malloc_and_defrag(uploadBytes);
 
     gl_assert(active->data);
+    if(!active->data) {
+        free(temp);
+        _glKosThrowError(GL_OUT_OF_MEMORY, __func__);
+        return;
+    }
+
+    /* Texture memory is exposed through the PVR's 64-bit mapping on SH4.
+     * Build the allocation in system RAM and transfer it through the platform
+     * texture upload path rather than writing the VRAM mapping with memcpy. */
+    GLubyte* staging = (GLubyte*) calloc(1, uploadBytes);
+    gl_assert(staging);
+    if(!staging) {
+        alloc_free(ALLOC_BASE, active->data);
+        active->data = NULL;
+        free(temp);
+        _glKosThrowError(GL_OUT_OF_MEMORY, __func__);
+        return;
+    }
 
     if(temp) {
-        /* If there was existing data, then copy it where it should go */
-        memcpy(_glGetMipmapLocation(active, 0), temp, size);
+        memcpy(staging + _glGetMipmapDataOffset(active, 0), temp, size);
+    }
+    GPUTextureLoad(staging, active->data, uploadBytes);
+    free(staging);
+
+    if(temp) {
 
         /* We no longer need this */
         free(temp);
@@ -2105,10 +2135,21 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
                 }
             }
         } else {
-            /* General case: iterate source texels, compute destination, convert/write directly */
+            /* General case: convert level zero in system RAM, then use the PVR
+             * texture upload path. Halfword writes through the 64-bit VRAM
+             * window can lose packed channel bits on real hardware. */
             uint32_t maskX, maskY;
             bool twiddle = (needs_conversion & CONVERSION_TYPE_TWIDDLE) != 0;
             bool convert = (needs_conversion & CONVERSION_TYPE_CONVERT) != 0;
+            const bool stageBaseLevel = level == 0 && active->baseDataOffset == 0;
+            GLubyte* conversionBuffer = stageBaseLevel
+                ? (GLubyte*)malloc(destBytes)
+                : targetData;
+
+            if(!conversionBuffer) {
+                _glKosThrowError(GL_OUT_OF_MEMORY, __func__);
+                return;
+            }
 
             if(twiddle) {
                 calc_twiddle_factors(width, height, &maskX, &maskY);
@@ -2121,9 +2162,9 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
 
                     if(twiddle) {
                         uint32_t newLocation = twid_compute_index(x, y, maskX, maskY);
-                        dst = targetData + (destStride * newLocation);
+                        dst = conversionBuffer + (destStride * newLocation);
                     } else {
-                        dst = targetData + ((texturePitch * y + x) * destStride);
+                        dst = conversionBuffer + ((texturePitch * y + x) * destStride);
                     }
 
                     if(convert) {
@@ -2134,6 +2175,11 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
                         }
                     }
                 }
+            }
+
+            if(stageBaseLevel) {
+                GPUTextureLoad(conversionBuffer, targetData, destBytes);
+                free(conversionBuffer);
             }
         }
     } else {
