@@ -2091,12 +2091,26 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
             /* No conversion or packing needed - direct copy to VRAM */
             FASTCPY(targetData, data, destBytes);
         } else if(is4BPPFormat(internalFormat) && is4BPPFormat(format)) {
-            /* 4BPP special case: unpack each nibble, twiddle, repack directly to VRAM */
+            /* 4BPP special case: unpack each nibble, twiddle, and repack.  Build
+             * level zero in system RAM because byte read-modify-write through
+             * the PVR 64-bit VRAM mapping is not reliable on real hardware. */
             uint32_t maskX, maskY;
+            const bool stageBaseLevel = level == 0 && active->baseDataOffset == 0;
+            GLubyte* twiddleBuffer = stageBaseLevel
+                ? (GLubyte*)calloc(1, destBytes)
+                : targetData;
+
+            if(!twiddleBuffer) {
+                _glKosThrowError(GL_OUT_OF_MEMORY, __func__);
+                return;
+            }
+
             calc_twiddle_factors(width, height, &maskX, &maskY);
 
             /* Clear destination buffer since we do read-modify-write on nibbles */
-            MEMSET4(targetData, 0x0, destBytes);
+            if(!stageBaseLevel) {
+                MEMSET4(twiddleBuffer, 0x0, destBytes);
+            }
 
             for(uint32_t i = 0; i < (width * height); ++i) {
                 uint32_t x = i % width;
@@ -2110,12 +2124,17 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
                 const uint8_t* src_byte = &((uint8_t*) data)[i / 2];
                 uint8_t src_value = (i % 2) == 0 ? (*src_byte >> 4) : (*src_byte & 0xF);
 
-                uint8_t* dst_byte = &targetData[dstIndex / 2];
+                uint8_t* dst_byte = &twiddleBuffer[dstIndex / 2];
                 if(dstIndex % 2 == 1) {
                     *dst_byte = (*dst_byte & 0xF) | (src_value << 4);
                 } else {
                     *dst_byte = (*dst_byte & 0xF0) | (src_value & 0xF);
                 }
+            }
+
+            if(stageBaseLevel) {
+                GPUTextureLoad(twiddleBuffer, targetData, destBytes);
+                free(twiddleBuffer);
             }
         } else if(pack) {
             /* Pack case for 8bpp paletted textures: repack nibbles directly to VRAM */
