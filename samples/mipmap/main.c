@@ -41,11 +41,16 @@ void LoadGLTextures() {
     glBindTexture(GL_TEXTURE_2D, texture[0]);   // 2d texture (x and y size)
 
     glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_LINEAR); // scale linearly when image bigger than texture
-    glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_LINEAR_MIPMAP_LINEAR); // scale linearly when image smalled than texture
+    glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_LINEAR_MIPMAP_NEAREST); // bilinear filtering within the selected mip level
 
     // 2d texture, 3 components (red, green, blue), x size from image, y size from image,
     // rgb color data, unsigned byte data, and finally the data itself.
     gluBuild2DMipmaps(GL_TEXTURE_2D, 3, image1->sizeX, image1->sizeY, GL_RGB, GL_UNSIGNED_BYTE, image1->data);
+
+    /* Keep the initial texture state consistent with mipmap_enabled. */
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    printf("Mipmaps initially disabled\n");
 
     free(image1);
 };
@@ -125,7 +130,7 @@ void DrawGLScene()
         if(mipmap_enabled) {
             printf("Enabling mipmaps!\n");
             glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_LINEAR);
-            glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_LINEAR_MIPMAP_LINEAR);
+            glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_LINEAR_MIPMAP_NEAREST);
         } else {
             printf("Disabling mipmaps!\n");
             glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_NEAREST);
@@ -133,9 +138,14 @@ void DrawGLScene()
         }
     }
 
+    /* Use the clear colour as an unambiguous mode indicator. */
+    if(mipmap_enabled) {
+        glClearColor(0.20f, 0.25f, 0.50f, 1.0f);
+    } else {
+        glClearColor(0.50f, 0.50f, 0.50f, 1.0f);
+    }
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glLoadIdentity();
-    glClearColor(0.5, 0.5, 0.5, 1.0);
 
     glBindTexture(GL_TEXTURE_2D, texture[0]);
 
