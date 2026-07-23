@@ -771,7 +771,7 @@ GL_FORCE_INLINE void apply_poly_header(PolyHeader* header, GLboolean multiTextur
     */
 }
 
-GL_FORCE_INLINE void apply_strided_texture_uv_scale(SubmissionTarget* target) {
+GL_FORCE_INLINE void apply_texture_uv_transform(SubmissionTarget* target) {
     TextureObject* texture = _glGetTexture0();
 
     if(!texture) {
@@ -797,7 +797,17 @@ GL_FORCE_INLINE void apply_strided_texture_uv_scale(SubmissionTarget* target) {
 
     while(it < end) {
         it->uv[0] *= uScale;
-        it->uv[1] *= vScale;
+        if(texture->isRTT) {
+            /*
+             * PVR RTT row zero is the top rendered row and the PVR sampler's
+             * V=0 addresses that row. OpenGL framebuffer textures instead
+             * define V=0 at the framebuffer bottom. Flip inside the logical
+             * image while retaining its position in a taller POT backing.
+             */
+            it->uv[1] = vScale - (it->uv[1] * vScale);
+        } else {
+            it->uv[1] *= vScale;
+        }
         ++it;
     }
 }
@@ -1082,7 +1092,7 @@ GL_FORCE_INLINE void submitVertices(GLenum mode, GLsizei first, GLuint count, GL
         return;
     }
 
-    apply_strided_texture_uv_scale(target);
+    apply_texture_uv_transform(target);
 
     // /*
     //    Now, if multitexturing is enabled, we want to send exactly the same vertices again, except:
