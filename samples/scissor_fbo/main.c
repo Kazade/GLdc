@@ -176,7 +176,7 @@ static void draw_target_texture(void)
     glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
     glColor4ub(255, 255, 255, 255);
 
-    /* Flip V because direct PVR RTT storage is vertically inverted for GL sampling. */
+    /* Map the OpenGL texture top (V=1) to this top-down quad's top edge. */
     glBegin(GL_QUADS);
         glTexCoord2f(0.0f, 1.0f); glVertex2f(x0, y0);
         glTexCoord2f(1.0f, 1.0f); glVertex2f(x1, y0);
@@ -205,7 +205,8 @@ static void draw_default_framebuffer_check(void)
 static void render_main_scene(void)
 {
     float outline_x = DISPLAY_X + SCISSOR_X * DISPLAY_SCALE;
-    float outline_y = DISPLAY_Y + SCISSOR_Y * DISPLAY_SCALE;
+    float outline_y = DISPLAY_Y
+                    + (TARGET_H - SCISSOR_Y - SCISSOR_H) * DISPLAY_SCALE;
     float outline_w = SCISSOR_W * DISPLAY_SCALE;
     float outline_h = SCISSOR_H * DISPLAY_SCALE;
 

@@ -273,8 +273,8 @@ static void draw_board(void)
         draw_textured_rect(g_tile_textures[tile],
                            x + 4.0f, y + 4.0f,
                            draw_tile - 8.0f, draw_tile - 8.0f,
-                           0.0f, 0.0f,
-                           1.0f, 1.0f);
+                           0.0f, 1.0f,
+                           1.0f, 0.0f);
     }
 }
 

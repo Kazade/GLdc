@@ -153,8 +153,8 @@ static void render_default_frame(int x, int y)
     draw_textured_rect(g_target_texture,
                        100.0f, 80.0f,
                        DRAW_W, DRAW_H,
-                       0.0f, 0.0f,
-                       1.0f, 1.0f);
+                       0.0f, 1.0f,
+                       1.0f, 0.0f);
 
     draw_solid_rect(460.0f, 80.0f, 40.0f, 260.0f, 0, 255, 0);
 }

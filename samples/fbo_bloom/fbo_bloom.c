@@ -322,8 +322,8 @@ static void draw_bloom_stack(GLuint texture,
                            x + (float)offsets[i][0],
                            y + (float)offsets[i][1],
                            w, h,
-                           0.0f, 0.0f,
-                           1.0f, 1.0f,
+                           0.0f, 1.0f,
+                           1.0f, 0.0f,
                            14);
     }
 
@@ -332,8 +332,8 @@ static void draw_bloom_stack(GLuint texture,
                            x + (float)offsets[i][0],
                            y + (float)offsets[i][1],
                            w, h,
-                           0.0f, 0.0f,
-                           1.0f, 1.0f,
+                           0.0f, 1.0f,
+                           1.0f, 0.0f,
                            28);
     }
 
@@ -368,11 +368,8 @@ static void draw_final_scene(void)
     draw_solid_rect(80.0f, 76.0f, 176.0f, 10.0f, 80, 80, 100);
     draw_solid_rect(392.0f, 76.0f, 176.0f, 10.0f, 180, 150, 80);
 
-    /*
-     * PVR RTT Y-flip: pvr_scene_begin_rtt writes framebuffer y=0 to the top
-     * row of texture memory (v=0), but OpenGL texcoord v=0 is the bottom.
-     * Flip V to compensate.
-     */
+    /* The top-down screen projection maps the OpenGL texture top (V=1) to
+     * the quad's top edge. GLdc handles the PVR RTT storage orientation. */
     /* Left: captured RTT texture, no bloom. */
     draw_textured_rect(g_rtt_texture,
                        NORMAL_X, NORMAL_Y,

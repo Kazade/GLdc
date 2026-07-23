@@ -411,7 +411,7 @@ static void render_main_scene(void) {
     draw_textured_rect_env(g_portal_texture,
                            PORTAL_X, PORTAL_Y,
                            PORTAL_W, PORTAL_H,
-                           0.0f, 0.0f, 1.0f, 1.0f,
+                           0.0f, 1.0f, 1.0f, 0.0f,
                            255, 255, 255, GL_MODULATE);
 
     draw_sprite_replaced(72.0f, 92.0f, 64.0f);

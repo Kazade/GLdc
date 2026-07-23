@@ -221,11 +221,8 @@ static void render_main_scene(void) {
                     border, PORTAL_H, 80, 50, 150);
     
     // Draw the portal texture
-    /*
-     * PVR RTT Y-flip: pvr_scene_begin_rtt writes framebuffer y=0 to the top
-     * row of texture memory (v=0), but OpenGL texcoord v=0 is the bottom. Flip
-     * V to compensate.
-     */
+    /* This top-down screen projection maps the OpenGL texture top (V=1) to
+     * the quad's top edge. GLdc handles the PVR RTT storage orientation. */
     draw_textured_rect(g_portal_texture,
                        PORTAL_X, PORTAL_Y,
                        PORTAL_W, PORTAL_H,
