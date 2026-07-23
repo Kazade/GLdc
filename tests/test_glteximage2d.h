@@ -90,6 +90,12 @@ public:
         assert_true(std::strstr(extensions, "GL_ARB_texture_non_power_of_two") == nullptr);
     }
 
+    void test_extension_string_is_space_delimited() {
+        const char* extensions = (const char*) glGetString(GL_EXTENSIONS);
+
+        assert_true(std::strchr(extensions, ',') == nullptr);
+    }
+
     void test_npot_rejected_with_default_repeat_wrap() {
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 96, 48, 0, GL_RGB, GL_UNSIGNED_BYTE, stride_image_data);
         assert_equal(glGetError(), GL_INVALID_OPERATION);

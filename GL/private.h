@@ -65,7 +65,7 @@ extern void* memcpy4 (void *dest, const void *src, size_t count);
 #define GLDC_RTT_PHYSICAL_HEIGHT 512
 
 #if !defined(_arch_dreamcast) || GLDC_HAVE_PVR_SCENE_BEGIN_RTT
-#define GLDC_FRAMEBUFFER_EXTENSIONS "GL_EXT_framebuffer_object, GL_ARB_framebuffer_object, "
+#define GLDC_FRAMEBUFFER_EXTENSIONS "GL_EXT_framebuffer_object GL_ARB_framebuffer_object "
 #else
 #define GLDC_FRAMEBUFFER_EXTENSIONS ""
 #endif
