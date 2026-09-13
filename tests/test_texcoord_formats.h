@@ -244,4 +244,88 @@ public:
 
         assert_uvs_match(arr, imm);
     }
+
+    /* RTT textures preserve OpenGL's bottom-left texture orientation even
+     * though the PVR render target and sampler disagree about the V edge. */
+    void test_rtt_uv_flips_v() {
+        GLuint texture = 0;
+        glGenTextures(1, &texture);
+        glBindTexture(GL_TEXTURE_2D, texture);
+
+        TextureObject* txr = _glGetTexture0();
+        txr->logicalWidth = 128;
+        txr->logicalHeight = 128;
+        txr->pvrWidth = 128;
+        txr->pvrHeight = 128;
+        txr->isRTT = GL_TRUE;
+
+        GLfloat uv[] = { 0.25f, 0.20f,  0.75f, 0.80f,  1.0f, 0.0f };
+        std::vector<Vertex> v = draw_with_float_uv(uv);
+
+        assert_equal(v.size(), (size_t) 3);
+        assert_close(v[0].uv[0], 0.25f, 0.0005f);
+        assert_close(v[0].uv[1], 0.80f, 0.0005f);
+        assert_close(v[1].uv[1], 0.20f, 0.0005f);
+        assert_close(v[2].uv[1], 1.00f, 0.0005f);
+
+        glBindTexture(GL_TEXTURE_2D, 0);
+        glDeleteTextures(1, &texture);
+    }
+
+    /* The RTT flip is performed within the logical V range, not the full POT
+     * backing, so partial coordinates and NPOT padding remain addressable. */
+    void test_npot_rtt_uv_flips_with_physical_scale() {
+        GLuint texture = 0;
+        glGenTextures(1, &texture);
+        glBindTexture(GL_TEXTURE_2D, texture);
+
+        TextureObject* txr = _glGetTexture0();
+        txr->logicalWidth = 96;
+        txr->logicalHeight = 120;
+        txr->pvrWidth = 128;
+        txr->pvrHeight = 128;
+        txr->isRTT = GL_TRUE;
+
+        GLfloat uv[] = { 0.25f, 0.20f,  0.75f, 0.80f,  1.0f, 0.0f };
+        std::vector<Vertex> v = draw_with_float_uv(uv);
+
+        assert_equal(v.size(), (size_t) 3);
+        assert_close(v[0].uv[0], 0.1875f, 0.0005f);
+        assert_close(v[0].uv[1], 0.7500f, 0.0005f);
+        assert_close(v[1].uv[0], 0.5625f, 0.0005f);
+        assert_close(v[1].uv[1], 0.1875f, 0.0005f);
+        assert_close(v[2].uv[0], 0.7500f, 0.0005f);
+        assert_close(v[2].uv[1], 0.9375f, 0.0005f);
+
+        glBindTexture(GL_TEXTURE_2D, 0);
+        glDeleteTextures(1, &texture);
+    }
+
+    /* A non-RTT strided texture still scales into its physical backing without
+     * acquiring the render-target-only V inversion. */
+    void test_strided_uploaded_texture_scales_without_v_flip() {
+        GLuint texture = 0;
+        glGenTextures(1, &texture);
+        glBindTexture(GL_TEXTURE_2D, texture);
+
+        TextureObject* txr = _glGetTexture0();
+        txr->logicalWidth = 96;
+        txr->logicalHeight = 120;
+        txr->pvrWidth = 128;
+        txr->pvrHeight = 128;
+        txr->isStrided = GL_TRUE;
+        txr->isRTT = GL_FALSE;
+
+        GLfloat uv[] = { 0.25f, 0.20f,  0.75f, 0.80f,  1.0f, 0.0f };
+        std::vector<Vertex> v = draw_with_float_uv(uv);
+
+        assert_equal(v.size(), (size_t) 3);
+        assert_close(v[0].uv[0], 0.1875f, 0.0005f);
+        assert_close(v[0].uv[1], 0.1875f, 0.0005f);
+        assert_close(v[1].uv[1], 0.7500f, 0.0005f);
+        assert_close(v[2].uv[1], 0.0000f, 0.0005f);
+
+        glBindTexture(GL_TEXTURE_2D, 0);
+        glDeleteTextures(1, &texture);
+    }
 };

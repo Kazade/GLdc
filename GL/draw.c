@@ -771,26 +771,201 @@ GL_FORCE_INLINE void apply_poly_header(PolyHeader* header, GLboolean multiTextur
     */
 }
 
-GL_FORCE_INLINE void apply_strided_texture_uv_scale(SubmissionTarget* target) {
+GL_FORCE_INLINE void apply_texture_uv_transform(SubmissionTarget* target) {
     TextureObject* texture = _glGetTexture0();
 
-    if(!texture || !texture->isStrided || !texture->pvrWidth || !texture->pvrHeight) {
+    if(!texture) {
         return;
     }
 
-    const float uScale = (float) texture->logicalWidth / (float) texture->pvrWidth;
-    const float vScale = (float) texture->logicalHeight / (float) texture->pvrHeight;
+    const GLboolean needsScale = texture->isStrided || texture->isRTT;
+    const GLushort physicalWidth =
+        texture->pvrWidth ? texture->pvrWidth :
+        (texture->isRTT && texture->rttWidth ? texture->rttWidth : texture->width);
+    const GLushort physicalHeight =
+        texture->pvrHeight ? texture->pvrHeight :
+        (texture->isRTT && texture->rttHeight ? texture->rttHeight : texture->height);
+
+    if(!needsScale || !physicalWidth || !physicalHeight) {
+        return;
+    }
+
+    const float uScale = (float) texture->logicalWidth / (float) physicalWidth;
+    const float vScale = (float) texture->logicalHeight / (float) physicalHeight;
     Vertex* it = _glSubmissionTargetStart(target);
     Vertex* end = _glSubmissionTargetEnd(target);
 
     while(it < end) {
         it->uv[0] *= uScale;
-        it->uv[1] *= vScale;
+        if(texture->isRTT) {
+            /*
+             * PVR RTT row zero is the top rendered row and the PVR sampler's
+             * V=0 addresses that row. OpenGL framebuffer textures instead
+             * define V=0 at the framebuffer bottom. Flip inside the logical
+             * image while retaining its position in a taller POT backing.
+             */
+            it->uv[1] = vScale - (it->uv[1] * vScale);
+        } else {
+            it->uv[1] *= vScale;
+        }
         ++it;
     }
 }
 
 #define DEBUG_CLIPPING 0
+
+typedef struct {
+    float x0;
+    float y0;
+    float x1;
+    float y1;
+} ScreenRect;
+
+GL_FORCE_INLINE float scissor_plane_distance(const Vertex* v, int plane, const ScreenRect* r) {
+    switch(plane) {
+        case 0: return v->xyz[0] - (r->x0 * v->w);
+        case 1: return (r->x1 * v->w) - v->xyz[0];
+        case 2: return v->xyz[1] - (r->y0 * v->w);
+        default: return (r->y1 * v->w) - v->xyz[1];
+    }
+}
+
+GL_FORCE_INLINE void lerp_vertex(Vertex* out, const Vertex* a, const Vertex* b, float t) {
+    out->flags = GPU_CMD_VERTEX;
+    for(int i = 0; i < 3; ++i) {
+        out->xyz[i] = a->xyz[i] + ((b->xyz[i] - a->xyz[i]) * t);
+    }
+    for(int i = 0; i < 2; ++i) {
+        out->uv[i] = a->uv[i] + ((b->uv[i] - a->uv[i]) * t);
+    }
+    out->w = a->w + ((b->w - a->w) * t);
+    for(int i = 0; i < 4; ++i) {
+        out->argb[i] = a->argb[i] + ((b->argb[i] - a->argb[i]) * t);
+    }
+    out->nxyz = a->nxyz;
+    out->st[0] = a->st[0];
+    out->st[1] = a->st[1];
+    for(int i = 0; i < 3; ++i) {
+        out->offset_rgb[i] = a->offset_rgb[i] + ((b->offset_rgb[i] - a->offset_rgb[i]) * t);
+    }
+}
+
+static int clip_polygon_to_scissor(const Vertex* in, int in_count, Vertex* out, const ScreenRect* r) {
+    Vertex buf_a[8];
+    Vertex buf_b[8];
+    Vertex* src = buf_a;
+    Vertex* dst = buf_b;
+    int count = in_count;
+
+    for(int i = 0; i < in_count; ++i) {
+        src[i] = in[i];
+        src[i].flags = GPU_CMD_VERTEX;
+    }
+
+    for(int plane = 0; plane < 4; ++plane) {
+        int out_count = 0;
+
+        for(int i = 0; i < count; ++i) {
+            const Vertex* cur = &src[i];
+            const Vertex* next = &src[(i + 1) % count];
+            float dc = scissor_plane_distance(cur, plane, r);
+            float dn = scissor_plane_distance(next, plane, r);
+            GLboolean cur_in = dc >= 0.0f;
+            GLboolean next_in = dn >= 0.0f;
+
+            if(cur_in && next_in) {
+                dst[out_count++] = *next;
+            } else if(cur_in && !next_in) {
+                float t = dc / (dc - dn);
+                lerp_vertex(&dst[out_count++], cur, next, t);
+            } else if(!cur_in && next_in) {
+                float t = dc / (dc - dn);
+                lerp_vertex(&dst[out_count++], cur, next, t);
+                dst[out_count++] = *next;
+            }
+        }
+
+        if(out_count == 0) {
+            return 0;
+        }
+
+        Vertex* tmp = src;
+        src = dst;
+        dst = tmp;
+        count = out_count;
+    }
+
+    for(int i = 0; i < count; ++i) {
+        out[i] = src[i];
+        out[i].flags = GPU_CMD_VERTEX;
+    }
+
+    return count;
+}
+
+GL_FORCE_INLINE Vertex* emit_clipped_triangle(Vertex* dst, const Vertex* a, const Vertex* b,
+                                                     const Vertex* c, const ScreenRect* r) {
+    Vertex in[3] = {*a, *b, *c};
+    Vertex clipped[8];
+    int count = clip_polygon_to_scissor(in, 3, clipped, r);
+
+    for(int i = 1; i < count - 1; ++i) {
+        *dst++ = clipped[0];
+        *dst++ = clipped[i];
+        *dst = clipped[i + 1];
+        (dst++)->flags = GPU_CMD_VERTEX_EOL;
+    }
+
+    return dst;
+}
+
+static void apply_exact_scissor_clip(SubmissionTarget* target, GLenum mode, GLuint input_count) {
+    if(!_glIsScissorTestEnabled() || _glGetPolygonMode() != GL_FILL) {
+        return;
+    }
+
+    if(mode != GL_TRIANGLES && mode != GL_QUADS) {
+        return;
+    }
+
+    GLint sx, sy;
+    GLsizei sw, sh;
+    _glGetScissor(&sx, &sy, &sw, &sh);
+
+    GLsizei target_width, target_height;
+    _glGetFramebufferRenderSize(&target_width, &target_height);
+
+    ScreenRect r;
+    r.x0 = (float) CLAMP(sx, 0, target_width);
+    r.x1 = (float) CLAMP(sx + sw, 0, target_width);
+    r.y0 = (float) CLAMP(target_height - sy - sh, 0, target_height);
+    r.y1 = (float) CLAMP(target_height - sy, 0, target_height);
+
+    if(r.x1 <= r.x0 || r.y1 <= r.y0) {
+        target->count = 0;
+        aligned_vector_resize(&target->output->vector, target->start_offset);
+        return;
+    }
+
+    Vertex* base = _glSubmissionTargetStart(target);
+    Vertex* dst = base;
+
+    if(mode == GL_TRIANGLES) {
+        for(GLuint i = 0; i < input_count; i += 3) {
+            Vertex tri[3] = {base[i], base[i + 1], base[i + 2]};
+            dst = emit_clipped_triangle(dst, &tri[0], &tri[1], &tri[2], &r);
+        }
+    } else {
+        for(GLuint i = 0; i < input_count; i += 4) {
+            Vertex q[4] = {base[i], base[i + 1], base[i + 2], base[i + 3]};
+            dst = emit_clipped_triangle(dst, &q[0], &q[1], &q[2], &r);
+            dst = emit_clipped_triangle(dst, &q[2], &q[1], &q[3], &r);
+        }
+    }
+
+    target->count = (GLuint)(dst - base);
+    aligned_vector_resize(&target->output->vector, target->start_offset + target->count);
+}
 
 
 static SubmissionTarget SUBMISSION_TARGET;
@@ -828,6 +1003,21 @@ GL_FORCE_INLINE GLuint calcFinalVertices(GLenum mode, GLuint count) {
             return QUADSTRIP_COUNT(count);
     }
     return count;
+}
+
+GL_FORCE_INLINE GLuint calcScissorCapacity(GLenum mode, GLuint count, GLuint final_count) {
+    if(!_glIsScissorTestEnabled() || _glGetPolygonMode() != GL_FILL) {
+        return final_count;
+    }
+
+    switch(mode) {
+        case GL_TRIANGLES:
+            return count * 5;
+        case GL_QUADS:
+            return count * 8;
+        default:
+            return final_count;
+    }
 }
 
 GL_FORCE_INLINE void submitVertices(GLenum mode, GLsizei first, GLuint count, GLenum type, const GLvoid* indices) {
@@ -873,6 +1063,8 @@ GL_FORCE_INLINE void submitVertices(GLenum mode, GLsizei first, GLuint count, GL
     GLboolean header_required = (vector_size == 0) || _glGPUStateIsDirty();
 
     target->count = calcFinalVertices(mode, count);
+    GLuint final_count = target->count;
+    GLuint capacity_count = calcScissorCapacity(mode, count, final_count);
     target->header_offset = vector_size;
     target->start_offset = target->header_offset + (header_required ? 1 : 0);
 
@@ -880,7 +1072,8 @@ GL_FORCE_INLINE void submitVertices(GLenum mode, GLsizei first, GLuint count, GL
     gl_assert(target->count);
 
     /* Make room for the vertices and header */
-    aligned_vector_extend(&target->output->vector, target->count + (header_required));
+    aligned_vector_extend(&target->output->vector, capacity_count + (header_required));
+    target->count = final_count;
 
     if(header_required) {
         apply_poly_header(_glSubmissionTargetHeader(target), GL_FALSE, target->output, 0);
@@ -893,7 +1086,13 @@ GL_FORCE_INLINE void submitVertices(GLenum mode, GLsizei first, GLuint count, GL
 
     _glTnlApplyEffects(target);
 
-    apply_strided_texture_uv_scale(target);
+    apply_exact_scissor_clip(target, mode, final_count);
+
+    if(!target->count) {
+        return;
+    }
+
+    apply_texture_uv_transform(target);
 
     // /*
     //    Now, if multitexturing is enabled, we want to send exactly the same vertices again, except:
@@ -946,6 +1145,7 @@ void APIENTRY glDrawElements(GLenum mode, GLsizei count, GLenum type, const GLvo
         return;
     }
 
+    _glFramebufferMarkDirty();
     submitVertices(mode, 0, count, type, indices);
 }
 
@@ -956,6 +1156,7 @@ void APIENTRY glDrawArrays(GLenum mode, GLint first, GLsizei count) {
         return;
     }
 
+    _glFramebufferMarkDirty();
     submitVertices(mode, first, count, GL_UNSIGNED_INT, NULL);
 }
 

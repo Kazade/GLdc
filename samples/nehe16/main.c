@@ -149,9 +149,11 @@ int main(int argc, char **argv) {
     glColor4f(1.0f, 1.0f, 1.0f, 0.5);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE);
 
-    /* Enable Lighting and GL_LIGHT0 */
+    /* Use an off-axis directional light so face-to-face lighting changes are visible. */
+    const GLfloat lightPosition[4] = {1.0f, 1.0f, 1.0f, 0.0f};
     glEnable(GL_LIGHTING);
     glEnable(GL_LIGHT0);
+    glLightfv(GL_LIGHT0, GL_POSITION, lightPosition);
 
     /* Set up the fog */
     glFogi(GL_FOG_MODE, fogMode[fogType]);     /* Fog Mode */

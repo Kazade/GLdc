@@ -75,6 +75,15 @@ void SceneBegin() {
     SDL_RenderClear(RENDERER);
 }
 
+int SceneBeginRTT(void* target, uint32_t render_w, uint32_t render_h, uint32_t stride_px) {
+    _GL_UNUSED(target);
+    _GL_UNUSED(render_w);
+    _GL_UNUSED(render_h);
+    _GL_UNUSED(stride_px);
+    SceneBegin();
+    return 0;
+}
+
 static Vertex BUFFER[1024 * 32];
 static uint32_t vertex_counter = 0;
 
@@ -569,7 +578,16 @@ void* GPUMemoryAlloc(size_t size) {
     }
 }
 
+void GPUWritebackMemory(void* ptr, size_t size) {
+    (void)ptr;
+    (void)size;
+}
+
 void GPUTextureLoad(const void* src, void* dst, size_t size) {
+    memcpy(dst, src, size);
+}
+
+void GPUTextureRead(const void* src, void* dst, size_t size) {
     memcpy(dst, src, size);
 }
 

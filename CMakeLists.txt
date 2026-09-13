@@ -26,6 +26,15 @@ check_ipo_supported(RESULT FLTO_SUPPORTED OUTPUT FLTO_ERROR)
 
 if(PLATFORM_DREAMCAST)
     include(kallistios)
+
+    # KOS development snapshots can report the next release version before
+    # every API planned for that release has landed.  Detect the RTT entry
+    # point from the installed headers instead of relying on KOS_VERSION_MIN.
+    include(CheckSymbolExists)
+    set(_GLDC_TRY_COMPILE_TARGET_TYPE ${CMAKE_TRY_COMPILE_TARGET_TYPE})
+    set(CMAKE_TRY_COMPILE_TARGET_TYPE STATIC_LIBRARY)
+    check_symbol_exists(pvr_scene_begin_rtt "kos.h" GLDC_HAVE_PVR_SCENE_BEGIN_RTT)
+    set(CMAKE_TRY_COMPILE_TARGET_TYPE ${_GLDC_TRY_COMPILE_TARGET_TYPE})
 endif()
 
 # List of possible backends
@@ -65,6 +74,10 @@ set_target_properties(GL PROPERTIES
 
 target_include_directories(GL PUBLIC ${CMAKE_SOURCE_DIR}/include)
 
+if(GLDC_HAVE_PVR_SCENE_BEGIN_RTT)
+    target_compile_definitions(GL PRIVATE GLDC_HAVE_PVR_SCENE_BEGIN_RTT=1)
+endif()
+
 add_library(GLU STATIC GL/glu.c)
 
 set_target_properties(GLU PROPERTIES
@@ -79,10 +92,12 @@ if(NOT PLATFORM_DREAMCAST)
 
     set(FIND_LIBRARY_USE_LIB32_PATHS true)
     set(FIND_LIBRARY_USE_LIB64_PATHS false)
-elseif ("${CMAKE_BUILD_TYPE}" STREQUAL Debug)
-    target_compile_options(GL PRIVATE -Wall -Wextra)
-elseif("${CMAKE_BUILD_TYPE}" MATCHES Release|RelWithDebInfo)
-    target_compile_options(GL PRIVATE -ffast-math)
+else()
+    if("${CMAKE_BUILD_TYPE}" STREQUAL Debug)
+        target_compile_options(GL PRIVATE -Wall -Wextra)
+    elseif("${CMAKE_BUILD_TYPE}" MATCHES Release|RelWithDebInfo)
+        target_compile_options(GL PRIVATE -ffast-math)
+    endif()
 endif()
 
 execute_process(
@@ -152,9 +167,16 @@ if(BUILD_SAMPLES)
     gen_sample(depth_funcs samples/depth_funcs/main.c)
     gen_sample(depth_funcs_alpha_testing samples/depth_funcs_alpha_testing/main.c samples/depth_funcs_alpha_testing/gl_png.c)
     gen_sample(depth_funcs_ortho samples/depth_funcs_ortho/main.c)
+    gen_sample(fbo_bloom samples/fbo_bloom/fbo_bloom.c samples/loadbmp.c)
+    gen_sample(fbo_box_shuffle samples/fbo_box_shuffle/main.c samples/loadbmp.c)
+    gen_sample(fbo_orientation samples/fbo_orientation/main.c)
+    gen_sample(fbo_simple samples/fbo_simple/main.c)
+    gen_sample(fbo_simplesmile samples/fbo_simplesmile/main.c)
+    gen_sample(fbo_targettexture samples/fbo_targettexture/main.c)
     gen_sample(lerabot01 samples/lerabot01/main.c samples/loadbmp.c)
     gen_sample(lights samples/lights/main.c samples/loadbmp.c)
     gen_sample(mipmap samples/mipmap/main.c samples/loadbmp.c)
+    gen_sample(mipmap_formats samples/mipmap_formats/main.c)
     gen_sample(multitexture_arrays samples/multitexture_arrays/main.c samples/multitexture_arrays/pvr-texture.c)
     gen_sample(nehe02 samples/nehe02/main.c)
     gen_sample(nehe02de samples/nehe02de/main.c)
@@ -177,10 +199,16 @@ if(BUILD_SAMPLES)
     gen_sample(paletted_pcx samples/paletted_pcx/main.c)
     gen_sample(polygon_offset samples/polygon_offset/main.c)
     gen_sample(terrain samples/terrain/main.c)
+    gen_sample(viewport samples/viewport/main.c samples/loadbmp.c)
     gen_sample(zclip samples/zclip/main.c)
     gen_sample(zclip_triangle samples/zclip_triangle/main.c)
     gen_sample(zclip_trianglestrip samples/zclip_trianglestrip/main.c)
+    gen_sample(zclip_culling samples/zclip_culling/main.c)
     gen_sample(scissor samples/scissor/main.c)
+    gen_sample(scissor_fbo samples/scissor_fbo/main.c)
+    gen_sample(scissor_lists samples/scissor_lists/main.c)
+    gen_sample(culling samples/culling/main.c)
+    gen_sample(culling_textured samples/culling_textured/main.c)
     gen_sample(polygon_compare samples/polygon_compare/main.c)
     gen_sample(polymark samples/polymark/main.c)
     gen_sample(cubes samples/cubes/main.cpp)
