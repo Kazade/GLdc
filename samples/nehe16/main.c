@@ -13,7 +13,7 @@
 #include <GL/gl.h>
 #include <GL/glu.h>
 
-#ifdef __DREAMCAST__
+#ifdef _arch_dreamcast
 #include <kos.h>
 #define IMG_PATH "/rd/glass.pvr"
 #else
@@ -168,7 +168,7 @@ int main(int argc, char **argv) {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 
     while(1) {
-#ifdef __DREAMCAST__
+#ifdef _arch_dreamcast
         maple_device_t *cont;
         cont_state_t *state;
 
