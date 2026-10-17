@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <math.h>
+#include <time.h>
 
 #ifdef _arch_dreamcast
 #include <kos.h>
@@ -14,8 +15,6 @@
 
 #ifdef _arch_dreamcast
 #include <kos.h>
-extern uint8_t romdisk[];
-KOS_INIT_ROMDISK(romdisk);
 #define IMAGE_FILENAME "/rd/NeHe.bmp"
 #else
 #define IMAGE_FILENAME "../samples/lights/romdisk/NeHe.bmp"
@@ -25,6 +24,15 @@ KOS_INIT_ROMDISK(romdisk);
 
 float xrot, yrot, zrot;
 GLuint texture[1];
+
+static uint64_t now_ms(void)
+{
+#ifdef _arch_dreamcast
+    return timer_ms_gettime64();
+#else
+    return (uint64_t)((clock() * 1000) / CLOCKS_PER_SEC);
+#endif
+}
 
 void LoadGLTextures() {
 
@@ -96,15 +104,16 @@ void InitGL(int Width, int Height)
 
     glDisable(GL_TEXTURE_2D);
 
+    diffuseLight[0] = 0.0f;
     diffuseLight[1] = 1.0f;
 
     glEnable(GL_LIGHT1);
     glLightfv(GL_LIGHT1, GL_DIFFUSE, diffuseLight);
     glLightfv(GL_LIGHT1, GL_SPECULAR, specularLight);
 
-    glLightf(GL_LIGHT1, GL_CONSTANT_ATTENUATION, 1.0);
-    glLightf(GL_LIGHT1, GL_LINEAR_ATTENUATION, 4.5 / 100);
-    glLightf(GL_LIGHT1, GL_QUADRATIC_ATTENUATION, 75.0f / (100 * 100));
+    glLightf(GL_LIGHT1, GL_CONSTANT_ATTENUATION, 0.5f);
+    glLightf(GL_LIGHT1, GL_LINEAR_ATTENUATION, 0.02f);
+    glLightf(GL_LIGHT1, GL_QUADRATIC_ATTENUATION, 0.002f);
 
     glEnable(GL_NORMALIZE);
 }
@@ -143,14 +152,6 @@ int check_start() {
 }
 
 void DrawCube(float x, float z) {
-    static float pos = 0.0f;
-    static const float radius = 30.0f;
-
-    pos += 0.001f;
-
-    GLfloat position[] = { cos(pos) * radius, 15.0f, sin(pos) * radius, 1.0f };
-    glLightfv(GL_LIGHT1, GL_POSITION, position);
-
     glPushMatrix();
     glTranslatef(x, 0, z);
     glColor4f(1, 1, 1, 1);
@@ -203,6 +204,8 @@ void DrawCube(float x, float z) {
 
 void DrawGLScene()
 {
+    static const float lightRadius = 30.0f;
+
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glLoadIdentity();
 
@@ -210,6 +213,15 @@ void DrawGLScene()
     glTranslatef(0.0f, 0.0f, -55.0f);
     glRotatef(45, 1, 0, 0);
     glTranslatef(0, 0, -30);
+
+    float lightAngle = (float)(now_ms() % 31416) * 0.002f;
+    GLfloat lightPosition[] = {
+        cos(lightAngle) * lightRadius,
+        8.0f,
+        sin(lightAngle) * lightRadius,
+        1.0f
+    };
+    glLightfv(GL_LIGHT1, GL_POSITION, lightPosition);
 
     glBindTexture(GL_TEXTURE_2D, texture[0]);
 

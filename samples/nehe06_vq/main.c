@@ -11,8 +11,6 @@
 #include "GL/glext.h"
 
 #ifdef _arch_dreamcast
-extern uint8 romdisk[];
-KOS_INIT_ROMDISK(romdisk);
 #define IMG_PATH "/rd/NeHe.tex"
 #else
 #define IMG_PATH "../samples/nehe06_vq/romdisk/NeHe.tex"

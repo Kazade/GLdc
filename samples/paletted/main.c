@@ -13,8 +13,6 @@
 #include "GL/glkos.h"
 
 #ifdef _arch_dreamcast
-extern uint8_t romdisk[];
-KOS_INIT_ROMDISK(romdisk);
 #define IMG_PATH "/rd/NeHe.tex"
 #else
 #define IMG_PATH "../samples/paletted/romdisk/NeHe.tex"
@@ -127,7 +125,7 @@ void LoadGLTextures() {
     glBindTexture(GL_TEXTURE_2D, texture[0]);   // 2d texture (x and y size)
 
     glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_LINEAR_MIPMAP_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_LINEAR_MIPMAP_NEAREST);
 
     // 2d texture, level of detail 0 (normal), 3 components (red, green, blue), x size from image, y size from image,
     // border 0 (normal), rgb color data, unsigned byte data, and finally the data itself.

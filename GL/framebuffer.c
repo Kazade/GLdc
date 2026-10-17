@@ -1,11 +1,17 @@
 #include <stdio.h>
+#include <string.h>
 
 #include "private.h"
+
+#ifdef _arch_dreamcast
+#include <arch/cache.h>
+#endif
 
 typedef struct {
     GLuint index;
     GLuint texture_id;
     GLboolean is_complete;
+    GLboolean dirty;
 
     /* FIXME: Add OP, TR and PT lists per framebuffer */
 
@@ -13,7 +19,137 @@ typedef struct {
 
 static FrameBuffer* ACTIVE_FRAMEBUFFER = NULL;
 static NamedArray FRAMEBUFFERS;
+static GLboolean FBO_SCENE_OPEN = GL_FALSE;
+static GLboolean FBO_SCENE_IS_RTT = GL_FALSE;
 
+GLboolean _glFramebufferBeginScene(void) {
+#ifdef _arch_dreamcast
+    if(!FBO_SCENE_OPEN) {
+        TextureObject* txr = NULL;
+
+        if(ACTIVE_FRAMEBUFFER && ACTIVE_FRAMEBUFFER->texture_id) {
+            txr = _glGetTexture(ACTIVE_FRAMEBUFFER->texture_id);
+        }
+
+        if(txr && txr->isRTT && txr->data) {
+#if GLDC_HAVE_PVR_SCENE_BEGIN_RTT
+            uint32_t render_w = txr->logicalWidth;
+            uint32_t render_h = txr->logicalHeight;
+            uint32_t stride_px = txr->rttWidth;
+
+            if(GLDC_RTT_TRACE) {
+                fprintf(stderr,
+                        "[rtt] bind fbo=%u tex=%u begin txr_ex ptr=%p render=%ux%u stride=%u backing=%ux%u logical=%ux%u\n",
+                        (unsigned)(ACTIVE_FRAMEBUFFER ? ACTIVE_FRAMEBUFFER->index : 0),
+                        (unsigned)txr->index,
+                        txr->data,
+                        (unsigned)render_w,
+                        (unsigned)render_h,
+                        (unsigned)stride_px,
+                        (unsigned)txr->rttWidth,
+                        (unsigned)txr->rttHeight,
+                        (unsigned)txr->logicalWidth,
+                        (unsigned)txr->logicalHeight);
+            }
+
+            if(SceneBeginRTT(txr->data, render_w, render_h, stride_px) < 0) {
+                if(GLDC_RTT_TRACE) {
+                    fprintf(stderr, "[rtt] begin txr_ex failed\n");
+                }
+                FBO_SCENE_IS_RTT = GL_FALSE;
+                return GL_FALSE;
+            }
+            FBO_SCENE_IS_RTT = GL_TRUE;
+#else
+            if(GLDC_RTT_TRACE) {
+                fprintf(stderr, "[rtt] unavailable: KOS lacks pvr_scene_begin_rtt\n");
+            }
+            FBO_SCENE_IS_RTT = GL_FALSE;
+            return GL_FALSE;
+#endif
+        } else {
+            SceneBegin();
+            FBO_SCENE_IS_RTT = GL_FALSE;
+        }
+        FBO_SCENE_OPEN = GL_TRUE;
+        return GL_TRUE;
+    }
+#endif
+    return GL_TRUE;
+}
+
+void _glFramebufferFinishScene(void) {
+#ifdef _arch_dreamcast
+    if(FBO_SCENE_OPEN) {
+        if(FBO_SCENE_IS_RTT) {
+            if(GLDC_RTT_TRACE) {
+                fprintf(stderr, "[rtt] finish txr sync_mode=%d\n", GLDC_RTT_SYNC_MODE);
+            }
+            pvr_scene_finish();
+            if(GLDC_RTT_SYNC_MODE >= 1) {
+                pvr_wait_ready();
+            }
+            if(GLDC_RTT_SYNC_MODE >= 2) {
+                pvr_wait_render_done();
+            }
+            __asm__ __volatile__("" ::: "memory");
+            (void)(*(volatile uint32_t *)0xa05f8000);
+        } else {
+            SceneFinish();
+            pvr_wait_ready();
+            pvr_wait_render_done();
+        }
+        FBO_SCENE_OPEN = GL_FALSE;
+        FBO_SCENE_IS_RTT = GL_FALSE;
+    }
+#endif
+}
+
+void _glFramebufferSceneClosed(void) {
+#ifdef _arch_dreamcast
+    FBO_SCENE_OPEN = GL_FALSE;
+#endif
+}
+
+static FrameBuffer* _glGetFramebuffer(GLuint id) {
+    return (FrameBuffer*) named_array_get(&FRAMEBUFFERS, id);
+}
+
+static GLenum _glFramebufferStatus(FrameBuffer* fb) {
+    if(!fb) {
+        return GL_FRAMEBUFFER_COMPLETE_EXT;
+    }
+
+    if(!fb->texture_id) {
+        return GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT_EXT;
+    }
+
+    TextureObject* txr = _glGetTexture(fb->texture_id);
+    if(!txr || !txr->data) {
+        return GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT_EXT;
+    }
+
+#ifdef _arch_dreamcast
+#if !GLDC_HAVE_PVR_SCENE_BEGIN_RTT
+    return GL_FRAMEBUFFER_UNSUPPORTED_EXT;
+#else
+    if(!txr->isRTT || !txr->rttWidth || !txr->rttHeight) {
+        return GL_FRAMEBUFFER_UNSUPPORTED_EXT;
+    }
+#endif
+#endif
+
+    // if(txr->internalFormat != GL_RGB565_KOS &&
+    //    txr->internalFormat != GL_ARGB1555_KOS) {
+    //     return GL_FRAMEBUFFER_UNSUPPORTED_EXT;
+    // }
+
+    return GL_FRAMEBUFFER_COMPLETE_EXT;
+}
+
+static void _glResolveFramebufferToTexture(FrameBuffer* fb) {
+    _GL_UNUSED(fb);
+}
 
 void _glInitFramebuffers() {
     named_array_init(&FRAMEBUFFERS, sizeof(FrameBuffer), 32);
@@ -23,10 +159,65 @@ void _glInitFramebuffers() {
 }
 
 void _glWipeTextureOnFramebuffers(GLuint texture) {
-    /* Spec says we don't update inactive framebuffers, they'll presumably just cause
-     * a GL_INVALID_OPERATION if we try to render to them */
-    if(ACTIVE_FRAMEBUFFER && ACTIVE_FRAMEBUFFER->texture_id == texture) {
-        ACTIVE_FRAMEBUFFER->texture_id = 0;
+    for(GLuint id = 0; id < FRAMEBUFFERS.max_element_count; ++id) {
+        if(!named_array_used(&FRAMEBUFFERS, id)) {
+            continue;
+        }
+
+        FrameBuffer* fb = _glGetFramebuffer(id);
+        if(fb && fb->texture_id == texture) {
+            fb->texture_id = 0;
+            fb->dirty = GL_FALSE;
+            fb->is_complete = GL_FALSE;
+        }
+    }
+}
+
+void _glFramebufferMarkDirty(void) {
+    if(!ACTIVE_FRAMEBUFFER) {
+        /*
+         * Default framebuffer rendering still uses the queued polygon lists.
+         * Non-FBO samples must be able to start a scene from glClear/draw
+         * instead of relying on a prior fake-FBO unbind.
+         */
+        (void)_glBeginQueuedScene();
+        return;
+    }
+
+    TextureObject* txr = ACTIVE_FRAMEBUFFER->texture_id ? _glGetTexture(ACTIVE_FRAMEBUFFER->texture_id) : NULL;
+    if(!txr || !txr->isRTT || !txr->data) {
+        return;
+    }
+
+    _glBeginQueuedScene();
+
+    ACTIVE_FRAMEBUFFER->dirty = GL_TRUE;
+}
+
+void _glResolveActiveFramebuffer(void) {
+    _glResolveFramebufferToTexture(ACTIVE_FRAMEBUFFER);
+}
+
+void _glGetFramebufferRenderSize(GLsizei* width, GLsizei* height) {
+    if(ACTIVE_FRAMEBUFFER && ACTIVE_FRAMEBUFFER->texture_id) {
+        TextureObject* txr = _glGetTexture(ACTIVE_FRAMEBUFFER->texture_id);
+        if(txr && txr->isRTT && txr->logicalWidth && txr->logicalHeight) {
+            if(width) {
+                *width = (GLsizei)txr->logicalWidth;
+            }
+            if(height) {
+                *height = (GLsizei)txr->logicalHeight;
+            }
+            return;
+        }
+    }
+
+    const VideoMode* mode = GetVideoMode();
+    if(width) {
+        *width = (GLsizei)mode->width;
+    }
+    if(height) {
+        *height = (GLsizei)mode->height;
     }
 }
 
@@ -39,6 +230,7 @@ void APIENTRY glGenFramebuffersEXT(GLsizei n, GLuint* framebuffers) {
         fb->index = id;
         fb->is_complete = GL_FALSE;
         fb->texture_id = 0;
+        fb->dirty = GL_FALSE;
 
         *framebuffers = id;
         framebuffers++;
@@ -49,7 +241,12 @@ void APIENTRY glDeleteFramebuffersEXT(GLsizei n, const GLuint* framebuffers) {
     TRACE();
 
     while(n--) {
-        FrameBuffer* fb = (FrameBuffer*) named_array_get(&FRAMEBUFFERS, *framebuffers);
+        FrameBuffer* fb = _glGetFramebuffer(*framebuffers);
+
+        if(!fb) {
+            framebuffers++;
+            continue;
+        }
 
         if(fb == ACTIVE_FRAMEBUFFER) {
             ACTIVE_FRAMEBUFFER = NULL;
@@ -60,24 +257,64 @@ void APIENTRY glDeleteFramebuffersEXT(GLsizei n, const GLuint* framebuffers) {
 }
 
 void APIENTRY glBindFramebufferEXT(GLenum target, GLuint framebuffer) {
-    _GL_UNUSED(target);
     TRACE();
 
-    if(framebuffer) {
-        ACTIVE_FRAMEBUFFER = (FrameBuffer*) named_array_get(&FRAMEBUFFERS, framebuffer);
-    } else {
-        ACTIVE_FRAMEBUFFER = NULL;
-
-        /* FIXME: This is where we need to submit the lists and then clear them. Binding zero means returning to the
-         * default framebuffer so we need to render a frame to the texture at that point */
+    if(target != GL_FRAMEBUFFER_EXT) {
+        _glKosThrowError(GL_INVALID_ENUM, __func__);
+        return;
     }
+
+    FrameBuffer* next = NULL;
+
+    if(framebuffer) {
+        next = _glGetFramebuffer(framebuffer);
+        if(!next) {
+            _glKosThrowError(GL_INVALID_OPERATION, __func__);
+            return;
+        }
+    }
+
+    if(next == ACTIVE_FRAMEBUFFER) {
+        return;
+    }
+
+    if(ACTIVE_FRAMEBUFFER) {
+        if(GLDC_RTT_TRACE) {
+            TextureObject* txr = ACTIVE_FRAMEBUFFER->texture_id ? _glGetTexture(ACTIVE_FRAMEBUFFER->texture_id) : NULL;
+            if(txr && txr->isRTT) {
+                fprintf(stderr, "[rtt] unbind fbo=%u finish txr\n", (unsigned)ACTIVE_FRAMEBUFFER->index);
+            } else {
+                fprintf(stderr, "[rtt] unbind fbo=%u finish scene\n", (unsigned)ACTIVE_FRAMEBUFFER->index);
+            }
+        }
+        _glFinishQueuedScene();
+    }
+
+    ACTIVE_FRAMEBUFFER = next;
+    _glGPUStateMarkDirty();
 }
 
 void APIENTRY glFramebufferTexture2DEXT(GLenum target, GLenum attachment, GLenum textarget, GLuint texture, GLint level) {
-    _GL_UNUSED(target);
-    _GL_UNUSED(attachment);
-    _GL_UNUSED(textarget);
-    _GL_UNUSED(level);
+    if(target != GL_FRAMEBUFFER_EXT) {
+        _glKosThrowError(GL_INVALID_ENUM, __func__);
+        return;
+    }
+
+    if(attachment != GL_COLOR_ATTACHMENT0_EXT) {
+        _glKosThrowError(GL_INVALID_ENUM, __func__);
+        return;
+    }
+
+    if(textarget != GL_TEXTURE_2D) {
+        _glKosThrowError(GL_INVALID_ENUM, __func__);
+        return;
+    }
+
+    if(level != 0) {
+        _glKosThrowError(GL_INVALID_VALUE, __func__);
+        return;
+    }
+
     if(texture != 0 && !glIsTexture(texture)) {
         _glKosThrowError(GL_INVALID_OPERATION, __func__);
         return;
@@ -88,12 +325,25 @@ void APIENTRY glFramebufferTexture2DEXT(GLenum target, GLenum attachment, GLenum
         return;
     }
 
-    ACTIVE_FRAMEBUFFER->texture_id = texture;
-}
+    if(ACTIVE_FRAMEBUFFER->texture_id != texture && (ACTIVE_FRAMEBUFFER->dirty || FBO_SCENE_OPEN)) {
+        /*
+         * Preserve the contents rendered into the previously attached texture
+         * before replacing or detaching it. Otherwise changing attachments on a
+         * dirty fake FBO silently drops the pending render.
+         */
+        _glFinishQueuedScene();
+    }
 
-GL_FORCE_INLINE GLuint A1555(GLuint v) {
-    const GLuint MASK = (1 << 15);
-    return (v & MASK) >> 8;
+    ACTIVE_FRAMEBUFFER->texture_id = texture;
+    ACTIVE_FRAMEBUFFER->dirty = GL_FALSE;
+
+    if(texture) {
+        TextureObject* txr = _glGetTexture(texture);
+        if(txr) {
+            _glPromoteTextureToRTT(txr);
+        }
+    }
+
 }
 
 GL_FORCE_INLINE GLuint R1555(GLuint v) {
@@ -149,23 +399,19 @@ GL_FORCE_INLINE GLuint B565(GLuint v) {
 static GL_NO_INSTRUMENT GLboolean _glCalculateAverageTexel(GLuint pvrFormat, const GLubyte* src1, const GLubyte* src2, const GLubyte* src3, const GLubyte* src4, GLubyte* t) {
     GLuint a, r, g, b;
 
-    GLubyte format = ((pvrFormat & (1 << 27)) | (pvrFormat & (1 << 26))) >> 26;
+    const GLuint format = pvrFormat & (7u << 27);
 
-    const GLubyte ARGB1555 = 0;
-    const GLubyte ARGB4444 = 1;
-    const GLubyte RGB565 = 2;
-
-    if((pvrFormat & GPU_TXRFMT_PAL8BPP) == GPU_TXRFMT_PAL8BPP) {
+    if(format == GPU_TXRFMT_PAL8BPP) {
         /* Paletted... all we can do really is just pick one of the
          * 4 texels.. unless we want to change the palette (bad) or
          * pick the closest available colour (slow, and probably bad)
          */
         *t = *src1;
-    } else if(format == RGB565) {
-        GLushort* s1 = (GLushort*) src1;
-        GLushort* s2 = (GLushort*) src2;
-        GLushort* s3 = (GLushort*) src3;
-        GLushort* s4 = (GLushort*) src4;
+    } else if(format == GPU_TXRFMT_RGB565) {
+        const GLushort* s1 = (const GLushort*) src1;
+        const GLushort* s2 = (const GLushort*) src2;
+        const GLushort* s3 = (const GLushort*) src3;
+        const GLushort* s4 = (const GLushort*) src4;
         GLushort* d1 = (GLushort*) t;
 
         r = R565(*s1) + R565(*s2) + R565(*s3) + R565(*s4);
@@ -177,11 +423,11 @@ static GL_NO_INSTRUMENT GLboolean _glCalculateAverageTexel(GLuint pvrFormat, con
         b /= 4;
 
         *d1 = PACK_RGB565(r, g, b);
-    } else if(format == ARGB4444) {
-        GLushort* s1 = (GLushort*) src1;
-        GLushort* s2 = (GLushort*) src2;
-        GLushort* s3 = (GLushort*) src3;
-        GLushort* s4 = (GLushort*) src4;
+    } else if(format == GPU_TXRFMT_ARGB4444) {
+        const GLushort* s1 = (const GLushort*) src1;
+        const GLushort* s2 = (const GLushort*) src2;
+        const GLushort* s3 = (const GLushort*) src3;
+        const GLushort* s4 = (const GLushort*) src4;
         GLushort* d1 = (GLushort*) t;
 
         a = A4444(*s1) + A4444(*s2) + A4444(*s3) + A4444(*s4);
@@ -194,27 +440,38 @@ static GL_NO_INSTRUMENT GLboolean _glCalculateAverageTexel(GLuint pvrFormat, con
         g /= 4;
         b /= 4;
 
-        *d1 = PACK_ARGB4444(a, r, g, b);
-    } else {
-        gl_assert(format == ARGB1555);
+        /* These values are already 4-bit channels; PACK_ARGB4444 expects
+         * 8-bit inputs and would quantize them a second time. */
+        *d1 = (GLushort)((a << 12) | (r << 8) | (g << 4) | b);
+    } else if(format == GPU_TXRFMT_ARGB1555) {
 
-        GLushort* s1 = (GLushort*) src1;
-        GLushort* s2 = (GLushort*) src2;
-        GLushort* s3 = (GLushort*) src3;
-        GLushort* s4 = (GLushort*) src4;
+        const GLushort* s1 = (const GLushort*) src1;
+        const GLushort* s2 = (const GLushort*) src2;
+        const GLushort* s3 = (const GLushort*) src3;
+        const GLushort* s4 = (const GLushort*) src4;
         GLushort* d1 = (GLushort*) t;
 
-        a = A1555(*s1) + A1555(*s2) + A1555(*s3) + A1555(*s4);
+        const GLuint opaqueCount =
+            ((*s1 >> 15) & 1u) +
+            ((*s2 >> 15) & 1u) +
+            ((*s3 >> 15) & 1u) +
+            ((*s4 >> 15) & 1u);
         r = R1555(*s1) + R1555(*s2) + R1555(*s3) + R1555(*s4);
         g = G1555(*s1) + G1555(*s2) + G1555(*s3) + G1555(*s4);
         b = B1555(*s1) + B1555(*s2) + B1555(*s3) + B1555(*s4);
 
-        a /= 4;
         r /= 4;
         g /= 4;
         b /= 4;
 
-        *d1 = PACK_ARGB1555((GLubyte) a, (GLubyte) r, (GLubyte) g, (GLubyte) b);
+        /* Preserve thin punch-through features when a 2x2 block is exactly
+         * half covered. A strict majority erodes one-texel fence lines when
+         * hardware LOD selection reaches the next smaller level. */
+        a = opaqueCount >= 2u ? 255u : 0u;
+        *d1 = PACK_ARGB1555(a, r, g, b);
+    } else {
+        _glKosThrowError(GL_INVALID_OPERATION, __func__);
+        return GL_FALSE;
     }
 
     return GL_TRUE;
@@ -304,12 +561,42 @@ void APIENTRY glGenerateMipmap(GLenum target) {
     GLuint prevWidth = tex->width;
     GLuint prevHeight = tex->height;
 
+    /* Keep mip generation in system RAM. Texture allocations use the PVR's
+     * 64-bit VRAM mapping on Dreamcast; ordinary CPU writes to that mapping
+     * are not a reliable texture upload mechanism on real hardware. */
+    GLubyte* baseData = (GLubyte*) malloc(tex->baseDataSize);
+    if(!baseData) {
+        _glKosThrowError(GL_OUT_OF_MEMORY, __func__);
+        return;
+    }
+    const GLubyte* currentBase = tex->baseDataOffset
+        ? _glGetMipmapLocation(tex, 0)
+        : (const GLubyte*)tex->data;
+    GPUTextureRead(currentBase, baseData, tex->baseDataSize);
+
     /* Make sure there is room for the mipmap data on the texture object */
     _glAllocateSpaceForMipmaps(tex);
+    if(!tex->data) {
+        free(baseData);
+        return;
+    }
+
+    const GLuint dataBytes = tex->baseDataOffset + tex->baseDataSize;
+    const GLuint uploadBytes = (dataBytes + 31u) & ~31u;
+    GLubyte* mipData = (GLubyte*) calloc(1, uploadBytes);
+    if(!mipData) {
+        free(baseData);
+        _glKosThrowError(GL_OUT_OF_MEMORY, __func__);
+        return;
+    }
+    memcpy(mipData + tex->baseDataOffset, baseData, tex->baseDataSize);
+    free(baseData);
 
     for(i = 1; i < _glGetMipmapLevelCount(tex); ++i) {
-        GLubyte* prevData = _glGetMipmapLocation(tex, i - 1);
-        GLubyte* thisData = _glGetMipmapLocation(tex, i);
+        const size_t prevOffset = (size_t)(_glGetMipmapLocation(tex, i - 1) - (GLubyte*)tex->data);
+        const size_t thisOffset = (size_t)(_glGetMipmapLocation(tex, i) - (GLubyte*)tex->data);
+        GLubyte* prevData = mipData + prevOffset;
+        GLubyte* thisData = mipData + thisOffset;
 
         GLuint thisWidth = (prevWidth > 1) ? prevWidth / 2 : 1;
         GLuint thisHeight = (prevHeight > 1) ? prevHeight / 2 : 1;
@@ -321,6 +608,9 @@ void APIENTRY glGenerateMipmap(GLenum target) {
         prevWidth = thisWidth;
         prevHeight = thisHeight;
     }
+
+    GPUTextureLoad(mipData, tex->data, uploadBytes);
+    free(mipData);
 
     gl_assert(_glIsMipmapComplete(tex));
 }
@@ -335,11 +625,9 @@ GLenum APIENTRY glCheckFramebufferStatusEXT(GLenum target) {
         return GL_FRAMEBUFFER_COMPLETE_EXT;
     }
 
-    if(!ACTIVE_FRAMEBUFFER->texture_id) {
-        return GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT_EXT;
-    }
-
-    return GL_FRAMEBUFFER_COMPLETE_EXT;
+    GLenum status = _glFramebufferStatus(ACTIVE_FRAMEBUFFER);
+    ACTIVE_FRAMEBUFFER->is_complete = (status == GL_FRAMEBUFFER_COMPLETE_EXT) ? GL_TRUE : GL_FALSE;
+    return status;
 }
 
 GLboolean APIENTRY glIsFramebufferEXT(GLuint framebuffer) {

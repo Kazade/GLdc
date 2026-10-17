@@ -1,4 +1,5 @@
 #include <float.h>
+#include <arch/cache.h>
 
 #include "../platform.h"
 #include "sh4.h"
@@ -12,8 +13,49 @@
 #define likely(x)      __builtin_expect(!!(x), 1)
 #define unlikely(x)    __builtin_expect(!!(x), 0)
 
+GL_FORCE_INLINE void _glPVRSetTextureStride(uint32_t stride) {
+    PVR_SET(PVR_TEXTURE_MODULO, (stride / 32));
+}
+
 void* GPUMemoryAlloc(size_t size) {
     return pvr_mem_malloc(size);
+}
+
+void GPUWritebackMemory(void* ptr, size_t size) {
+    dcache_flush_range((uintptr_t)ptr, size);
+}
+
+void GPUTextureLoad(const void* src, void* dst, size_t size) {
+    pvr_txr_load(src, dst, size);
+}
+
+void GPUTextureRead(const void* src, void* dst, size_t size) {
+    /* Texture allocations use the PVR's interleaved 64-bit address space.
+     * Read through the 32-bit VRAM window, selecting alternating banks for
+     * successive words, so CPU readback reconstructs the linear texture byte
+     * stream expected by the TA texture upload path. */
+    const uintptr_t sourceOffset = (uintptr_t)src - PVR_RAM_INT_BASE;
+    const uintptr_t bankBytes = PVR_RAM_SIZE / 2u;
+    uintptr_t sourceWord = sourceOffset / sizeof(uint32_t);
+    uint32_t* target = (uint32_t*)dst;
+
+    while(size >= sizeof(uint32_t)) {
+        const uintptr_t bank = sourceWord & 1u;
+        const uintptr_t bankOffset = (sourceWord >> 1u) * sizeof(uint32_t);
+        const volatile uint32_t* source32 =
+            (const volatile uint32_t*)(PVR_RAM_BASE + bank * bankBytes + bankOffset);
+        *target++ = *source32;
+        ++sourceWord;
+        size -= sizeof(uint32_t);
+    }
+
+    if(size) {
+        const uintptr_t bank = sourceWord & 1u;
+        const uintptr_t bankOffset = (sourceWord >> 1u) * sizeof(uint32_t);
+        const volatile uint8_t* sourceBytes =
+            (const volatile uint8_t*)(PVR_RAM_BASE + bank * bankBytes + bankOffset);
+        memcpy((uint8_t*)target, (const void*)sourceBytes, size);
+    }
 }
 
 GL_FORCE_INLINE bool glIsVertex(const float flags) {
@@ -87,6 +129,7 @@ GL_FORCE_INLINE void _glPerspectiveDivideVertex(Vertex* vertex, int count) {
 }
 
 static uintptr_t sq_dest_addr = 0;
+static size_t CURRENT_TEXTURE_STRIDE = 0;
 
 static inline void _glPushHeader(Vertex* v, size_t count)  {
     TRACE();
@@ -194,7 +237,21 @@ void SceneListSubmit(Vertex* vertices, int n) {
 
     Vertex* v0 = vertices;
     for(int i = 0; i < n - 1; ++i, ++v0) {
+        if(v0->flags == GPU_CMD_USERCLIP) {
+            SUBMIT_QUEUED_VERTEX(GPU_CMD_VERTEX_EOL);
+            _glPushHeader(v0, 1);
+            visible_mask = 0;
+            continue;
+        }
+
         if(is_header(v0)) {
+            SUBMIT_QUEUED_VERTEX(GPU_CMD_VERTEX_EOL);
+            PolyHeader* header = (PolyHeader*) v0;
+            if(header->meta.texture_is_strided && header->meta.texture_stride != CURRENT_TEXTURE_STRIDE) {
+                _glPVRSetTextureStride(header->meta.texture_stride);
+                CURRENT_TEXTURE_STRIDE = header->meta.texture_stride;
+            }
+
             _glPushHeader(v0, 1);
             visible_mask = 0;
             continue;
@@ -378,9 +435,18 @@ void SceneListSubmit(Vertex* vertices, int n) {
 }
 
 void SceneBegin() {
+    CURRENT_TEXTURE_STRIDE = 0;
     pvr_wait_ready();
     pvr_scene_begin();
 }
+
+#if GLDC_HAVE_PVR_SCENE_BEGIN_RTT
+int SceneBeginRTT(void* target, uint32_t render_w, uint32_t render_h, uint32_t stride_px) {
+    CURRENT_TEXTURE_STRIDE = 0;
+    pvr_wait_ready();
+    return pvr_scene_begin_rtt((pvr_ptr_t)target, render_w, render_h, stride_px);
+}
+#endif
 
 static pvr_dr_state_t dr_state;
 void SceneListBegin(GPUList list) {

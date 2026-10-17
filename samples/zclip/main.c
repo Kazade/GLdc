@@ -14,8 +14,6 @@
 
 #ifdef _arch_dreamcast
 #include <kos.h>
-extern uint8 romdisk[];
-KOS_INIT_ROMDISK(romdisk);
 #define IMG_FACADE00_PATH "/rd/facade00.tga"
 #define IMG_FACADE01_PATH "/rd/facade01.tga"
 #define IMG_FACADE02_PATH "/rd/facade02.tga"

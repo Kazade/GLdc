@@ -10,8 +10,6 @@
 //$KOS_BASE/utils/texconv/texconv  --in disk.png --format ARGB4444 --preview disk_preview.png --out disk.dtex
 
 #ifdef _arch_dreamcast
-extern uint8_t romdisk[];
-KOS_INIT_ROMDISK(romdisk);
 #define IMAGE_FILENAME "/rd/disk_1555.dtex"
 #else
 #define IMAGE_FILENAME "../samples/depth_funcs/alpha_testing/romdisk/disk_1555.dtex"

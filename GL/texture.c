@@ -42,6 +42,175 @@ static GLboolean TEXTURE_TWIDDLE_ENABLED = GL_FALSE;
 static void* ALLOC_BASE = NULL;
 static size_t ALLOC_SIZE = 0;
 
+#define GL_KOS_MAX_STRIDE_WIDTH 992
+
+static void* alloc_malloc_and_defrag(size_t size);
+
+static GLuint _glNextPowerOfTwo(GLuint v) {
+    if(v <= 1) {
+        return 1;
+    }
+
+    v--;
+    v |= v >> 1;
+    v |= v >> 2;
+    v |= v >> 4;
+    v |= v >> 8;
+    v |= v >> 16;
+    return v + 1;
+}
+
+static GLboolean _glIsTwiddledFormat(GLenum internalFormat) {
+    return (
+        internalFormat == GL_RGB565_TWID_KOS ||
+        internalFormat == GL_ARGB4444_TWID_KOS ||
+        internalFormat == GL_ARGB1555_TWID_KOS ||
+        internalFormat == GL_COLOR_INDEX8_TWID_KOS ||
+        internalFormat == GL_COLOR_INDEX4_TWID_KOS ||
+        internalFormat == GL_COMPRESSED_RGB_565_VQ_TWID_KOS ||
+        internalFormat == GL_COMPRESSED_ARGB_1555_VQ_TWID_KOS ||
+        internalFormat == GL_COMPRESSED_ARGB_4444_VQ_TWID_KOS ||
+        internalFormat == GL_COMPRESSED_RGB_565_VQ_MIPMAP_TWID_KOS ||
+        internalFormat == GL_COMPRESSED_ARGB_1555_VQ_MIPMAP_TWID_KOS ||
+        internalFormat == GL_COMPRESSED_ARGB_4444_VQ_MIPMAP_TWID_KOS
+    ) ? GL_TRUE : GL_FALSE;
+}
+
+static GLboolean _glIsCompressedFormat(GLenum internalFormat) {
+    return (
+        internalFormat == GL_COMPRESSED_RGB_565_VQ_KOS ||
+        internalFormat == GL_COMPRESSED_ARGB_1555_VQ_KOS ||
+        internalFormat == GL_COMPRESSED_ARGB_4444_VQ_KOS ||
+        internalFormat == GL_COMPRESSED_RGB_565_VQ_TWID_KOS ||
+        internalFormat == GL_COMPRESSED_ARGB_1555_VQ_TWID_KOS ||
+        internalFormat == GL_COMPRESSED_ARGB_4444_VQ_TWID_KOS ||
+        internalFormat == GL_COMPRESSED_RGB_565_VQ_MIPMAP_KOS ||
+        internalFormat == GL_COMPRESSED_ARGB_1555_VQ_MIPMAP_KOS ||
+        internalFormat == GL_COMPRESSED_ARGB_4444_VQ_MIPMAP_KOS ||
+        internalFormat == GL_COMPRESSED_RGB_565_VQ_MIPMAP_TWID_KOS ||
+        internalFormat == GL_COMPRESSED_ARGB_1555_VQ_MIPMAP_TWID_KOS ||
+        internalFormat == GL_COMPRESSED_ARGB_4444_VQ_MIPMAP_TWID_KOS
+    ) ? GL_TRUE : GL_FALSE;
+}
+
+static GLboolean _glIsPalettedFormat(GLenum internalFormat) {
+    return (
+        internalFormat == GL_COLOR_INDEX8_EXT ||
+        internalFormat == GL_COLOR_INDEX4_EXT ||
+        internalFormat == GL_COLOR_INDEX8_TWID_KOS ||
+        internalFormat == GL_COLOR_INDEX4_TWID_KOS
+    ) ? GL_TRUE : GL_FALSE;
+}
+
+GLboolean _glPromoteTextureToRTT(TextureObject* txr) {
+#ifdef _arch_dreamcast
+    if(!txr || !txr->data) {
+        return GL_FALSE;
+    }
+
+    if(txr->logicalWidth == 0 || txr->logicalHeight == 0) {
+        return GL_FALSE;
+    }
+
+    if(txr->logicalWidth > MAX_TEXTURE_SIZE ||
+       txr->logicalHeight > MAX_TEXTURE_SIZE) {
+        if(GLDC_RTT_TRACE) {
+            fprintf(stderr,
+                    "[rtt] reject tex=%u logical=%ux%u max=%u\n",
+                    txr->index,
+                    (unsigned)txr->logicalWidth,
+                    (unsigned)txr->logicalHeight,
+                    (unsigned)MAX_TEXTURE_SIZE);
+        }
+        return GL_FALSE;
+    }
+
+    const GLuint renderWidth = txr->logicalWidth;
+    const GLuint renderHeight = txr->logicalHeight;
+    const GLuint pvrWidth = _glNextPowerOfTwo(renderWidth);
+    const GLuint pvrHeight = _glNextPowerOfTwo(renderHeight);
+    const GLuint alignedRenderWidth = (renderWidth + 3u) & ~3u;
+    const GLuint rttStride =
+        (alignedRenderWidth != pvrWidth && alignedRenderWidth <= GL_KOS_MAX_STRIDE_WIDTH)
+            ? alignedRenderWidth
+            : pvrWidth;
+    const GLboolean needsStridedSampling = (rttStride != pvrWidth) ? GL_TRUE : GL_FALSE;
+
+    if(needsStridedSampling && (rttStride == 0 || rttStride > GL_KOS_MAX_STRIDE_WIDTH)) {
+        if(GLDC_RTT_TRACE) {
+            fprintf(stderr,
+                    "[rtt] reject tex=%u logical=%ux%u stride=%u\n",
+                    txr->index,
+                    (unsigned)txr->logicalWidth,
+                    (unsigned)txr->logicalHeight,
+                    (unsigned)rttStride);
+        }
+        return GL_FALSE;
+    }
+
+    if(txr->isRTT &&
+       txr->rttWidth == rttStride &&
+       txr->rttHeight == renderHeight &&
+       txr->pvrWidth == pvrWidth &&
+       txr->pvrHeight == pvrHeight &&
+       txr->isStrided == needsStridedSampling) {
+        return GL_TRUE;
+    }
+
+    const size_t physicalBytes =
+        (size_t)rttStride * (size_t)renderHeight * sizeof(GLushort);
+    const size_t logicalRowBytes = (size_t)txr->logicalWidth * sizeof(GLushort);
+    GLushort* oldData = (GLushort*)txr->data;
+    GLushort* rttData = (GLushort*)alloc_malloc_and_defrag(physicalBytes);
+
+    gl_assert(rttData);
+    if(!rttData) {
+        return GL_FALSE;
+    }
+
+    MEMSET(rttData, 0x0, physicalBytes);
+    if(oldData) {
+        for(GLushort y = 0; y < txr->logicalHeight; ++y) {
+            GLushort* dst_row = rttData + ((size_t)y * rttStride);
+            const GLushort* src_row = oldData + ((size_t)y * txr->logicalWidth);
+            memcpy(dst_row, src_row, logicalRowBytes);
+        }
+        alloc_free(ALLOC_BASE, oldData);
+    }
+
+    txr->data = rttData;
+    txr->rttWidth = (GLushort)rttStride;
+    txr->rttHeight = (GLushort)renderHeight;
+    txr->pvrWidth = (GLushort)pvrWidth;
+    txr->pvrHeight = (GLushort)pvrHeight;
+    txr->strideWidth = needsStridedSampling ? (GLushort)rttStride : 0;
+    txr->isStrided = needsStridedSampling;
+    txr->isRTT = GL_TRUE;
+    txr->dataStride = sizeof(GLushort);
+    txr->baseDataSize = (GLuint)physicalBytes;
+
+    if(GLDC_RTT_TRACE) {
+        fprintf(stderr,
+                "[rtt] promote tex=%u logical=%ux%u rtt=%ux%u pvr=%ux%u uScale=%0.6f vScale=%0.6f backing=%p\n",
+                txr->index,
+                (unsigned)txr->logicalWidth,
+                (unsigned)txr->logicalHeight,
+                (unsigned)txr->rttWidth,
+                (unsigned)txr->rttHeight,
+                (unsigned)txr->pvrWidth,
+                (unsigned)txr->pvrHeight,
+                txr->pvrWidth ? (float)txr->logicalWidth / (float)txr->pvrWidth : 1.0f,
+                txr->pvrHeight ? (float)txr->logicalHeight / (float)txr->pvrHeight : 1.0f,
+                txr->data);
+    }
+
+    return GL_TRUE;
+#else
+    _GL_UNUSED(txr);
+    return GL_FALSE;
+#endif
+}
+
 static void calc_twiddle_factors(uint32_t w, uint32_t h, uint32_t* maskX, uint32_t* maskY) {
     *maskX = 0;
     *maskY = 0;
@@ -495,6 +664,12 @@ void _glResetSharedPalettes()
 static void _glInitializeTextureObject(TextureObject* txr, unsigned int id) {
     txr->index = id;
     txr->width = txr->height = 0;
+    txr->logicalWidth = txr->logicalHeight = 0;
+    txr->pvrWidth = txr->pvrHeight = 0;
+    txr->rttWidth = txr->rttHeight = 0;
+    txr->strideWidth = 0;
+    txr->isStrided = GL_FALSE;
+    txr->isRTT = GL_FALSE;
     txr->mipmap = 0;
     txr->uv_wrap = 0;
     txr->env = GPU_TXRENV_MODULATEALPHA;
@@ -562,6 +737,10 @@ TextureObject* _glGetTexture1() {
 TextureObject* _glGetBoundTexture() {
     gl_assert(ACTIVE_TEXTURE < MAX_GLDC_TEXTURE_UNITS);
     return TEXTURE_UNITS[ACTIVE_TEXTURE];
+}
+
+TextureObject* _glGetTexture(GLuint texture) {
+    return (TextureObject*) named_array_get(&TEXTURE_OBJECTS, texture);
 }
 
 GLint _glGetTextureInternalFormat() {
@@ -868,16 +1047,26 @@ void APIENTRY glCompressedTexImage2DARB(GLenum target,
 
     gl_assert(ACTIVE_TEXTURE < MAX_GLDC_TEXTURE_UNITS);
     TextureObject* active = TEXTURE_UNITS[ACTIVE_TEXTURE];
-    GLuint original_id = active->index;
 
     if(!active) {
         _glKosThrowError(GL_INVALID_OPERATION, __func__);
         return;
     }
 
+    GLuint original_id = active->index;
+
     /* Set the required mipmap count */
     active->width   = width;
     active->height  = height;
+    active->logicalWidth = width;
+    active->logicalHeight = height;
+    active->pvrWidth = width;
+    active->pvrHeight = height;
+    active->rttWidth = 0;
+    active->rttHeight = 0;
+    active->strideWidth = 0;
+    active->isStrided = GL_FALSE;
+    active->isRTT = GL_FALSE;
     active->internalFormat = internalFormat;
     active->color   = _determinePVRFormat(internalFormat);
     active->mipmapCount = _glGetMipmapLevelCount(active);
@@ -1059,6 +1248,18 @@ static GLint _cleanInternalFormat(GLint internalFormat) {
     }
 }
 
+static GLint _cleanInternalFormatForTexture(GLint internalFormat, GLboolean forceNontwiddled) {
+    if(!forceNontwiddled) {
+        return _cleanInternalFormat(internalFormat);
+    }
+
+    GLboolean oldTwiddle = TEXTURE_TWIDDLE_ENABLED;
+    TEXTURE_TWIDDLE_ENABLED = GL_FALSE;
+    GLint ret = _cleanInternalFormat(internalFormat);
+    TEXTURE_TWIDDLE_ENABLED = oldTwiddle;
+    return ret;
+}
+
 static GLuint _determinePVRFormat(GLint internalFormat) {
     /* Given a cleaned internalFormat, return the Dreamcast format
      * that can hold it
@@ -1190,6 +1391,10 @@ GL_FORCE_INLINE void _rgba8888_to_a000(const GLubyte* source, GLubyte* dest) {
     *((GLushort*) dest) = ((source[3] & 0b11111000) << 8);
 }
 
+GL_FORCE_INLINE void _rgba8888_to_argb1555(const GLubyte* source, GLubyte* dest) {
+    *((GLushort*) dest) = PACK_ARGB1555(source[3], source[0], source[1], source[2]);
+}
+
 GL_FORCE_INLINE void _r8_to_rgb565(const GLubyte* source, GLubyte* dest) {
     *((GLushort*) dest) = (source[0] & 0b11111000) << 8;
 }
@@ -1299,6 +1504,9 @@ static int _determineConversion(GLint internalFormat, GLenum format, GLenum type
 
         {NULL,                  GL_ARGB1555_TWID_KOS, GL_BGRA,  GL_UNSIGNED_SHORT_1_5_5_5_REV_TWID_KOS, false, false},
 
+        {_rgba8888_to_argb1555, GL_ARGB1555_KOS,      GL_RGBA,  GL_UNSIGNED_BYTE, false, false},
+        {_rgba8888_to_argb1555, GL_ARGB1555_TWID_KOS, GL_RGBA,  GL_UNSIGNED_BYTE,  true, false},
+
         {_r8_to_rgb565,         GL_RGB565_KOS,        GL_RED,   GL_UNSIGNED_BYTE, false, false},
         {_r8_to_rgb565,         GL_RGB565_TWID_KOS,   GL_RED,   GL_UNSIGNED_BYTE,  true, false},
         {_rgb888_to_rgb565,     GL_RGB565_KOS,        GL_RGB,   GL_UNSIGNED_BYTE, false, false},
@@ -1405,7 +1613,7 @@ void _glAllocateSpaceForMipmaps(TextureObject* active) {
     GLubyte* temp = NULL;
     if(active->data) {
         temp = (GLubyte*) malloc(size);
-        memcpy(temp, active->data, size);
+        GPUTextureRead(active->data, temp, size);
 
         /* Free the PVR data */
         alloc_free(ALLOC_BASE, active->data);
@@ -1414,14 +1622,37 @@ void _glAllocateSpaceForMipmaps(TextureObject* active) {
 
     /* Figure out how much room to allocate for mipmaps */
     GLuint bytes = _glGetMipmapDataSize(active);
+    GLuint uploadBytes = (bytes + 31u) & ~31u;
 
-    active->data = alloc_malloc_and_defrag(bytes);
+    active->data = alloc_malloc_and_defrag(uploadBytes);
 
     gl_assert(active->data);
+    if(!active->data) {
+        free(temp);
+        _glKosThrowError(GL_OUT_OF_MEMORY, __func__);
+        return;
+    }
+
+    /* Texture memory is exposed through the PVR's 64-bit mapping on SH4.
+     * Build the allocation in system RAM and transfer it through the platform
+     * texture upload path rather than writing the VRAM mapping with memcpy. */
+    GLubyte* staging = (GLubyte*) calloc(1, uploadBytes);
+    gl_assert(staging);
+    if(!staging) {
+        alloc_free(ALLOC_BASE, active->data);
+        active->data = NULL;
+        free(temp);
+        _glKosThrowError(GL_OUT_OF_MEMORY, __func__);
+        return;
+    }
 
     if(temp) {
-        /* If there was existing data, then copy it where it should go */
-        memcpy(_glGetMipmapLocation(active, 0), temp, size);
+        memcpy(staging + _glGetMipmapDataOffset(active, 0), temp, size);
+    }
+    GPUTextureLoad(staging, active->data, uploadBytes);
+    free(staging);
+
+    if(temp) {
 
         /* We no longer need this */
         free(temp);
@@ -1448,7 +1679,20 @@ static bool _glValidTextureSize(GLuint size) {
     }
 }
 
-static bool _glTexImage2DValidate(GLenum target, GLint level, GLint internalFormat, GLsizei width, GLsizei height, GLint border, GLenum format, GLenum type) {
+static GLboolean _glTextureSizeIsNPOT(GLsizei width, GLsizei height) {
+    return (!_glValidTextureSize((GLuint) width) || !_glValidTextureSize((GLuint) height)) ? GL_TRUE : GL_FALSE;
+}
+
+static GLboolean _glTextureWrapIsClamped(const TextureObject* txr) {
+    return (
+        (txr->uv_wrap & CLAMP_U) &&
+        (txr->uv_wrap & CLAMP_V) &&
+        !(txr->uv_wrap & MIRROR_U) &&
+        !(txr->uv_wrap & MIRROR_V)
+    ) ? GL_TRUE : GL_FALSE;
+}
+
+static bool _glTexImage2DValidate(const TextureObject* txr, GLenum target, GLint level, GLint internalFormat, GLint cleanInternalFormat, GLsizei width, GLsizei height, GLint border, GLenum format, GLenum type) {
     if(target != GL_TEXTURE_2D) {
         INFO_MSG("Target unsupported");
         _glKosThrowError(GL_INVALID_ENUM, __func__);
@@ -1493,16 +1737,62 @@ static bool _glTexImage2DValidate(GLenum target, GLint level, GLint internalForm
         }
     }
 
-    if(_cleanInternalFormat(internalFormat) == -1) {
+    if(cleanInternalFormat == -1) {
         INFO_MSG("Unsupported internal format");
         _glKosThrowError(GL_INVALID_VALUE, __func__);
         return false;
     }
 
+    GLboolean isStrided = _glTextureSizeIsNPOT(width, height);
+
+    if(isStrided) {
+        if(level != 0) {
+            INFO_MSG("GL_KOS_texture_non_power_of_two does not support mipmaps");
+            _glKosThrowError(GL_INVALID_VALUE, __func__);
+            return false;
+        }
+
+        if(width <= 0 || (width % 32) != 0 || width > GL_KOS_MAX_STRIDE_WIDTH) {
+            INFO_MSG("Invalid GL_KOS_texture_non_power_of_two width");
+            _glKosThrowError(GL_INVALID_VALUE, __func__);
+            return false;
+        }
+
+        if(height <= 0) {
+            INFO_MSG("Invalid GL_KOS_texture_non_power_of_two height");
+            _glKosThrowError(GL_INVALID_VALUE, __func__);
+            return false;
+        }
+
+        if(!_glTextureWrapIsClamped(txr)) {
+            INFO_MSG("GL_KOS_texture_non_power_of_two textures require clamp wrap modes");
+            _glKosThrowError(GL_INVALID_OPERATION, __func__);
+            return false;
+        }
+
+        if(_glIsTwiddledFormat(cleanInternalFormat)) {
+            INFO_MSG("GL_KOS_texture_non_power_of_two textures must use non-twiddled storage");
+            _glKosThrowError(GL_INVALID_OPERATION, __func__);
+            return false;
+        }
+
+        if(_glIsPalettedFormat(cleanInternalFormat)) {
+            INFO_MSG("GL_KOS_texture_non_power_of_two paletted textures are unsupported");
+            _glKosThrowError(GL_INVALID_OPERATION, __func__);
+            return false;
+        }
+
+        if(_glIsCompressedFormat(cleanInternalFormat)) {
+            INFO_MSG("GL_KOS_texture_non_power_of_two compressed textures are unsupported");
+            _glKosThrowError(GL_INVALID_OPERATION, __func__);
+            return false;
+        }
+    }
+
     GLuint w = width;
     GLuint h = height;
     if(level == 0){
-        if(!_glValidTextureSize(w)) {
+        if(!isStrided && !_glValidTextureSize(w)) {
             /* Width is not a power of two. Must be!*/
             INFO_MSG("Unsupported width");
             _glKosThrowError(GL_INVALID_VALUE, __func__);
@@ -1510,7 +1800,7 @@ static bool _glTexImage2DValidate(GLenum target, GLint level, GLint internalForm
         }
 
 
-        if(!_glValidTextureSize(h)) {
+        if(!isStrided && !_glValidTextureSize(h)) {
             /* height is not a power of two. Must be!*/
             INFO_MSG("Unsupported height");
             _glKosThrowError(GL_INVALID_VALUE, __func__);
@@ -1625,15 +1915,20 @@ static inline GLboolean is4BPPFormat(GLenum format) {
     return format == GL_COLOR_INDEX4_EXT || format == GL_COLOR_INDEX4_TWID_KOS;
 }
 
+static GLuint _glGetUnpackRowPitch(GLsizei width, GLint sourceStride, GLenum format) {
+    GLint rowLength = _glGetUnpackRowLength();
+    GLint unpackAlignment = _glGetUnpackAlignment();
+    GLuint rowPixels = (rowLength > 0) ? (GLuint) rowLength : (GLuint) width;
+    GLuint rowBytes = is4BPPFormat(format) ? ((rowPixels + 1) / 2) : (rowPixels * (GLuint) sourceStride);
+
+    return (rowBytes + (GLuint) unpackAlignment - 1) & ~((GLuint) unpackAlignment - 1);
+}
+
 void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
                            GLsizei width, GLsizei height, GLint border,
                            GLenum format, GLenum type, const GLvoid *data) {
 
     TRACE();
-    if(!_glTexImage2DValidate(target, level, internalFormat, width, height, border, format, type)) {
-        return;
-    }
-
     gl_assert(ACTIVE_TEXTURE < MAX_GLDC_TEXTURE_UNITS);
     TextureObject* active = TEXTURE_UNITS[ACTIVE_TEXTURE];
 
@@ -1643,21 +1938,34 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
         return;
     }
 
+    GLboolean useStridedNpot = _glTextureSizeIsNPOT(width, height);
+    GLenum cleanInternalFormat = _cleanInternalFormatForTexture(internalFormat, useStridedNpot);
+
+    if(!_glTexImage2DValidate(active, target, level, internalFormat, cleanInternalFormat, width, height, border, format, type)) {
+        return;
+    }
+
     GLboolean isPaletted = (
         internalFormat == GL_COLOR_INDEX8_EXT ||
         internalFormat == GL_COLOR_INDEX4_EXT ||
         internalFormat == GL_COLOR_INDEX4_TWID_KOS ||
         internalFormat == GL_COLOR_INDEX8_TWID_KOS
     ) ? GL_TRUE : GL_FALSE;
-    GLenum cleanInternalFormat = _cleanInternalFormat(internalFormat);
+
     GLuint pvrFormat = _determinePVRFormat(cleanInternalFormat);
     GLuint originalId = active->index;
+    GLboolean isStrided = useStridedNpot;
+    GLuint texturePitch = isStrided ? (GLuint) width : (GLuint) width;
+    GLuint pvrWidth = isStrided ? _glNextPowerOfTwo((GLuint) width) : (GLuint) width;
+    GLuint pvrHeight = isStrided ? _glNextPowerOfTwo((GLuint) height) : (GLuint) height;
 
     if(active->data && (level == 0)) {
         /* pre-existing texture - check if changed */
         if(active->width != width ||
            active->height != height ||
-           active->internalFormat != cleanInternalFormat) {
+           active->internalFormat != cleanInternalFormat ||
+           active->isStrided != isStrided ||
+           active->strideWidth != (isStrided ? texturePitch : 0)) {
             /* changed - free old texture memory */
             alloc_free(ALLOC_BASE, active->data);
             active->data = NULL;
@@ -1675,8 +1983,11 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
      */
     GLint destStride = _determineStrideInternal(cleanInternalFormat);
     GLint sourceStride = _determineStride(format, type);
-    GLuint srcBytes = ((GLuint)width * (GLuint)height * (GLuint)sourceStride);
-    GLuint destBytes = ((GLuint)width * (GLuint)height * (GLuint)destStride);
+    GLuint sourceRowWidth = is4BPPFormat(format) ? (((GLuint) width + 1) / 2) : ((GLuint) width * (GLuint) sourceStride);
+    GLuint sourcePitch = _glGetUnpackRowPitch(width, sourceStride, format);
+    GLuint srcBytes = height ? (sourcePitch * ((GLuint) height - 1) + sourceRowWidth) : 0;
+    GLuint texelCount = texturePitch * (GLuint)height;
+    GLuint destBytes = texelCount * (GLuint)destStride;
 
     TextureConversionFunc conversion = NULL;
     int needs_conversion = _determineConversion(cleanInternalFormat, format, type, &conversion);
@@ -1703,6 +2014,15 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
         /* need texture memory */
         active->width   = width;
         active->height  = height;
+        active->logicalWidth = width;
+        active->logicalHeight = height;
+        active->pvrWidth = pvrWidth;
+        active->pvrHeight = pvrHeight;
+        active->rttWidth = 0;
+        active->rttHeight = 0;
+        active->isStrided = isStrided;
+        active->isRTT = GL_FALSE;
+        active->strideWidth = isStrided ? (GLushort) texturePitch : 0;
         active->color   = pvrFormat;
         active->internalFormat = cleanInternalFormat;
         /* Set the required mipmap count */
@@ -1745,6 +2065,13 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
     GLubyte* targetData = (active->baseDataOffset == 0) ? active->data : _glGetMipmapLocation(active, level);
     gl_assert(targetData);
 
+    if(!data) {
+        MEMSET4(targetData, 0x0, destBytes);
+        gl_assert(active->index == originalId);
+        _glGPUStateMarkDirty();
+        return;
+    }
+
     if(needs_conversion < 0) {
         _glKosThrowError(GL_INVALID_VALUE, __func__);
         INFO_MSG("Couldn't find necessary texture conversion\n");
@@ -1764,12 +2091,26 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
             /* No conversion or packing needed - direct copy to VRAM */
             FASTCPY(targetData, data, destBytes);
         } else if(is4BPPFormat(internalFormat) && is4BPPFormat(format)) {
-            /* 4BPP special case: unpack each nibble, twiddle, repack directly to VRAM */
+            /* 4BPP special case: unpack each nibble, twiddle, and repack.  Build
+             * level zero in system RAM because byte read-modify-write through
+             * the PVR 64-bit VRAM mapping is not reliable on real hardware. */
             uint32_t maskX, maskY;
+            const bool stageBaseLevel = level == 0 && active->baseDataOffset == 0;
+            GLubyte* twiddleBuffer = stageBaseLevel
+                ? (GLubyte*)calloc(1, destBytes)
+                : targetData;
+
+            if(!twiddleBuffer) {
+                _glKosThrowError(GL_OUT_OF_MEMORY, __func__);
+                return;
+            }
+
             calc_twiddle_factors(width, height, &maskX, &maskY);
 
             /* Clear destination buffer since we do read-modify-write on nibbles */
-            MEMSET4(targetData, 0x0, destBytes);
+            if(!stageBaseLevel) {
+                MEMSET4(twiddleBuffer, 0x0, destBytes);
+            }
 
             for(uint32_t i = 0; i < (width * height); ++i) {
                 uint32_t x = i % width;
@@ -1783,12 +2124,17 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
                 const uint8_t* src_byte = &((uint8_t*) data)[i / 2];
                 uint8_t src_value = (i % 2) == 0 ? (*src_byte >> 4) : (*src_byte & 0xF);
 
-                uint8_t* dst_byte = &targetData[dstIndex / 2];
+                uint8_t* dst_byte = &twiddleBuffer[dstIndex / 2];
                 if(dstIndex % 2 == 1) {
                     *dst_byte = (*dst_byte & 0xF) | (src_value << 4);
                 } else {
                     *dst_byte = (*dst_byte & 0xF0) | (src_value & 0xF);
                 }
+            }
+
+            if(stageBaseLevel) {
+                GPUTextureLoad(twiddleBuffer, targetData, destBytes);
+                free(twiddleBuffer);
             }
         } else if(pack) {
             /* Pack case for 8bpp paletted textures: repack nibbles directly to VRAM */
@@ -1808,45 +2154,68 @@ void APIENTRY glTexImage2D(GLenum target, GLint level, GLint internalFormat,
                 }
             }
         } else {
-            /* General case: iterate source texels, compute destination, convert/write directly */
+            /* General case: convert level zero in system RAM, then use the PVR
+             * texture upload path. Halfword writes through the 64-bit VRAM
+             * window can lose packed channel bits on real hardware. */
             uint32_t maskX, maskY;
             bool twiddle = (needs_conversion & CONVERSION_TYPE_TWIDDLE) != 0;
             bool convert = (needs_conversion & CONVERSION_TYPE_CONVERT) != 0;
+            const bool stageBaseLevel = level == 0 && active->baseDataOffset == 0;
+            GLubyte* conversionBuffer = stageBaseLevel
+                ? (GLubyte*)malloc(destBytes)
+                : targetData;
+
+            if(!conversionBuffer) {
+                _glKosThrowError(GL_OUT_OF_MEMORY, __func__);
+                return;
+            }
 
             if(twiddle) {
                 calc_twiddle_factors(width, height, &maskX, &maskY);
             }
 
-            for(uint32_t i = 0; i < (width * height); ++i) {
-                const GLubyte* src = data + (sourceStride * i);
-                GLubyte* dst;
+            for(uint32_t y = 0; y < (uint32_t) height; ++y) {
+                for(uint32_t x = 0; x < (uint32_t) width; ++x) {
+                    const GLubyte* src = ((const GLubyte*) data) + (sourcePitch * y) + (sourceStride * x);
+                    GLubyte* dst;
 
-                if(twiddle) {
-                    uint32_t x = i % width;
-                    uint32_t y = i / width;
-                    uint32_t newLocation = twid_compute_index(x, y, maskX, maskY);
-                    dst = targetData + (destStride * newLocation);
-                } else {
-                    dst = targetData + (destStride * i);
-                }
+                    if(twiddle) {
+                        uint32_t newLocation = twid_compute_index(x, y, maskX, maskY);
+                        dst = conversionBuffer + (destStride * newLocation);
+                    } else {
+                        dst = conversionBuffer + ((texturePitch * y + x) * destStride);
+                    }
 
-                if(convert) {
-                    conversion(src, dst);
-                } else {
-                    for(int j = 0; j < destStride; ++j) {
-                        dst[j] = src[j];
+                    if(convert) {
+                        conversion(src, dst);
+                    } else {
+                        for(int j = 0; j < destStride; ++j) {
+                            dst[j] = src[j];
+                        }
                     }
                 }
+            }
+
+            if(stageBaseLevel) {
+                GPUTextureLoad(conversionBuffer, targetData, destBytes);
+                free(conversionBuffer);
             }
         }
     } else {
         /* No conversion necessary, we can just upload data directly */
         gl_assert(targetData);
-        gl_assert(data);
         gl_assert(destBytes);
 
-        /* No conversion? Just copy the data, and the pvr_format is correct */
-        FASTCPY(targetData, data, destBytes);
+        if(sourcePitch == ((GLuint) width * (GLuint) destStride) && texturePitch == (GLuint) width) {
+            /* No conversion? Just copy the data, and the pvr_format is correct */
+            FASTCPY(targetData, data, destBytes);
+        } else {
+            for(GLsizei y = 0; y < height; ++y) {
+                GLubyte* destRow = targetData + ((GLuint) y * texturePitch * (GLuint) destStride);
+                const GLubyte* srcRow = ((const GLubyte*) data) + ((GLuint) y * sourcePitch);
+                FASTCPY(destRow, srcRow, sourceRowWidth);
+            }
+        }
         gl_assert(active->index == originalId);
     }
 
@@ -1898,13 +2267,24 @@ void APIENTRY glTexParameteri(GLenum target, GLenum pname, GLint param) {
                     case GL_CLAMP_TO_EDGE:
                     case GL_CLAMP:
                         active->uv_wrap |= CLAMP_U;
+                        active->uv_wrap &= ~MIRROR_U;
                         break;
 
                     case GL_REPEAT:
+                        if(active->isStrided) {
+                            _glKosThrowError(GL_INVALID_OPERATION, __func__);
+                            return;
+                        }
                         active->uv_wrap &= ~CLAMP_U;
+                        active->uv_wrap &= ~MIRROR_U;
                         break;
 
                     case GL_MIRRORED_REPEAT:
+                        if(active->isStrided) {
+                            _glKosThrowError(GL_INVALID_OPERATION, __func__);
+                            return;
+                        }
+                        active->uv_wrap &= ~CLAMP_U;
                         active->uv_wrap |= MIRROR_U;
                         break;
                 }
@@ -1916,13 +2296,24 @@ void APIENTRY glTexParameteri(GLenum target, GLenum pname, GLint param) {
                     case GL_CLAMP_TO_EDGE:
                     case GL_CLAMP:
                         active->uv_wrap |= CLAMP_V;
+                        active->uv_wrap &= ~MIRROR_V;
                         break;
 
                     case GL_REPEAT:
+                        if(active->isStrided) {
+                            _glKosThrowError(GL_INVALID_OPERATION, __func__);
+                            return;
+                        }
                         active->uv_wrap &= ~CLAMP_V;
+                        active->uv_wrap &= ~MIRROR_V;
                         break;
 
                     case GL_MIRRORED_REPEAT:
+                        if(active->isStrided) {
+                            _glKosThrowError(GL_INVALID_OPERATION, __func__);
+                            return;
+                        }
+                        active->uv_wrap &= ~CLAMP_V;
                         active->uv_wrap |= MIRROR_V;
                         break;
                 }
@@ -2155,33 +2546,40 @@ void APIENTRY glTexSubImage2D(GLenum target, GLint level, GLint xoffset, GLint y
         return;
     }
 
+    if(active->isStrided && level != 0) {
+        _glKosThrowError(GL_INVALID_VALUE, __func__);
+        return;
+    }
+
     // Retrieve the dimensions of the currently bound texture
-    GLsizei textureWidth = active->width;
-    GLsizei textureHeight = active->height;
+    GLsizei textureWidth = active->logicalWidth ? active->logicalWidth : active->width;
+    GLsizei textureHeight = active->logicalHeight ? active->logicalHeight : active->height;
+    GLsizei texturePitch = active->isStrided ? active->strideWidth : textureWidth;
 
     if (!_glTexSubImage2DValidate(target, level, xoffset, yoffset, width, height, format, type, textureWidth, textureHeight)) {
         INFO_MSG("Error: _glTexSubImage2DValidate failed\n");
         return;
     }
 
-    GLboolean isPaletted = (
-        active->internalFormat == GL_COLOR_INDEX8_EXT ||
-        active->internalFormat == GL_COLOR_INDEX4_EXT ||
-        active->internalFormat == GL_COLOR_INDEX4_TWID_KOS ||
-        active->internalFormat == GL_COLOR_INDEX8_TWID_KOS
-    ) ? GL_TRUE : GL_FALSE;
-
     GLenum cleanInternalFormat = _cleanInternalFormat(active->internalFormat);
 
     // Determine source stride
     GLint sourceStride = _determineStride(format, type);
-    GLuint srcBytes = (width * height * sourceStride);
+    if (sourceStride < 0) {
+        INFO_MSG("Stride was not detected\n");
+        _glKosThrowError(GL_INVALID_OPERATION, __func__);
+        return;
+    }
+
+    GLuint sourceRowWidth = is4BPPFormat(format) ? (((GLuint) width + 1) / 2) : ((GLuint) width * (GLuint) sourceStride);
+    GLuint sourcePitch = _glGetUnpackRowPitch(width, sourceStride, format);
+    GLuint srcBytes = height ? (sourcePitch * ((GLuint) height - 1) + sourceRowWidth) : 0;
 
     // Calculate destination stride (this accounts for both POT and NPOT)
     GLint destStride = _determineStrideInternal(cleanInternalFormat);
 
     // Calculate destBytes using the texture's full dimensions
-    GLuint destBytes = (textureWidth * textureHeight * destStride);
+    GLuint destBytes = (texturePitch * textureHeight * destStride);
 
     TextureConversionFunc conversion = NULL;
     int needs_conversion = _determineConversion(cleanInternalFormat, format, type, &conversion);
@@ -2220,7 +2618,8 @@ void APIENTRY glTexSubImage2D(GLenum target, GLint level, GLint xoffset, GLint y
         }
         if (needs_conversion == CONVERSION_TYPE_CONVERT) {
             for (uint32_t y = 0; y < height; ++y) {
-                dst = conversionBuffer + ((y + yoffset) * textureWidth + xoffset) * destStride;
+                src = (const GLubyte*) data + (y * sourcePitch);
+                dst = conversionBuffer + ((y + yoffset) * texturePitch + xoffset) * destStride;
                 for (uint32_t x = 0; x < width; ++x) {
                     conversion(src, dst);
                     dst += destStride;
@@ -2233,21 +2632,24 @@ void APIENTRY glTexSubImage2D(GLenum target, GLint level, GLint xoffset, GLint y
 
             for (uint32_t y = yoffset; y < yoffset + height; ++y) {
                 for (uint32_t x = xoffset; x < xoffset + width; ++x) {
-                    uint32_t srcIndex = (y - yoffset) * width + (x - xoffset);
                     uint32_t newLocation = twid_compute_index(x, y, maskX, maskY);
                     dst = conversionBuffer + (destStride * newLocation);
+                    src = (const GLubyte*) data + ((y - yoffset) * sourcePitch) + ((x - xoffset) * sourceStride);
 
                     if (needs_conversion == 3) {
-                        conversion(src + srcIndex * sourceStride, dst);
+                        conversion(src, dst);
                     } else {
-                        memcpy(dst, src + srcIndex * sourceStride, destStride);
+                        memcpy(dst, src, destStride);
                     }
                 }
             }
         }
 
         if (pack) {
-            assert(isPaletted);
+            assert(active->internalFormat == GL_COLOR_INDEX8_EXT ||
+                   active->internalFormat == GL_COLOR_INDEX4_EXT ||
+                   active->internalFormat == GL_COLOR_INDEX4_TWID_KOS ||
+                   active->internalFormat == GL_COLOR_INDEX8_TWID_KOS);
             size_t dst_byte = 0;
             for (size_t src_byte = 0; src_byte < destBytes; ++src_byte) {
                 uint8_t v = conversionBuffer[src_byte];
@@ -2267,10 +2669,19 @@ void APIENTRY glTexSubImage2D(GLenum target, GLint level, GLint xoffset, GLint y
         free(conversionBuffer);
     } else {
         // No conversion necessary, we can update data directly
+        if (xoffset == 0 &&
+            yoffset == 0 &&
+            width == textureWidth &&
+            sourceStride == destStride &&
+            sourcePitch == textureWidth * destStride) {
+            FASTCPY(targetData, data, height * sourcePitch);
+            _glGPUStateMarkDirty();
+            return;
+        }
+
         for (GLsizei y = 0; y < height; ++y) {
-            GLsizei srcRowWidth = width * sourceStride;
-            GLubyte* destRow = targetData + ((y + yoffset) * textureWidth + xoffset) * destStride;
-            FASTCPY(destRow, (GLubyte*)data + y * srcRowWidth, srcRowWidth);
+            GLubyte* destRow = targetData + ((y + yoffset) * texturePitch + xoffset) * destStride;
+            FASTCPY(destRow, (GLubyte*)data + y * sourcePitch, sourceRowWidth);
         }
     }
 

@@ -26,8 +26,6 @@
 #include "../loadbmp.h"
 
 #ifdef _arch_dreamcast
-extern uint8 romdisk[];
-KOS_INIT_ROMDISK(romdisk);
 #define IMG_PATH "/rd/brick.bmp"
 #else
 #define IMG_PATH "../samples/nehe10/romdisk/brick.bmp"

@@ -167,6 +167,8 @@ static inline size_t GPUMemoryAvailable() {
 }
 
 void* GPUMemoryAlloc(size_t size);
+void GPUTextureLoad(const void* src, void* dst, size_t size);
+void GPUTextureRead(const void* src, void* dst, size_t size);
 static inline void GPUSetPaletteFormat(GPUPaletteFormat format) {
     pvr_set_pal_format((pvr_palfmt_t) format);
 }

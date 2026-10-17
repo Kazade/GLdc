@@ -4,10 +4,18 @@
 #include <stdlib.h>
 #include <stdbool.h>
 
+#ifdef _arch_dreamcast
+#include <kos/version.h>
+#endif
+
 #include "gl_assert.h"
 #include "types.h"
 
 #define MEMSET(dst, v, size) memset((dst), (v), (size))
+
+#ifndef GLDC_HAVE_PVR_SCENE_BEGIN_RTT
+#define GLDC_HAVE_PVR_SCENE_BEGIN_RTT 0
+#endif
 
 typedef enum GPUAlpha {
     GPU_ALPHA_DISABLE = 0,
@@ -67,8 +75,10 @@ typedef enum GPUTextureFormat {
     GPU_TXRFMT_PAL8BPP = (6 << 27),
     GPU_TXRFMT_TWIDDLED = (0 << 26),
     GPU_TXRFMT_NONTWIDDLED = (1 << 26),
-    GPU_TXRFMT_NOSTRIDE = (0 << 21),
-    GPU_TXRFMT_STRIDE = (1 << 21)
+    GPU_TXRFMT_POW2_STRIDE = (0 << 25),
+    GPU_TXRFMT_NOSTRIDE = GPU_TXRFMT_POW2_STRIDE,
+    GPU_TXRFMT_X32_STRIDE = (1 << 25),
+    GPU_TXRFMT_STRIDE = GPU_TXRFMT_X32_STRIDE
 } GPUTextureFormat;
 
 static inline uint32_t GPUPaletteSelect8BPP(uint32_t x) {
@@ -167,6 +177,8 @@ typedef struct VideoMode {
 } VideoMode;
 
 const VideoMode* GetVideoMode();
+void _glFinishQueuedScene(void);
+bool _glBeginQueuedScene(void);
 
 /* Duplication of pvr_poly_cxt_t from KOS so that we can
  * compile on non-KOS platforms for testing */
@@ -218,6 +230,10 @@ typedef struct {
         int     width;
         int     height;
         int     format;
+        int     stride_width;
+        float   uv_scale_u;
+        float   uv_scale_v;
+        int     is_strided;
         void*   base;
     } txr;
     struct {
@@ -232,6 +248,10 @@ typedef struct {
         int     width;
         int     height;
         int     format;
+        int     stride_width;
+        float   uv_scale_u;
+        float   uv_scale_v;
+        int     is_strided;
         void*   base;
     } txr2;
 } PolyContext;
@@ -245,7 +265,13 @@ typedef struct {
     uint32_t d2;
     uint32_t d3;
     uint32_t d4;
-    uint8_t padding[32];
+    struct {
+        uint32_t texture_stride;
+        float uv_scale_u;
+        float uv_scale_v;
+        uint8_t texture_is_strided;
+        uint8_t padding[19];
+    } meta;
 } PolyHeader;
 
 enum GPUCommand {
@@ -260,6 +286,9 @@ enum GPUCommand {
 typedef float Matrix4x4[16];
 
 void SceneBegin();
+#if GLDC_HAVE_PVR_SCENE_BEGIN_RTT
+int SceneBeginRTT(void* target, uint32_t render_w, uint32_t render_h, uint32_t stride_px);
+#endif
 
 void SceneListBegin(GPUList list);
 void SceneListSubmit(Vertex* v2, int n);
@@ -374,6 +403,9 @@ static inline int DimensionFlag(const int w) {
 
 static uint8_t* DEFAULT_TEXTURE = NULL;
 extern void* GPUMemoryAlloc(size_t size);
+extern void GPUWritebackMemory(void* ptr, size_t size);
+extern void GPUTextureLoad(const void* src, void* dst, size_t size);
+extern void GPUTextureRead(const void* src, void* dst, size_t size);
 
 /* Compile a polygon context into a polygon header */
 static inline void CompilePolyHeader(PolyHeader *dst, const PolyContext *src) {
@@ -384,6 +416,10 @@ static inline void CompilePolyHeader(PolyHeader *dst, const PolyContext *src) {
 
     /* The base values for CMD */
     dst->cmd = GPU_CMD_POLYHDR;
+    dst->meta.texture_is_strided = 0;
+    dst->meta.texture_stride = 0;
+    dst->meta.uv_scale_u = 1.0f;
+    dst->meta.uv_scale_v = 1.0f;
 
     /* Big hack! This enables texturing no matter what. If we disable texturing then
      * we lose offset color and the vertex format changes meaning we have to manipulate
@@ -417,19 +453,25 @@ static inline void CompilePolyHeader(PolyHeader *dst, const PolyContext *src) {
     dst->mode2 |= (src->gen.color_clamp << GPU_TA_PM2_CLAMP_SHIFT) & GPU_TA_PM2_CLAMP_MASK;
     dst->mode2 |= (src->gen.alpha << GPU_TA_PM2_ALPHA_SHIFT) & GPU_TA_PM2_ALPHA_MASK;
 
+    dst->mode3 = 0;
+
     if(src->txr.enable == GPU_TEXTURE_DISABLE) {
-        dst->mode3 = 0;
         /* Texturing was disabled so we simulate it with a white texture */
         if(!DEFAULT_TEXTURE) {
+            uint16_t texture[8 * 8];
+
             DEFAULT_TEXTURE = (uint8_t*) GPUMemoryAlloc(8 * 8 * 2);
-            for(int i = 0; i < 8 * 8 * 2; ++i) {
-                DEFAULT_TEXTURE[i] = 0xff;
+            for(int i = 0; i < 8 * 8; ++i) {
+                texture[i] = 0xffff;
             }
+            GPUWritebackMemory(DEFAULT_TEXTURE, 8 * 8 * 2);
+            GPUTextureLoad(texture, DEFAULT_TEXTURE, sizeof(texture));
         }
+        dst->mode3 = 0;
         dst->mode2 |= (DimensionFlag(8) << GPU_TA_PM2_USIZE_SHIFT) & GPU_TA_PM2_USIZE_MASK;
         dst->mode2 |= (DimensionFlag(8) << GPU_TA_PM2_VSIZE_SHIFT) & GPU_TA_PM2_VSIZE_MASK;
         dst->mode2 |= (GPU_TXRENV_MODULATEALPHA << GPU_TA_PM2_TXRENV_SHIFT) & GPU_TA_PM2_TXRENV_MASK;
-        dst->mode3 |= (GPU_TXRFMT_RGB565 << GPU_TA_PM3_TXRFMT_SHIFT) & GPU_TA_PM3_TXRFMT_MASK;
+        dst->mode3 |= ((GPU_TXRFMT_RGB565 | GPU_TXRFMT_NONTWIDDLED) << GPU_TA_PM3_TXRFMT_SHIFT) & GPU_TA_PM3_TXRFMT_MASK;
         /* Convert the texture address */
         txr_base = (uint32_t) DEFAULT_TEXTURE;
         txr_base = (txr_base & 0x00fffff8) >> 3;
@@ -449,6 +491,10 @@ static inline void CompilePolyHeader(PolyHeader *dst, const PolyContext *src) {
         /* Polygon mode 3 */
         dst->mode3  = (src->txr.mipmap << GPU_TA_PM3_MIPMAP_SHIFT) & GPU_TA_PM3_MIPMAP_MASK;
         dst->mode3 |= (src->txr.format << GPU_TA_PM3_TXRFMT_SHIFT) & GPU_TA_PM3_TXRFMT_MASK;
+        dst->meta.texture_is_strided = src->txr.is_strided ? 1 : 0;
+        dst->meta.texture_stride = src->txr.stride_width;
+        dst->meta.uv_scale_u = src->txr.uv_scale_u;
+        dst->meta.uv_scale_v = src->txr.uv_scale_v;
 
         /* Convert the texture address */
         txr_base = (uint32_t) src->txr.base;

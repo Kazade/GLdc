@@ -18,6 +18,13 @@ static Matrix4x4 __attribute__((aligned(32))) NORMAL_MATRIX;
 static Matrix4x4 __attribute__((aligned(32))) VIEWPORT_MATRIX;
 static Matrix4x4 __attribute__((aligned(32))) PROJECTION_MATRIX;
 
+static struct {
+    GLint x;
+    GLint y;
+    GLsizei width;
+    GLsizei height;
+} VIEWPORT_STATE;
+
 static GLenum MATRIX_MODE = GL_MODELVIEW;
 static Stack* MATRIX_CUR;
 static GLboolean NORMAL_DIRTY, PROJECTION_DIRTY;
@@ -53,6 +60,24 @@ GLenum _glGetMatrixMode() {
 
 GLboolean _glIsIdentity(const Matrix4x4* m) {
     return memcmp(m, IDENTITY, sizeof(Matrix4x4)) == 0;
+}
+
+void _glGetViewport(GLint* x, GLint* y, GLsizei* width, GLsizei* height) {
+    if(x) {
+        *x = VIEWPORT_STATE.x;
+    }
+
+    if(y) {
+        *y = VIEWPORT_STATE.y;
+    }
+
+    if(width) {
+        *width = VIEWPORT_STATE.width;
+    }
+
+    if(height) {
+        *height = VIEWPORT_STATE.height;
+    }
 }
 
 void _glInitMatrices() {
@@ -370,13 +395,23 @@ void glMultTransposeMatrixf(const GLfloat *m) {
 
 /* Set the GL viewport */
 void APIENTRY glViewport(GLint x, GLint y, GLsizei width, GLsizei height) {
+    GLsizei target_width = 0;
+    GLsizei target_height = 0;
+
+    _glGetFramebufferRenderSize(&target_width, &target_height);
+
+    VIEWPORT_STATE.x = x;
+    VIEWPORT_STATE.y = y;
+    VIEWPORT_STATE.width = width;
+    VIEWPORT_STATE.height = height;
+
     VIEWPORT_MATRIX[M0]  =  width *  0.5f;
     VIEWPORT_MATRIX[M5]  = height * -0.5f;
     VIEWPORT_MATRIX[M10] = 1.0f;
     VIEWPORT_MATRIX[M15] = 1.0f;
     
     VIEWPORT_MATRIX[M12] = x + width * 0.5f;
-    VIEWPORT_MATRIX[M13] = GetVideoMode()->height - (y + height * 0.5f);
+    VIEWPORT_MATRIX[M13] = target_height - (y + height * 0.5f);
     PROJECTION_DIRTY = true;
 }
 

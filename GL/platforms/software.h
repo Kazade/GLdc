@@ -62,6 +62,7 @@ enum GPUPaletteFormat;
 
 size_t GPUMemoryAvailable();
 void* GPUMemoryAlloc(size_t size);
+void GPUTextureLoad(const void* src, void* dst, size_t size);
 void GPUSetPaletteFormat(GPUPaletteFormat format);
 void GPUSetPaletteEntry(uint32_t idx, uint32_t value);
 
@@ -73,4 +74,3 @@ void GPUSetFogLinear(float start, float end);
 void GPUSetFogExp(float density);
 void GPUSetFogExp2(float density);
 void GPUSetFogColor(float r, float g, float b, float a);
-

@@ -351,7 +351,10 @@ public:
                     output += " ";
                 }
 
-                std::cout << output;
+                /* Flush the name before running so that, if a test hard-crashes
+                 * (e.g. on real Dreamcast hardware), the last line printed
+                 * identifies the offending test. */
+                std::cout << output << std::flush;
                 test();
                 std::cout << "\033[32m" << "   OK   " << "\033[0m" << std::endl;
                 junit_lines.push_back("    </testcase>\n");

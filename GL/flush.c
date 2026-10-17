@@ -54,6 +54,7 @@ void APIENTRY glKosInitConfig(GLdcConfig* config) {
 }
 
 static bool _initialized = false;
+static bool SCENE_ACTIVE = false;
 
 void APIENTRY glKosInitEx(GLdcConfig* config) {
     if(_initialized) {
@@ -114,32 +115,63 @@ void APIENTRY glKosInit() {
     glKosInitEx(&config);
 }
 
-void APIENTRY glKosSwapBuffers() {
-    TRACE();
+void _glSubmitQueuedScene(void) {
+    if(aligned_vector_header(&OP_LIST.vector)->size > 2) {
+        SceneListBegin(GPU_LIST_OP_POLY);
+        SceneListSubmit((Vertex*) aligned_vector_front(&OP_LIST.vector), aligned_vector_size(&OP_LIST.vector));
+        SceneListFinish();
+    }
 
-    SceneBegin();
-        if(aligned_vector_header(&OP_LIST.vector)->size > 2) {
-            SceneListBegin(GPU_LIST_OP_POLY);
-            SceneListSubmit((Vertex*) aligned_vector_front(&OP_LIST.vector), aligned_vector_size(&OP_LIST.vector));
-            SceneListFinish();
-        }
+    if(aligned_vector_header(&PT_LIST.vector)->size > 2) {
+        SceneListBegin(GPU_LIST_PT_POLY);
+        SceneListSubmit((Vertex*) aligned_vector_front(&PT_LIST.vector), aligned_vector_size(&PT_LIST.vector));
+        SceneListFinish();
+    }
 
-        if(aligned_vector_header(&PT_LIST.vector)->size > 2) {
-            SceneListBegin(GPU_LIST_PT_POLY);
-            SceneListSubmit((Vertex*) aligned_vector_front(&PT_LIST.vector), aligned_vector_size(&PT_LIST.vector));
-            SceneListFinish();
-        }
+    if(aligned_vector_header(&TR_LIST.vector)->size > 2) {
+        SceneListBegin(GPU_LIST_TR_POLY);
+        SceneListSubmit((Vertex*) aligned_vector_front(&TR_LIST.vector), aligned_vector_size(&TR_LIST.vector));
+        SceneListFinish();
+    }
+}
 
-        if(aligned_vector_header(&TR_LIST.vector)->size > 2) {
-            SceneListBegin(GPU_LIST_TR_POLY);
-            SceneListSubmit((Vertex*) aligned_vector_front(&TR_LIST.vector), aligned_vector_size(&TR_LIST.vector));
-            SceneListFinish();
-        }
-    SceneFinish();
+bool _glBeginQueuedScene(void) {
+    if(SCENE_ACTIVE) {
+        return true;
+    }
+
+    if(!_glFramebufferBeginScene()) {
+        return false;
+    }
+
+    SCENE_ACTIVE = true;
+    return true;
+}
+
+void _glFinishQueuedScene(void) {
+    if(!SCENE_ACTIVE) return;
+
+    _glSubmitQueuedScene();
+    _glFramebufferFinishScene();
 
     aligned_vector_clear(&OP_LIST.vector);
     aligned_vector_clear(&PT_LIST.vector);
     aligned_vector_clear(&TR_LIST.vector);
 
+    SCENE_ACTIVE = false;
+    // FBO_TRACE("GLdc: SceneFinish complete\n");
+    _glInvalidateScissor();
+}
+
+void APIENTRY glKosSwapBuffers() {
+    TRACE();
+
+    _glFinishQueuedScene();
     _glApplyScissor(true);
+
+    /*
+     * Do not immediately start another scene here. Default framebuffer drawing
+     * begins lazily on the next clear/draw, and fake-FBO unbind starts the next
+     * default scene only after resolving the target texture.
+     */
 }

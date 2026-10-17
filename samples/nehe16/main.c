@@ -13,10 +13,8 @@
 #include <GL/gl.h>
 #include <GL/glu.h>
 
-#ifdef __DREAMCAST__
+#ifdef _arch_dreamcast
 #include <kos.h>
-extern uint8 romdisk[];
-KOS_INIT_ROMDISK(romdisk);
 #define IMG_PATH "/rd/glass.pvr"
 #else
 #define IMG_PATH "../samples/nehe08/romdisk/glass.pvr"
@@ -151,9 +149,11 @@ int main(int argc, char **argv) {
     glColor4f(1.0f, 1.0f, 1.0f, 0.5);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE);
 
-    /* Enable Lighting and GL_LIGHT0 */
+    /* Use an off-axis directional light so face-to-face lighting changes are visible. */
+    const GLfloat lightPosition[4] = {1.0f, 1.0f, 1.0f, 0.0f};
     glEnable(GL_LIGHTING);
     glEnable(GL_LIGHT0);
+    glLightfv(GL_LIGHT0, GL_POSITION, lightPosition);
 
     /* Set up the fog */
     glFogi(GL_FOG_MODE, fogMode[fogType]);     /* Fog Mode */
@@ -170,7 +170,7 @@ int main(int argc, char **argv) {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 
     while(1) {
-#ifdef __DREAMCAST__
+#ifdef _arch_dreamcast
         maple_device_t *cont;
         cont_state_t *state;
 

@@ -5,6 +5,10 @@
 #include "../include/GL/glext.h"
 #include "private.h"
 
+#define SCISSOR_APPLIED_OP 0x1u
+#define SCISSOR_APPLIED_PT 0x2u
+#define SCISSOR_APPLIED_TR 0x4u
+
 static struct {
     GLboolean is_dirty;
 
@@ -33,7 +37,7 @@ static struct {
         GLint y;
         GLsizei width;
         GLsizei height;
-        GLboolean applied;
+        unsigned int applied_lists;
     } scissor_rect;
 
     GLenum blend_sfactor;
@@ -41,6 +45,7 @@ static struct {
     GLboolean blend_enabled;
     GLfloat offset_factor;
     GLfloat offset_units;
+    GLenum polygon_mode;
 
     GLfloat scene_ambient[4];
     GLboolean viewer_in_eye_coords;
@@ -66,6 +71,9 @@ static struct {
 
     GLfloat half_point_size;
     GLfloat half_line_width;
+
+    GLint unpack_row_length;
+    GLint unpack_alignment;
 } GPUState = {
     .is_dirty = GL_TRUE,
     .depth_func = GL_LESS,
@@ -83,12 +91,13 @@ static struct {
     .scissor_test_enabled = GL_FALSE,
     .fog_enabled = GL_FALSE,
     .depth_mask_enabled = GL_FALSE,
-    .scissor_rect = {0, 0, 640, 480, false},
+    .scissor_rect = {0, 0, 640, 480, 0},
     .blend_sfactor = GL_ONE,
     .blend_dfactor = GL_ZERO,
     .blend_enabled = GL_FALSE,
     .offset_factor = 0.0f,
     .offset_units = 0.0f,
+    .polygon_mode = GL_FILL,
     .scene_ambient = {0.2f, 0.2f, 0.2f, 1.0f},
     .viewer_in_eye_coords = GL_TRUE,
     .color_control = GL_SINGLE_COLOR,
@@ -102,6 +111,8 @@ static struct {
     .current_tex_coord1 = {0.0f, 0.0f},
     .half_point_size = 0.5f,
     .half_line_width = 0.5f,
+    .unpack_row_length = 0,
+    .unpack_alignment = 4,
 };
 
 float* _glCurrentColor() {
@@ -139,6 +150,14 @@ void _glGPUStateMarkDirty() {
 
 GLboolean _glGPUStateIsDirty() {
     return GPUState.is_dirty;
+}
+
+GLint _glGetUnpackRowLength() {
+    return GPUState.unpack_row_length;
+}
+
+GLint _glGetUnpackAlignment() {
+    return GPUState.unpack_alignment;
 }
 
 Material* _glActiveMaterial() {
@@ -198,12 +217,34 @@ GLenum _glGetFrontFace() {
     return GPUState.front_face;
 }
 
+GLenum _glGetPolygonMode() {
+    return GPUState.polygon_mode;
+}
+
 GLboolean _glIsFogEnabled() {
     return GPUState.fog_enabled;
 }
 
 GLboolean _glIsScissorTestEnabled() {
     return GPUState.scissor_test_enabled;
+}
+
+void _glGetScissor(GLint* x, GLint* y, GLsizei* width, GLsizei* height) {
+    if(x) {
+        *x = GPUState.scissor_rect.x;
+    }
+
+    if(y) {
+        *y = GPUState.scissor_rect.y;
+    }
+
+    if(width) {
+        *width = GPUState.scissor_rect.width;
+    }
+
+    if(height) {
+        *height = GPUState.scissor_rect.height;
+    }
 }
 
 void _glRecalcEnabledLights() {
@@ -407,10 +448,17 @@ void _glUpdatePVRTextureContext(PolyContext *context, GLshort textureUnit) {
     }
 
     if(tx1->data) {
+        const GLushort physicalWidth =
+            tx1->pvrWidth ? tx1->pvrWidth :
+            (tx1->isRTT && tx1->rttWidth ? tx1->rttWidth : tx1->width);
+        const GLushort physicalHeight =
+            tx1->pvrHeight ? tx1->pvrHeight :
+            (tx1->isRTT && tx1->rttHeight ? tx1->rttHeight : tx1->height);
+
         context->txr.enable = GPU_TEXTURE_ENABLE;
         context->txr.filter = filter;
-        context->txr.width = tx1->width;
-        context->txr.height = tx1->height;
+        context->txr.width = physicalWidth;
+        context->txr.height = physicalHeight;
         context->txr.mipmap = enableMipmaps;
         context->txr.mipmap_bias = tx1->mipmap_bias;
 
@@ -421,6 +469,20 @@ void _glUpdatePVRTextureContext(PolyContext *context, GLshort textureUnit) {
         }
 
         context->txr.format = tx1->color;
+        context->txr.is_strided = tx1->isStrided;
+        context->txr.stride_width = tx1->strideWidth;
+        context->txr.uv_scale_u =
+            (tx1->isStrided || tx1->isRTT) && physicalWidth
+                ? ((float) tx1->logicalWidth / (float) physicalWidth)
+                : 1.0f;
+        context->txr.uv_scale_v =
+            (tx1->isStrided || tx1->isRTT) && physicalHeight
+                ? ((float) tx1->logicalHeight / (float) physicalHeight)
+                : 1.0f;
+
+        if(tx1->isStrided) {
+            context->txr.format |= GPU_TXRFMT_X32_STRIDE;
+        }
 
         if(tx1->isPaletted) {
             if(_glIsSharedTexturePaletteEnabled()) {
@@ -442,7 +504,10 @@ void _glUpdatePVRTextureContext(PolyContext *context, GLshort textureUnit) {
             }
         }
 
-        context->txr.env = tx1->env;
+        context->txr.env =
+            (tx1->env == GPU_TXRENV_MODULATEALPHA &&
+             !GPUState.blend_enabled &&
+             !GPUState.alpha_test_enabled) ? GPU_TXRENV_MODULATE : tx1->env;
         // extract mirror setting from bits 2 and 3 of uv_wrap by shifting out the clamp bits and masking
         context->txr.uv_flip = (tx1->uv_wrap >> 2) & 3;
         // extract clamp setting from bits 0 and 1 of uv_wrap by masking
@@ -526,6 +591,7 @@ GLAPI void APIENTRY glEnable(GLenum cap) {
         case GL_SCISSOR_TEST: {
             if(GPUState.scissor_test_enabled != GL_TRUE) {
                 GPUState.scissor_test_enabled = GL_TRUE;
+                GPUState.scissor_rect.applied_lists = 0;
                 GPUState.is_dirty = GL_TRUE;
             }
         } break;
@@ -643,6 +709,7 @@ GLAPI void APIENTRY glDisable(GLenum cap) {
         case GL_SCISSOR_TEST: {
             if(GPUState.scissor_test_enabled != GL_FALSE) {
                 GPUState.scissor_test_enabled = GL_FALSE;
+                GPUState.scissor_rect.applied_lists = 0;
                 GPUState.is_dirty = GL_TRUE;
             }
         } break;
@@ -724,8 +791,10 @@ GLAPI void APIENTRY glDisable(GLenum cap) {
 
 /* Clear Caps */
 GLAPI void APIENTRY glClear(GLuint mode) {
+    // FBO_TRACE("GLdc: glClear mode=0x%x\n", (unsigned)mode);
     if(mode & GL_COLOR_BUFFER_BIT) {
         GPUSetBackgroundColour(CLEAR_COLOUR[0], CLEAR_COLOUR[1], CLEAR_COLOUR[2]);
+        _glFramebufferMarkDirty();
     }
 }
 
@@ -788,8 +857,26 @@ GLAPI void APIENTRY glHint(GLenum target, GLenum mode) {
 
 /* Polygon Rasterization Mode */
 GLAPI void APIENTRY glPolygonMode(GLenum face, GLenum mode) {
-    _GL_UNUSED(face);
-    _GL_UNUSED(mode);
+    GLint validModes[] = {
+        GL_FILL,
+        GL_LINE,
+        GL_POINT,
+        0
+    };
+    GLint validFaces[] = {
+        GL_FRONT_AND_BACK,
+        0
+    };
+
+    if(_glCheckValidEnum(mode, validModes, __func__) != 0) {
+        return;
+    }
+
+    if(_glCheckValidEnum(face, validFaces, __func__) != 0) {
+        return;
+    }
+
+    GPUState.polygon_mode = mode;
 }
 
 /* Culling */
@@ -873,8 +960,25 @@ void glColorMask(GLboolean red, GLboolean green, GLboolean blue, GLboolean alpha
 }
 
 void glPixelStorei(GLenum pname, GLint param) {
-    _GL_UNUSED(pname);
-    _GL_UNUSED(param);
+    switch(pname) {
+        case GL_UNPACK_ROW_LENGTH:
+            if(param < 0) {
+                _glKosThrowError(GL_INVALID_VALUE, __func__);
+                return;
+            }
+            GPUState.unpack_row_length = param;
+        break;
+        case GL_UNPACK_ALIGNMENT:
+            if(param != 1 && param != 2 && param != 4 && param != 8) {
+                _glKosThrowError(GL_INVALID_VALUE, __func__);
+                return;
+            }
+            GPUState.unpack_alignment = param;
+        break;
+        default:
+            _glKosThrowError(GL_INVALID_ENUM, __func__);
+        break;
+    }
 }
 
 
@@ -891,10 +995,8 @@ void APIENTRY glScissor(GLint x, GLint y, GLsizei width, GLsizei height) {
     GPUState.scissor_rect.y = y;
     GPUState.scissor_rect.width = width;
     GPUState.scissor_rect.height = height;
-    GPUState.scissor_rect.applied = false;
+    GPUState.scissor_rect.applied_lists = 0;
     GPUState.is_dirty = GL_TRUE; // FIXME: do we need this?
-
-    _glApplyScissor(false);
 }
 
 /* Setup the hardware user clip rectangle.
@@ -920,48 +1022,88 @@ void APIENTRY glScissor(GLint x, GLint y, GLsizei width, GLsizei height) {
     at the right place, either when enabling the scissor test, or
     when the scissor test changes.
 */
+static unsigned int _glActiveScissorListBit(const PolyList* list) {
+    if(list == _glOpaquePolyList()) {
+        return SCISSOR_APPLIED_OP;
+    }
+
+    if(list == _glPunchThruPolyList()) {
+        return SCISSOR_APPLIED_PT;
+    }
+
+    return SCISSOR_APPLIED_TR;
+}
+
+void _glInvalidateScissor(void) {
+    GPUState.scissor_rect.applied_lists = 0;
+}
+
 void _glApplyScissor(bool force) {
-    /* Don't do anyting if clipping is disabled */
+    /* Don't do anything if clipping is disabled */
     if(!GPUState.scissor_test_enabled) {
         return;
     }
 
-    /* Don't apply if we already applied - nothing changed */
-    if(GPUState.scissor_rect.applied && !force) {
+    PolyList* target = _glActivePolyList();
+    unsigned int active_list_bit = _glActiveScissorListBit(target);
+
+    /* Don't apply if this list already has the current clip rectangle. */
+    if((GPUState.scissor_rect.applied_lists & active_list_bit) && !force) {
         return;
     }
 
-    PVRTileClipCommand c;
+    typedef union {
+        Vertex vertex;
+        PVRTileClipCommand clip;
+    } ScissorCommand;
 
-    GLint miny, maxx, maxy;
+    ScissorCommand c = {0};
+    GLsizei target_width, target_height;
+    _glGetFramebufferRenderSize(&target_width, &target_height);
 
-    const VideoMode* vid_mode = GetVideoMode();
+    GLint x0 = GPUState.scissor_rect.x;
+    GLint y0 = GPUState.scissor_rect.y;
+    GLint x1 = x0 + GPUState.scissor_rect.width;
+    GLint y1 = y0 + GPUState.scissor_rect.height;
 
-    GLsizei scissor_width = MAX(MIN(GPUState.scissor_rect.width, vid_mode->width), 0);
-    GLsizei scissor_height = MAX(MIN(GPUState.scissor_rect.height, vid_mode->height), 0);
+    /*
+     * glScissor uses OpenGL window coordinates: lower-left origin,
+     * x/y inclusive start, width/height extent. Clip to the framebuffer
+     * before converting to PVR tile coordinates.
+     */
+    x0 = CLAMP(x0, 0, target_width);
+    y0 = CLAMP(y0, 0, target_height);
+    x1 = CLAMP(x1, 0, target_width);
+    y1 = CLAMP(y1, 0, target_height);
 
-    /* force the origin to the lower left-hand corner of the screen */
-    miny = (vid_mode->height - scissor_height) - GPUState.scissor_rect.y;
-    maxx = (scissor_width + GPUState.scissor_rect.x);
-    maxy = (scissor_height + miny);
+    uint16_t vw = (target_width + 31) >> 5;
+    uint16_t vh = (target_height + 31) >> 5;
+    uint16_t max_tx = vw - 1;
+    uint16_t max_ty = vh - 1;
 
     /* load command structure while mapping screen coords to TA tiles */
-    c.flags = GPU_CMD_USERCLIP;
-    c.d1 = c.d2 = c.d3 = 0;
+    c.clip.flags = GPU_CMD_USERCLIP;
+    c.clip.d1 = c.clip.d2 = c.clip.d3 = 0;
 
-    uint16_t vw = vid_mode->width >> 5;
-    uint16_t vh = vid_mode->height >> 5;
+    if(x1 <= x0 || y1 <= y0) {
+        c.clip.sx = 0;
+        c.clip.sy = 0;
+        c.clip.ex = 0;
+        c.clip.ey = 0;
+    } else {
+        GLint pvr_y0 = target_height - y1;
+        GLint pvr_y1 = target_height - y0;
 
-    c.sx = CLAMP(GPUState.scissor_rect.x >> 5, 0, vw);
-    c.sy = CLAMP(miny >> 5, 0, vh);
-    c.ex = CLAMP((maxx >> 5) - 1, 0, vw);
-    c.ey = CLAMP((maxy >> 5) - 1, 0, vh);
+        c.clip.sx = CLAMP(x0 >> 5, 0, max_tx);
+        c.clip.sy = CLAMP(pvr_y0 >> 5, 0, max_ty);
+        c.clip.ex = CLAMP((x1 - 1) >> 5, 0, max_tx);
+        c.clip.ey = CLAMP((pvr_y1 - 1) >> 5, 0, max_ty);
+    }
 
-    aligned_vector_push_back(&_glOpaquePolyList()->vector, &c, 1);
-    aligned_vector_push_back(&_glPunchThruPolyList()->vector, &c, 1);
-    aligned_vector_push_back(&_glTransparentPolyList()->vector, &c, 1);
+    aligned_vector_push_back(&target->vector, &c.vertex, 1);
 
-    GPUState.scissor_rect.applied = true;
+    GPUState.scissor_rect.applied_lists |= active_list_bit;
+    GPUState.is_dirty = GL_TRUE;
 }
 
 void glStencilFunc(GLenum func, GLint ref, GLuint mask) {
@@ -1118,6 +1260,12 @@ void APIENTRY glGetIntegerv(GLenum pname, GLint *params) {
         case GL_TEXTURE_INTERNAL_FORMAT_KOS:
             *params = _glGetTextureInternalFormat();
         break;
+        case GL_UNPACK_ROW_LENGTH:
+            *params = GPUState.unpack_row_length;
+        break;
+        case GL_UNPACK_ALIGNMENT:
+            *params = GPUState.unpack_alignment;
+        break;
 
     default:
         _glKosThrowError(GL_INVALID_ENUM, __func__);
@@ -1137,7 +1285,7 @@ const GLubyte *glGetString(GLenum name) {
             return (const GLubyte*) "1.2 (partial) - GLdc 1.1";
 
         case GL_EXTENSIONS:
-            return (const GLubyte*)"GL_ARB_framebuffer_object, GL_ARB_multitexture, GL_ARB_texture_rg, GL_OES_compressed_paletted_texture, GL_EXT_paletted_texture, GL_EXT_shared_texture_palette, GL_KOS_multiple_shared_palette, GL_ARB_vertex_array_bgra, GL_ARB_vertex_type_2_10_10_10_rev, GL_KOS_texture_memory_management, GL_ATI_meminfo";
+            return (const GLubyte*) GLDC_FRAMEBUFFER_EXTENSIONS "GL_ARB_multitexture GL_ARB_texture_rg GL_OES_compressed_paletted_texture GL_EXT_paletted_texture GL_EXT_shared_texture_palette GL_KOS_multiple_shared_palette GL_ARB_vertex_array_bgra GL_ARB_vertex_type_2_10_10_10_rev GL_KOS_texture_memory_management GL_KOS_texture_non_power_of_two GL_ATI_meminfo";
     }
 
     return (const GLubyte*) "GL_KOS_ERROR: ENUM Unsupported\n";
