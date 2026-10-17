@@ -483,22 +483,22 @@ static void generateElementsFastPath(
 
         if(col) {
             col = (GLubyte*) ATTRIB_LIST.colour.ptr + (idx * dstride);
-            it->argb[0] = ((float*) col)[0];
-            it->argb[1] = ((float*) col)[1];
-            it->argb[2] = ((float*) col)[2];
-            it->argb[3] = ((float*) col)[3];
+            it->argb[R8IDX] = ((float*) col)[0];
+            it->argb[G8IDX] = ((float*) col)[1];
+            it->argb[B8IDX] = ((float*) col)[2];
+            it->argb[A8IDX] = ((float*) col)[3];
         } else {
             const float* color = _glCurrentColor();
-            it->argb[0] = color[0];
-            it->argb[1] = color[1];
-            it->argb[2] = color[2];
-            it->argb[3] = color[3];
+            it->argb[A8IDX] = color[A8IDX];
+            it->argb[R8IDX] = color[R8IDX];
+            it->argb[G8IDX] = color[G8IDX];
+            it->argb[B8IDX] = color[B8IDX];
         }
 
         if(st) {
             st = (GLubyte*) ATTRIB_LIST.st.ptr + (idx * ststride);
-            it->st[0] = _glPackHalfFloat(st[0]);
-            it->st[1] = _glPackHalfFloat(st[1]);
+            it->st[0] = _glPackHalfFloat(((float*)st)[0]);
+            it->st[1] = _glPackHalfFloat(((float*)st)[1]);
         } else {
             float* ST_COORD = _glCurrentTexCoord0();
             it->st[0] = _glPackHalfFloat(ST_COORD[0]);
