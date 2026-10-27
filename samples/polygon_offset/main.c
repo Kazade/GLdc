@@ -1,8 +1,4 @@
-typedef enum
-{
-    false,
-    true
-} bool;
+#include <stdbool.h>
 
 #ifdef _arch_dreamcast
 #include <kos.h>
